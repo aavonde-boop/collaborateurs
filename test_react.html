@@ -1,0 +1,32 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Test LP24</title>
+  <script src="https://unpkg.com/react@18/umd/react.development.js"></script>
+  <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
+</head>
+<body>
+<div id="root"></div>
+<script>
+try {
+  const {useState} = React;
+  function App() {
+    const [n, setN] = useState(0);
+    return React.createElement("div", {style:{padding:40,fontFamily:"sans-serif",textAlign:"center"}},
+      React.createElement("h1", {style:{color:"#0891B2",marginBottom:16}}, "✅ React fonctionne !"),
+      React.createElement("p", {style:{color:"#6B7280",marginBottom:16}}, "Clics : " + n),
+      React.createElement("button", {
+        onClick: function(){ setN(function(x){return x+1;}); },
+        style:{background:"#0891B2",color:"#fff",border:"none",padding:"12px 24px",borderRadius:8,fontSize:16,cursor:"pointer"}
+      }, "Cliquer")
+    );
+  }
+  ReactDOM.createRoot(document.getElementById("root")).render(React.createElement(App));
+} catch(e) {
+  document.getElementById("root").innerHTML = "<div style='padding:40px;color:red;font-family:monospace'><h2>ERREUR</h2><pre>" + e.message + "</pre><button onclick='location.reload()' style='margin-top:12px;background:#0891B2;color:#fff;border:none;padding:10px 20px;border-radius:8px;cursor:pointer'>Recharger</button></div>";
+}
+</script>
+</body>
+</html>
