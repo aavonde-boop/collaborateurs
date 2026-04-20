@@ -1,0 +1,793 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0"/>
+  <meta name="apple-mobile-web-app-capable" content="yes"/>
+  <meta name="apple-mobile-web-app-status-bar-style" content="default"/>
+  <meta name="format-detection" content="telephone=no"/>
+  <title>Gestion Collaborateurs LP24</title>
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>👥</text></svg>">
+  <script src="https://unpkg.com/react@18/umd/react.development.js"></script>
+  <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+  <script src="https://unpkg.com/xlsx/dist/xlsx.full.min.js"></script>
+  <style>
+    *{margin:0;padding:0;box-sizing:border-box}
+    body{font-family:'Segoe UI',system-ui,sans-serif;background:#F3F4F6;-webkit-text-size-adjust:100%}
+    button,input,select,textarea{font-family:inherit;-webkit-appearance:none}
+    table{border-spacing:0}
+    ::-webkit-scrollbar{width:6px;height:6px}
+    ::-webkit-scrollbar-thumb{background:#CBD5E1;border-radius:3px}
+    @keyframes toastIn{from{opacity:0;transform:translateY(-20px) scale(.95)}to{opacity:1;transform:translateY(0) scale(1)}}
+    .toast{animation:toastIn .3s ease forwards}
+    @keyframes pulse{0%,100%{opacity:1}50%{opacity:.6}}
+    .pulse{animation:pulse 2s infinite}
+    @keyframes spin{to{transform:rotate(360deg)}}
+    .spinner{width:36px;height:36px;border:3px solid #E5E7EB;border-top-color:#0891B2;border-radius:50%;animation:spin 1s linear infinite}
+    .btn-icon{background:none;border:1px solid #D1D5DB;border-radius:8px;padding:6px 10px;cursor:pointer;font-size:15px;line-height:1;transition:all .15s}
+    .btn-icon:hover{background:#F3F4F6;border-color:#9CA3AF}
+    input[type="file"]{display:none}
+    th.sortable{cursor:pointer;user-select:none}
+    th.sortable:hover{background:rgba(255,255,255,.12)}
+    .sort-asc::after{content:" ↑";font-size:10px}
+    .sort-desc::after{content:" ↓";font-size:10px}
+    @media(max-width:768px){.desktop-nav{display:none!important}.mobile-nav{display:flex!important}main{padding:12px!important;padding-bottom:80px!important}}
+    @media(min-width:769px){.mobile-nav{display:none!important}}
+    .mobile-nav{position:fixed;bottom:0;left:0;right:0;background:#0F172A;display:none;padding-bottom:env(safe-area-inset-bottom);z-index:1000;box-shadow:0 -2px 12px rgba(0,0,0,.2)}
+    @media print{.no-print{display:none!important}body{background:#fff}.badge-card{page-break-inside:avoid}}
+    .disabled-overlay{pointer-events:none;opacity:.45;filter:grayscale(.3)}
+  </style>
+</head>
+<body>
+<div id="root" style="display:flex;align-items:center;justify-content:center;min-height:100vh;font-family:sans-serif;background:#F3F4F6">
+  <div style="text-align:center">
+    <div style="width:40px;height:40px;border:3px solid #E5E7EB;border-top-color:#0891B2;border-radius:50%;animation:spin 1s linear infinite;margin:0 auto 12px"></div>
+    <p style="color:#6B7280;font-size:14px;margin:0">Chargement...</p>
+    <style>@keyframes spin{to{transform:rotate(360deg)}}</style>
+  </div>
+</div>
+<script>
+window.onerror = function(msg,src,line,col,err){
+  var r=document.getElementById('root');
+  if(r) r.innerHTML='<div style="padding:32px;font-family:sans-serif;text-align:center;max-width:400px;margin:0 auto"><div style="font-size:40px;margin-bottom:12px">⚠️</div><h3 style="color:#E74C3C;margin-bottom:8px">Erreur</h3><pre style="font-size:11px;background:#fee2e2;padding:8px;border-radius:6px;text-align:left;white-space:pre-wrap;color:#991B1B">'+String(msg)+'</pre><button onclick="location.reload()" style="margin-top:12px;background:#0891B2;color:#fff;border:none;padding:10px 20px;border-radius:8px;cursor:pointer;font-size:14px">🔄 Recharger</button></div>';
+};
+</script>
+<script>
+const{useState,useMemo,useCallback,useEffect,useRef}=React;
+
+// ── Config ──
+const SUPABASE_URL="https://jymobewqenhcjtzniytb.supabase.co";
+const SUPABASE_KEY="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imp5bW9iZXdxZW5oY2p0em5peXRiIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzY2MjQ5NTEsImV4cCI6MjA5MjIwMDk1MX0.CpqOnvJ4YtsYHw6fSE7Xyj5MOXkXx-gBwT69J0F46p0";
+const ADMIN_EMAIL="a.avonde@allianceautomotive.fr";
+let sb=null;
+try{if(window.supabase)sb=window.supabase.createClient(SUPABASE_URL,SUPABASE_KEY);}catch(e){}
+
+const C={blue:"#0891B2",blueBg:"#E0F2FE",purple:"#7C3AED",purpleBg:"#F5F3FF",green:"#00B050",greenBg:"#E6F9EE",red:"#E74C3C",redBg:"#FDEDEC",orange:"#ED7D31",orangeBg:"#FDF2E9",gray:"#808080",grayBg:"#F5F5F5",dark:"#0F172A"};
+const ZONES=["DE","PA","SE","LV"];
+const ZONES_LABELS={DE:"Défense",PA:"Paris",SE:"Seine",LV:"Levallois"};
+const ZONES_COLORS={DE:"#2F5496",PA:"#ED7D31",SE:"#7C3AED",LV:"#00B050"};
+
+// Permissions par défaut pour un utilisateur standard
+const DEFAULT_PERMS={
+  accueil:{voir:true,modifier:true},      // enregistrer arrivées/départs
+  collaborateurs:{voir:true,modifier:false,ajouter:false},
+  casiers:{voir:true,modifier:false},
+  rapport:{voir:true},
+  lists:{voir:true,modifier:true},        // appliquer arrivées/départs
+  impression:{voir:true},
+  historique:{voir:true},
+  archives:{voir:true,modifier:false}
+};
+
+// ── Helpers ──
+const nxId=arr=>arr.reduce((m,x)=>Math.max(m,x.id||0),0)+1;
+const fmt=d=>d?new Date(d+"T00:00:00").toLocaleDateString("fr-FR"):"—";
+const todayISO=()=>new Date().toISOString().slice(0,10);
+const TS=()=>new Date().toLocaleString("fr-FR",{day:"2-digit",month:"2-digit",year:"numeric",hour:"2-digit",minute:"2-digit"});
+const xlsxDateToISO=n=>{if(!n||isNaN(n))return"";try{return new Date(Math.round((n-25569)*86400000)).toISOString().slice(0,10);}catch{return"";}};
+const getWeekKey=d=>{if(!d)return null;const dt=new Date(d+"T00:00:00"),mon=new Date(dt);mon.setDate(dt.getDate()-dt.getDay()+1);const sun=new Date(mon);sun.setDate(mon.getDate()+6);return mon.toLocaleDateString("fr-FR")+" → "+sun.toLocaleDateString("fr-FR");};
+const nextFriday=()=>{const d=new Date();d.setDate(d.getDate()+(d.getDay()<=5?5-d.getDay():6));return d.toLocaleDateString("fr-FR");};
+
+// SHA-256 hash via WebCrypto (natif Safari/Chrome)
+const hashPwd=async(pwd)=>{
+  const buf=await crypto.subtle.digest("SHA-256",new TextEncoder().encode(pwd));
+  return Array.from(new Uint8Array(buf)).map(b=>b.toString(16).padStart(2,"0")).join("");
+};
+
+// ── UI primitives ──
+const Card=({children,style,onClick})=>React.createElement("div",{onClick,style:{background:"#fff",borderRadius:12,boxShadow:"0 1px 3px rgba(0,0,0,.08)",padding:20,cursor:onClick?"pointer":"default",...style}},children);
+const KPI=({label,value,color,sub,onClick,icon,style:st})=>React.createElement(Card,{onClick,style:{textAlign:"center",borderTop:"4px solid "+color,cursor:onClick?"pointer":"default",...st}},icon&&React.createElement("div",{style:{fontSize:18,marginBottom:3}},icon),React.createElement("div",{style:{fontSize:26,fontWeight:700,color}},value),React.createElement("div",{style:{fontSize:12,color:"#6B7280",marginTop:3}},label),sub&&React.createElement("div",{style:{fontSize:11,color:"#9CA3AF",marginTop:2}},sub));
+const Btn=({children,onClick,color=C.blue,variant,style,disabled,title})=>React.createElement("button",{onClick,disabled,title,style:{background:variant==="outline"?"transparent":color,color:variant==="outline"?color:"#fff",border:variant==="outline"?"2px solid "+color:"none",borderRadius:8,padding:"7px 14px",fontSize:13,fontWeight:600,cursor:disabled?"not-allowed":"pointer",opacity:disabled?.5:1,...style}},children);
+const Inp=({value,onChange,placeholder,type="text",style,readOnly,onKeyDown,autoComplete})=>React.createElement("input",{type,value:value||"",onChange:e=>onChange&&onChange(e.target.value),placeholder,readOnly,onKeyDown,autoComplete,style:{padding:"10px 12px",borderRadius:8,border:"1px solid #D1D5DB",fontSize:14,width:"100%",background:readOnly?"#F9FAFB":"#fff",...style}});
+const Sel=({value,onChange,options,placeholder,style})=>React.createElement("select",{value:value||"",onChange:e=>onChange(e.target.value),style:{padding:"6px 10px",borderRadius:6,border:"1px solid #D1D5DB",fontSize:13,background:"#fff",...style}},placeholder&&React.createElement("option",{value:""},placeholder),options.map(o=>typeof o==="string"?React.createElement("option",{key:o,value:o},o):React.createElement("option",{key:o.v,value:o.v},o.l)));
+const Lbl=({children})=>React.createElement("label",{style:{fontSize:12,fontWeight:600,color:"#6B7280",display:"block",marginBottom:4}},children);
+const Bdg=({children,color="#374151",bg="#f3f4f6"})=>React.createElement("span",{style:{background:bg,color,fontSize:"0.75rem",padding:"2px 10px",borderRadius:9999,fontWeight:600,whiteSpace:"nowrap",display:"inline-block"}},children);
+const Modal=({children,onClose,maxWidth=820})=>React.createElement("div",{style:{position:"fixed",inset:0,background:"rgba(0,0,0,.5)",zIndex:1000,display:"flex",alignItems:"center",justifyContent:"center",padding:16},onClick:e=>e.target===e.currentTarget&&onClose()},React.createElement("div",{style:{background:"#fff",borderRadius:14,boxShadow:"0 8px 40px rgba(0,0,0,.25)",padding:24,width:"100%",maxWidth,maxHeight:"90vh",overflowY:"auto"}},children));
+
+// ── ErrorBoundary ──
+class ErrorBoundary extends React.Component{
+  constructor(p){super(p);this.state={error:null};}
+  static getDerivedStateFromError(e){return{error:e};}
+  componentDidCatch(e,i){console.error("React error:",e,i);}
+  render(){
+    if(this.state.error)return React.createElement("div",{style:{padding:32,fontFamily:"sans-serif",textAlign:"center",maxWidth:400,margin:"0 auto"}},
+      React.createElement("div",{style:{fontSize:40,marginBottom:12}},"⚠️"),
+      React.createElement("h2",{style:{color:"#E74C3C",marginBottom:8}},"Erreur de l'application"),
+      React.createElement("pre",{style:{background:"#FEF2F2",padding:12,borderRadius:8,fontSize:11,textAlign:"left",whiteSpace:"pre-wrap",color:"#B91C1C",marginBottom:16}},String(this.state.error)),
+      React.createElement("button",{onClick:()=>location.reload(),style:{background:"#0891B2",color:"#fff",border:"none",padding:"10px 24px",borderRadius:8,fontSize:14,cursor:"pointer"}},"🔄 Recharger")
+    );
+    return this.props.children;
+  }
+}
+
+// ════════════════════════════════════════════════════
+// LOGIN SCREEN
+// ════════════════════════════════════════════════════
+function LoginScreen({onLogin}){
+  const[email,setEmail]=useState("");
+  const[pwd,setPwd]=useState("");
+  const[loading,setLoading]=useState(false);
+  const[err,setErr]=useState("");
+  const[shake,setShake]=useState(false);
+
+  const doLogin=async()=>{
+    if(!email.trim()||!pwd.trim()){setErr("Veuillez remplir tous les champs.");return;}
+    setLoading(true);setErr("");
+    try{
+      if(!sb)throw new Error("Base de données non disponible. Vérifiez votre connexion.");
+      const hash=await hashPwd(pwd);
+      console.log("Email:", email.trim().toLowerCase());
+      console.log("Hash:", hash);
+      // Test: récupérer tous les users pour debug
+      const{data:allUsers}=await sb.from("lp24_users").select("email,pwd_hash,nom,role");
+      console.log("Tous les users:", JSON.stringify(allUsers));
+      const{data,error}=await sb.from("lp24_users").select("*").eq("email",email.trim().toLowerCase()).eq("pwd_hash",hash).single();
+      console.log("Login result:", data, error);
+      if(error||!data){
+        // Afficher le hash calculé pour debug
+        setErr("Email ou mot de passe incorrect. Hash calculé: "+hash.substring(0,16)+"...");
+        setShake(true);setTimeout(()=>setShake(false),500);
+      }
+      else{
+        // Sauvegarder session
+        try{localStorage.setItem("lp24_session",JSON.stringify({id:data.id,email:data.email,nom:data.nom,role:data.role,permissions:data.permissions,ts:Date.now()}));}catch(e){}
+        onLogin(data);
+      }
+    }catch(e){setErr(e.message||"Erreur de connexion.");}
+    setLoading(false);
+  };
+
+  return React.createElement("div",{style:{minHeight:"100vh",background:"linear-gradient(135deg,#0F172A 0%,#0891B2 60%,#0F172A 100%)",display:"flex",alignItems:"center",justifyContent:"center",padding:16}},
+    React.createElement("div",{style:{background:"#fff",borderRadius:20,boxShadow:"0 8px 40px rgba(0,0,0,.3)",padding:"40px 36px",width:"100%",maxWidth:380,textAlign:"center",animation:shake?"shake .4s":"none"}},
+      React.createElement("div",{style:{fontSize:48,marginBottom:8}},"👥"),
+      React.createElement("h1",{style:{fontSize:22,fontWeight:700,color:"#0F172A",marginBottom:4}},"Gestion des Collaborateurs"),
+      React.createElement("p",{style:{fontSize:13,color:"#6B7280",marginBottom:28}},"Badges & Casiers — La Défense"),
+      React.createElement("div",{style:{marginBottom:12,textAlign:"left"}},
+        React.createElement(Lbl,null,"Adresse email"),
+        React.createElement(Inp,{type:"email",value:email,onChange:setEmail,placeholder:"prenom.nom@allianceautomotive.fr",autoComplete:"email",onKeyDown:e=>e.key==="Enter"&&document.getElementById("pwd-field").focus()})
+      ),
+      React.createElement("div",{style:{marginBottom:16,textAlign:"left"}},
+        React.createElement(Lbl,null,"Mot de passe"),
+        React.createElement("input",{id:"pwd-field",type:"password",value:pwd,onChange:e=>setPwd(e.target.value),onKeyDown:e=>e.key==="Enter"&&doLogin(),placeholder:"••••••••",autoComplete:"current-password",style:{padding:"10px 12px",borderRadius:8,border:"1px solid #D1D5DB",fontSize:14,width:"100%",WebkitAppearance:"none"}})
+      ),
+      err&&React.createElement("div",{style:{background:"#FEF2F2",color:"#B91C1C",borderRadius:8,padding:"8px 12px",fontSize:13,marginBottom:12,textAlign:"left"}},err),
+      React.createElement("button",{onClick:doLogin,disabled:loading,style:{width:"100%",background:loading?"#9CA3AF":"#0891B2",color:"#fff",border:"none",borderRadius:10,padding:"12px 0",fontSize:15,fontWeight:700,cursor:loading?"not-allowed":"pointer",transition:"background .2s"}},loading?"Connexion en cours...":"Se connecter"),
+      React.createElement("style",null,"@keyframes shake{0%,100%{transform:translateX(0)}25%,75%{transform:translateX(-8px)}50%{transform:translateX(8px)}}")
+    )
+  );
+}
+
+// ════════════════════════════════════════════════════
+// VUE UTILISATEURS (admin only)
+// ════════════════════════════════════════════════════
+function VueUtilisateurs({currentUser,showToast}){
+  const[users,setUsers]=useState([]);
+  const[loading,setLoading]=useState(true);
+  const[showForm,setShowForm]=useState(false);
+  const[editUser,setEditUser]=useState(null);
+  const emptyForm={nom:"",email:"",pwd:"",role:"user",permissions:JSON.parse(JSON.stringify(DEFAULT_PERMS))};
+  const[form,setForm]=useState(emptyForm);
+  const ONGLETS=[
+    {id:"accueil",label:"Accueil",perms:["voir","modifier"]},
+    {id:"collaborateurs",label:"Collaborateurs",perms:["voir","modifier","ajouter"]},
+    {id:"casiers",label:"Casiers",perms:["voir","modifier"]},
+    {id:"rapport",label:"Rapport",perms:["voir"]},
+    {id:"lists",label:"MS Lists",perms:["voir","modifier"]},
+    {id:"impression",label:"Impression",perms:["voir"]},
+    {id:"historique",label:"Historique",perms:["voir"]},
+    {id:"archives",label:"Archives",perms:["voir","modifier"]},
+  ];
+
+  useEffect(()=>{loadUsers();},[]);
+  const loadUsers=async()=>{
+    setLoading(true);
+    if(!sb){setLoading(false);return;}
+    const{data}=await sb.from("lp24_users").select("*").order("nom");
+    setUsers(data||[]);setLoading(false);
+  };
+
+  const saveUser=async()=>{
+    if(!form.nom.trim()||!form.email.trim()){showToast("⚠️ Nom et email obligatoires","err");return;}
+    if(!editUser&&!form.pwd.trim()){showToast("⚠️ Mot de passe obligatoire pour un nouvel utilisateur","err");return;}
+    try{
+      const row={nom:form.nom.trim(),email:form.email.trim().toLowerCase(),role:form.role,permissions:form.permissions};
+      if(form.pwd.trim()){row.pwd_hash=await hashPwd(form.pwd);}
+      if(editUser){
+        await sb.from("lp24_users").update(row).eq("id",editUser.id);
+        showToast("✅ Utilisateur mis à jour");
+      }else{
+        await sb.from("lp24_users").insert(row);
+        showToast("✅ Utilisateur créé — il peut maintenant se connecter");
+      }
+      setShowForm(false);setEditUser(null);setForm(emptyForm);
+      loadUsers();
+    }catch(e){showToast("⚠️ Erreur : "+e.message,"err");}
+  };
+
+  const deleteUser=async id=>{
+    if(id===currentUser.id){showToast("⚠️ Vous ne pouvez pas supprimer votre propre compte","err");return;}
+    if(!confirm("Supprimer cet utilisateur ?"))return;
+    await sb.from("lp24_users").delete().eq("id",id);
+    showToast("🗑️ Utilisateur supprimé");loadUsers();
+  };
+
+  const openEdit=u=>{
+    setEditUser(u);
+    setForm({nom:u.nom,email:u.email,pwd:"",role:u.role,permissions:u.permissions||JSON.parse(JSON.stringify(DEFAULT_PERMS))});
+    setShowForm(true);
+  };
+
+  const setPerm=(onglet,perm,val)=>{
+    setForm(f=>({...f,permissions:{...f.permissions,[onglet]:{...f.permissions[onglet],[perm]:val}}}));
+  };
+
+  const roleColor={admin:"#7C3AED",user:"#0891B2"};
+
+  return React.createElement("div",null,
+    React.createElement("div",{style:{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:16,flexWrap:"wrap",gap:8}},
+      React.createElement("h1",{style:{fontSize:22,fontWeight:700,color:C.purple}},"👤 Gestion des utilisateurs"),
+      React.createElement(Btn,{color:C.purple,onClick:()=>{setEditUser(null);setForm(emptyForm);setShowForm(true);}},"+ Nouvel utilisateur")
+    ),
+
+    showForm&&React.createElement(Modal,{onClose:()=>{setShowForm(false);setEditUser(null);},maxWidth:700},
+      React.createElement("div",{style:{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:16}},
+        React.createElement("h3",{style:{fontWeight:700,fontSize:16,color:C.purple}},(editUser?"✏️ Modifier":"+ Créer")+" un utilisateur"),
+        React.createElement("button",{onClick:()=>{setShowForm(false);setEditUser(null);},style:{background:"none",border:"none",fontSize:22,cursor:"pointer",color:"#9CA3AF"}},"×")
+      ),
+      React.createElement("div",{style:{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12,marginBottom:16}},
+        React.createElement("div",null,React.createElement(Lbl,null,"Nom complet *"),React.createElement(Inp,{value:form.nom,onChange:v=>setForm({...form,nom:v}),placeholder:"Prénom NOM"})),
+        React.createElement("div",null,React.createElement(Lbl,null,"Email *"),React.createElement(Inp,{type:"email",value:form.email,onChange:v=>setForm({...form,email:v}),placeholder:"prenom.nom@..."})),
+        React.createElement("div",null,React.createElement(Lbl,null,editUser?"Nouveau mot de passe (laisser vide = inchangé)":"Mot de passe *"),React.createElement("input",{type:"password",value:form.pwd,onChange:e=>setForm({...form,pwd:e.target.value}),placeholder:"••••••••",style:{padding:"10px 12px",borderRadius:8,border:"1px solid #D1D5DB",fontSize:14,width:"100%"}})),
+        React.createElement("div",null,React.createElement(Lbl,null,"Rôle"),React.createElement(Sel,{value:form.role,onChange:v=>setForm({...form,role:v}),options:[{v:"user",l:"Utilisateur"},{v:"admin",l:"Administrateur"}],style:{width:"100%"}}))
+      ),
+      form.role==="user"&&React.createElement("div",{style:{marginBottom:16}},
+        React.createElement("div",{style:{fontWeight:600,fontSize:13,color:"#374151",marginBottom:10,padding:"8px 12px",background:"#F8FAFC",borderRadius:8,borderLeft:"3px solid "+C.blue}},"🔒 Permissions par onglet"),
+        React.createElement("div",{style:{display:"grid",gap:8}},
+          ONGLETS.map(o=>React.createElement("div",{key:o.id,style:{display:"flex",alignItems:"center",gap:12,padding:"8px 12px",borderRadius:8,background:"#F9FAFB",border:"1px solid #E5E7EB"}},
+            React.createElement("div",{style:{fontWeight:600,fontSize:13,width:130,color:"#374151"}},o.label),
+            o.perms.map(p=>React.createElement("label",{key:p,style:{display:"flex",alignItems:"center",gap:5,cursor:"pointer",fontSize:12,color:"#6B7280"}},
+              React.createElement("input",{type:"checkbox",checked:!!(form.permissions[o.id]&&form.permissions[o.id][p]),onChange:e=>setPerm(o.id,p,e.target.checked),style:{accentColor:C.blue,width:15,height:15}}),
+              React.createElement("span",null,p==="voir"?"👁️ Voir":p==="modifier"?"✏️ Modifier":"➕ Ajouter")
+            ))
+          ))
+        )
+      ),
+      React.createElement("div",{style:{display:"flex",gap:8}},
+        React.createElement(Btn,{onClick:saveUser,color:C.purple},"💾 Enregistrer"),
+        React.createElement(Btn,{onClick:()=>{setShowForm(false);setEditUser(null);},variant:"outline",color:C.gray},"Annuler")
+      )
+    ),
+
+    loading?React.createElement("div",{style:{textAlign:"center",padding:48}},React.createElement("div",{className:"spinner",style:{margin:"0 auto"}})):
+    React.createElement(Card,{style:{padding:0,overflow:"auto"}},
+      React.createElement("table",{style:{width:"100%",borderCollapse:"collapse",fontSize:13}},
+        React.createElement("thead",null,React.createElement("tr",{style:{background:C.purple,color:"#fff"}},
+          ["Nom","Email","Rôle","Dernière connexion","Actions"].map(h=>React.createElement("th",{key:h,style:{padding:"10px 16px",textAlign:"left",fontWeight:600,whiteSpace:"nowrap"}},h))
+        )),
+        React.createElement("tbody",null,
+          users.length===0?React.createElement("tr",null,React.createElement("td",{colSpan:5,style:{padding:32,textAlign:"center",color:"#9CA3AF"}},"Aucun utilisateur. Créez-en un ci-dessus.")):
+          users.map((u,i)=>React.createElement("tr",{key:u.id,style:{background:i%2===0?"#fff":"#F9FAFB",borderBottom:"1px solid #E5E7EB"}},
+            React.createElement("td",{style:{padding:"10px 16px",fontWeight:600}},u.nom,u.id===currentUser.id&&React.createElement("span",{style:{marginLeft:6,fontSize:10,background:"#dcfce7",color:"#166534",borderRadius:999,padding:"1px 6px"}},"vous")),
+            React.createElement("td",{style:{padding:"10px 16px",color:"#6B7280",fontSize:12}},u.email),
+            React.createElement("td",{style:{padding:"10px 16px"}},React.createElement(Bdg,{color:"#fff",bg:roleColor[u.role]||C.gray},u.role==="admin"?"👑 Admin":"👤 Utilisateur")),
+            React.createElement("td",{style:{padding:"10px 16px",color:"#9CA3AF",fontSize:11}},u.last_login?fmt(u.last_login):"Jamais"),
+            React.createElement("td",{style:{padding:"10px 16px"}},
+              React.createElement("div",{style:{display:"flex",gap:6}},
+                React.createElement("button",{onClick:()=>openEdit(u),title:"Modifier",style:{background:"none",border:"none",cursor:"pointer",fontSize:16}},"✏️"),
+                u.id!==currentUser.id&&React.createElement("button",{onClick:()=>deleteUser(u.id),title:"Supprimer",style:{background:"none",border:"none",cursor:"pointer",fontSize:16}},"🗑️")
+              )
+            )
+          ))
+        )
+      )
+    )
+  );
+}
+
+// ════════════════════════════════════════════════════
+// WORKDAY PARSERS
+// ════════════════════════════════════════════════════
+function parseWDFileAsync(file,type,wdCache,setWdCache,showToast,setLoading){
+  setLoading(true);
+  const reader=new FileReader();
+  reader.onload=e=>{
+    try{
+      const wb=XLSX.read(e.target.result,{type:"binary"});
+      let wsName=wb.SheetNames[0];
+      const wdTab=wb.SheetNames.find(s=>s.toLowerCase().includes("workday"));
+      if(wdTab)wsName=wdTab;
+      const ws=wb.Sheets[wsName];
+      const keys=Object.keys(ws).filter(k=>!k.startsWith("!"));
+      if(keys.length>0){let maxR=0,maxC=0;keys.forEach(addr=>{try{const d=XLSX.utils.decode_cell(addr);if(d.r>maxR)maxR=d.r;if(d.c>maxC)maxC=d.c;}catch(e){}});ws["!ref"]=XLSX.utils.encode_range({s:{r:0,c:0},e:{r:maxR,c:maxC}});}
+      const data=XLSX.utils.sheet_to_json(ws,{header:1,defval:""});
+      let hRow=-1;
+      for(let i=0;i<Math.min(data.length,30);i++){if(Array.isArray(data[i])&&data[i].some(v=>String(v||"").toLowerCase().replace(/\s+/g," ").trim()==="employee id")){hRow=i;break;}}
+      if(hRow<0){alert("Colonne 'Employee ID' introuvable dans : "+file.name);setLoading(false);return;}
+      const headers=data[hRow].map(h=>String(h||"").trim());
+      const parsed=[];
+      data.slice(hRow+1).filter(r=>Array.isArray(r)&&r.some(v=>v!==""&&v!==null)).forEach(r=>{
+        const o={};headers.forEach((h,i)=>{if(h)o[h]=r[i]!=null?r[i]:"";});
+        const mat=String(o["Employee ID"]||"").trim();
+        const nom=String(o["Preferred Name - Last Name"]||"").trim().toUpperCase();
+        const prenom=String(o["Preferred Name - First Name"]||"").trim();
+        if(!mat||!nom)return;
+        const toISO=v=>{if(!v||v==="")return"";if(typeof v==="number")return xlsxDateToISO(v);const s=String(v).trim();if(!s||s==="NaN")return"";const dm=s.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})/);if(dm)return dm[3]+"-"+dm[2].padStart(2,"0")+"-"+dm[1].padStart(2,"0");if(/^\d{4}-\d{2}-\d{2}/.test(s))return s.slice(0,10);try{const d=new Date(s);if(!isNaN(d))return d.toISOString().slice(0,10);}catch{}return"";};
+        parsed.push({matricule:mat,nom,prenom,email:String(o["Email - Primary Work"]||o["Work Email"]||"").trim(),manager:String(o["Manager's Name"]||o["Manager"]||"").trim(),mailMgr:String(o["Manager e-mail"]||o["Manager's Email"]||"").trim(),hireDate:toISO(o["Hire Date"]),termDate:toISO(o["Termination Date"])});
+      });
+      if(!parsed.length){alert("Aucune donnée valide.");setLoading(false);return;}
+      setWdCache(prev=>{const next={...(prev||{})};parsed.forEach(p=>{next[p.matricule]=p;});return next;});
+      showToast("✅ "+parsed.length+" chargés ("+(type==="hr"?"HR Data":"Future Hires")+")");
+    }catch(err){alert("Erreur : "+err.message);}
+    setLoading(false);
+  };
+  reader.readAsBinaryString(file);
+}
+
+function parseRacineAsync(file,badges,setBadges,setCasiers,showToast,setLoading,addLog){
+  setLoading(true);
+  const reader=new FileReader();
+  reader.onload=e=>{
+    try{
+      const wb=XLSX.read(e.target.result,{type:"binary"});
+      const sheets=wb.SheetNames;
+      const newBadges=[],newCasiers=[];let id=nxId(badges)+1,cid=1;
+      const isV1=sheets.includes("LP 24");
+      const getVal=v=>{if(v==null)return"";if(typeof v==="object"&&v.v!=null)return String(v.v);const s=String(v).trim();return s.startsWith("=")?"":s;};
+      if(isV1){
+        const ws=wb.Sheets["LP 24"];if(!ws){alert("Feuille 'LP 24' introuvable.");setLoading(false);return;}
+        const rows=XLSX.utils.sheet_to_json(ws,{header:1,defval:""});
+        for(let i=1;i<rows.length;i++){
+          const r=rows[i];if(!r||r.length<4)continue;
+          const nom=getVal(r[4]).toUpperCase(),prenom=getVal(r[5]);
+          if(!nom&&!prenom)continue;if(nom.startsWith("=")||prenom.startsWith("="))continue;
+          const ds=r[0];const dsNum=typeof ds==="number"?ds:(typeof ds==="string"?parseFloat(ds):NaN);
+          const actif=ds==null||ds===""||ds===0||(typeof ds==="string"&&(ds.includes("N/A")||ds.trim()==="0"))||(!isNaN(dsNum)&&dsNum<1000);
+          newBadges.push({id:id++,matricule:getVal(r[2]),nom,prenom,email:getVal(r[7]),serie:getVal(r[9]),zeplug:getVal(r[10]),carte_rechargement:getVal(r[10]),casier:getVal(r[11]),manager:getVal(r[13]),mail_manager:getVal(r[12]),statut:actif?"Actif":"À récupérer",date_sortie_prevue:"",date_archive:"",commentaire:""});
+        }
+        const wsC=wb.Sheets["Casier LP24"];
+        if(wsC){XLSX.utils.sheet_to_json(wsC,{header:1,defval:""}).forEach(r=>{if(!r||r.length<2)return;const num=getVal(r[2]);if(num==="Numéro"||num.startsWith("Zone")||num.length<3)return;newCasiers.push({id:cid++,numero:num,zone:num.substring(0,2).toUpperCase(),occupant:getVal(r[1]),matricule:"",statut:getVal(r[1])?"Occupé":"Libre",commentaire:getVal(r[4])});});}
+      }else{
+        const readSh=ws=>{const raw=XLSX.utils.sheet_to_json(ws,{header:1,defval:""});let h=0;for(let i=0;i<Math.min(raw.length,5);i++){if(raw[i].some(v=>["Matricule","Nom","Zone","N° Casier"].includes(String(v||"").trim()))){h=i;break;}}const hdr=raw[h].map(x=>String(x||"").trim());return raw.slice(h+1).map(r=>{const o={};hdr.forEach((x,i)=>{if(x)o[x]=r[i]!==undefined?r[i]:"";});return o;});};
+        const wsA=sheets.find(s=>s.includes("Badges Actifs")||s.includes("Actifs"));
+        const wsR=sheets.find(s=>s.includes("cupérer")||s.includes("Récupérer"));
+        const wsC=sheets.find(s=>s.includes("Casier")||s.includes("📦"));
+        if(wsA)readSh(wb.Sheets[wsA]).forEach(r=>{const nom=String(r["Nom"]||"").trim().toUpperCase(),prenom=String(r["Prénom"]||"").trim();if(!nom&&!prenom)return;newBadges.push({id:id++,matricule:String(r["Matricule"]||"").trim(),nom,prenom,email:String(r["Email"]||"").trim(),serie:String(r["N° Badge (Série)"]||r["N° Série Badge"]||"").trim(),zeplug:String(r["N° Zeplug"]||"").trim(),carte_rechargement:String(r["N° Zeplug"]||"").trim(),casier:String(r["N° Casier"]||"").trim(),manager:String(r["Manager"]||"").trim(),mail_manager:String(r["Mail Manager"]||"").trim(),statut:"Actif",date_sortie_prevue:"",date_archive:"",commentaire:""});});
+        if(wsR)readSh(wb.Sheets[wsR]).forEach(r=>{const nom=String(r["Nom"]||"").trim().toUpperCase(),prenom=String(r["Prénom"]||"").trim();if(!nom&&!prenom)return;newBadges.push({id:id++,matricule:String(r["Matricule"]||"").trim(),nom,prenom,email:String(r["Email"]||"").trim(),serie:String(r["N° Badge (Série)"]||"").trim(),zeplug:String(r["N° Zeplug"]||"").trim(),carte_rechargement:String(r["N° Zeplug"]||"").trim(),casier:String(r["N° Casier"]||"").trim(),manager:String(r["Manager"]||"").trim(),mail_manager:String(r["Mail Manager"]||"").trim(),statut:"À récupérer",date_sortie_prevue:"",date_archive:"",commentaire:""});});
+        if(wsC)readSh(wb.Sheets[wsC]).forEach(r=>{const num=String(r["N° Casier"]||"").trim();if(!num||num.length<3)return;const zl=String(r["Zone"]||"").trim();if(!zl||zl.startsWith("──"))return;let zone=num.substring(0,2).toUpperCase();["levallois","paris","seine","defense","défense"].forEach((k,idx)=>{if(zl.toLowerCase().includes(k))zone=["LV","PA","SE","DE","DE"][idx];});newCasiers.push({id:cid++,numero:num,zone,occupant:String(r["Occupant"]||"").trim(),matricule:"",statut:String(r["Occupant"]||"").trim()?"Occupé":"Libre",commentaire:String(r["Statut"]||r["Remarque"]||"").trim()});});
+        if(!newBadges.length&&!wsA&&!wsR){alert("Format non reconnu.");setLoading(false);return;}
+      }
+      if(!newBadges.length){alert("Aucun collaborateur trouvé.");setLoading(false);return;}
+      const serieCount={},doublons=[];
+      newBadges.forEach(b=>{if(b.serie)serieCount[b.serie]=(serieCount[b.serie]||0)+1;});
+      Object.entries(serieCount).filter(([,c])=>c>1).forEach(([s])=>doublons.push(s));
+      const archives=badges.filter(b=>b.statut==="Archivé");
+      setBadges([...newBadges,...archives]);
+      if(newCasiers.length)setCasiers(newCasiers);
+      addLog("Import Racine",file.name+" — "+newBadges.filter(b=>b.statut==="Actif").length+" actifs, "+newBadges.filter(b=>b.statut==="À récupérer").length+" à récupérer"+(doublons.length?" ⚠️ Doublons: "+doublons.join(", "):""));
+      showToast("✅ "+newBadges.filter(b=>b.statut==="Actif").length+" actifs · "+newBadges.filter(b=>b.statut==="À récupérer").length+" à récupérer"+(doublons.length?" ⚠️ "+doublons.length+" doublon(s)":""));
+    }catch(err){alert("Erreur import : "+err.message);}
+    setLoading(false);
+  };
+  reader.readAsBinaryString(file);
+}
+
+function parseMSListsCSV(text){
+  const lines=text.split(/\r?\n/);if(lines.length<2)return[];
+  const sep=lines[0].includes(";")?";":",";
+  const parseLine=line=>{const cols=[],cur=[];let inQ=false;for(const ch of line){if(ch==='"')inQ=!inQ;else if(ch===sep&&!inQ){cols.push(cur.join("").replace(/^"|"$/g,"").trim());cur.length=0;}else cur.push(ch);}cols.push(cur.join("").replace(/^"|"$/g,"").trim());return cols;};
+  const headers=parseLine(lines[0]);
+  return lines.slice(1).filter(l=>l.trim()).map((line,idx)=>{const cols=parseLine(line);const o={_idx:idx};headers.forEach((h,i)=>{o[h]=cols[i]||"";});return o;});
+}
+
+// ════════════════════════════════════════════════════
+// VUES (identiques à avant - VueAccueil, VueCollaborateurs, etc.)
+// ════════════════════════════════════════════════════
+function VueAccueil({badges,casiers,setView,wdCache,setBadges,showToast,addLog,canModify}){
+  const actifs=badges.filter(b=>b.statut==="Actif");
+  const aRec=badges.filter(b=>b.statut==="À récupérer");
+  const archives=badges.filter(b=>b.statut==="Archivé");
+  const libres=casiers.filter(c=>c.statut==="Libre");
+  const today=todayISO();
+  const d7=new Date();d7.setDate(d7.getDate()+7);const d7ISO=d7.toISOString().slice(0,10);
+  const expiring=actifs.filter(b=>b.date_sortie_prevue&&b.date_sortie_prevue>=today&&b.date_sortie_prevue<=d7ISO);
+  const sansArch=badges.filter(b=>b.statut!=="Archivé");
+  const sansMatBadge=sansArch.filter(b=>(!b.matricule||b.matricule==="0")&&b.serie);
+  const sansMatSansBadge=sansArch.filter(b=>(!b.matricule||b.matricule==="0")&&!b.serie);
+  const avecMatSansBadge=sansArch.filter(b=>b.matricule&&b.matricule!=="0"&&!b.serie);
+  const[nomDep,setNomDep]=useState(""),[prenomDep,setPrenomDep]=useState(""),[dateDep,setDateDep]=useState("");
+  const[nomArr,setNomArr]=useState(""),[prenomArr,setPrenomArr]=useState("");
+  const enrDep=()=>{if(!nomDep.trim()&&!prenomDep.trim()){showToast("⚠️ Saisissez nom ou prénom","err");return;}const c=badges.find(b=>b.nom.toLowerCase().includes(nomDep.toLowerCase())&&b.prenom.toLowerCase().includes(prenomDep.toLowerCase())&&b.statut!=="Archivé");if(!c){showToast("⚠️ Collaborateur introuvable","err");return;}const u={...c,date_sortie_prevue:dateDep||today};setBadges(p=>p.map(b=>b.id===c.id?u:b));if(sb)sb.from("lp24_badges").upsert(u);addLog("Départ",c.prenom+" "+c.nom+(dateDep?" → "+dateDep:""));showToast("✅ Départ enregistré : "+c.prenom+" "+c.nom);setNomDep("");setPrenomDep("");setDateDep("");};
+  const enrArr=()=>{if(!nomArr.trim()&&!prenomArr.trim()){showToast("⚠️ Saisissez nom ou prénom","err");return;}const ex=badges.find(b=>b.nom.toLowerCase().includes(nomArr.toLowerCase())&&b.prenom.toLowerCase().includes(prenomArr.toLowerCase())&&b.statut!=="Archivé");if(ex){showToast("⚠️ Ce collaborateur existe déjà","err");return;}const wd=wdCache?Object.values(wdCache).find(w=>w.nom.includes(nomArr.toUpperCase())&&w.prenom.toLowerCase().includes(prenomArr.toLowerCase())):null;const nb={id:nxId(badges),nom:wd?wd.nom:nomArr.toUpperCase(),prenom:wd?wd.prenom:prenomArr,matricule:wd?wd.matricule:"",email:wd?wd.email:"",serie:"",zeplug:"",carte_rechargement:"",casier:"",manager:wd?wd.manager:"",mail_manager:wd?wd.mailMgr:"",statut:"Actif",date_sortie_prevue:"",date_archive:"",commentaire:""};setBadges(p=>[...p,nb]);if(sb){const{id,...row}=nb;sb.from("lp24_badges").insert(row);}addLog("Arrivée",(wd?"Workday":"Manuel")+" : "+nb.prenom+" "+nb.nom);showToast("✅ "+(wd?"Workday":"Ajouté")+" : "+nb.prenom+" "+nb.nom);setNomArr("");setPrenomArr("");};
+  return React.createElement("div",null,
+    expiring.length>0&&React.createElement("div",{className:"pulse",style:{background:"#FEF3C7",border:"2px solid #F59E0B",borderRadius:10,padding:"10px 16px",marginBottom:16,display:"flex",alignItems:"center",gap:10}},React.createElement("span",{style:{fontSize:20}},"⏰"),React.createElement("div",{style:{flex:1}},React.createElement("div",{style:{fontWeight:700,color:"#92400E",fontSize:14}},expiring.length+" badge(s) expire(nt) dans les 7 prochains jours"),React.createElement("div",{style:{fontSize:12,color:"#78350F"}},expiring.map(b=>b.prenom+" "+b.nom+" ("+fmt(b.date_sortie_prevue)+")").join(" · "))),React.createElement(Btn,{onClick:()=>setView("collaborateurs"),color:"#92400E",style:{fontSize:12}},"Voir →")),
+    React.createElement("div",{style:{display:"flex",alignItems:"center",gap:12,marginBottom:20,padding:"14px 20px",background:"linear-gradient(135deg,#0F172A,#1B3A6B)",borderRadius:12}},React.createElement("div",null,React.createElement("h1",{style:{color:"#fff",fontSize:20,fontWeight:700,marginBottom:2}},"Gestion des Collaborateurs"),React.createElement("p",{style:{color:"rgba(255,255,255,.65)",fontSize:12}},"Badges & Casiers — Prochain rapport : "+nextFriday()))),
+    React.createElement("div",{style:{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(110px,1fr))",gap:12,marginBottom:16}},React.createElement(KPI,{label:"Actifs",value:actifs.length,color:C.green,onClick:()=>setView("collaborateurs")}),React.createElement(KPI,{label:"À récupérer",value:aRec.length,color:C.red,onClick:()=>setView("collaborateurs")}),React.createElement(KPI,{label:"Casiers libres",value:libres.length,color:C.blue,sub:libres.length+"/"+casiers.length,onClick:()=>setView("casiers")}),React.createElement(KPI,{label:"Workday",value:wdCache?Object.keys(wdCache).length:0,color:C.purple}),React.createElement(KPI,{label:"Archives",value:archives.length,color:C.gray,onClick:()=>setView("archives")})),
+    (sansMatBadge.length>0||sansMatSansBadge.length>0||avecMatSansBadge.length>0)&&React.createElement("div",{style:{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(130px,1fr))",gap:10,marginBottom:16}},sansMatBadge.length>0&&React.createElement(KPI,{label:"Badge sans matricule",value:sansMatBadge.length,color:"#E74C3C",icon:"🔴",sub:"Ont un badge",onClick:()=>setView("collaborateurs"),style:{background:"#FEF2F2"}}),sansMatSansBadge.length>0&&React.createElement(KPI,{label:"Ni matricule ni badge",value:sansMatSansBadge.length,color:"#F97316",icon:"⚠️",sub:"À compléter",onClick:()=>setView("collaborateurs"),style:{background:"#FFF7ED"}}),avecMatSansBadge.length>0&&React.createElement(KPI,{label:"Matricule sans badge",value:avecMatSansBadge.length,color:"#EAB308",icon:"🟡",sub:"Non attribué",onClick:()=>setView("collaborateurs"),style:{background:"#FEFCE8"}})),
+    canModify&&React.createElement("div",{style:{display:"grid",gridTemplateColumns:"1fr 1fr",gap:16,marginBottom:20}},
+      React.createElement(Card,{style:{borderTop:"4px solid "+C.red,background:"#FFF5F5"}},React.createElement("h3",{style:{fontWeight:700,color:C.red,marginBottom:12,fontSize:14}},"🚪 Enregistrer un départ"),React.createElement("div",{style:{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8,marginBottom:8}},React.createElement("div",null,React.createElement(Lbl,null,"Nom"),React.createElement(Inp,{value:nomDep,onChange:setNomDep,placeholder:"DUPONT"})),React.createElement("div",null,React.createElement(Lbl,null,"Prénom"),React.createElement(Inp,{value:prenomDep,onChange:setPrenomDep,placeholder:"Jean"}))),React.createElement("div",{style:{marginBottom:10}},React.createElement(Lbl,null,"Date de sortie"),React.createElement(Inp,{type:"date",value:dateDep,onChange:setDateDep})),React.createElement(Btn,{onClick:enrDep,color:C.red},"Enregistrer le départ")),
+      React.createElement(Card,{style:{borderTop:"4px solid "+C.green,background:"#F0FDF4"}},React.createElement("h3",{style:{fontWeight:700,color:C.green,marginBottom:12,fontSize:14}},"✅ Enregistrer une arrivée"),React.createElement("div",{style:{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8,marginBottom:8}},React.createElement("div",null,React.createElement(Lbl,null,"Nom"),React.createElement(Inp,{value:nomArr,onChange:setNomArr,placeholder:"MARTIN"})),React.createElement("div",null,React.createElement(Lbl,null,"Prénom"),React.createElement(Inp,{value:prenomArr,onChange:setPrenomArr,placeholder:"Sophie"}))),React.createElement("p",{style:{fontSize:11,color:"#065f46",marginBottom:10,background:"#a7f3d0",borderRadius:6,padding:"6px 10px"}},"💡 Données Workday récupérées automatiquement si disponibles."),React.createElement(Btn,{onClick:enrArr,color:C.green},"Enregistrer l'arrivée"))
+    ),
+    aRec.length>0&&React.createElement(Card,{style:{padding:0,overflow:"hidden",marginBottom:16}},React.createElement("div",{style:{display:"flex",alignItems:"center",gap:12,padding:"12px 18px",background:C.red}},React.createElement("span",{style:{fontSize:20}},"⚠️"),React.createElement("div",null,React.createElement("div",{style:{fontWeight:700,color:"#fff",fontSize:14}},"Badges à récupérer — "+aRec.length+" en attente"),React.createElement("div",{style:{color:"rgba(255,255,255,.8)",fontSize:12}},"Ces personnes ont quitté le site"))),React.createElement("table",{style:{width:"100%",borderCollapse:"collapse",fontSize:13}},React.createElement("thead",null,React.createElement("tr",{style:{background:"#FDDCDC"}},["Matricule","Nom","Prénom","N° Badge","Casier","Manager"].map(h=>React.createElement("th",{key:h,style:{padding:"7px 12px",textAlign:"left",fontWeight:600,color:C.red,fontSize:12}},h)))),React.createElement("tbody",null,aRec.map((b,i)=>React.createElement("tr",{key:b.id,style:{background:i%2===0?"#fff":"#FFF5F5",borderBottom:"1px solid #FDDCDC"}},React.createElement("td",{style:{padding:"8px 12px",fontWeight:700,color:C.red}},b.matricule&&b.matricule!=="0"?b.matricule:React.createElement("span",{style:{color:"#E74C3C",fontWeight:700,fontSize:11}},"NC")),React.createElement("td",{style:{padding:"8px 12px",fontWeight:700}},b.nom),React.createElement("td",{style:{padding:"8px 12px"}},b.prenom),React.createElement("td",{style:{padding:"8px 12px"}},b.serie?React.createElement("code",{style:{background:"#F3F4F6",padding:"2px 6px",borderRadius:4,fontSize:11}},b.serie):"—"),React.createElement("td",{style:{padding:"8px 12px"}},b.casier||"—"),React.createElement("td",{style:{padding:"8px 12px",fontSize:12,color:"#6B7280"}},b.manager||"—")))))),
+    React.createElement(Card,{style:{marginBottom:16}},React.createElement("h3",{style:{fontWeight:600,fontSize:14,color:C.dark,marginBottom:12}},"📦 Casiers par zone"),React.createElement("div",{style:{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:10}},ZONES.map(z=>{const zc=casiers.filter(c=>c.zone===z),zl=zc.filter(c=>c.statut==="Libre");const pct=zc.length?Math.round((zc.length-zl.length)/zc.length*100):0;const col=ZONES_COLORS[z];return React.createElement("div",{key:z,onClick:()=>setView("casiers"),style:{background:col+"12",border:"2px solid "+col+"33",borderRadius:10,padding:10,textAlign:"center",cursor:"pointer"}},React.createElement("div",{style:{fontWeight:700,fontSize:13,color:col}},ZONES_LABELS[z]),React.createElement("div",{style:{fontSize:11,color:"#6B7280",margin:"2px 0"}},zc.length+" casiers"),React.createElement("div",{style:{fontSize:12,color:C.green,fontWeight:700}},zl.length+" libres"),React.createElement("div",{style:{background:"#E5E7EB",borderRadius:999,height:5,marginTop:6}},React.createElement("div",{style:{background:col,borderRadius:999,height:5,width:pct+"%"}})));}))));
+}
+
+function VueCollaborateurs({badges,casiers,setBadges,setCasiers,showToast,wdCache,addLog,settings,perms}){
+  const canModify=perms&&perms.modifier;const canAdd=perms&&perms.ajouter;
+  const[search,setSearch]=useState(""),[fStat,setFStat]=useState("");
+  const[showForm,setShowForm]=useState(false),[editing,setEditing]=useState(null);
+  const[sortCol,setSortCol]=useState(""),[sortDir,setSortDir]=useState("asc");
+  const today=todayISO();const d7=new Date();d7.setDate(d7.getDate()+7);const d7ISO=d7.toISOString().slice(0,10);
+  const empty={matricule:"",nom:"",prenom:"",email:"",serie:"",zeplug:"",carte_rechargement:"",casier:"",manager:"",mail_manager:"",statut:"Actif",date_sortie_prevue:"",commentaire:""};
+  const[form,setForm]=useState(empty);
+  const statC={"Actif":C.green,"À récupérer":C.red,"Badge prêt":C.blue,"Badge VIP":"#7C3AED","Futur arrivant":"#0891B2","Archivé":C.gray};
+  const serieCount=useMemo(()=>{const m={};badges.filter(b=>b.serie&&b.statut!=="Archivé").forEach(b=>{m[b.serie]=(m[b.serie]||0)+1;});return m;},[badges]);
+  const handleSort=col=>{if(sortCol===col)setSortDir(d=>d==="asc"?"desc":"asc");else{setSortCol(col);setSortDir("asc");}};
+  const SortTh=({col,label})=>{const active=sortCol===col;return React.createElement("th",{className:"sortable"+(active?(sortDir==="asc"?" sort-asc":" sort-desc"):""),onClick:()=>handleSort(col),style:{padding:"9px 8px",textAlign:"left",fontWeight:600,whiteSpace:"nowrap"}},label);};
+  const filtered=useMemo(()=>{let r=badges.filter(b=>{if(!fStat&&b.statut==="Archivé")return false;if(fStat&&b.statut!==fStat)return false;const q=search.toLowerCase();return!q||(b.nom+" "+b.prenom+" "+(b.matricule||"")+" "+(b.serie||"")).toLowerCase().includes(q);});if(sortCol)r=[...r].sort((a,b)=>sortDir==="asc"?String(a[sortCol]||"").localeCompare(String(b[sortCol]||"")):String(b[sortCol]||"").localeCompare(String(a[sortCol]||"")));return r;},[badges,fStat,search,sortCol,sortDir]);
+  const syncCasier=async(oldC,newC,nom,prenom,mat)=>{if(oldC&&oldC!==newC){setCasiers(p=>p.map(c=>c.numero===oldC?{...c,statut:"Libre",occupant:"",matricule:""}:c));}if(newC&&newC!==oldC){setCasiers(p=>p.map(c=>c.numero===newC?{...c,statut:"Occupé",occupant:nom+" "+prenom,matricule:mat}:c));}};
+  const wdMatch=(nom,prenom)=>{if(!wdCache||nom.length<2||prenom.length<1)return null;return Object.values(wdCache).find(w=>{const wn=w.nom.toUpperCase(),wp=w.prenom.toLowerCase(),n=nom.toUpperCase(),p=prenom.toLowerCase();return(wn.includes(n)||n.includes(wn))&&(wp.includes(p)||p.includes(wp));});};
+  const updateForm=(field,val)=>{const upd={...form,[field]:val};if((field==="nom"||field==="prenom")&&wdCache){const n=field==="nom"?val:form.nom,p=field==="prenom"?val:form.prenom;const match=wdMatch(n,p);if(match){const td=match.termDate||"",hd=match.hireDate||"",ds=(td&&(!hd||td>hd))?td:"";upd.matricule=upd.matricule||match.matricule;upd.email=upd.email||match.email;upd.manager=upd.manager||match.manager;upd.mail_manager=upd.mail_manager||match.mailMgr;upd.date_sortie_prevue=upd.date_sortie_prevue||ds;}}setForm(upd);};
+  const wdSearch=()=>{const match=wdMatch(form.nom,form.prenom);if(match){const td=match.termDate||"",hd=match.hireDate||"",ds=(td&&(!hd||td>hd))?td:"";setForm(f=>({...f,matricule:f.matricule||match.matricule||"",email:f.email||match.email||"",manager:f.manager||match.manager||"",mail_manager:f.mail_manager||match.mailMgr||"",date_sortie_prevue:f.date_sortie_prevue||ds}));showToast("✅ Workday : "+match.prenom+" "+match.nom+(ds?" — sortie : "+ds:""));}else showToast("⚠️ Introuvable dans Workday : "+form.prenom+" "+form.nom,"err");};
+  const save=async()=>{if(!form.nom.trim())return;if(form.serie){const autre=badges.find(b=>b.serie===form.serie&&b.id!==editing&&b.statut!=="Archivé");if(autre&&!confirm("⚠️ Badge N°"+form.serie+" déjà attribué à "+autre.prenom+" "+autre.nom+".\nContinuer ?"))return;}if(editing){const old=badges.find(b=>b.id===editing),updated={...old,...form};setBadges(p=>p.map(b=>b.id===editing?updated:b));if(sb)sb.from("lp24_badges").upsert(updated);await syncCasier(old.casier,form.casier,form.nom,form.prenom,form.matricule);addLog("Modification",form.prenom+" "+form.nom);showToast("✅ Collaborateur mis à jour");}else{const nb={...form,id:nxId(badges)};setBadges(p=>[...p,nb]);if(sb){const{id,...row}=nb;sb.from("lp24_badges").insert(row);}await syncCasier("",form.casier,form.nom,form.prenom,form.matricule);addLog("Ajout",form.prenom+" "+form.nom);showToast("✅ Collaborateur ajouté");}setShowForm(false);setEditing(null);};
+  const archiver=async id=>{if(!confirm("Archiver ce collaborateur ?"))return;const b=badges.find(x=>x.id===id);if(b&&b.casier)await syncCasier(b.casier,"","","","");const u={...b,statut:"Archivé",date_archive:todayISO()};setBadges(p=>p.map(x=>x.id===id?u:x));if(sb)sb.from("lp24_badges").upsert(u);addLog("Archivage",b.prenom+" "+b.nom);showToast("🗃️ Archivé");};
+  const openEdit=b=>{if(!canModify)return;setForm({...b,carte_rechargement:b.carte_rechargement||""});setEditing(b.id);setShowForm(true);if(wdCache&&(!b.matricule||!b.email||!b.manager)){const match=wdMatch(b.nom,b.prenom);if(match){const td=match.termDate||"",hd=match.hireDate||"",ds=(td&&(!hd||td>hd))?td:"";setTimeout(()=>setForm(prev=>({...prev,matricule:prev.matricule||match.matricule||"",email:prev.email||match.email||"",manager:prev.manager||match.manager||"",mail_manager:prev.mail_manager||match.mailMgr||"",date_sortie_prevue:prev.date_sortie_prevue||ds})),50);showToast("✅ Workday auto-rempli : "+match.prenom+" "+match.nom);}}};
+  const restEmail=settings&&settings.restaurantEmail||"",ccEmails=settings&&settings.ccEmails||"";
+  const mailArrivee=b=>{const to=encodeURIComponent(restEmail),cc=encodeURIComponent(ccEmails),s=encodeURIComponent("Nouvelle arrivée — "+b.prenom+" "+b.nom),c=encodeURIComponent("Bonjour,\n\nNous vous informons de l'arrivée d'un nouveau collaborateur :\n\nNom : "+b.nom+"\nPrénom : "+b.prenom+"\nAdresse e-mail : "+(b.email||"Non renseigné")+"\nN° de badge : "+(b.serie||"Non attribué")+"\n\nMerci de bien vouloir l'ajouter à vos systèmes.\n\nCordialement,\nService RH");window.open("mailto:"+to+"?subject="+s+"&body="+c+(cc?"&cc="+cc:""));};
+  const mailDepart=b=>{const to=encodeURIComponent(restEmail),cc=encodeURIComponent(ccEmails),s=encodeURIComponent("Départ collaborateur — "+b.prenom+" "+b.nom),c=encodeURIComponent("Bonjour,\n\nNous vous informons du départ du collaborateur suivant :\n\nNom : "+b.nom+"\nPrénom : "+b.prenom+"\nN° de badge : "+(b.serie||"Non attribué")+"\n\nMerci de bien vouloir le retirer de vos systèmes.\n\nCordialement,\nService RH");window.open("mailto:"+to+"?subject="+s+"&body="+c+(cc?"&cc="+cc:""));};
+  const casLibres=casiers.filter(c=>c.statut==="Libre"||(editing&&c.numero===form.casier));
+  return React.createElement("div",null,
+    React.createElement("div",{style:{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:12,flexWrap:"wrap",gap:8}},
+      React.createElement("div",null,React.createElement("h1",{style:{fontSize:22,fontWeight:700,color:C.blue}},"👥 Collaborateurs ("+filtered.length+"/"+badges.filter(b=>b.statut!=="Archivé").length+")"),React.createElement("div",{style:{display:"flex",gap:6,marginTop:4,flexWrap:"wrap"}},["Actif","À récupérer","Badge prêt","Badge VIP","Futur arrivant"].map(s=>{const n=badges.filter(b=>b.statut===s).length;return n>0?React.createElement("span",{key:s,style:{background:(statC[s]||C.gray)+"22",color:statC[s]||C.gray,borderRadius:999,fontSize:11,fontWeight:700,padding:"2px 8px"}},s+": "+n):null;}))),
+      canAdd&&React.createElement(Btn,{onClick:()=>{setForm(empty);setEditing(null);setShowForm(f=>!f);}},"+ Nouveau collaborateur")
+    ),
+    showForm&&React.createElement(Modal,{onClose:()=>{setShowForm(false);setEditing(null);}},
+      React.createElement("div",{style:{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:12}},React.createElement("h3",{style:{fontWeight:700,color:C.blue,fontSize:16}},(editing?"✏️ Modifier":"+ Nouveau")+" collaborateur"),React.createElement("button",{onClick:()=>{setShowForm(false);setEditing(null);},style:{background:"none",border:"none",fontSize:22,cursor:"pointer",color:"#9CA3AF"}},"×")),
+      React.createElement("div",{style:{display:"flex",alignItems:"center",gap:8,marginBottom:10}},wdCache&&Object.keys(wdCache).length>0?React.createElement("p",{style:{fontSize:11,color:"#0369a1",background:"#e0f2fe",borderRadius:6,padding:"6px 10px",flex:1,margin:0}},"💡 Saisissez le nom ET prénom pour auto-compléter depuis Workday"):React.createElement("p",{style:{fontSize:11,color:"#9CA3AF",background:"#F3F4F6",borderRadius:6,padding:"6px 10px",flex:1,margin:0}},"⚠️ Workday non chargé — importez HR Data (👤)"),wdCache&&React.createElement(Btn,{color:"#0369a1",style:{fontSize:11,padding:"5px 10px",whiteSpace:"nowrap"},onClick:wdSearch},"🔍 Chercher")),
+      React.createElement("div",{style:{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(160px,1fr))",gap:10,marginBottom:10}},
+        React.createElement("div",null,React.createElement(Lbl,null,"Nom *"),React.createElement(Inp,{value:form.nom,onChange:v=>updateForm("nom",v),placeholder:"DUPONT"})),
+        React.createElement("div",null,React.createElement(Lbl,null,"Prénom"),React.createElement(Inp,{value:form.prenom,onChange:v=>updateForm("prenom",v),placeholder:"Jean"})),
+        React.createElement("div",null,React.createElement(Lbl,null,"Matricule"),React.createElement(Inp,{value:form.matricule,onChange:v=>setForm({...form,matricule:v}),placeholder:"auto Workday"})),
+        React.createElement("div",null,React.createElement(Lbl,null,"Email"),React.createElement(Inp,{value:form.email,onChange:v=>setForm({...form,email:v}),placeholder:"auto Workday"})),
+        React.createElement("div",null,React.createElement(Lbl,null,"N° Série Badge"),React.createElement(Inp,{value:form.serie,onChange:v=>setForm({...form,serie:v}),placeholder:"60FF1BC5"})),
+        React.createElement("div",null,React.createElement(Lbl,null,"Carte rechargement"),React.createElement(Inp,{value:form.carte_rechargement,onChange:v=>setForm({...form,carte_rechargement:v}),placeholder:"N° Zeplug"})),
+        React.createElement("div",null,React.createElement(Lbl,null,"Casier"),React.createElement("select",{value:form.casier||"",onChange:e=>setForm({...form,casier:e.target.value}),style:{padding:"6px 10px",borderRadius:6,border:"1px solid #D1D5DB",fontSize:13,width:"100%",background:"#fff"}},React.createElement("option",{value:""},"— Aucun —"),casLibres.map(c=>React.createElement("option",{key:c.id,value:c.numero},c.numero+" ("+ZONES_LABELS[c.zone]+")")))),
+        React.createElement("div",null,React.createElement(Lbl,null,"Statut"),React.createElement(Sel,{value:form.statut,onChange:v=>setForm({...form,statut:v}),options:["Actif","À récupérer","Badge prêt","Badge VIP","Futur arrivant"],style:{width:"100%"}})),
+        React.createElement("div",null,React.createElement(Lbl,null,"Date de sortie"),React.createElement(Inp,{type:"date",value:form.date_sortie_prevue,onChange:v=>setForm({...form,date_sortie_prevue:v})})),
+        React.createElement("div",null,React.createElement(Lbl,null,"Manager"),React.createElement(Inp,{value:form.manager,onChange:v=>setForm({...form,manager:v}),placeholder:"auto Workday"})),
+        React.createElement("div",null,React.createElement(Lbl,null,"Email Manager"),React.createElement(Inp,{value:form.mail_manager,onChange:v=>setForm({...form,mail_manager:v}),placeholder:"auto Workday"}))
+      ),
+      React.createElement("div",{style:{marginBottom:10}},React.createElement(Lbl,null,"Commentaire"),React.createElement(Inp,{value:form.commentaire,onChange:v=>setForm({...form,commentaire:v}),placeholder:"Observations..."})),
+      React.createElement("div",{style:{display:"flex",gap:8}},React.createElement(Btn,{onClick:save},"💾 Enregistrer"),React.createElement(Btn,{onClick:()=>{setShowForm(false);setEditing(null);},variant:"outline",color:C.gray},"Annuler"))
+    ),
+    React.createElement(Card,{style:{marginBottom:12,padding:12}},React.createElement("div",{style:{display:"flex",gap:10,flexWrap:"wrap",alignItems:"center"}},React.createElement(Inp,{value:search,onChange:setSearch,placeholder:"🔍 Nom, matricule, badge...",style:{maxWidth:240}}),React.createElement("select",{value:fStat,onChange:e=>setFStat(e.target.value),style:{padding:"6px 10px",borderRadius:6,border:"1px solid #D1D5DB",fontSize:13,background:"#fff"}},React.createElement("option",{value:""},"Actifs (hors archivés)"),React.createElement("option",{value:"Actif"},"Actif"),React.createElement("option",{value:"À récupérer"},"À récupérer"),React.createElement("option",{value:"Badge prêt"},"Badge prêt"),React.createElement("option",{value:"Badge VIP"},"Badge VIP"),React.createElement("option",{value:"Futur arrivant"},"Futur arrivant"),React.createElement("option",{value:"Archivé"},"Archivés")),(search||fStat)&&React.createElement(Btn,{variant:"outline",color:C.gray,onClick:()=>{setSearch("");setFStat("");}},"✕ Effacer"),React.createElement("span",{style:{fontSize:12,color:"#9CA3AF",marginLeft:"auto"}},filtered.length+" collaborateur(s)"))),
+    React.createElement(Card,{style:{padding:0,overflow:"auto"}},React.createElement("table",{style:{width:"100%",borderCollapse:"collapse",fontSize:12}},
+      React.createElement("thead",null,React.createElement("tr",{style:{background:C.blue,color:"#fff"}},React.createElement("th",{style:{padding:"9px 8px",width:32}},"#"),React.createElement(SortTh,{col:"matricule",label:"Matricule"}),React.createElement(SortTh,{col:"nom",label:"Nom"}),React.createElement(SortTh,{col:"prenom",label:"Prénom"}),React.createElement(SortTh,{col:"serie",label:"N° Badge"}),React.createElement("th",{style:{padding:"9px 8px",textAlign:"left",whiteSpace:"nowrap"}},"Carte recharg."),React.createElement(SortTh,{col:"casier",label:"Casier"}),React.createElement(SortTh,{col:"date_sortie_prevue",label:"Date sortie"}),React.createElement(SortTh,{col:"manager",label:"Manager"}),React.createElement("th",{style:{padding:"9px 8px",textAlign:"left"}},"Email Mgr"),React.createElement(SortTh,{col:"statut",label:"Statut"}),React.createElement("th",{style:{padding:"9px 8px",textAlign:"left"}},"Mail"),React.createElement("th",{style:{padding:"9px 8px",textAlign:"left"}},"Actions"))),
+      React.createElement("tbody",null,filtered.map((b,i)=>{
+        const hasM=b.matricule&&b.matricule!=="0",doublon=b.serie&&serieCount[b.serie]>1;
+        const zone=b.casier?b.casier.substring(0,2):"",zcol=ZONES_COLORS[zone]||"#6B7280";
+        const sortieProche=b.date_sortie_prevue&&b.date_sortie_prevue<=d7ISO&&b.date_sortie_prevue>=today;
+        const sortiePassee=b.date_sortie_prevue&&b.date_sortie_prevue<today&&b.statut==="Actif";
+        const bg=b.statut==="Archivé"?"#F5F5F5":b.statut==="À récupérer"?C.redBg:sortiePassee?"#FFF3CD":sortieProche?"#FFFBEB":b.statut==="Badge VIP"?"#F5F3FF":b.statut==="Badge prêt"?"#EFF6FF":i%2===0?"#fff":"#F9FAFB";
+        return React.createElement("tr",{key:b.id,style:{background:bg,borderBottom:"1px solid #E5E7EB"},onMouseOver:e=>e.currentTarget.style.background="#DBEAFE",onMouseOut:e=>e.currentTarget.style.background=bg},
+          React.createElement("td",{style:{padding:"7px 8px",fontSize:11,color:"#CBD5E1",textAlign:"center"}},i+1),
+          React.createElement("td",{style:{padding:"7px 8px",fontWeight:700,color:C.blue,fontSize:11}},!hasM?React.createElement("span",{style:{color:"#E74C3C",fontWeight:700,fontSize:10}},"NC"):b.matricule),
+          React.createElement("td",{style:{padding:"7px 8px",fontWeight:600}},b.nom||"—"),
+          React.createElement("td",{style:{padding:"7px 8px"}},b.prenom||"—"),
+          React.createElement("td",{style:{padding:"7px 8px"}},b.serie?React.createElement("span",null,React.createElement("code",{style:{background:doublon?"#FEF3C7":"#F3F4F6",color:doublon?"#92400E":"inherit",padding:"1px 5px",borderRadius:3,fontSize:10,border:doublon?"1px solid #F59E0B":"none"}},b.serie),doublon&&React.createElement("span",{title:"Doublon !",style:{marginLeft:2,color:"#F59E0B",fontSize:11}},"⚠️")):"—"),
+          React.createElement("td",{style:{padding:"7px 8px",fontSize:10,color:"#6B7280"}},b.carte_rechargement||"—"),
+          React.createElement("td",{style:{padding:"7px 8px"}},b.casier?React.createElement("span",{style:{background:zcol+"22",color:zcol,fontWeight:700,padding:"1px 5px",borderRadius:4,fontSize:10}},b.casier):React.createElement("span",{style:{color:"#9CA3AF"}},"—")),
+          React.createElement("td",{style:{padding:"4px 5px"}},b.statut!=="Archivé"?(b.date_sortie_prevue?React.createElement("input",{type:"date",value:b.date_sortie_prevue,readOnly:!canModify,onClick:e=>e.stopPropagation(),onChange:async e=>{if(!canModify)return;e.stopPropagation();const val=e.target.value;const upd={...b,date_sortie_prevue:val};setBadges(p=>p.map(x=>x.id===b.id?upd:x));if(sb)sb.from("lp24_badges").upsert(upd);addLog("Date sortie",b.prenom+" "+b.nom+" → "+val);showToast("✅ Date mise à jour");},style:{fontSize:10,padding:"2px 4px",borderRadius:4,border:"1px solid "+(sortieProche?C.orange:"#86efac"),background:sortieProche?"#FFFBEB":"#f0fdf4",width:108,colorScheme:"light"}}):canModify?React.createElement("label",{style:{cursor:"pointer",fontSize:13,color:"#9CA3AF",padding:"2px 8px",borderRadius:4,border:"1px dashed #D1D5DB",background:"#F9FAFB",userSelect:"none",display:"inline-block",position:"relative"},title:"Cliquer pour saisir"},"—",React.createElement("input",{type:"date",style:{position:"absolute",opacity:0,width:"100%",height:"100%",left:0,top:0,cursor:"pointer"},onChange:async e=>{e.stopPropagation();const val=e.target.value;if(!val)return;const upd={...b,date_sortie_prevue:val};setBadges(p=>p.map(x=>x.id===b.id?upd:x));if(sb)sb.from("lp24_badges").upsert(upd);addLog("Date sortie",b.prenom+" "+b.nom+" → "+val);showToast("✅ Date : "+val);},onClick:e=>e.stopPropagation()})):React.createElement("span",{style:{fontSize:11,color:"#9CA3AF"}},"—")):React.createElement("span",{style:{fontSize:10,color:"#9CA3AF"}},fmt(b.date_sortie_prevue))),
+          React.createElement("td",{style:{padding:"7px 8px",fontSize:10,maxWidth:120,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}},b.manager||"—"),
+          React.createElement("td",{style:{padding:"7px 8px",fontSize:10,color:"#6B7280",maxWidth:120,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}},b.mail_manager||"—"),
+          React.createElement("td",{style:{padding:"7px 8px"}},React.createElement(Bdg,{color:"#fff",bg:statC[b.statut]||C.gray},b.statut)),
+          React.createElement("td",{style:{padding:"4px 6px",whiteSpace:"nowrap"}},b.statut!=="Archivé"&&React.createElement("div",{style:{display:"flex",gap:3}},React.createElement("button",{title:"Arrivée → Restaurant",style:{background:"#EBF5FB",border:"1px solid #AED6F1",borderRadius:5,cursor:"pointer",fontSize:12,padding:"2px 5px"},onClick:e=>{e.stopPropagation();mailArrivee(b);}},"🍽️"),React.createElement("button",{title:"Départ → Restaurant",style:{background:"#FDEDEC",border:"1px solid #F1948A",borderRadius:5,cursor:"pointer",fontSize:12,padding:"2px 5px"},onClick:e=>{e.stopPropagation();mailDepart(b);}},"🚪"))),
+          React.createElement("td",{style:{padding:"7px 8px"}},b.statut!=="Archivé"?React.createElement("div",{style:{display:"flex",gap:3}},canModify&&React.createElement("button",{title:"Modifier",onClick:()=>openEdit(b),style:{background:"none",border:"none",cursor:"pointer",fontSize:14}},"✏️"),canModify&&React.createElement("button",{onClick:()=>archiver(b.id),title:"Archiver",style:{background:"none",border:"none",cursor:"pointer",fontSize:14}},"🗃️")):React.createElement("span",{style:{fontSize:10,color:"#9CA3AF"}},"—"))
+        );
+      }),filtered.length===0&&React.createElement("tr",null,React.createElement("td",{colSpan:13,style:{padding:32,textAlign:"center",color:"#9CA3AF"}},"Aucun collaborateur."))))
+    )
+  );
+}
+
+function VueCasiers({casiers,badges,setCasiers,showToast,addLog,perms}){
+  const canModify=perms&&perms.modifier;
+  const[fZone,setFZone]=useState(""),[fStat,setFStat]=useState(""),[search,setSearch]=useState("");
+  const[showForm,setShowForm]=useState(false),[editing,setEditing]=useState(null),[viewMode,setViewMode]=useState("grille");
+  const empty={numero:"",zone:"DE",occupant:"",matricule:"",statut:"Libre",commentaire:""};const[form,setForm]=useState(empty);
+  const filtered=useMemo(()=>casiers.filter(c=>(!fZone||c.zone===fZone)&&(!fStat||c.statut===fStat)&&(!search||(c.numero+c.occupant+c.matricule).toLowerCase().includes(search.toLowerCase()))),[casiers,fZone,fStat,search]);
+  const statC={Libre:C.green,Occupé:C.blue,Réservé:C.orange,"Hors service":C.gray};
+  const save=async()=>{if(!form.numero.trim())return;if(editing){setCasiers(p=>p.map(c=>c.id===editing?{...c,...form}:c));const orig=casiers.find(c=>c.id===editing);if(sb)sb.from("lp24_casiers").upsert({...orig,...form});addLog("Casier modifié",form.numero);showToast("✅ Casier mis à jour");}else{const nc={...form,id:nxId(casiers)};setCasiers(p=>[...p,nc]);if(sb){const{id,...row}=nc;sb.from("lp24_casiers").insert(row);}addLog("Casier ajouté",form.numero);showToast("✅ Casier ajouté");}setShowForm(false);setEditing(null);};
+  const del=async id=>{if(!confirm("Supprimer ce casier ?"))return;const c=casiers.find(x=>x.id===id);setCasiers(p=>p.filter(x=>x.id!==id));if(sb)sb.from("lp24_casiers").delete().eq("id",id);addLog("Casier supprimé",c&&c.numero||"");showToast("🗑️ Supprimé");};
+  const libres=casiers.filter(c=>c.statut==="Libre").length;
+  return React.createElement("div",null,
+    React.createElement("div",{style:{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:16,flexWrap:"wrap",gap:8}},
+      React.createElement("h1",{style:{fontSize:22,fontWeight:700,color:C.purple}},"📦 Casiers ("+libres+" libres / "+casiers.length+")"),
+      React.createElement("div",{style:{display:"flex",gap:8}},
+        React.createElement(Btn,{onClick:()=>setViewMode(v=>v==="grille"?"liste":"grille"),variant:"outline",color:C.gray,style:{fontSize:12}},viewMode==="grille"?"☰ Liste":"⊞ Grille"),
+        canModify&&React.createElement(Btn,{onClick:()=>{setForm(empty);setEditing(null);setShowForm(f=>!f);},color:C.purple},"+ Nouveau casier")
+      )
+    ),
+    showForm&&canModify&&React.createElement(Card,{style:{marginBottom:16,borderLeft:"4px solid "+C.purple,background:"#F5F3FF"}},
+      React.createElement("div",{style:{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(150px,1fr))",gap:10,marginBottom:10}},
+        React.createElement("div",null,React.createElement(Lbl,null,"N° Casier *"),React.createElement(Inp,{value:form.numero,onChange:v=>setForm({...form,numero:v}),placeholder:"DE103"})),
+        React.createElement("div",null,React.createElement(Lbl,null,"Zone"),React.createElement(Sel,{value:form.zone,onChange:v=>setForm({...form,zone:v}),options:ZONES.map(z=>({v:z,l:z+" — "+ZONES_LABELS[z]})),style:{width:"100%"}})),
+        React.createElement("div",null,React.createElement(Lbl,null,"Statut"),React.createElement(Sel,{value:form.statut,onChange:v=>setForm({...form,statut:v}),options:["Libre","Occupé","Réservé","Hors service"],style:{width:"100%"}})),
+        React.createElement("div",null,React.createElement(Lbl,null,"Occupant"),React.createElement(Inp,{value:form.occupant,onChange:v=>setForm({...form,occupant:v}),placeholder:"NOM Prénom"})),
+        React.createElement("div",null,React.createElement(Lbl,null,"Commentaire"),React.createElement(Inp,{value:form.commentaire,onChange:v=>setForm({...form,commentaire:v}),placeholder:"Congé..."}))
+      ),
+      React.createElement("div",{style:{display:"flex",gap:8}},React.createElement(Btn,{onClick:save,color:C.purple},"💾 Enregistrer"),React.createElement(Btn,{onClick:()=>{setShowForm(false);setEditing(null);},variant:"outline",color:C.gray},"Annuler"))
+    ),
+    React.createElement(Card,{style:{marginBottom:12,padding:12}},React.createElement("div",{style:{display:"flex",gap:10,flexWrap:"wrap",alignItems:"center"}},React.createElement(Inp,{value:search,onChange:setSearch,placeholder:"🔍 N° casier, occupant...",style:{maxWidth:200}}),React.createElement(Sel,{value:fZone,onChange:setFZone,options:ZONES.map(z=>({v:z,l:ZONES_LABELS[z]})),placeholder:"Toutes zones"}),React.createElement(Sel,{value:fStat,onChange:setFStat,options:["Libre","Occupé","Réservé","Hors service"],placeholder:"Tous statuts"}),(search||fZone||fStat)&&React.createElement(Btn,{variant:"outline",color:C.gray,onClick:()=>{setSearch("");setFZone("");setFStat("");}},"✕ Effacer"),React.createElement("span",{style:{fontSize:12,color:"#9CA3AF",marginLeft:"auto"}},filtered.length+" casier(s)"))),
+    viewMode==="grille"?React.createElement("div",null,ZONES.filter(z=>!fZone||z===fZone).map(z=>{const zc=filtered.filter(c=>c.zone===z);if(!zc.length)return null;const col=ZONES_COLORS[z];return React.createElement(Card,{key:z,style:{marginBottom:16,borderTop:"4px solid "+col}},React.createElement("div",{style:{display:"flex",alignItems:"center",gap:10,marginBottom:12}},React.createElement("h3",{style:{fontWeight:700,fontSize:14,color:col}},"Zone "+ZONES_LABELS[z]),React.createElement("span",{style:{background:C.greenBg,color:C.green,borderRadius:999,fontSize:12,fontWeight:700,padding:"2px 8px"}},zc.filter(c=>c.statut==="Libre").length+" libres"),React.createElement("span",{style:{background:col+"22",color:col,borderRadius:999,fontSize:12,padding:"2px 8px"}},zc.length+" total")),React.createElement("div",{style:{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(105px,1fr))",gap:8}},zc.sort((a,b)=>a.numero.localeCompare(b.numero)).map(c=>{const libre=c.statut==="Libre";const bg=libre?C.greenBg:c.statut==="Réservé"?C.orangeBg:c.statut==="Hors service"?C.grayBg:"#fff";const border=libre?C.green:c.statut==="Réservé"?C.orange:c.statut==="Hors service"?C.gray:col;return React.createElement("div",{key:c.id,onClick:()=>{if(!canModify)return;setForm({...c});setEditing(c.id);setShowForm(true);},style:{background:bg,border:"2px solid "+border+"44",borderRadius:8,padding:"10px 8px",cursor:canModify?"pointer":"default",textAlign:"center"}},React.createElement("div",{style:{fontWeight:700,fontSize:13,color:border}},c.numero),libre?React.createElement("div",{style:{fontSize:10,color:C.green,marginTop:3,fontWeight:600}},"✅ Libre"):React.createElement("div",{style:{fontSize:9,color:"#6B7280",marginTop:3,lineHeight:1.3}},c.occupant?(c.occupant.length>16?c.occupant.substring(0,16)+"…":c.occupant):"Occupé"),c.commentaire&&React.createElement("div",{style:{fontSize:9,color:C.orange,marginTop:2,fontStyle:"italic"}},c.commentaire.substring(0,14)+"…"));})));})):
+    React.createElement(Card,{style:{padding:0,overflow:"auto"}},React.createElement("table",{style:{width:"100%",borderCollapse:"collapse",fontSize:13}},React.createElement("thead",null,React.createElement("tr",{style:{background:C.purple,color:"#fff"}},["N° Casier","Zone","Occupant","Matricule","Statut","Commentaire","Actions"].map(h=>React.createElement("th",{key:h,style:{padding:"9px 12px",textAlign:"left",fontWeight:600,whiteSpace:"nowrap"}},h)))),React.createElement("tbody",null,filtered.sort((a,b)=>a.zone.localeCompare(b.zone)||a.numero.localeCompare(b.numero)).map((c,i)=>{const col=ZONES_COLORS[c.zone]||C.gray,bg=c.statut==="Libre"?C.greenBg:i%2===0?"#fff":"#F9FAFB";return React.createElement("tr",{key:c.id,style:{background:bg,borderBottom:"1px solid #E5E7EB"}},React.createElement("td",{style:{padding:"8px 12px",fontWeight:700,color:col}},c.numero),React.createElement("td",{style:{padding:"8px 12px"}},React.createElement(Bdg,{color:col,bg:col+"22"},ZONES_LABELS[c.zone]||c.zone)),React.createElement("td",{style:{padding:"8px 12px",fontWeight:600}},c.occupant||React.createElement("span",{style:{color:"#9CA3AF"}},"—")),React.createElement("td",{style:{padding:"8px 12px",color:"#6B7280",fontSize:12}},c.matricule||"—"),React.createElement("td",{style:{padding:"8px 12px"}},React.createElement(Bdg,{color:"#fff",bg:statC[c.statut]||C.gray},c.statut)),React.createElement("td",{style:{padding:"8px 12px",fontSize:12,color:"#6B7280",fontStyle:"italic"}},c.commentaire||""),React.createElement("td",{style:{padding:"8px 12px"}},canModify&&React.createElement("div",{style:{display:"flex",gap:4}},React.createElement("button",{onClick:()=>{setForm({...c});setEditing(c.id);setShowForm(true);},style:{background:"none",border:"none",cursor:"pointer",fontSize:14}},"✏️"),React.createElement("button",{onClick:()=>del(c.id),style:{background:"none",border:"none",cursor:"pointer",fontSize:14}},"🗑️"))));})))))
+  ;
+}
+
+function VueRapport({badges}){
+  const[fSem,setFSem]=useState("");
+  const parSem=useMemo(()=>{const m={};badges.filter(b=>b.date_sortie_prevue&&b.statut!=="Archivé").forEach(b=>{const k=getWeekKey(b.date_sortie_prevue);if(!m[k])m[k]=[];m[k].push(b);});return Object.entries(m).sort(([a],[b])=>a.localeCompare(b));},[badges]);
+  const displayed=fSem?parSem.filter(([s])=>s===fSem):parSem;
+  return React.createElement("div",null,
+    React.createElement("div",{className:"no-print",style:{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:16,flexWrap:"wrap",gap:8}},React.createElement("div",null,React.createElement("h1",{style:{fontSize:22,fontWeight:700,color:C.green}},"📊 Rapport — Sorties prévues"),React.createElement("p",{style:{fontSize:12,color:"#6B7280",marginTop:2}},"Prochain vendredi : "+nextFriday())),React.createElement(Btn,{onClick:()=>window.print(),color:C.blue,style:{fontSize:12}},"🖨️ Exporter PDF")),
+    React.createElement("div",{className:"no-print",style:{display:"flex",gap:10,alignItems:"center",marginBottom:16}},React.createElement(Sel,{value:fSem,onChange:setFSem,options:parSem.map(([s])=>s),placeholder:"Toutes les semaines",style:{minWidth:260}}),fSem&&React.createElement(Btn,{variant:"outline",color:C.gray,onClick:()=>setFSem("")},"Voir tout"),React.createElement("span",{style:{fontSize:13,color:"#6B7280"}},displayed.reduce((a,[,b])=>a+b.length,0)+" sortie(s)")),
+    badges.filter(b=>b.date_sortie_prevue&&b.statut!=="Archivé").length===0?React.createElement(Card,{style:{textAlign:"center",padding:48}},React.createElement("div",{style:{fontSize:36,marginBottom:8}},"📅"),React.createElement("div",{style:{fontWeight:600}},"Aucune date de sortie")):
+    displayed.map(([sem,bList])=>React.createElement(Card,{key:sem,style:{marginBottom:16,borderLeft:"4px solid "+C.green}},
+      React.createElement("div",{style:{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:12}},React.createElement("h3",{style:{fontWeight:700,color:C.green,fontSize:14}},"📅 Semaine du "+sem),React.createElement("span",{style:{background:C.greenBg,color:C.green,borderRadius:999,fontSize:12,fontWeight:700,padding:"2px 10px"}},bList.length+" sortie(s)")),
+      React.createElement("table",{style:{width:"100%",borderCollapse:"collapse",fontSize:12}},
+        React.createElement("thead",null,React.createElement("tr",{style:{background:"#F9FAFB"}},["Matricule","Nom Prénom","N° Badge","Carte recharg.","Casier","Manager","Date sortie","Statut"].map(h=>React.createElement("th",{key:h,style:{padding:"7px 10px",textAlign:"left",fontWeight:600,color:"#6B7280",borderBottom:"2px solid #E5E7EB"}},h)))),
+        React.createElement("tbody",null,bList.sort((a,b)=>a.date_sortie_prevue.localeCompare(b.date_sortie_prevue)).map((b,i)=>{const zone=b.casier?b.casier.substring(0,2):"",zcol=ZONES_COLORS[zone]||"#6B7280";return React.createElement("tr",{key:b.id,style:{background:i%2===0?"#fff":"#F9FAFB",borderBottom:"1px solid #E5E7EB"}},React.createElement("td",{style:{padding:"7px 10px",fontWeight:700,color:C.blue}},b.matricule&&b.matricule!=="0"?b.matricule:React.createElement("span",{style:{color:"#E74C3C",fontWeight:700,fontSize:10}},"NC")),React.createElement("td",{style:{padding:"7px 10px",fontWeight:600}},b.nom+" "+b.prenom),React.createElement("td",{style:{padding:"7px 10px"}},b.serie?React.createElement("code",{style:{background:"#F3F4F6",padding:"1px 5px",borderRadius:3,fontSize:11}},b.serie):"—"),React.createElement("td",{style:{padding:"7px 10px",color:"#6B7280"}},b.carte_rechargement||"—"),React.createElement("td",{style:{padding:"7px 10px"}},b.casier?React.createElement("span",{style:{background:zcol+"22",color:zcol,fontWeight:700,padding:"1px 6px",borderRadius:4}},b.casier):"—"),React.createElement("td",{style:{padding:"7px 10px",color:"#6B7280"}},b.manager||"—"),React.createElement("td",{style:{padding:"7px 10px",fontWeight:600,color:C.green}},fmt(b.date_sortie_prevue)),React.createElement("td",{style:{padding:"7px 10px"}},React.createElement(Bdg,{color:"#fff",bg:b.statut==="Actif"?C.green:b.statut==="À récupérer"?C.red:C.gray},b.statut)));})))))
+  );
+}
+
+function VueMSLists({badges,setBadges,showToast,addLog,wdCache,rows,setRows,perms}){
+  const canModify=perms&&perms.modifier;
+  const[processed,setProcessed]=useState(new Set());
+  const fmtFR=s=>{if(!s)return"";const m=s.match(/^(\d{2})\/(\d{2})\/(\d{4})/);return m?m[3]+"-"+m[2].padStart(2,"0")+"-"+m[1].padStart(2,"0"):s;};
+  const loadCSV=file=>{const r=new FileReader();r.onload=e=>{try{setRows(parseMSListsCSV(e.target.result));showToast("✅ Chargé depuis Microsoft Lists");}catch(err){alert("Erreur CSV : "+err.message);}};r.readAsText(file,"UTF-8");};
+  const appArr=row=>{if(!canModify)return;const nom=(row["Nom"]||"").toUpperCase().trim(),prenom=(row["Prénom"]||"").trim(),dateEvt=fmtFR(row["Date événement "]||row["Date événement"]||""),manager=(row["Manager de l'embauché(e)"]||"").trim();const ex=badges.find(b=>b.nom===nom&&b.prenom.toLowerCase()===prenom.toLowerCase()&&b.statut!=="Archivé");if(ex){showToast("⚠️ "+prenom+" "+nom+" déjà présent","err");return;}const wd=wdCache?Object.values(wdCache).find(w=>w.nom===nom&&w.prenom.toLowerCase()===prenom.toLowerCase()):null;const nb={id:nxId(badges),nom,prenom,matricule:wd?wd.matricule:"",email:wd?wd.email:"",serie:"",zeplug:"",carte_rechargement:"",casier:"",manager:manager||(wd?wd.manager:""),mail_manager:wd?wd.mailMgr:"",statut:"Actif",date_sortie_prevue:"",date_archive:"",commentaire:"Importé MS Lists"+(dateEvt?" — arrivée : "+dateEvt:"")};setBadges(p=>[...p,nb]);addLog("Arrivée (MS Lists)",prenom+" "+nom+(dateEvt?" le "+dateEvt:""));setProcessed(p=>new Set([...p,row._idx]));showToast("✅ Arrivée : "+prenom+" "+nom);};
+  const appDep=row=>{if(!canModify)return;const nom=(row["Nom"]||"").toUpperCase().trim(),prenom=(row["Prénom"]||"").trim(),dateEvt=fmtFR(row["Date événement "]||row["Date événement"]||"");const c=badges.find(b=>b.nom===nom&&b.prenom.toLowerCase()===prenom.toLowerCase()&&b.statut!=="Archivé");if(!c){showToast("⚠️ "+prenom+" "+nom+" introuvable","err");return;}setBadges(p=>p.map(b=>b.id===c.id?{...c,date_sortie_prevue:dateEvt||todayISO()}:b));addLog("Départ (MS Lists)",prenom+" "+nom+(dateEvt?" le "+dateEvt:""));setProcessed(p=>new Set([...p,row._idx]));showToast("✅ Départ : "+prenom+" "+nom);};
+  const arrivees=rows.filter(r=>r["Situation collaborateur"]==="Arrivée"),departs=rows.filter(r=>r["Situation collaborateur"]==="Départ");
+  return React.createElement("div",null,
+    React.createElement("div",{style:{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:16,gap:8,flexWrap:"wrap"}},
+      React.createElement("div",null,React.createElement("h1",{style:{fontSize:22,fontWeight:700,color:"#0369a1"}},"📋 Microsoft Lists — Arrivées & Départs"),React.createElement("p",{style:{fontSize:12,color:"#6B7280",marginTop:2}},"Importez l'extraction CSV depuis SharePoint / Microsoft Lists")),
+      React.createElement("label",{style:{display:"inline-flex",alignItems:"center",gap:8,background:"#0369a1",color:"#fff",borderRadius:8,padding:"8px 16px",cursor:"pointer",fontWeight:600,fontSize:13}},"📁 Importer CSV",React.createElement("input",{type:"file",accept:".csv",style:{display:"none"},onChange:e=>{if(e.target.files[0])loadCSV(e.target.files[0]);e.target.value="";}}))
+    ),
+    rows.length===0?React.createElement(Card,{style:{textAlign:"center",padding:56}},React.createElement("div",{style:{fontSize:48,marginBottom:12}},"📋"),React.createElement("p",{style:{fontWeight:600,color:"#374151",marginBottom:8}},"Aucune donnée chargée"),React.createElement("p",{style:{fontSize:13,color:"#9CA3AF"}},"Exportez la liste depuis Microsoft Lists (SharePoint) au format CSV.")):
+    React.createElement("div",null,
+      React.createElement("div",{style:{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(130px,1fr))",gap:12,marginBottom:20}},React.createElement(KPI,{label:"Total",value:rows.length,color:"#0369a1"}),React.createElement(KPI,{label:"Arrivées",value:arrivees.length,color:C.green}),React.createElement(KPI,{label:"Départs",value:departs.length,color:C.red}),React.createElement(KPI,{label:"Traités",value:processed.size,color:C.orange})),
+      React.createElement(Card,{style:{padding:0,overflow:"auto"}},React.createElement("table",{style:{width:"100%",borderCollapse:"collapse",fontSize:12}},
+        React.createElement("thead",null,React.createElement("tr",{style:{background:"#0369a1",color:"#fff"}},["Situation","Nom","Prénom","Date","Manager","Statut FSS","Action"].map(h=>React.createElement("th",{key:h,style:{padding:"9px 12px",textAlign:"left",fontWeight:600,whiteSpace:"nowrap"}},h)))),
+        React.createElement("tbody",null,rows.map((row,i)=>{
+          const sit=row["Situation collaborateur"]||"",nom=(row["Nom"]||"").toUpperCase().trim(),prenom=(row["Prénom"]||"").trim(),dateEvt=row["Date événement "]||row["Date événement"]||"",mgr=row["Manager de l'embauché(e)"]||"",statFSS=row["Statut demande pour le FSS"]||"",isArr=sit==="Arrivée",isDone=processed.has(i),exBadge=badges.find(b=>b.nom===nom&&b.prenom.toLowerCase()===prenom.toLowerCase()&&b.statut!=="Archivé");
+          const sc={"Terminée":"#16a34a","A traiter":"#f59e0b","En cours":"#0891B2","Suspendue":"#9CA3AF"}[statFSS]||"#9CA3AF";
+          return React.createElement("tr",{key:i,style:{background:isDone?"#F0FDF4":i%2===0?"#fff":"#F9FAFB",borderBottom:"1px solid #E5E7EB"}},
+            React.createElement("td",{style:{padding:"8px 12px"}},React.createElement("span",{style:{background:isArr?C.greenBg:C.redBg,color:isArr?C.green:C.red,borderRadius:999,fontSize:11,fontWeight:700,padding:"2px 8px"}},sit||"—")),
+            React.createElement("td",{style:{padding:"8px 12px",fontWeight:600}},nom||"—"),React.createElement("td",{style:{padding:"8px 12px"}},prenom||"—"),React.createElement("td",{style:{padding:"8px 12px",fontSize:11,color:"#6B7280"}},dateEvt||"—"),React.createElement("td",{style:{padding:"8px 12px",fontSize:11,color:"#6B7280",maxWidth:160,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}},mgr||"—"),
+            React.createElement("td",{style:{padding:"8px 12px"}},React.createElement("span",{style:{background:sc+"22",color:sc,borderRadius:999,fontSize:10,fontWeight:700,padding:"2px 6px"}},statFSS||"—")),
+            React.createElement("td",{style:{padding:"8px 12px"}},isDone?React.createElement("span",{style:{color:C.green,fontWeight:700,fontSize:11}},"✅ Traité"):!canModify?React.createElement("span",{style:{fontSize:11,color:"#9CA3AF"}},"Lecture seule"):isArr?React.createElement("button",{onClick:()=>appArr(row),disabled:!!exBadge,style:{background:exBadge?"#E5E7EB":C.green,color:"#fff",border:"none",borderRadius:6,padding:"4px 10px",fontSize:11,fontWeight:600,cursor:exBadge?"default":"pointer",opacity:exBadge?.6:1}},exBadge?"Déjà présent":"+ Arrivée"):React.createElement("button",{onClick:()=>appDep(row),disabled:!exBadge,style:{background:!exBadge?"#E5E7EB":C.red,color:"#fff",border:"none",borderRadius:6,padding:"4px 10px",fontSize:11,fontWeight:600,cursor:!exBadge?"default":"pointer",opacity:!exBadge?.6:1}},!exBadge?"Introuvable":"Départ →"))
+          );
+        }))
+      ))
+    )
+  );
+}
+
+function VueImpression({badges}){
+  const[fStat,setFStat]=useState("Actif"),[fZone,setFZone]=useState(""),[selected,setSelected]=useState(new Set());
+  const filtered=badges.filter(b=>b.statut!=="Archivé"&&(!fStat||b.statut===fStat)&&(!fZone||b.casier&&b.casier.startsWith(fZone)));
+  const toPrint=selected.size>0?filtered.filter(b=>selected.has(b.id)):filtered;
+  return React.createElement("div",null,
+    React.createElement("div",{className:"no-print",style:{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:16,flexWrap:"wrap",gap:8}},React.createElement("h1",{style:{fontSize:22,fontWeight:700,color:"#0F172A"}},"🪪 Impression badges"),React.createElement(Btn,{onClick:()=>window.print(),color:"#0F172A",style:{fontSize:13}},"🖨️ Imprimer "+toPrint.length+" fiche(s)")),
+    React.createElement(Card,{style:{marginBottom:16,padding:12},className:"no-print"},React.createElement("div",{style:{display:"flex",gap:10,flexWrap:"wrap",alignItems:"center"}},React.createElement(Sel,{value:fStat,onChange:setFStat,options:["Actif","À récupérer","Badge prêt","Badge VIP","Futur arrivant"],placeholder:"Tous statuts",style:{minWidth:150}}),React.createElement(Sel,{value:fZone,onChange:setFZone,options:ZONES.map(z=>({v:z,l:ZONES_LABELS[z]})),placeholder:"Toutes zones",style:{minWidth:130}}),React.createElement(Btn,{onClick:()=>setSelected(selected.size===filtered.length?new Set():new Set(filtered.map(b=>b.id))),variant:"outline",color:C.blue,style:{fontSize:12}},selected.size===filtered.length?"Tout désélectionner":"Tout sélectionner"),React.createElement("span",{style:{fontSize:12,color:"#9CA3AF",marginLeft:"auto"}},toPrint.length+" fiche(s)"))),
+    React.createElement("div",{style:{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(240px,1fr))",gap:12}},filtered.map(b=>{const isSel=selected.size===0||selected.has(b.id);const zone=b.casier?b.casier.substring(0,2):"",zcol=ZONES_COLORS[zone]||"#6B7280";return React.createElement("div",{key:b.id,className:"badge-card",style:{border:"2px solid "+(isSel?"#0891B2":"#E5E7EB"),borderRadius:10,padding:14,background:isSel?"#fff":"#F9FAFB",cursor:"pointer",opacity:isSel?1:.5,transition:"all .15s"},onClick:()=>setSelected(p=>{const n=new Set(p);n.has(b.id)?n.delete(b.id):n.add(b.id);return n;})},React.createElement("div",{style:{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:8}},React.createElement("div",null,React.createElement("div",{style:{fontWeight:700,fontSize:14}},b.prenom),React.createElement("div",{style:{fontWeight:700,fontSize:16,letterSpacing:"0.03em"}},b.nom)),React.createElement("div",{style:{background:"#0891B2",color:"#fff",borderRadius:6,padding:"2px 8px",fontSize:10,fontWeight:700}},b.statut)),React.createElement("div",{style:{borderTop:"1px solid #E5E7EB",paddingTop:8,display:"grid",gridTemplateColumns:"1fr 1fr",gap:4,fontSize:11}},React.createElement("div",null,React.createElement("div",{style:{color:"#9CA3AF",fontSize:9,textTransform:"uppercase"}},"Matricule"),React.createElement("div",{style:{fontWeight:600,color:b.matricule&&b.matricule!=="0"?"#0F172A":"#E74C3C"}},b.matricule&&b.matricule!=="0"?b.matricule:"NC")),React.createElement("div",null,React.createElement("div",{style:{color:"#9CA3AF",fontSize:9,textTransform:"uppercase"}},"N° Badge"),React.createElement("div",{style:{fontWeight:600,fontFamily:"monospace"}},b.serie||"—")),React.createElement("div",null,React.createElement("div",{style:{color:"#9CA3AF",fontSize:9,textTransform:"uppercase"}},"Casier"),React.createElement("div",{style:{fontWeight:600,color:zcol}},b.casier||"—")),React.createElement("div",null,React.createElement("div",{style:{color:"#9CA3AF",fontSize:9,textTransform:"uppercase"}},"Zeplug"),React.createElement("div",{style:{fontWeight:600,fontFamily:"monospace"}},b.zeplug||"—"))),b.manager&&React.createElement("div",{style:{marginTop:6,fontSize:10,color:"#6B7280",borderTop:"1px solid #F3F4F6",paddingTop:4}},"Manager : "+b.manager));}))
+  );
+}
+
+function VueHistorique({histo}){
+  const[search,setSearch]=useState("");
+  const filtered=histo.filter(h=>!search||(h.action+h.detail).toLowerCase().includes(search.toLowerCase()));
+  const ac={"Import":C.blue,"Ajout":C.green,"Modification":C.orange,"Archivage":C.gray,"Date sortie":C.purple,"Départ":C.red,"Arrivée":C.green,"Casier modifié":C.purple,"Casier ajouté":C.green,"Casier supprimé":C.red,"Arrivée (MS Lists)":C.green,"Départ (MS Lists)":C.red,"Import JSON":C.blue,"Sync Workday":"#0369a1","Restauration":C.green};
+  return React.createElement("div",null,
+    React.createElement("div",{style:{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:16,gap:8,flexWrap:"wrap"}},React.createElement("h1",{style:{fontSize:22,fontWeight:700,color:"#0F172A"}},"🕐 Historique des modifications"),React.createElement(Inp,{value:search,onChange:setSearch,placeholder:"🔍 Rechercher...",style:{maxWidth:260}})),
+    histo.length===0?React.createElement(Card,{style:{textAlign:"center",padding:48}},React.createElement("div",{style:{fontSize:36,marginBottom:8}},"🕐"),React.createElement("div",{style:{fontWeight:600,color:"#9CA3AF"}},"Aucune action dans cette session")):
+    React.createElement(Card,{style:{padding:0,overflow:"auto"}},React.createElement("table",{style:{width:"100%",borderCollapse:"collapse",fontSize:13}},
+      React.createElement("thead",null,React.createElement("tr",{style:{background:"#0F172A",color:"#fff"}},["Horodatage","Action","Détail"].map(h=>React.createElement("th",{key:h,style:{padding:"9px 16px",textAlign:"left",fontWeight:600}},h)))),
+      React.createElement("tbody",null,filtered.map((h,i)=>React.createElement("tr",{key:h.id,style:{background:i%2===0?"#fff":"#F9FAFB",borderBottom:"1px solid #E5E7EB"}},React.createElement("td",{style:{padding:"8px 16px",fontSize:11,color:"#9CA3AF",whiteSpace:"nowrap"}},h.ts),React.createElement("td",{style:{padding:"8px 16px"}},React.createElement(Bdg,{color:"#fff",bg:ac[h.action]||"#6B7280"},h.action)),React.createElement("td",{style:{padding:"8px 16px",color:"#374151"}},h.detail))),filtered.length===0&&React.createElement("tr",null,React.createElement("td",{colSpan:3,style:{padding:32,textAlign:"center",color:"#9CA3AF"}},"Aucun résultat."))))
+    )
+  );
+}
+
+function VueArchives({badges,setBadges,showToast,addLog,perms}){
+  const canModify=perms&&perms.modifier;
+  const[search,setSearch]=useState("");
+  const archives=badges.filter(b=>b.statut==="Archivé");
+  const filtered=!search?archives:archives.filter(b=>(b.nom+" "+b.prenom+" "+(b.matricule||"")).toLowerCase().includes(search.toLowerCase()));
+  const restaurer=async id=>{if(!canModify||!confirm("Restaurer ?"))return;const b=badges.find(x=>x.id===id),u={...b,statut:"Actif",date_archive:""};setBadges(p=>p.map(x=>x.id===id?u:x));if(sb)sb.from("lp24_badges").upsert(u);addLog("Restauration",b.prenom+" "+b.nom);showToast("✅ Restauré");};
+  const supprimer=async id=>{if(!canModify||!confirm("Supprimer définitivement ?"))return;const b=badges.find(x=>x.id===id);setBadges(p=>p.filter(x=>x.id!==id));if(sb)sb.from("lp24_badges").delete().eq("id",id);addLog("Suppression",b.prenom+" "+b.nom);showToast("🗑️ Supprimé");};
+  return React.createElement("div",null,
+    React.createElement("div",{style:{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:16}},React.createElement("h1",{style:{fontSize:22,fontWeight:700,color:C.gray}},"🗃️ Archives ("+archives.length+")"),React.createElement(Inp,{value:search,onChange:setSearch,placeholder:"🔍 Rechercher...",style:{maxWidth:250}})),
+    archives.length===0?React.createElement(Card,{style:{textAlign:"center",padding:48}},React.createElement("div",{style:{fontSize:36,marginBottom:8}},"🗃️"),React.createElement("div",{style:{fontWeight:600}},"Aucun collaborateur archivé")):
+    React.createElement(Card,{style:{padding:0,overflow:"auto"}},React.createElement("table",{style:{width:"100%",borderCollapse:"collapse",fontSize:13}},
+      React.createElement("thead",null,React.createElement("tr",{style:{background:C.gray,color:"#fff"}},["#","Matricule","Nom","Prénom","N° Badge","Casier","Date sortie","Archivé le","Manager","Actions"].map(h=>React.createElement("th",{key:h,style:{padding:"9px 12px",textAlign:"left",fontWeight:600,whiteSpace:"nowrap"}},h)))),
+      React.createElement("tbody",null,filtered.map((b,i)=>React.createElement("tr",{key:b.id,style:{background:i%2===0?"#fff":"#F9FAFB",borderBottom:"1px solid #E5E7EB"}},
+        React.createElement("td",{style:{padding:"8px 10px",fontSize:11,color:"#CBD5E1",textAlign:"center"}},i+1),
+        React.createElement("td",{style:{padding:"8px 12px",color:C.gray,fontWeight:700}},b.matricule&&b.matricule!=="0"?b.matricule:React.createElement("span",{style:{color:"#E74C3C",fontSize:10}},"NC")),
+        React.createElement("td",{style:{padding:"8px 12px",fontWeight:600,color:"#9CA3AF"}},b.nom),
+        React.createElement("td",{style:{padding:"8px 12px",color:"#9CA3AF"}},b.prenom),
+        React.createElement("td",{style:{padding:"8px 12px"}},b.serie?React.createElement("code",{style:{background:"#F3F4F6",padding:"2px 5px",borderRadius:3,fontSize:11}},b.serie):"—"),
+        React.createElement("td",{style:{padding:"8px 12px",fontWeight:700,color:C.gray}},b.casier||"—"),
+        React.createElement("td",{style:{padding:"8px 12px",fontSize:11}},fmt(b.date_sortie_prevue)),
+        React.createElement("td",{style:{padding:"8px 12px",fontSize:11,color:"#9CA3AF"}},fmt(b.date_archive)),
+        React.createElement("td",{style:{padding:"8px 12px",fontSize:11}},b.manager||"—"),
+        React.createElement("td",{style:{padding:"8px 12px"}},canModify&&React.createElement("div",{style:{display:"flex",gap:4}},React.createElement("button",{onClick:()=>restaurer(b.id),title:"Restaurer",style:{background:"none",border:"none",cursor:"pointer",fontSize:14}},"↩️"),React.createElement("button",{onClick:()=>supprimer(b.id),title:"Supprimer",style:{background:"none",border:"none",cursor:"pointer",fontSize:14}},"🗑️")))
+      )),filtered.length===0&&React.createElement("tr",null,React.createElement("td",{colSpan:10,style:{padding:32,textAlign:"center",color:"#9CA3AF"}},"Aucun résultat."))))
+    )
+  );
+}
+
+// ════════════════════════════════════════════════════
+// APP
+// ════════════════════════════════════════════════════
+function App(){
+  const[currentUser,setCurrentUser]=useState(null);
+  const[view,setView]=useState("accueil");
+  const[badges,setBadges]=useState([]);
+  const[casiers,setCasiers]=useState([]);
+  const[wdCache,setWdCache]=useState(null);
+  const[histo,setHisto]=useState([]);
+  const[msListsRows,setMsListsRows]=useState([]);
+  const[settings,setSettings]=useState({restaurantEmail:"placedeseine@11h59.fr",ccEmails:"a.avonde@allianceautomotive.fr,ju.poitier@allianceautomotive.fr"});
+  const[showSettings,setShowSettings]=useState(false);
+  const[dbStatus,setDbStatus]=useState("loading");
+  const[loading,setLoading]=useState(false);
+  const[toast,setToast]=useState(null);
+  const toastRef=useRef(null);
+  const racineRef=useRef(null),hrRef=useRef(null),hcmRef=useRef(null),jsonRef=useRef(null);
+
+  // Vérifier session au démarrage
+  useEffect(()=>{
+    try{
+      const sess=localStorage.getItem("lp24_session");
+      if(sess){const data=JSON.parse(sess);if(data&&data.ts&&Date.now()-data.ts<7*24*3600*1000){setCurrentUser(data);}}
+    }catch(e){}
+  },[]);
+
+  const showToast=(msg,type="ok")=>{if(toastRef.current)clearTimeout(toastRef.current);setToast({msg,type});toastRef.current=setTimeout(()=>setToast(null),3500);};
+  const addLog=useCallback((action,detail)=>{setHisto(prev=>[{id:Date.now(),ts:TS(),action,detail},...prev].slice(0,300));},[]);
+
+  const isAdmin=currentUser&&(currentUser.role==="admin"||currentUser.email===ADMIN_EMAIL);
+  const getPerms=onglet=>{
+    if(isAdmin)return{voir:true,modifier:true,ajouter:true};
+    const p=currentUser&&currentUser.permissions;
+    return(p&&p[onglet])||DEFAULT_PERMS[onglet]||{voir:true};
+  };
+
+  useEffect(()=>{
+    if(!currentUser)return;
+    if(!sb){setDbStatus("error");return;}
+    Promise.all([sb.from("lp24_badges").select("*").order("id"),sb.from("lp24_casiers").select("*").order("id")])
+      .then(([bRes,cRes])=>{if(bRes.error)throw bRes.error;setBadges(bRes.data||[]);setCasiers(cRes.data||[]);setDbStatus("ok");})
+      .catch(()=>setDbStatus("error"));
+    // Mettre à jour last_login
+    sb.from("lp24_users").update({last_login:todayISO()}).eq("id",currentUser.id).catch(()=>{});
+  },[currentUser]);
+
+  const logout=()=>{try{localStorage.removeItem("lp24_session");}catch(e){}setCurrentUser(null);setBadges([]);setCasiers([]);setWdCache(null);setView("accueil");};
+
+  const exportExcel=()=>{if(!window.XLSX){alert("XLSX non disponible");return;}const wb=XLSX.utils.book_new();XLSX.utils.book_append_sheet(wb,XLSX.utils.json_to_sheet(badges.map(b=>({Matricule:b.matricule,Nom:b.nom,"Prénom":b.prenom,Email:b.email||"","N° Badge":b.serie||"","Carte rechargement":b.carte_rechargement||"",Casier:b.casier||"",Manager:b.manager||"","Email Manager":b.mail_manager||"",Statut:b.statut,"Date sortie":b.date_sortie_prevue||""}))),  "Collaborateurs");XLSX.utils.book_append_sheet(wb,XLSX.utils.json_to_sheet(casiers.map(c=>({Zone:c.zone,"N° Casier":c.numero,Occupant:c.occupant||"",Statut:c.statut,Commentaire:c.commentaire||""}))),  "Casiers");XLSX.writeFile(wb,"Collaborateurs_"+todayISO()+".xlsx");showToast("✅ Export Excel");};
+  const exportJSON=()=>{const d=JSON.stringify({version:5,date:new Date().toISOString(),badges,casiers,wdCache:wdCache||{},msListsRows:msListsRows||[]},null,2);const a=document.createElement("a");a.href=URL.createObjectURL(new Blob([d],{type:"application/json"}));a.download="Sauvegarde_"+todayISO()+".json";a.click();showToast("✅ Sauvegarde JSON");};
+  const importJSON=e=>{const file=e.target.files[0];if(!file)return;const r=new FileReader();r.onload=async ev=>{try{const data=JSON.parse(ev.target.result);if(!data.badges&&!data.collaborateurs){alert("Fichier JSON invalide.");return;}if(!confirm("Remplacer toutes les données ?"))return;const b=data.badges||data.collaborateurs||[],c=data.casiers||[],wd=data.wdCache&&Object.keys(data.wdCache).length>0?data.wdCache:null,mlr=data.msListsRows||[];setBadges(b);setCasiers(c);if(wd)setWdCache(wd);if(mlr.length>0)setMsListsRows(mlr);if(sb){await sb.from("lp24_badges").delete().neq("id",0);await sb.from("lp24_casiers").delete().neq("id",0);if(b.length)await sb.from("lp24_badges").insert(b.map(({id,...r})=>r));if(c.length)await sb.from("lp24_casiers").insert(c.map(({id,...r})=>r));}addLog("Import JSON",b.length+" collaborateurs"+(wd?" + Workday":""));showToast("✅ "+b.length+" collaborateurs importés"+(wd?" + Workday":""));}catch(err){alert("Erreur : "+err.message);}};r.readAsText(file);e.target.value="";};
+  const syncDatesWD=()=>{if(!wdCache){showToast("⚠️ Workday non chargé","err");return;}let count=0;setBadges(prev=>prev.map(b=>{if(!b.matricule||b.matricule==="0"||b.statut==="Archivé")return b;const wd=wdCache[String(b.matricule)];if(!wd)return b;const td=wd.termDate||"",hd=wd.hireDate||"",ds=(td&&(!hd||td>hd))?td:"";if(ds&&!b.date_sortie_prevue){count++;return{...b,date_sortie_prevue:ds};}return b;}));addLog("Sync Workday",count+" date(s) mises à jour");showToast("✅ "+count+" date(s) synchronisées");};
+
+  if(!currentUser)return React.createElement(LoginScreen,{onLogin:user=>{setCurrentUser(user);}});
+  if(dbStatus==="loading"&&!badges.length)return React.createElement("div",{style:{minHeight:"100vh",background:"linear-gradient(135deg,#0F172A 0%,#0891B2 60%,#0F172A 100%)",display:"flex",alignItems:"center",justifyContent:"center"}},React.createElement("div",{style:{background:"#fff",borderRadius:16,padding:"32px 48px",textAlign:"center"}},React.createElement("div",{className:"spinner",style:{margin:"0 auto 12px"}}),React.createElement("p",{style:{color:"#6B7280",fontSize:14}},"Chargement des données...")));
+
+  const nav=[
+    {id:"accueil",label:"Accueil",icon:"🏠"},
+    {id:"collaborateurs",label:"Collaborateurs",icon:"👥"},
+    {id:"casiers",label:"Casiers",icon:"📦"},
+    {id:"rapport",label:"Rapport",icon:"📊"},
+    {id:"lists",label:"MS Lists",icon:"📋"},
+    {id:"impression",label:"Impression",icon:"🪪"},
+    {id:"historique",label:"Historique",icon:"🕐"},
+    {id:"archives",label:"Archives",icon:"🗃️"},
+    ...(isAdmin?[{id:"utilisateurs",label:"Utilisateurs",icon:"👤"}]:[])
+  ].filter(n=>getPerms(n.id).voir!==false||n.id==="utilisateurs"||n.id==="historique");
+
+  const renderView=()=>{
+    const p={badges,casiers,setBadges,setCasiers,showToast,wdCache,addLog,setView,settings};
+    switch(view){
+      case "accueil": return React.createElement(VueAccueil,{...p,canModify:getPerms("accueil").modifier});
+      case "collaborateurs": return React.createElement(VueCollaborateurs,{...p,perms:getPerms("collaborateurs")});
+      case "casiers": return React.createElement(VueCasiers,{...p,perms:getPerms("casiers")});
+      case "rapport": return React.createElement(VueRapport,{badges});
+      case "lists": return React.createElement(VueMSLists,{...p,rows:msListsRows,setRows:setMsListsRows,perms:getPerms("lists")});
+      case "impression": return React.createElement(VueImpression,{badges});
+      case "historique": return React.createElement(VueHistorique,{histo});
+      case "archives": return React.createElement(VueArchives,{badges,setBadges,showToast,addLog,perms:getPerms("archives")});
+      case "utilisateurs": return isAdmin?React.createElement(VueUtilisateurs,{currentUser,showToast}):null;
+      default: return null;
+    }
+  };
+
+  const archCount=badges.filter(b=>b.statut==="Archivé").length;
+  const dbDot=React.createElement("div",{style:{display:"flex",alignItems:"center",gap:4,fontSize:11,color:"rgba(255,255,255,.7)"}},React.createElement("span",{style:{width:6,height:6,borderRadius:"50%",background:dbStatus==="ok"?"#4ade80":"#f87171",display:"inline-block"}}),dbStatus==="ok"?"Supabase ✓":"Hors ligne");
+
+  const toolbar=React.createElement("div",{style:{display:"flex",gap:4,alignItems:"center",flexShrink:0}},
+    isAdmin&&React.createElement("label",{title:"Import Racine Commune",className:"btn-icon",style:{cursor:"pointer",display:"flex",alignItems:"center"}},"📂",React.createElement("input",{type:"file",accept:".xlsx,.xls",ref:racineRef,onChange:e=>{if(e.target.files[0])parseRacineAsync(e.target.files[0],badges,setBadges,setCasiers,showToast,setLoading,addLog);e.target.value="";}})),
+    isAdmin&&React.createElement("button",{title:"Export Excel",className:"btn-icon",onClick:exportExcel},"📊"),
+    isAdmin&&React.createElement("label",{title:"Import Workday HR",className:"btn-icon",style:{cursor:"pointer",display:"flex",alignItems:"center"}},"👤",React.createElement("input",{type:"file",accept:".xlsx,.xls",ref:hrRef,onChange:e=>{if(e.target.files[0])parseWDFileAsync(e.target.files[0],"hr",wdCache,setWdCache,showToast,setLoading);e.target.value="";}})),
+    isAdmin&&React.createElement("label",{title:"Import Future Hires",className:"btn-icon",style:{cursor:"pointer",display:"flex",alignItems:"center"}},"🔮",React.createElement("input",{type:"file",accept:".xlsx,.xls",ref:hcmRef,onChange:e=>{if(e.target.files[0])parseWDFileAsync(e.target.files[0],"fh",wdCache,setWdCache,showToast,setLoading);e.target.value="";}})),
+    isAdmin&&wdCache&&React.createElement("button",{title:"Sync dates Workday",className:"btn-icon",onClick:syncDatesWD},"📅"),
+    isAdmin&&React.createElement("button",{title:"Sauvegarder JSON",className:"btn-icon",onClick:exportJSON},"⬇️"),
+    isAdmin&&React.createElement("label",{title:"Restaurer JSON",className:"btn-icon",style:{cursor:"pointer",display:"flex",alignItems:"center"}},"⬆️",React.createElement("input",{type:"file",accept:".json",ref:jsonRef,onChange:importJSON})),
+    isAdmin&&React.createElement("button",{title:"Paramètres",className:"btn-icon",onClick:()=>setShowSettings(true)},"⚙️"),
+    dbDot,
+    React.createElement("div",{style:{borderLeft:"1px solid rgba(255,255,255,.2)",marginLeft:4,paddingLeft:8,display:"flex",alignItems:"center",gap:6}},
+      React.createElement("div",{style:{fontSize:11,color:"rgba(255,255,255,.8)",lineHeight:1.2}},
+        React.createElement("div",{style:{fontWeight:600}},currentUser.nom),
+        React.createElement("div",{style:{fontSize:10,color:"rgba(255,255,255,.5)"}},isAdmin?"👑 Admin":"👤 Utilisateur")
+      ),
+      React.createElement("button",{title:"Se déconnecter",onClick:logout,style:{background:"rgba(255,255,255,.1)",border:"1px solid rgba(255,255,255,.2)",borderRadius:6,color:"#fff",padding:"4px 8px",fontSize:11,cursor:"pointer"}},"⏏️")
+    )
+  );
+
+  return React.createElement("div",{style:{minHeight:"100vh",background:"#F3F4F6"}},
+    loading&&React.createElement("div",{style:{position:"fixed",inset:0,background:"rgba(0,0,0,.3)",zIndex:9998,display:"flex",alignItems:"center",justifyContent:"center"}},React.createElement("div",{style:{background:"#fff",borderRadius:12,padding:"24px 36px",fontSize:15,fontWeight:700}},"⏳ Chargement...")),
+    toast&&React.createElement("div",{className:"toast",style:{position:"fixed",top:20,left:"50%",transform:"translateX(-50%)",zIndex:9999,background:toast.type==="err"?"#dc2626":"#16a34a",color:"#fff",padding:"12px 24px",borderRadius:12,fontSize:14,fontWeight:700,boxShadow:"0 4px 24px rgba(0,0,0,.25)",whiteSpace:"nowrap",pointerEvents:"none",maxWidth:"90vw",textAlign:"center"}},toast.msg),
+    showSettings&&React.createElement("div",{style:{position:"fixed",inset:0,background:"rgba(0,0,0,.5)",zIndex:2000,display:"flex",alignItems:"center",justifyContent:"center",padding:16},onClick:e=>e.target===e.currentTarget&&setShowSettings(false)},
+      React.createElement("div",{style:{background:"#fff",borderRadius:14,padding:28,width:"100%",maxWidth:480,boxShadow:"0 8px 40px rgba(0,0,0,.25)",maxHeight:"90vh",overflowY:"auto"}},
+        React.createElement("div",{style:{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:16}},React.createElement("h3",{style:{fontWeight:700,fontSize:16}},"⚙️ Paramètres — Emails"),React.createElement("button",{onClick:()=>setShowSettings(false),style:{background:"none",border:"none",fontSize:22,cursor:"pointer",color:"#9CA3AF"}},"×")),
+        React.createElement("div",{style:{marginBottom:12}},React.createElement(Lbl,null,"📧 Adresse e-mail du restaurant"),React.createElement(Inp,{type:"email",value:settings.restaurantEmail,onChange:v=>setSettings(s=>({...s,restaurantEmail:v})),placeholder:"restaurant@exemple.fr"}),React.createElement("p",{style:{fontSize:11,color:"#9CA3AF",marginTop:4}},"Reçoit les mails 🍽️ arrivée et 🚪 départ")),
+        React.createElement("div",{style:{marginBottom:16}},React.createElement(Lbl,null,"📋 Adresses CC (une par ligne ou séparées par virgule)"),React.createElement("textarea",{value:settings.ccEmails,onChange:e=>setSettings(s=>({...s,ccEmails:e.target.value})),rows:3,style:{width:"100%",padding:"8px 10px",borderRadius:6,border:"1px solid #D1D5DB",fontSize:12,fontFamily:"inherit",resize:"vertical"},placeholder:"cc1@exemple.fr, cc2@exemple.fr"})),
+        React.createElement("div",{style:{background:"#F0FDF4",borderRadius:8,padding:"10px 14px",fontSize:12,color:"#166534",marginBottom:16}},"✅ À : ",React.createElement("strong",null,settings.restaurantEmail||"(non configuré)"),React.createElement("br",null),"CC : ",(settings.ccEmails||"aucun").replace(/\n/g,", ")),
+        React.createElement(Btn,{onClick:()=>setShowSettings(false),color:"#0891B2"},"✅ Fermer")
+      )
+    ),
+    React.createElement("nav",{className:"desktop-nav no-print",style:{background:"#0F172A",padding:"0 12px",display:"flex",alignItems:"center",gap:2,height:52,boxShadow:"0 2px 8px rgba(0,0,0,.2)",flexWrap:"nowrap",overflow:"hidden"}},
+      React.createElement("span",{style:{color:"#fff",fontWeight:700,fontSize:13,marginRight:8,whiteSpace:"nowrap",flexShrink:0}},"LP24"),
+      React.createElement("div",{style:{display:"flex",gap:2,flex:1,overflow:"auto"}},nav.map(n=>React.createElement("button",{key:n.id,onClick:()=>setView(n.id),style:{background:view===n.id?"rgba(255,255,255,.15)":"transparent",color:"#fff",border:"none",borderRadius:8,padding:"5px 8px",fontSize:11,fontWeight:600,cursor:"pointer",display:"flex",alignItems:"center",gap:4,borderBottom:view===n.id?"2px solid #0891B2":"2px solid transparent",whiteSpace:"nowrap",flexShrink:0,position:"relative"}},
+        React.createElement("span",null,n.icon)," ",n.label,
+        n.id==="archives"&&archCount>0&&React.createElement("span",{style:{background:"#ED7D31",color:"#fff",borderRadius:999,fontSize:9,fontWeight:700,padding:"1px 4px"}},archCount),
+        n.id==="historique"&&histo.length>0&&React.createElement("span",{style:{background:"#0891B2",color:"#fff",borderRadius:999,fontSize:9,fontWeight:700,padding:"1px 4px"}},histo.length)
+      ))),
+      React.createElement("div",{style:{marginLeft:"auto",flexShrink:0}},toolbar)
+    ),
+    React.createElement("div",{className:"mobile-nav no-print"},
+      nav.slice(0,7).map(n=>React.createElement("button",{key:n.id,onClick:()=>setView(n.id),style:{flex:1,background:"transparent",color:view===n.id?"#fff":"rgba(255,255,255,.5)",border:"none",padding:"6px 1px",fontSize:7,fontWeight:600,cursor:"pointer",display:"flex",flexDirection:"column",alignItems:"center",gap:1,borderTop:view===n.id?"3px solid #0891B2":"3px solid transparent"}},React.createElement("span",{style:{fontSize:13}},n.icon),n.label))
+    ),
+    React.createElement("main",{style:{maxWidth:1400,margin:"0 auto",padding:24}},renderView())
+  );
+}
+
+try{
+  ReactDOM.createRoot(document.getElementById("root")).render(
+    React.createElement(ErrorBoundary,null,React.createElement(App))
+  );
+}catch(e){
+  alert("Erreur de démarrage: "+e.message);
+  document.getElementById("root").innerHTML='<div style="padding:32px;font-family:sans-serif;text-align:center"><h2 style="color:#E74C3C">Erreur</h2><pre style="font-size:12px;background:#fee2e2;padding:8px;border-radius:6px;white-space:pre-wrap">'+e.message+'</pre><button onclick="location.reload()" style="margin-top:12px;background:#0891B2;color:#fff;border:none;padding:10px 20px;border-radius:8px;cursor:pointer">🔄 Recharger</button></div>';
+}
+</script>
+</body>
+</html>
