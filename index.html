@@ -1,40 +1,244 @@
 <!DOCTYPE html>
 <html lang="fr">
 <head>
-<meta charset="UTF-8"/>
-<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no"/>
-<meta name="apple-mobile-web-app-capable" content="yes"/>
-<meta name="apple-mobile-web-app-status-bar-style" content="default"/>
-<title>Gestion Collaborateurs LP24</title>
-<style>
-/* --- NOUVEAU STYLE NAVIGATION --- */
-#nav {
-  background: #0F172A;
-  display: flex !important; /* Force l'affichage en ligne */
-  justify-content: space-around; /* Répartit les icônes sur toute la largeur */
-  align-items: center;
-  height: 60px;
-  padding: 0;
-  position: sticky;
-  top: 0;
-  z-index: 1000;
-  overflow: hidden !important; /* Supprime le défilement */
-}
+    <meta charset="UTF-8"/>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover"/>
+    <meta name="apple-mobile-web-app-capable" content="yes"/>
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/>
+    <title>LP24 - Gestion</title>
+    <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
+    <style>
+        :root {
+            --primary: #2563EB;
+            --dark: #0F172A;
+            --bg: #F3F4F6;
+            --text: #1F2937;
+            --safe-bottom: env(safe-area-inset-bottom);
+        }
 
-.nav-brand { display: none; } /* On cache le texte "LP24" pour gagner de la place */
+        * { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; padding-bottom: calc(70px + var(--safe-bottom)); }
 
-.nav-btn {
-  display: flex !important;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  background: none;
-  border: none;
-  color: #94A3B8;
-  flex: 1;
-  height: 100%;
-  cursor: pointer;
-}
+        /* NAVIGATION UNIQUE FORCEE */
+        #nav {
+            background: var(--dark);
+            display: flex !important;
+            justify-content: space-around;
+            align-items: center;
+            height: 65px;
+            position: fixed;
+            bottom: 0; left: 0; right: 0;
+            z-index: 2000;
+            padding-bottom: var(--safe-bottom);
+            box-shadow: 0 -2px 10px rgba(0,0,0,0.3);
+        }
+
+        @media (min-width: 768px) {
+            #nav { top: 0; bottom: auto; padding-bottom: 0; }
+            body { padding-top: 75px; padding-bottom: 20px; }
+        }
+
+        .nav-btn {
+            display: flex !important;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            background: none;
+            border: none;
+            color: #94A3B8;
+            flex: 1;
+            height: 100%;
+            cursor: pointer;
+            transition: 0.2s;
+        }
+
+        .nav-btn .material-icons { font-size: 24px; }
+        .nav-btn span:not(.material-icons) { font-size: 10px; margin-top: 2px; font-weight: 500; }
+        .nav-btn.active { color: #60A5FA; background: rgba(255,255,255,0.05); border-top: 3px solid #60A5FA; }
+
+        /* CONTENU */
+        .tab-content { display: none; padding: 15px; max-width: 1200px; margin: 0 auto; animation: fadeIn 0.3s; }
+        .tab-content.active { display: block; }
+        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+
+        /* INTERFACE & CARTES */
+        .card { background: #fff; border-radius: 12px; padding: 16px; margin-bottom: 16px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
+        .search-container { position: sticky; top: 75px; z-index: 10; background: var(--bg); padding: 10px 0; }
+        .search-input { width: 100%; padding: 12px 40px 12px 15px; border-radius: 10px; border: 1px solid #D1D5DB; font-size: 16px; }
+
+        /* BADGE & STATUT */
+        .badge-item { display: flex; justify-content: space-between; align-items: center; padding: 12px; border-bottom: 1px solid #F3F4F6; }
+        .status { padding: 4px 8px; border-radius: 6px; font-size: 11px; font-weight: 700; text-transform: uppercase; }
+        .status-present { background: #DCFCE7; color: #166534; }
+        .status-parti { background: #FEE2E2; color: #991B1B; }
+
+        /* MODALE */
+        #modal-overlay { display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.5); z-index:3000; align-items:center; justify-content:center; }
+        .modal { background:#fff; width:90%; max-width:500px; border-radius:15px; padding:20px; position:relative; max-height: 90vh; overflow-y: auto; }
+        
+        .form-group { margin-bottom: 15px; }
+        .form-group label { display:block; margin-bottom:5px; font-weight:600; font-size:14px; }
+        .form-control { width:100%; padding:10px; border:1px solid #D1D5DB; border-radius:8px; font-size:16px; }
+        
+        .btn { border:none; border-radius:8px; padding:12px 20px; font-weight:600; cursor:pointer; width:100%; margin-top:10px; }
+        .btn-primary { background: var(--primary); color:#fff; }
+        .btn-secondary { background: #E5E7EB; color:#374151; }
+
+        /* CACHER LES ANCIENS ÉLÉMENTS */
+        #mobile-nav, .hamburger, .nav-brand { display:none !important; }
+    </style>
+</head>
+<body>
+
+    <div id="nav">
+        <button class="nav-btn active" onclick="showTab('tab-badges')"><span class="material-icons">badge</span><span>Badges</span></button>
+        <button class="nav-btn" onclick="showTab('tab-casiers')"><span class="material-icons">inventory_2</span><span>Casiers</span></button>
+        <button class="nav-btn" onclick="showTab('tab-lists')"><span class="material-icons">list_alt</span><span>Listes</span></button>
+        <button class="nav-btn" onclick="showTab('tab-stats')"><span class="material-icons">analytics</span><span>Stats</span></button>
+        <button class="nav-btn" onclick="showTab('tab-admin')"><span class="material-icons">settings</span><span>Admin</span></button>
+    </div>
+
+    <div id="tab-badges" class="tab-content active">
+        <div class="search-container">
+            <input type="text" class="search-input" id="search-badge" placeholder="Rechercher un nom ou un badge..." oninput="renderBadges()">
+        </div>
+        <div id="badge-list-container"></div>
+    </div>
+
+    <div id="tab-casiers" class="tab-content">
+        <h2>Gestion des Casiers</h2>
+        <div id="casier-grid" style="display:grid; grid-template-columns: repeat(auto-fill, minmax(80px, 1fr)); gap:10px; margin-top:15px;"></div>
+    </div>
+
+    <div id="tab-lists" class="tab-content">
+        <h2>Export / MS Lists</h2>
+        <div class="card">
+            <p>Données synchronisées avec Supabase.</p>
+            <button class="btn btn-secondary" onclick="exportToExcel()">Exporter en Excel</button>
+        </div>
+    </div>
+
+    <div id="tab-stats" class="tab-content">
+        <div id="stats-container"></div>
+    </div>
+
+    <div id="tab-admin" class="tab-content">
+        <h2>Administration</h2>
+        <div class="card">
+            <p>Utilisateur : <strong>a.avonde@allianceautomotive.fr</strong></p>
+            <button class="btn btn-primary" onclick="openAddUser()">Ajouter un collaborateur</button>
+            <button class="btn btn-secondary" style="margin-top:10px" onclick="importExcel()">Importer fichier Excel</button>
+        </div>
+    </div>
+
+    <div id="modal-overlay" onclick="closeModal(event)">
+        <div class="modal" onclick="event.stopPropagation()">
+            <div id="modal-body"></div>
+        </div>
+    </div>
+
+    <script>
+        // CONFIGURATION
+        const SUPABASE_URL = "https://jymobewqenhcjtzniytb.supabase.co";
+        const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imp5bW9iZXdxZW5oY2p0em5peXRiIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzY2MjQ5NTEsImV4cCI6MjA5MjIwMDk1MX0.CpqOnvJ4YtsYHw6fSE7Xyj5MOXkXx-gBwT69J0F46p0";
+        
+        let state = {
+            badges: [],
+            casiers: [],
+            settings: { restaurantEmail: "a.avonde@allianceautomotive.fr" }
+        };
+
+        // NAVIGATION
+        function showTab(id) {
+            document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
+            document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
+            document.getElementById(id).classList.add('active');
+            event.currentTarget.classList.add('active');
+            if(id === 'tab-badges') renderBadges();
+            if(id === 'tab-casiers') renderCasiers();
+            if(id === 'tab-stats') renderStats();
+        }
+
+        // SUPABASE FETCH
+        async function loadData() {
+            try {
+                const res = await fetch(`${SUPABASE_URL}/rest/v1/lp24_badges?select=*`, {
+                    headers: { 'apikey': SUPABASE_KEY, 'Authorization': `Bearer ${SUPABASE_KEY}` }
+                });
+                state.badges = await res.json();
+                renderBadges();
+            } catch (e) { console.error("Erreur chargement", e); }
+        }
+
+        // AFFICHAGE BADGES
+        function renderBadges() {
+            const container = document.getElementById('badge-list-container');
+            const search = document.getElementById('search-badge').value.toLowerCase();
+            const filtered = state.badges.filter(b => 
+                b.nom.toLowerCase().includes(search) || (b.badge_num && b.badge_num.toString().includes(search))
+            );
+
+            container.innerHTML = filtered.map(b => `
+                <div class="card" onclick="openBadgeDetails(${b.id})">
+                    <div style="display:flex; justify-content:space-between; align-items:center">
+                        <div>
+                            <div style="font-weight:bold">${b.nom} ${b.prenom || ''}</div>
+                            <div style="font-size:12px; color:#6B7280">Badge: ${b.badge_num || 'N/A'}</div>
+                        </div>
+                        <span class="status ${b.statut === 'Présent' ? 'status-present' : 'status-parti'}">${b.statut}</span>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        // ACTIONS MODALES
+        function openBadgeDetails(id) {
+            const b = state.badges.find(x => x.id === id);
+            const body = document.getElementById('modal-body');
+            body.innerHTML = `
+                <h3>${b.nom}</h3>
+                <p>Statut actuel : <strong>${b.statut}</strong></p>
+                <div class="form-group" style="margin-top:15px">
+                    <label>Casier :</label>
+                    <input type="text" class="form-control" value="${b.casier_num || 'Aucun'}" id="edit-casier">
+                </div>
+                <button class="btn btn-primary" onclick="togglePresence(${b.id})">
+                    ${b.statut === 'Présent' ? '🚪 Marquer Départ' : '🍽️ Marquer Arrivée'}
+                </button>
+                <button class="btn btn-secondary" onclick="closeModal()">Fermer</button>
+            `;
+            document.getElementById('modal-overlay').style.display = 'flex';
+        }
+
+        async function togglePresence(id) {
+            const b = state.badges.find(x => x.id === id);
+            const newStatus = b.statut === 'Présent' ? 'Parti' : 'Présent';
+            
+            // Mise à jour Supabase
+            const res = await fetch(`${SUPABASE_URL}/rest/v1/lp24_badges?id=eq.${id}`, {
+                method: 'PATCH',
+                headers: { 
+                    'apikey': SUPABASE_KEY, 
+                    'Authorization': `Bearer ${SUPABASE_KEY}`,
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ statut: newStatus, date_maj: new Date().toISOString() })
+            });
+
+            if(res.ok) {
+                alert(`Statut mis à jour : ${newStatus}`);
+                closeModal();
+                loadData();
+            }
+        }
+
+        function closeModal() { document.getElementById('modal-overlay').style.display = 'none'; }
+
+        // Initialisation
+        window.onload = loadData;
+    </script>
+</body>
+</html>}
 
 .nav-btn .material-icons {
   font-size: 24px !important;
