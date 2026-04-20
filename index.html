@@ -7,20 +7,21 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="default"/>
 <title>Gestion Collaborateurs LP24</title>
 <style>
-/* Remplacez la section #nav et .nav-btn par ceci */
+/* --- NOUVEAU STYLE NAVIGATION --- */
 #nav {
   background: #0F172A;
-  display: flex !important; /* Force l'affichage horizontal */
-  justify-content: space-around; 
+  display: flex !important; /* Force l'affichage en ligne */
+  justify-content: space-around; /* Répartit les icônes sur toute la largeur */
   align-items: center;
-  height: 65px;
+  height: 60px;
   padding: 0;
-  position: fixed; /* Fixé en bas pour l'iPhone */
-  bottom: 0;
-  left: 0;
-  right: 0;
+  position: sticky;
+  top: 0;
   z-index: 1000;
+  overflow: hidden !important; /* Supprime le défilement */
 }
+
+.nav-brand { display: none; } /* On cache le texte "LP24" pour gagner de la place */
 
 .nav-btn {
   display: flex !important;
@@ -32,19 +33,26 @@
   color: #94A3B8;
   flex: 1;
   height: 100%;
-  font-size: 20px; /* Taille des icônes */
+  cursor: pointer;
 }
 
-/* On cache le texte des boutons sur mobile pour n'avoir que les icônes sur une ligne */
+.nav-btn .material-icons {
+  font-size: 24px !important;
+}
+
 .nav-btn span:not(.material-icons) {
-  display: none; 
+  font-size: 10px;
+  margin-top: 2px;
+  display: block !important; /* Affiche le titre en petit sous l'icône */
 }
 
 .nav-btn.active {
   color: #60A5FA;
-  border-top: 3px solid #60A5FA;
+  background: rgba(255,255,255,0.05);
 }
 
+/* Cache définitivement le menu mobile moche */
+#mobile-nav, .mobile-only, .hamburger { display: none !important; }
 /* ── NAV ── */
 #nav{background:#0F172A;display:flex;align-items:center;height:52px;padding:0 12px;gap:4px;overflow-x:auto;position:sticky;top:0;z-index:100;box-shadow:0 2px 8px rgba(0,0,0,.3)}
 #nav::-webkit-scrollbar{display:none}
