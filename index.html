@@ -105,15 +105,15 @@ tbody td{padding:8px 10px;vertical-align:middle}
 
 /* ── MOBILE NAV ── */
 @media(max-width:600px){
-  .desktop-only{display:none!important}
-  #main{padding:12px;padding-bottom:70px}
-  .form-grid{grid-template-columns:1fr 1fr}
+  #mobile-nav {
+    display: flex !important; /* Force l'affichage */
+    justify-content: space-around;
+    padding-bottom: 20px; /* Espace pour la barre iPhone */
+    height: 70px;
+  }
+  .mobile-nav-btn span { font-size: 24px; } /* Icônes plus grandes */
+  .mobile-nav-btn { font-size: 0; } /* Masque le texte si vous ne voulez que les icônes */
 }
-#mobile-nav{display:none;position:fixed;bottom:0;left:0;right:0;background:#0F172A;z-index:100;box-shadow:0 -2px 12px rgba(0,0,0,.2);padding-bottom:env(safe-area-inset-bottom)}
-@media(max-width:600px){#mobile-nav{display:flex}#nav{display:none}}
-.mobile-nav-btn{flex:1;background:none;border:none;border-top:3px solid transparent;color:rgba(255,255,255,.5);padding:6px 2px;font-size:8px;font-weight:600;cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:2px}
-.mobile-nav-btn.active{color:#fff;border-top-color:#0891B2}
-.mobile-nav-btn span{font-size:18px}
 
 /* ── PRINT ── */
 @media print{#nav,#mobile-nav,.no-print{display:none!important}body{background:#fff}}
