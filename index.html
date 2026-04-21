@@ -229,12 +229,14 @@ function VueAccueil({badges,casiers,setView,wdCache,setBadges,setCasiers,showToa
         React.createElement("p",{style:{color:"rgba(255,255,255,.65)",fontSize:12}},"Badges & Casiers — Prochain rapport : "+getNextFriday())
       )
     ),
-    React.createElement("div",{style:{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(120px,1fr))",gap:12,marginBottom:16}},
-      React.createElement(KPI,{label:"Actifs",value:actifs.length,color:C.green,onClick:()=>setView("collaborateurs")}),
-      React.createElement(KPI,{label:"À récupérer",value:aRecuperer.length,color:C.red,onClick:()=>setView("collaborateurs")}),
-      React.createElement(KPI,{label:"Casiers libres",value:libres.length,color:C.blue,sub:libres.length+"/"+casiers.length,onClick:()=>setView("casiers")}),
-      React.createElement(KPI,{label:"Workday chargé",value:wdCache?Object.keys(wdCache).length:0,color:C.purple}),
-      React.createElement(KPI,{label:"Archives",value:archives.length,color:C.gray,onClick:()=>setView("archives")})
+    RReact.createElement("div",{style:{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(120px,1fr))",gap:12,marginBottom:16}},
+  React.createElement(KPI,{label:"Actifs",value:actifs.length,color:C.green,onClick:()=>setView("collaborateurs")}),
+  React.createElement(KPI,{label:"À récupérer",value:aRecuperer.length,color:C.red,onClick:()=>setView("collaborateurs")}),
+  React.createElement(KPI,{label:"Casiers libres",value:libres.length,color:C.blue,sub:libres.length+"/"+casiers.length,onClick:()=>setView("casiers")}),
+  React.createElement(KPI,{label:"Workday chargé",value:wdCache?Object.keys(wdCache).length:0,color:C.purple}),
+  React.createElement(KPI,{label:"⚠️ Doublons badge",value:(()=>{const c={};badges.forEach(b=>{if(b.serie&&b.statut!=="Archivé")c[b.serie]=(c[b.serie]||0)+1});return Object.values(c).filter(v=>v>1).length;})(),color:"#F59E0B",onClick:()=>setView("collaborateurs")}),
+  React.createElement(KPI,{label:"Archives",value:archives.length,color:C.gray,onClick:()=>setView("archives")})
+),
     ),
     (sansMatAvecBadge.length>0||sansMatSansBadge.length>0||avecMatSansBadge.length>0)&&React.createElement("div",{style:{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(130px,1fr))",gap:10,marginBottom:16}},
       sansMatAvecBadge.length>0&&React.createElement(KPI,{label:"Badge sans matricule",value:sansMatAvecBadge.length,color:"#E74C3C",icon:"🔴",sub:"Ont un badge",onClick:()=>setView("collaborateurs"),style:{background:"#FEF2F2"}}),
