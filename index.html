@@ -39,13 +39,48 @@
 <body>
 <div id="root"></div>
 <script>
-const{useState,useMemo,useCallback,useEffect,useRef}=React;
-const C={blue:"#0891B2",blueBg:"#E0F2FE",purple:"#7C3AED",purpleBg:"#F5F3FF",green:"#00B050",greenBg:"#E6F9EE",red:"#E74C3C",redBg:"#FDEDEC",orange:"#ED7D31",orangeBg:"#FDF2E9",gray:"#808080",grayBg:"#F5F5F5",dark:"#0F172A"};
-const ZONES=["DE","PA","SE","LV"];
-const ZONES_LABELS={DE:"Défense",PA:"Paris",SE:"Seine",LV:"Levallois"};
-const ZONES_COLORS={DE:"#2F5496",PA:"#ED7D31",SE:"#7C3AED",LV:"#00B050"};
+const { useState, useMemo, useCallback, useEffect, useRef } = React;
+
+// --- CONFIGURATION SUPABASE ---
 const SUPABASE_URL = 'https://jymobewqenhcjtzniytb.supabase.co';
 const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imp5bW9iZXdxZW5oY2p0em5peXRiIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzY2MjQ5NTEsImV4cCI6MjA5MjIwMDk1MX0.CpqOnvJ4YtsYHw6fSE7Xyj5MOXkXx-gBwT69J0F46p0';
+const sb = window.supabase ? window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY) : null;
+
+// --- COMPOSANT PRINCIPAL ---
+function App() {
+  const [badges, setBadges] = useState([]);
+  const [casiers, setCasiers] = useState([]);
+  const [loading, setLoading] = useState(true);
+
+  // 1. CHARGEMENT AU DÉMARRAGE
+  useEffect(() => {
+    async function load() {
+      if (!sb) return;
+      const { data: b } = await sb.from('lp24_badges').select('*');
+      const { data: c } = await sb.from('lp24_casiers').select('*');
+      if (b) setBadges(b.map(item => item.data));
+      if (c) setCasiers(c.map(item => item.data));
+      setLoading(false);
+    }
+    load();
+  }, []);
+
+  // 2. FONCTION DE SAUVEGARDE (À appeler sur votre bouton)
+  const handleSave = async () => {
+    if (!sb) return alert("Supabase non connecté");
+    
+    // On vide et on remplace (méthode simple)
+    await sb.from('lp24_badges').delete().neq('id', 0);
+    await sb.from('lp24_casiers').delete().neq('id', 0);
+
+    const { error: err1 } = await sb.from('lp24_badges').insert(badges.map(b => ({ data: b })));
+    const { error: err2 } = await sb.from('lp24_casiers').insert(casiers.map(c => ({ data: c })));
+
+    if (err1 || err2) alert("Erreur lors de la sauvegarde");
+    else alert("✅ Sauvegardé avec succès !");
+  };
+
+  // ... RESTE DE VOTRE CODE (Rendu HTML, etc.) ...
 
 var sb = // Fonction pour charger les données au démarrage
 const fetchData = async (tableName, setter) => {
