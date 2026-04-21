@@ -47,7 +47,34 @@ const ZONES_COLORS={DE:"#2F5496",PA:"#ED7D31",SE:"#7C3AED",LV:"#00B050"};
 const SUPABASE_URL = 'https://jymobewqenhcjtzniytb.supabase.co';
 const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imp5bW9iZXdxZW5oY2p0em5peXRiIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzY2MjQ5NTEsImV4cCI6MjA5MjIwMDk1MX0.CpqOnvJ4YtsYHw6fSE7Xyj5MOXkXx-gBwT69J0F46p0';
 
-var sb = null;
+var sb = // Fonction pour charger les données au démarrage
+const fetchData = async (tableName, setter) => {
+  const { data, error } = await sb
+    .from(tableName)
+    .select('*')
+    .order('created_at', { ascending: true });
+
+  if (error) {
+    console.error(Erreur de lecture ${tableName}:, error.message);
+  } else if (data) {
+    setter(data); // Met à jour l'état React avec les données de la base
+  }
+};
+
+// Fonction pour SAUVEGARDER (écrase et remplace pour rester simple)
+const syncWithSupabase = async (tableName, dataArray) => {
+  if (!sb || dataArray.length === 0) return;
+
+  // 1. On supprime les anciennes données pour cette table (pour éviter les doublons)
+  // Attention: cela demande une politique DELETE sur Supabase
+  await sb.from(tableName).delete().neq('id', 0); 
+
+  // 2. On insère les nouvelles données
+  const cleanData = dataArray.map(({ id, ...rest }) => rest);
+  const { error } = await sb.from(tableName).insert(cleanData);
+
+  if (error) console.error("Erreur synchro:", error.message);
+};
 try {
   // Correction ici : on utilise SUPABASE_KEY (le bon nom de variable)
   if (window.supabase) {
