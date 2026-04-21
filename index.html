@@ -73,7 +73,7 @@ function LoginScreen({onUnlock}){
     React.createElement("div",{style:{background:"#fff",borderRadius:16,boxShadow:"0 8px 40px rgba(0,0,0,.3)",padding:"40px 48px",width:380,textAlign:"center",animation:shake?"shake .4s":"none"}},
       React.createElement("div",{style:{fontSize:48,marginBottom:8}},"👥"),
       React.createElement("h1",{style:{fontSize:22,fontWeight:700,color:"#0F172A",marginBottom:4}},"Gestion des Collaborateurs"),
-      React.createElement("p",{style:{fontSize:13,color:"#6B7280",marginBottom:24}},"Badges & Casiers — La Défense"),
+      React.createElement("p",{style:{fontSize:13,color:"#6B7280",marginBottom:24}},""),
       React.createElement("input",{type:"password",value:pwd,onChange:e=>setPwd(e.target.value),onKeyDown:e=>e.key==="Enter"&&check(),placeholder:"Mot de passe",style:{width:"100%",padding:"10px 14px",borderRadius:8,border:err?"2px solid #E74C3C":"2px solid #D1D5DB",fontSize:14,outline:"none",marginBottom:8,boxSizing:"border-box"}}),
       err&&React.createElement("p",{style:{color:"#E74C3C",fontSize:12,marginBottom:8}},"Mot de passe incorrect."),
       React.createElement("button",{onClick:check,style:{width:"100%",background:"#0891B2",color:"#fff",border:"none",borderRadius:8,padding:"10px 0",fontSize:14,fontWeight:700,cursor:"pointer"}},"Connexion"),
