@@ -46,7 +46,16 @@ const ZONES_LABELS={DE:"Défense",PA:"Paris",SE:"Seine",LV:"Levallois"};
 const ZONES_COLORS={DE:"#2F5496",PA:"#ED7D31",SE:"#7C3AED",LV:"#00B050"};
 const SUPABASE_URL = 'https://jymobewqenhcjtzniytb.supabase.co';
 const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imp5bW9iZXdxZW5oY2p0em5peXRiIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzY2MjQ5NTEsImV4cCI6MjA5MjIwMDk1MX0.CpqOnvJ4YtsYHw6fSE7Xyj5MOXkXx-gBwT69J0F46p0';
-var sb=null;
+
+var sb = null;
+try {
+  // Correction ici : on utilise SUPABASE_KEY (le bon nom de variable)
+  if (window.supabase) {
+    sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+  }
+} catch(e) {
+  console.error("Erreur d'initialisation Supabase:", e);
+}
 try{if(window.supabase)sb=window.supabase.createClient(SUPABASE_URL,SUPABASE_ANON_KEY);}catch(e){}
 const nxId=arr=>Math.max(0,...arr.map(x=>x.id||0))+1;
 const fmt=d=>d?new Date(d+"T00:00:00").toLocaleDateString("fr-FR"):"—";
