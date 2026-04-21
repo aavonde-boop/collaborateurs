@@ -336,17 +336,16 @@ function VueCollaborateurs({badges,casiers,setBadges,setCasiers,showToast,wdCach
     if(editing){
       const old=badges.find(b=>b.id===editing);const updated={...old,...form};
       setBadges(p=>p.map(b=>b.id===editing?updated:b));
-      if(sb) await sb.from("lp24_badges").upsert(updated);
+      if(sb)sb.from("lp24_badges").upsert(updated);
       await syncCasier(old.casier,form.casier,form.nom,form.prenom,form.matricule);
       addLog("Modification",form.prenom+" "+form.nom);showToast("✅ Collaborateur mis à jour");
     }else{
       const nb={...form,id:nxId(badges)};setBadges(p=>[...p,nb]);
-      if(sb){const{id,...row}=nb; await sb.from("lp24_badges").insert(row);}
+      if(sb){const{id,...row}=nb;sb.from("lp24_badges").insert(row);}
       await syncCasier("",form.casier,form.nom,form.prenom,form.matricule);
       addLog("Ajout",form.prenom+" "+form.nom);showToast("✅ Collaborateur ajouté");
     }
-    setShowForm(false);setEditing(null);(null);
-};
+    setShowForm(false);setEditing(null);
   };
   const archiver=async id=>{
     if(!confirm("Archiver ce collaborateur ?"))return;
