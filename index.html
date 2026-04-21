@@ -345,7 +345,7 @@ function VueCollaborateurs({badges,casiers,setBadges,setCasiers,showToast,wdCach
       await syncCasier("",form.casier,form.nom,form.prenom,form.matricule);
       addLog("Ajout",form.prenom+" "+form.nom);showToast("✅ Collaborateur ajouté");
     }
-    setShowForm(false);setEditing(null);
+    setShowForm(false);setEditing(null);(null);
 };
   };
   const archiver=async id=>{
