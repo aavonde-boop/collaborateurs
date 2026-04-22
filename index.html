@@ -418,6 +418,14 @@ function VueCollaborateurs({badges,casiers,setBadges,setCasiers,showToast,wdCach
           React.createElement("option",{value:"Archivé"},"Archivés")
         ),
         (search||fStat)&&React.createElement(Btn,{variant:"outline",color:C.gray,onClick:()=>{setSearch("");setFStat("");}},"✕ Effacer"),
+        React.createElement(Btn,{onClick:async()=>{
+          // Sauvegarder TOUS les badges vers Supabase
+          const allBadges = badges.filter(b => b.statut !== "Archivé");
+          for(const b of allBadges){
+            await sb.from("lp24_badges").upsert(b);
+          }
+          showToast(`✅ ${allBadges.length} collaborateurs sauvegardés`);
+        },color:C.green},"💾 Enregistrer tout"),
         React.createElement("span",{style:{fontSize:12,color:"#9CA3AF",marginLeft:"auto"}},filtered.length+" collaborateur(s)")
       )
     ),
