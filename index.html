@@ -444,65 +444,128 @@ function VueCollaborateurs({badges,casiers,setBadges,setCasiers,showToast,wdCach
         ),
         React.createElement("tbody",null,
           filtered.map((b,i)=>{
-            const hasM=b.matricule&&String(b.matricule)!=="0";
-            const hasB=!!b.serie;
-            const doublon=hasB&&serieCount[b.serie]>1;
-            const zone=b.casier?b.casier.substring(0,2):"";const zcol=ZONES_COLORS[zone]||"#6B7280";
-            const sortieProche=b.date_sortie_prevue&&b.date_sortie_prevue<=aV7ISO&&b.date_sortie_prevue>=today;
-            const sortiePassee=b.date_sortie_prevue&&b.date_sortie_prevue<today&&b.statut==="Actif";
-            const isVIP=b.statut==="Badge VIP";const isPret=b.statut==="Badge prêt";
-            const bg=b.statut==="Archivé"?"#F5F5F5":b.statut==="À récupérer"?C.redBg:sortiePassee?"#FFF3CD":sortieProche?"#FFFBEB":isVIP?"#F5F3FF":isPret?"#EFF6FF":i%2===0?"#fff":"#F9FAFB";
-            return React.createElement("tr",{key:b.id,style:{background:bg,borderBottom:"1px solid #E5E7EB"},onMouseOver:e=>e.currentTarget.style.background=C.blueBg,onMouseOut:e=>e.currentTarget.style.background=bg},
-              React.createElement("td",{style:{padding:"7px 8px",fontSize:11,color:"#CBD5E1",textAlign:"center"}},i+1),
-              React.createElement("td",{style:{padding:"7px 8px",fontWeight:700,color:C.blue,fontSize:11}},!hasM?React.createElement("span",{style:{color:"#E74C3C",fontWeight:700,fontSize:10}},"NC"):b.matricule),
-              React.createElement("td",{style:{padding:"7px 8px",fontWeight:600}},b.nom||"—"),
-              React.createElement("td",{style:{padding:"7px 8px"}},b.prenom||"—"),
-              React.createElement("td",{style:{padding:"7px 8px"}},hasB?React.createElement("span",null,React.createElement("code",{style:{background:doublon?"#FEF3C7":"#F3F4F6",color:doublon?"#92400E":"inherit",padding:"1px 5px",borderRadius:3,fontSize:10,border:doublon?"1px solid #F59E0B":"none"}},b.serie),doublon&&React.createElement("span",{title:"Badge attribué à plusieurs !",style:{marginLeft:2,color:"#F59E0B",fontSize:11}},"⚠️")):"—"),
-              React.createElement("td",{style:{padding:"7px 8px",fontSize:10,color:"#6B7280"}},b.carte_rechargement||"—"),
-              React.createElement("td",{style:{padding:"7px 8px"}},b.casier?React.createElement("span",{style:{background:zcol+"22",color:zcol,fontWeight:700,padding:"1px 5px",borderRadius:4,fontSize:10}},b.casier):React.createElement("span",{style:{color:"#9CA3AF"}},"—")),
-              // Date sortie — cliquable
-              React.createElement("td",{style:{padding:"4px 5px"}},
-                b.statut!=="Archivé"?(
-                  b.date_sortie_prevue
-                  ?React.createElement("input",{type:"date",value:b.date_sortie_prevue,onClick:e=>e.stopPropagation(),onChange:async e=>{e.stopPropagation();const val=e.target.value;const upd={...b,date_sortie_prevue:val};setBadges(p=>p.map(x=>x.id===b.id?upd:x));if(sb)sb.from("lp24_badges").upsert(upd);addLog("Date sortie",b.prenom+" "+b.nom+" → "+val);showToast("✅ Date mise à jour");},style:{fontSize:10,padding:"2px 4px",borderRadius:4,border:"1px solid "+(sortieProche?C.orange:"#86efac"),background:sortieProche?"#FFFBEB":"#f0fdf4",width:108,colorScheme:"light"}})
-                  :React.createElement("label",{style:{cursor:"pointer",fontSize:13,color:"#9CA3AF",padding:"2px 8px",borderRadius:4,border:"1px dashed #D1D5DB",background:"#F9FAFB",userSelect:"none",display:"inline-block",position:"relative"},title:"Cliquer pour saisir une date de sortie"},"—",
-                    React.createElement("input",{type:"date",style:{position:"absolute",opacity:0,width:"100%",height:"100%",left:0,top:0,cursor:"pointer"},onChange:async e=>{e.stopPropagation();const val=e.target.value;if(!val)return;const upd={...b,date_sortie_prevue:val};setBadges(p=>p.map(x=>x.id===b.id?upd:x));if(sb)sb.from("lp24_badges").upsert(upd);addLog("Date sortie",b.prenom+" "+b.nom+" → "+val);showToast("✅ Date de sortie : "+val);},onClick:e=>e.stopPropagation()})
-                  )
-                ):React.createElement("span",{style:{fontSize:10,color:"#9CA3AF"}},fmt(b.date_sortie_prevue))
-              ),
-              React.createElement("td",{style:{padding:"7px 8px",fontSize:10,maxWidth:120,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}},b.manager||"—"),
-              React.createElement("td",{style:{padding:"7px 8px",fontSize:10,color:"#6B7280",maxWidth:120,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}},b.mail_manager||"—"),
-              React.createElement("td",{style:{padding:"7px 8px"}},React.createElement(Bdg,{color:"#fff",bg:statC[b.statut]||C.gray},b.statut)),
-              // Boutons mail
-              React.createElement("td",{style:{padding:"4px 6px",whiteSpace:"nowrap"}},
-                b.statut!=="Archivé"?React.createElement("div",{style:{display:"flex",gap:3}},
-                  React.createElement("button",{title:"Arrivée → Restaurant",style:{background:"#EBF5FB",border:"1px solid #AED6F1",borderRadius:5,cursor:"pointer",fontSize:12,padding:"2px 5px"},onClick:e=>{e.stopPropagation();mailArrivee(b);}},"🍽️"),
-                  React.createElement("button",{title:"Départ → Restaurant",style:{background:"#FDEDEC",border:"1px solid #F1948A",borderRadius:5,cursor:"pointer",fontSize:12,padding:"2px 5px"},onClick:e=>{e.stopPropagation();mailDepart(b);}},"🚪")
-                ):null
-              ),
-              // Actions
-              React.createElement("td",{style:{padding:"7px 8px"}},
-                b.statut!=="Archivé"?React.createElement("div",{style:{display:"flex",gap:3}},
-                  React.createElement("button",{title:"Modifier",onClick:()=>{
-                    const f={...b,carte_rechargement:b.carte_rechargement||""};setForm(f);setEditing(b.id);setShowForm(true);
-                    if(wdCache&&(!b.matricule||!b.email||!b.manager)){
-                      const n=b.nom.toUpperCase();const p=b.prenom.toLowerCase();
-                      const match=Object.values(wdCache).find(w=>{const wn=w.nom.toUpperCase();const wp=w.prenom.toLowerCase();return(wn.includes(n)||n.includes(wn))&&(wp.includes(p)||p.includes(wp));});
-                      if(match){const td2=match.termDate||"";const hd2=match.hireDate||"";const ds2=(td2&&(!hd2||td2>hd2))?td2:"";setTimeout(()=>setForm(prev=>({...prev,matricule:prev.matricule||match.matricule||"",email:prev.email||match.email||"",manager:prev.manager||match.manager||"",mail_manager:prev.mail_manager||match.mailMgr||"",date_sortie_prevue:prev.date_sortie_prevue||ds2})),50);showToast("✅ Workday auto-rempli : "+match.prenom+" "+match.nom);}
-                    }
-                  },style:{background:"none",border:"none",cursor:"pointer",fontSize:14}},"✏️"),
-                  React.createElement("button",{onClick:()=>archiver(b.id),title:"Archiver",style:{background:"none",border:"none",cursor:"pointer",fontSize:14}},"🗃️")
-                ):React.createElement("span",{style:{fontSize:10,color:"#9CA3AF"}},"—")
-              )
-            );
-          }),
-          filtered.length===0&&React.createElement("tr",null,React.createElement("td",{colSpan:13,style:{padding:32,textAlign:"center",color:"#9CA3AF"}},"Aucun collaborateur."))
-        )
+  const hasM=b.matricule&&String(b.matricule)!=="0";
+  const hasB=!!b.serie;
+  const doublon=hasB&&serieCount[b.serie]>1;
+  const zone=b.casier?b.casier.substring(0,2):""; const zcol=ZONES_COLORS[zone]||"#6B7280";
+  const sortieProche=b.date_sortie_prevue&&b.date_sortie_prevue<=aV7ISO&&b.date_sortie_prevue>=today;
+  const sortiePassee=b.date_sortie_prevue&&b.date_sortie_prevue<today&&b.statut==="Actif";
+  const isVIP=b.statut==="Badge VIP"; const isPret=b.statut==="Badge prêt";
+  const bg=b.statut==="Archivé"?"#F5F5F5":b.statut==="À récupérer"?C.redBg:sortiePassee?"#FFF3CD":sortieProche?"#FFFBEB":isVIP?"#F5F3FF":isPret?"#EFF6FF":i%2===0?"#fff":"#F9FAFB";
+  
+  // Fonction de sauvegarde générique
+  const updateField = async (id, field, value, showToastMsg = true) => {
+    // Mise à jour locale immédiate
+    setBadges(prev => prev.map(c => c.id === id ? {...c, [field]: value} : c));
+    // Sauvegarde vers Supabase
+    if(sb) {
+      const { error } = await sb.from("lp24_badges").update({ [field]: value }).eq("id", id);
+      if(error) console.error("Erreur sauvegarde", error);
+      else if(showToastMsg) showToast(`✅ ${field} mis à jour`);
+    }
+  };
+  
+  return React.createElement("tr",{key:b.id,style:{background:bg,borderBottom:"1px solid #E5E7EB"},onMouseOver:e=>e.currentTarget.style.background=C.blueBg,onMouseOut:e=>e.currentTarget.style.background=bg},
+    React.createElement("td",{style:{padding:"7px 8px",fontSize:11,color:"#CBD5E1",textAlign:"center"}},i+1),
+    
+    // Matricule
+    React.createElement("td",{style:{padding:"4px 5px"}},
+      React.createElement("input",{value:b.matricule||"",onChange:e=>updateField(b.id,"matricule",e.target.value),placeholder:"NC",style:{width:"80px",fontSize:11,fontWeight:700,color:C.blue,border:"1px solid #E5E7EB",borderRadius:4,padding:"4px 5px",background:"#fff"}})
+    ),
+    
+    // Nom
+    React.createElement("td",{style:{padding:"4px 5px"}},
+      React.createElement("input",{value:b.nom||"",onChange:e=>updateField(b.id,"nom",e.target.value.toUpperCase()),placeholder:"NOM",style:{width:"100px",fontSize:12,fontWeight:600,border:"1px solid #E5E7EB",borderRadius:4,padding:"4px 5px",background:"#fff"}})
+    ),
+    
+    // Prénom
+    React.createElement("td",{style:{padding:"4px 5px"}},
+      React.createElement("input",{value:b.prenom||"",onChange:e=>updateField(b.id,"prenom",e.target.value),placeholder:"Prénom",style:{width:"90px",fontSize:12,border:"1px solid #E5E7EB",borderRadius:4,padding:"4px 5px",background:"#fff"}})
+    ),
+    
+    // N° Badge
+    React.createElement("td",{style:{padding:"4px 5px"}},
+      React.createElement("input",{value:b.serie||"",onChange:e=>updateField(b.id,"serie",e.target.value),placeholder:"Badge",style:{width:"90px",fontSize:11,fontFamily:"monospace",border:"1px solid "+(doublon?"#F59E0B":"#E5E7EB"),borderRadius:4,padding:"4px 5px",background:doublon?"#FEF3C7":"#fff"}})
+    ),
+    
+    // Carte rechargement
+    React.createElement("td",{style:{padding:"4px 5px"}},
+      React.createElement("input",{value:b.carte_rechargement||"",onChange:e=>updateField(b.id,"carte_rechargement",e.target.value),placeholder:"Zeplug",style:{width:"80px",fontSize:10,border:"1px solid #E5E7EB",borderRadius:4,padding:"4px 5px",background:"#fff"}})
+    ),
+    
+    // Casier (sélecteur)
+    React.createElement("td",{style:{padding:"4px 5px"}},
+      React.createElement("select",{value:b.casier||"",onChange:e=>{
+        const newCasier = e.target.value;
+        updateField(b.id,"casier",newCasier, false);
+        if(b.casier && b.casier !== newCasier){
+          setCasiers(prev => prev.map(c => c.numero === b.casier ? {...c, statut:"Libre", occupant:"", matricule:""} : c));
+          if(sb) sb.from("lp24_casiers").update({statut:"Libre", occupant:"", matricule:""}).eq("numero",b.casier);
+        }
+        if(newCasier){
+          setCasiers(prev => prev.map(c => c.numero === newCasier ? {...c, statut:"Occupé", occupant:b.nom+" "+b.prenom, matricule:b.matricule} : c));
+          if(sb) sb.from("lp24_casiers").update({statut:"Occupé", occupant:b.nom+" "+b.prenom, matricule:b.matricule}).eq("numero",newCasier);
+        }
+        showToast(`✅ Casier ${newCasier || "retiré"}`);
+      },style:{width:"70px",fontSize:11,fontWeight:700,padding:"4px 5px",borderRadius:4,border:"1px solid "+zcol,background:"#fff"}},
+        React.createElement("option",{value:""},"—"),
+        casiers.filter(c=>c.statut==="Libre" || c.numero===b.casier).map(c=>React.createElement("option",{key:c.id,value:c.numero},c.numero))
       )
+    ),
+    
+    // Date sortie
+    React.createElement("td",{style:{padding:"4px 5px"}},
+      b.statut!=="Archivé"?(
+        b.date_sortie_prevue
+        ?React.createElement("input",{type:"date",value:b.date_sortie_prevue,onChange:e=>updateField(b.id,"date_sortie_prevue",e.target.value),style:{fontSize:10,padding:"4px",borderRadius:4,border:"1px solid "+(sortieProche?C.orange:"#86efac"),background:sortieProche?"#FFFBEB":"#f0fdf4",width:108}})
+        :React.createElement("label",{style:{cursor:"pointer",fontSize:13,color:"#9CA3AF",padding:"2px 8px",borderRadius:4,border:"1px dashed #D1D5DB",background:"#F9FAFB",display:"inline-block",position:"relative"},title:"Cliquer pour ajouter"},
+          "—",
+          React.createElement("input",{type:"date",style:{position:"absolute",opacity:0,width:"100%",height:"100%",left:0,top:0,cursor:"pointer"},onChange:e=>{if(e.target.value)updateField(b.id,"date_sortie_prevue",e.target.value);}})
+        )
+      ):React.createElement("span",{style:{fontSize:10,color:"#9CA3AF"}},fmt(b.date_sortie_prevue))
+    ),
+    
+    // Manager
+    React.createElement("td",{style:{padding:"4px 5px"}},
+      React.createElement("input",{value:b.manager||"",onChange:e=>updateField(b.id,"manager",e.target.value),placeholder:"Manager",style:{width:"100px",fontSize:10,border:"1px solid #E5E7EB",borderRadius:4,padding:"4px 5px",background:"#fff"}})
+    ),
+    
+    // Email Manager
+    React.createElement("td",{style:{padding:"4px 5px"}},
+      React.createElement("input",{value:b.mail_manager||"",onChange:e=>updateField(b.id,"mail_manager",e.target.value),placeholder:"email@ex.com",style:{width:"110px",fontSize:10,border:"1px solid #E5E7EB",borderRadius:4,padding:"4px 5px",background:"#fff"}})
+    ),
+    
+    // Statut
+    React.createElement("td",{style:{padding:"4px 5px"}},
+      React.createElement("select",{value:b.statut,onChange:e=>updateField(b.id,"statut",e.target.value),style:{padding:"4px 5px",borderRadius:4,border:"1px solid "+(statC[b.statut]||C.gray),background:"#fff",fontSize:11,fontWeight:600,color:statC[b.statut]||C.gray}},
+        ["Actif","À récupérer","Badge prêt","Badge VIP","Futur arrivant"].map(s=>React.createElement("option",{key:s,value:s},s))
+      )
+    ),
+    
+    // Boutons mail
+    React.createElement("td",{style:{padding:"4px 6px",whiteSpace:"nowrap"}},
+      b.statut!=="Archivé"?React.createElement("div",{style:{display:"flex",gap:3}},
+        React.createElement("button",{title:"Arrivée → Restaurant",style:{background:"#EBF5FB",border:"1px solid #AED6F1",borderRadius:5,cursor:"pointer",fontSize:12,padding:"2px 5px"},onClick:e=>{e.stopPropagation();mailArrivee(b);}},"🍽️"),
+        React.createElement("button",{title:"Départ → Restaurant",style:{background:"#FDEDEC",border:"1px solid #F1948A",borderRadius:5,cursor:"pointer",fontSize:12,padding:"2px 5px"},onClick:e=>{e.stopPropagation();mailDepart(b);}},"🚪")
+      ):null
+    ),
+    
+    // Actions
+    React.createElement("td",{style:{padding:"7px 8px"}},
+      b.statut!=="Archivé"?React.createElement("div",{style:{display:"flex",gap:3}},
+        React.createElement("button",{title:"Modifier (modal complet)",onClick:()=>{
+          const f={...b,carte_rechargement:b.carte_rechargement||""};setForm(f);setEditing(b.id);setShowForm(true);
+          if(wdCache&&(!b.matricule||!b.email||!b.manager)){
+            const n=b.nom.toUpperCase();const p=b.prenom.toLowerCase();
+            const match=Object.values(wdCache).find(w=>{const wn=w.nom.toUpperCase();const wp=w.prenom.toLowerCase();return(wn.includes(n)||n.includes(wn))&&(wp.includes(p)||p.includes(wp));});
+            if(match){const td2=match.termDate||"";const hd2=match.hireDate||"";const ds2=(td2&&(!hd2||td2>hd2))?td2:"";setTimeout(()=>setForm(prev=>({...prev,matricule:prev.matricule||match.matricule||"",email:prev.email||match.email||"",manager:prev.manager||match.manager||"",mail_manager:prev.mail_manager||match.mailMgr||"",date_sortie_prevue:prev.date_sortie_prevue||ds2})),50);showToast("✅ Workday auto-rempli : "+match.prenom+" "+match.nom);}
+          }
+        },style:{background:"none",border:"none",cursor:"pointer",fontSize:14}},"✏️"),
+        React.createElement("button",{onClick:()=>archiver(b.id),title:"Archiver",style:{background:"none",border:"none",cursor:"pointer",fontSize:14}},"🗃️")
+      ):React.createElement("span",{style:{fontSize:10,color:"#9CA3AF"}},"—")
     )
   );
-}
-
+})
 // ════════════════ VUE CASIERS ════════════════
 function VueCasiers({casiers,badges,setCasiers,showToast,addLog}){
   const[fZone,setFZone]=useState("");const[fStat,setFStat]=useState("");const[search,setSearch]=useState("");
