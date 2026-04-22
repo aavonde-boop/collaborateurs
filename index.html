@@ -212,24 +212,8 @@ function VueAccueil({badges,casiers,setView,wdCache,setBadges,setCasiers,showToa
   const avecMatSansBadge=actifsSansArch.filter(b=>b.matricule&&String(b.matricule)!=="0"&&!b.serie);
   const[nomDep,setNomDep]=useState("");const[prenomDep,setPrenomDep]=useState("");const[dateDep,setDateDep]=useState("");
   const[nomArr,setNomArr]=useState("");const[prenomArr,setPrenomArr]=useState("");
-  const enrDep=()=>{if(!nomDep.trim()&&!prenomDep.trim()){showToast("⚠️ Saisissez nom ou prénom","err");return;}const c=badges.find(b=>(b.nom.toLowerCase().includes(nomDep.toLowerCase())||!nomDep)&&(b.prenom.toLowerCase().includes(prenomDep.toLowerCase())||!prenomDep)&&b.statut!=="Archivé");if(!c){showToast("⚠️ Collaborateur introuvable","err");return;}const u={...c,date_sortie_prevue:dateDep||today};setBadges(p=>p.map(b=>b.id===c.id?u:b));if(sb)sb.from("lp24_badges").upsert(u);addLog("Départ","Date sortie : "+c.prenom+" "+c.nom+(dateDep?" → "+dateDep:""));showToast("✅ Départ enregistré pour "+c.prenom+" "+c.nom);const refreshData = async () => {
-  if(sb){
-    const { data } = await sb.from("lp24_badges").select("*");
-    setBadges(data);
-    const { data: casData } = await sb.from("lp24_casiers").select("*");
-    setCasiers(casData);
-    showToast("✅ Données mises à jour");
-  }
-};;setNomDep("");setPrenomDep("");setDateDep("");};
-  const enrArr=()=>{if(!nomArr.trim()&&!prenomArr.trim()){showToast("⚠️ Saisissez nom ou prénom","err");return;}const wd=wdCache?Object.values(wdCache).find(w=>(w.nom.includes(nomArr.toUpperCase())||!nomArr)&&(w.prenom.toLowerCase().includes(prenomArr.toLowerCase())||!prenomArr)):null;const ex=badges.find(b=>(b.nom.toLowerCase().includes(nomArr.toLowerCase())||!nomArr)&&(b.prenom.toLowerCase().includes(prenomArr.toLowerCase())||!prenomArr)&&b.statut!=="Archivé");if(ex){showToast("⚠️ Ce collaborateur existe déjà","err");return;}const nb={id:nxId(badges),nom:wd?wd.nom:nomArr.toUpperCase(),prenom:wd?wd.prenom:prenomArr,matricule:wd?wd.matricule:"",email:wd?wd.email:"",serie:"",zeplug:"",carte_rechargement:"",casier:"",manager:wd?wd.manager:"",mail_manager:wd?wd.mailMgr:"",statut:"Actif",date_sortie_prevue:"",date_archive:"",commentaire:""};setBadges(p=>[...p,nb]);if(sb){const{id,...row}=nb;sb.from("lp24_badges").insert(row);}addLog("Arrivée",(wd?"Workday":"Manuel")+" : "+nb.prenom+" "+nb.nom);showToast("✅ "+(wd?"Arrivée avec données Workday":"Arrivée enregistrée")+" — "+nb.prenom+" "+nb.nom);const refreshData = async () => {
-  if(sb){
-    const { data } = await sb.from("lp24_badges").select("*");
-    setBadges(data);
-    const { data: casData } = await sb.from("lp24_casiers").select("*");
-    setCasiers(casData);
-    showToast("✅ Données mises à jour");
-  }
-};;setNomArr("");setPrenomArr("");};
+  const enrDep=()=>{if(!nomDep.trim()&&!prenomDep.trim()){showToast("⚠️ Saisissez nom ou prénom","err");return;}const c=badges.find(b=>(b.nom.toLowerCase().includes(nomDep.toLowerCase())||!nomDep)&&(b.prenom.toLowerCase().includes(prenomDep.toLowerCase())||!prenomDep)&&b.statut!=="Archivé");if(!c){showToast("⚠️ Collaborateur introuvable","err");return;}const u={...c,date_sortie_prevue:dateDep||today};setBadges(p=>p.map(b=>b.id===c.id?u:b));if(sb)sb.from("lp24_badges").upsert(u);addLog("Départ","Date sortie : "+c.prenom+" "+c.nom+(dateDep?" → "+dateDep:""));showToast("✅ Départ enregistré pour "+c.prenom+" "+c.nom);setTimeout(() => { window.location.reload(); }, 500);setNomDep("");setPrenomDep("");setDateDep("");};
+  const enrArr=()=>{if(!nomArr.trim()&&!prenomArr.trim()){showToast("⚠️ Saisissez nom ou prénom","err");return;}const wd=wdCache?Object.values(wdCache).find(w=>(w.nom.includes(nomArr.toUpperCase())||!nomArr)&&(w.prenom.toLowerCase().includes(prenomArr.toLowerCase())||!prenomArr)):null;const ex=badges.find(b=>(b.nom.toLowerCase().includes(nomArr.toLowerCase())||!nomArr)&&(b.prenom.toLowerCase().includes(prenomArr.toLowerCase())||!prenomArr)&&b.statut!=="Archivé");if(ex){showToast("⚠️ Ce collaborateur existe déjà","err");return;}const nb={id:nxId(badges),nom:wd?wd.nom:nomArr.toUpperCase(),prenom:wd?wd.prenom:prenomArr,matricule:wd?wd.matricule:"",email:wd?wd.email:"",serie:"",zeplug:"",carte_rechargement:"",casier:"",manager:wd?wd.manager:"",mail_manager:wd?wd.mailMgr:"",statut:"Actif",date_sortie_prevue:"",date_archive:"",commentaire:""};setBadges(p=>[...p,nb]);if(sb){const{id,...row}=nb;sb.from("lp24_badges").insert(row);}addLog("Arrivée",(wd?"Workday":"Manuel")+" : "+nb.prenom+" "+nb.nom);showToast("✅ "+(wd?"Arrivée avec données Workday":"Arrivée enregistrée")+" — "+nb.prenom+" "+nb.nom);setTimeout(() => { window.location.reload(); }, 500);setNomArr("");setPrenomArr("");};
   return React.createElement("div",null,
     expirantBientot.length>0&&React.createElement("div",{className:"notif-bar no-print",style:{background:"#FEF3C7",border:"2px solid #F59E0B",borderRadius:10,padding:"10px 16px",marginBottom:16,display:"flex",alignItems:"center",gap:10}},
       React.createElement("span",{style:{fontSize:20}},"⏰"),
@@ -347,7 +331,7 @@ function VueCollaborateurs({badges,casiers,setBadges,setCasiers,showToast,wdCach
     if(match){const td=match.termDate||"";const hd=match.hireDate||"";const ds=(td&&(!hd||td>hd))?td:"";setForm(f=>({...f,matricule:f.matricule||match.matricule||"",email:f.email||match.email||"",manager:f.manager||match.manager||"",mail_manager:f.mail_manager||match.mailMgr||"",date_sortie_prevue:f.date_sortie_prevue||ds}));showToast("✅ Workday : "+match.prenom+" "+match.nom+(ds?" — sortie : "+ds:""));}
     else showToast("⚠️ Introuvable dans Workday : "+form.prenom+" "+form.nom,"err");
   };
-const save=async()=>{
+  const save=async()=>{
     if(!form.nom.trim())return;
     if(form.serie){const autre=badges.find(b=>b.serie===form.serie&&b.id!==editing&&b.statut!=="Archivé");if(autre&&!confirm("⚠️ Badge N°"+form.serie+" déjà attribué à "+autre.prenom+" "+autre.nom+".\nContinuer ?"))return;}
     if(editing){
@@ -362,21 +346,8 @@ const save=async()=>{
       await syncCasier("",form.casier,form.nom,form.prenom,form.matricule);
       addLog("Ajout",form.prenom+" "+form.nom);showToast("✅ Collaborateur ajouté");
     }
-    setShowForm(false);
-    setEditing(null);
-    setBadges([...badges]); // ← AJOUTER ICI
-};
-    }
-    const refreshData = async () => {
-  if(sb){
-    const { data } = await sb.from("lp24_badges").select("*");
-    setBadges(data);
-    const { data: casData } = await sb.from("lp24_casiers").select("*");
-    setCasiers(casData);
-    showToast("✅ Données mises à jour");
-  }
-};
-    setView("collaborateurs");
+    setTimeout(() => { window.location.reload(); }, 500);
+    setShowForm(false);setEditing(null);
   };
   const archiver=async id=>{
     if(!confirm("Archiver ce collaborateur ?"))return;
@@ -386,15 +357,7 @@ const save=async()=>{
     setBadges(p=>p.map(x=>x.id===id?updated:x));
     if(sb)sb.from("lp24_badges").upsert(updated);
     addLog("Archivage",b.prenom+" "+b.nom);showToast("🗃️ Archivé");
-    const refreshData = async () => {
-  if(sb){
-    const { data } = await sb.from("lp24_badges").select("*");
-    setBadges(data);
-    const { data: casData } = await sb.from("lp24_casiers").select("*");
-    setCasiers(casData);
-    showToast("✅ Données mises à jour");
-  }
-};
+    setTimeout(() => { window.location.reload(); }, 500);
   };
   const casLibres=casiers.filter(c=>c.statut==="Libre"||(editing&&c.numero===form.casier));
   const restEmail=settings?.restaurantEmail||"";const ccEmails=settings?.ccEmails||"";
@@ -409,11 +372,11 @@ const save=async()=>{
       React.createElement(Btn,{onClick:()=>{setForm(empty);setEditing(null);setShowForm(!showForm);},color:C.blue},"+ Nouveau collaborateur")
     ),
     // Modal formulaire
-    showForm&&React.createElement("div",{style:{position:"fixed",inset:0,background:"rgba(0,0,0,.5)",zIndex:1000,display:"flex",alignItems:"center",justifyContent:"center",padding:16},onClick:e=>{if(e.target===e.currentTarget){setView("collaborateurs");}}},
+    showForm&&React.createElement("div",{style:{position:"fixed",inset:0,background:"rgba(0,0,0,.5)",zIndex:1000,display:"flex",alignItems:"center",justifyContent:"center",padding:16},onClick:e=>{if(e.target===e.currentTarget){setShowForm(false);setEditing(null);}}},
       React.createElement("div",{style:{background:"#fff",borderRadius:14,boxShadow:"0 8px 40px rgba(0,0,0,.25)",padding:24,width:"100%",maxWidth:820,maxHeight:"90vh",overflowY:"auto",borderTop:"4px solid "+C.blue}},
         React.createElement("div",{style:{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:12}},
           React.createElement("h3",{style:{fontWeight:700,color:C.blue,fontSize:16}},editing?"✏️ Modifier le collaborateur":"+ Nouveau collaborateur"),
-          React.createElement("button",{onClick:()=>{setView("collaborateurs");},style:{background:"none",border:"none",fontSize:22,cursor:"pointer",color:"#9CA3AF"}},"×")
+          React.createElement("button",{onClick:()=>{setShowForm(false);setEditing(null);},style:{background:"none",border:"none",fontSize:22,cursor:"pointer",color:"#9CA3AF"}},"×")
         ),
         React.createElement("div",{style:{display:"flex",alignItems:"center",gap:8,marginBottom:10}},
           wdCache&&Object.keys(wdCache).length>0?React.createElement("p",{style:{fontSize:11,color:"#0369a1",background:"#e0f2fe",borderRadius:6,padding:"6px 10px",flex:1,margin:0}},"💡 Saisissez le nom ET prénom pour auto-compléter depuis Workday"):React.createElement("p",{style:{fontSize:11,color:"#9CA3AF",background:"#F3F4F6",borderRadius:6,padding:"6px 10px",flex:1,margin:0}},"⚠️ Workday non chargé — importez HR Data (👤)"),
@@ -440,7 +403,7 @@ const save=async()=>{
         React.createElement("div",{style:{marginBottom:10}},React.createElement(Lbl,null,"Commentaire"),React.createElement(Inp,{value:form.commentaire,onChange:v=>setForm({...form,commentaire:v}),placeholder:"Observations..."})),
         React.createElement("div",{style:{display:"flex",gap:8}},
           React.createElement(Btn,{onClick:save,color:C.blue},"💾 Enregistrer"),
-          React.createElement(Btn,{onClick:()=>{setView("collaborateurs");},variant:"outline",color:C.gray},"Annuler")
+          React.createElement(Btn,{onClick:()=>{setShowForm(false);setEditing(null);},variant:"outline",color:C.gray},"Annuler")
         )
       )
     ),
@@ -556,44 +519,11 @@ function VueCasiers({casiers,badges,setCasiers,showToast,addLog}){
   const[showForm,setShowForm]=useState(false);const[editing,setEditing]=useState(null);const[viewMode,setViewMode]=useState("grille");
   const empty={numero:"",zone:"DE",occupant:"",matricule:"",statut:"Libre",commentaire:""};const[form,setForm]=useState(empty);
   const filtered=useMemo(()=>casiers.filter(c=>{if(fZone&&c.zone!==fZone)return false;if(fStat&&c.statut!==fStat)return false;const q=search.toLowerCase();return!q||(c.numero+c.occupant+c.matricule).toLowerCase().includes(q);}),[casiers,fZone,fStat,search]);
- const save=async()=>{
-  if(!form.numero.trim())return;
-  if(editing){
-    setCasiers(p=>p.map(c=>c.id===editing?{...c,...form}:c));
-    const orig=casiers.find(c=>c.id===editing);
-    if(sb)sb.from("lp24_casiers").upsert({...orig,...form});
-    addLog("Casier modifié",form.numero);
-    showToast("✅ Casier mis à jour");
-  }else{
-    const nc={...form,id:nxId(casiers)};
-    setCasiers(p=>[...p,nc]);
-    if(sb){const{id,...row}=nc;sb.from("lp24_casiers").insert(row);}
-    addLog("Casier ajouté",form.numero);
-    showToast("✅ Casier ajouté");
-  }
-  setShowForm(false);
-  setEditing(null);
-};
-
-const del=async id=>{
-  if(!confirm("Supprimer ce casier ?"))return;
-  const c=casiers.find(x=>x.id===id);
-  setCasiers(p=>p.filter(x=>x.id!==id));
-  if(sb)sb.from("lp24_casiers").delete().eq("id",id);
-  addLog("Casier supprimé",c?.numero||"");
-  showToast("🗑️ Supprimé");
-};
-};
-
-const del=async id=>{
-  if(!confirm("Supprimer ce casier ?"))return;
-  const c=casiers.find(x=>x.id===id);
-  setCasiers(p=>p.filter(x=>x.id!==id));
-  if(sb)sb.from("lp24_casiers").delete().eq("id",id);
-  addLog("Casier supprimé",c?.numero||"");
-  showToast("🗑️ Supprimé");
-  setCasiers([...casiers]);
-};
+  const save=async()=>{if(!form.numero.trim())return;if(editing){setCasiers(p=>p.map(c=>c.id===editing?{...c,...form}:c));const orig=casiers.find(c=>c.id===editing);if(sb)sb.from("lp24_casiers").upsert({...orig,...form});addLog("Casier modifié",form.numero);showToast("✅ Casier mis à jour");}else{const nc={...form,id:nxId(casiers)};setCasiers(p=>[...p,nc]);if(sb){const{id,...row}=nc;sb.from("lp24_casiers").insert(row);}addLog("Casier ajouté",form.numero);showToast("✅ Casier ajouté");}setShowForm(false);setEditing(null);};
+  const del=async id=>{if(!confirm("Supprimer ce casier ?"))return;const c=casiers.find(x=>x.id===id);setCasiers(p=>p.filter(x=>x.id!==id));if(sb)sb.from("lp24_casiers").delete().eq("id",id);addLog("Casier supprimé",c?.numero||"");showToast("🗑️ Supprimé");};
+  const statC={Libre:C.green,Occupé:C.blue,Réservé:C.orange,"Hors service":C.gray};
+  const libres=casiers.filter(c=>c.statut==="Libre").length;
+  return React.createElement("div",null,
     React.createElement("div",{style:{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:16,flexWrap:"wrap",gap:8}},
       React.createElement("h1",{style:{fontSize:22,fontWeight:700,color:C.purple}},"📦 Casiers ("+libres+" libres / "+casiers.length+")"),
       React.createElement("div",{style:{display:"flex",gap:8}},
@@ -609,7 +539,7 @@ const del=async id=>{
         React.createElement("div",null,React.createElement(Lbl,null,"Occupant"),React.createElement(Inp,{value:form.occupant,onChange:v=>setForm({...form,occupant:v}),placeholder:"NOM Prénom"})),
         React.createElement("div",null,React.createElement(Lbl,null,"Commentaire"),React.createElement(Inp,{value:form.commentaire,onChange:v=>setForm({...form,commentaire:v}),placeholder:"Congé..."}))
       ),
-      React.createElement("div",{style:{display:"flex",gap:8}},React.createElement(Btn,{onClick:save,color:C.purple},"💾 Enregistrer"),React.createElement(Btn,{onClick:()=>{setView("collaborateurs");},variant:"outline",color:C.gray},"Annuler"))
+      React.createElement("div",{style:{display:"flex",gap:8}},React.createElement(Btn,{onClick:save,color:C.purple},"💾 Enregistrer"),React.createElement(Btn,{onClick:()=>{setShowForm(false);setEditing(null);},variant:"outline",color:C.gray},"Annuler"))
     ),
     React.createElement(Card,{style:{marginBottom:12,padding:12}},
       React.createElement("div",{style:{display:"flex",gap:10,flexWrap:"wrap",alignItems:"center"}},
@@ -816,10 +746,7 @@ function App(){
   const[toast,setToast]=useState(null);
   const toastTimer=useRef(null);
   const racineRef=useRef(null);const hrRef=useRef(null);const hcmRef=useRef(null);const importJsonRef=useRef(null);
-  const showToast=(msg,type="ok")=>{if(toastTimer.current)clearTimeout(toastTimer.current);setToast({msg,type});
-// Animation de l'écran
-document.body.style.backgroundColor = type === "err" ? "#fee2e2" : "#d1fae5";
-setTimeout(() => document.body.style.backgroundColor = "", 300);toastTimer.current=setTimeout(()=>setToast(null),3500);};
+  const showToast=(msg,type="ok")=>{if(toastTimer.current)clearTimeout(toastTimer.current);setToast({msg,type});toastTimer.current=setTimeout(()=>setToast(null),3500);};
   const addLog=useCallback(async (action,detail)=>{
   const entry={id:Date.now(),ts:TS(),action,detail};
   setHisto(prev=>[entry,...prev].slice(0,300));
