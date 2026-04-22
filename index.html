@@ -761,20 +761,25 @@ useEffect(()=>{
     if(!sb){setDbStatus("error");return;}
     async function load(){
       try{
-        const[bRes,cRes]=await Promise.all([sb.from("lp24_badges").select("").order("id"),sb.from("lp24_casiers").select("").order("id")]);
+        const[bRes,cRes]=await Promise.all([sb.from("lp24_badges").select("*").order("id"),sb.from("lp24_casiers").select("*").order("id")]);
         if(bRes.error)throw bRes.error;
         setBadges(bRes.data||[]);
         setCasiers(cRes.data||[]);
         
         // Charger l'historique
         const { data: histoData } = await sb.from("historique").select("*").order("id", { ascending: false }).limit(500);
-        if(histoData && histoData.length > 0){
+        if(histoData){
           setHisto(histoData.map(h => ({...h, ts: new Date(h.ts).toLocaleString("fr-FR")})));
+        } else {
+          setHisto([]);
         }
         
         setDbStatus("ok");
       }
-      catch(e){setDbStatus("error");}
+      catch(e){
+        console.log("Erreur chargement:", e);
+        setDbStatus("error");
+      }
     }
     load();
   },[unlocked]);
