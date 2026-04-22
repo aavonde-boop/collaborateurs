@@ -745,7 +745,16 @@ function App(){
   const toastTimer=useRef(null);
   const racineRef=useRef(null);const hrRef=useRef(null);const hcmRef=useRef(null);const importJsonRef=useRef(null);
   const showToast=(msg,type="ok")=>{if(toastTimer.current)clearTimeout(toastTimer.current);setToast({msg,type});toastTimer.current=setTimeout(()=>setToast(null),3500);};
-  const addLog=useCallback((action,detail)=>{const entry={id:Date.now(),ts:TS(),action,detail};setHisto(prev=>[entry,...prev].slice(0,300));},[]);
+  const addLog=useCallback(async (action,detail)=>{
+  const entry={id:Date.now(),ts:TS(),action,detail};
+  setHisto(prev=>[entry,...prev].slice(0,300));
+  // Sauvegarde dans Supabase
+  if(sb){
+    try {
+      await sb.from("historique").insert({ action, detail, ts: new Date().toISOString() });
+    } catch(e) { console.log("Erreur sauvegarde historique:", e); }
+  }
+},[]);
 
   useEffect(()=>{
     if(!unlocked)return;
