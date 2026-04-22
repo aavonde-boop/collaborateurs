@@ -556,11 +556,35 @@ function VueCasiers({casiers,badges,setCasiers,showToast,addLog}){
   const[showForm,setShowForm]=useState(false);const[editing,setEditing]=useState(null);const[viewMode,setViewMode]=useState("grille");
   const empty={numero:"",zone:"DE",occupant:"",matricule:"",statut:"Libre",commentaire:""};const[form,setForm]=useState(empty);
   const filtered=useMemo(()=>casiers.filter(c=>{if(fZone&&c.zone!==fZone)return false;if(fStat&&c.statut!==fStat)return false;const q=search.toLowerCase();return!q||(c.numero+c.occupant+c.matricule).toLowerCase().includes(q);}),[casiers,fZone,fStat,search]);
-  const save=async()=>{if(!form.numero.trim())return;if(editing){setCasiers(p=>p.map(c=>c.id===editing?{...c,...form}:c));const orig=casiers.find(c=>c.id===editing);if(sb)sb.from("lp24_casiers").upsert({...orig,...form});addLog("Casier modifié",form.numero);showToast("✅ Casier mis à jour");}else{const nc={...form,id:nxId(casiers)};setCasiers(p=>[...p,nc]);if(sb){const{id,...row}=nc;sb.from("lp24_casiers").insert(row);}addLog("Casier ajouté",form.numero);showToast("✅ Casier ajouté");}setView("collaborateurs");};
-  const del=async id=>{if(!confirm("Supprimer ce casier ?"))return;const c=casiers.find(x=>x.id===id);setCasiers(p=>p.filter(x=>x.id!==id));if(sb)sb.from("lp24_casiers").delete().eq("id",id);addLog("Casier supprimé",c?.numero||"");showToast("🗑️ Supprimé");};
-  const statC={Libre:C.green,Occupé:C.blue,Réservé:C.orange,"Hors service":C.gray};
-  const libres=casiers.filter(c=>c.statut==="Libre").length;
-  return React.createElement("div",null,
+ const save=async()=>{
+  if(!form.numero.trim())return;
+  if(editing){
+    setCasiers(p=>p.map(c=>c.id===editing?{...c,...form}:c));
+    const orig=casiers.find(c=>c.id===editing);
+    if(sb)sb.from("lp24_casiers").upsert({...orig,...form});
+    addLog("Casier modifié",form.numero);
+    showToast("✅ Casier mis à jour");
+  }else{
+    const nc={...form,id:nxId(casiers)};
+    setCasiers(p=>[...p,nc]);
+    if(sb){const{id,...row}=nc;sb.from("lp24_casiers").insert(row);}
+    addLog("Casier ajouté",form.numero);
+    showToast("✅ Casier ajouté");
+  }
+  setShowForm(false);
+  setEditing(null);
+  setCasiers([...casiers]);
+};
+
+const del=async id=>{
+  if(!confirm("Supprimer ce casier ?"))return;
+  const c=casiers.find(x=>x.id===id);
+  setCasiers(p=>p.filter(x=>x.id!==id));
+  if(sb)sb.from("lp24_casiers").delete().eq("id",id);
+  addLog("Casier supprimé",c?.numero||"");
+  showToast("🗑️ Supprimé");
+  setCasiers([...casiers]);
+};
     React.createElement("div",{style:{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:16,flexWrap:"wrap",gap:8}},
       React.createElement("h1",{style:{fontSize:22,fontWeight:700,color:C.purple}},"📦 Casiers ("+libres+" libres / "+casiers.length+")"),
       React.createElement("div",{style:{display:"flex",gap:8}},
