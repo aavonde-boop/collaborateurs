@@ -347,7 +347,7 @@ function VueCollaborateurs({badges,casiers,setBadges,setCasiers,showToast,wdCach
     if(match){const td=match.termDate||"";const hd=match.hireDate||"";const ds=(td&&(!hd||td>hd))?td:"";setForm(f=>({...f,matricule:f.matricule||match.matricule||"",email:f.email||match.email||"",manager:f.manager||match.manager||"",mail_manager:f.mail_manager||match.mailMgr||"",date_sortie_prevue:f.date_sortie_prevue||ds}));showToast("✅ Workday : "+match.prenom+" "+match.nom+(ds?" — sortie : "+ds:""));}
     else showToast("⚠️ Introuvable dans Workday : "+form.prenom+" "+form.nom,"err");
   };
-  const save=async()=>{
+const save=async()=>{
     if(!form.nom.trim())return;
     if(form.serie){const autre=badges.find(b=>b.serie===form.serie&&b.id!==editing&&b.statut!=="Archivé");if(autre&&!confirm("⚠️ Badge N°"+form.serie+" déjà attribué à "+autre.prenom+" "+autre.nom+".\nContinuer ?"))return;}
     if(editing){
@@ -361,6 +361,11 @@ function VueCollaborateurs({badges,casiers,setBadges,setCasiers,showToast,wdCach
       if(sb){const{id,...row}=nb;sb.from("lp24_badges").insert(row);}
       await syncCasier("",form.casier,form.nom,form.prenom,form.matricule);
       addLog("Ajout",form.prenom+" "+form.nom);showToast("✅ Collaborateur ajouté");
+    }
+    setShowForm(false);
+    setEditing(null);
+    setBadges([...badges]); // ← AJOUTER ICI
+};
     }
     const refreshData = async () => {
   if(sb){
