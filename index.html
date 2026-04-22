@@ -778,7 +778,10 @@ function App(){
   const[toast,setToast]=useState(null);
   const toastTimer=useRef(null);
   const racineRef=useRef(null);const hrRef=useRef(null);const hcmRef=useRef(null);const importJsonRef=useRef(null);
-  const showToast=(msg,type="ok")=>{if(toastTimer.current)clearTimeout(toastTimer.current);setToast({msg,type});toastTimer.current=setTimeout(()=>setToast(null),3500);};
+  const showToast=(msg,type="ok")=>{if(toastTimer.current)clearTimeout(toastTimer.current);setToast({msg,type});
+// Animation de l'écran
+document.body.style.backgroundColor = type === "err" ? "#fee2e2" : "#d1fae5";
+setTimeout(() => document.body.style.backgroundColor = "", 300);toastTimer.current=setTimeout(()=>setToast(null),3500);};
   const addLog=useCallback(async (action,detail)=>{
   const entry={id:Date.now(),ts:TS(),action,detail};
   setHisto(prev=>[entry,...prev].slice(0,300));
