@@ -242,7 +242,6 @@ function VueAccueil({badges,casiers,setView,wdCache,setBadges,setCasiers,showToa
   sansMatSansBadge.length>0 && React.createElement(KPI,{label:"Ni matricule ni badge",value:sansMatSansBadge.length,color:"#F97316",icon:"⚠️",sub:"À compléter",onClick:()=>setView("collaborateurs"),style:{background:"#FFF7ED"}}),
   avecMatSansBadge.length>0 && React.createElement(KPI,{label:"Matricule sans badge",value:avecMatSansBadge.length,color:"#EAB308",icon:"🟡",sub:"Badge non attribué",onClick:()=>setView("collaborateurs"),style:{background:"#FEFCE8"}}),
   React.createElement(KPI,{label:"📅 Sorties prévues",value:actifs.filter(b=>b.date_sortie_prevue && b.date_sortie_prevue >= todayISO()).length,color:C.orange,icon:"📅",onClick:()=>setView("rapport"),style:{background:"#FFF7ED"}})
-)
 ),
     ),
     React.createElement("div",{style:{display:"grid",gridTemplateColumns:"1fr 1fr",gap:16,marginBottom:20}},
