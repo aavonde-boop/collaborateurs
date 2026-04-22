@@ -237,13 +237,12 @@ function VueAccueil({badges,casiers,setView,wdCache,setBadges,setCasiers,showToa
       React.createElement(KPI,{label:"Archives",value:archives.length,color:C.gray,onClick:()=>setView("archives")}),
       React.createElement(KPI,{label:"⚠️ Doublons",value:Object.values(badges.filter(b=>b.statut!=="Archivé").reduce((acc,b)=>{if(b.serie)acc[b.serie]=(acc[b.serie]||0)+1;return acc;},{})).filter(c=>c>1).length,color:"#F59E0B",onClick:()=>setView("collaborateurs")}),
     ),
-    React.createElement("div",{style:{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(130px,1fr))",gap:10,marginBottom:16}},
-      (sansMatAvecBadge.length>0||sansMatSansBadge.length>0||avecMatSansBadge.length>0)&&React.createElement("div",{style:{display:"contents"}},
-        sansMatAvecBadge.length>0&&React.createElement(KPI,{label:"Badge sans matricule",value:sansMatAvecBadge.length,color:"#E74C3C",icon:"🔴",sub:"Ont un badge",onClick:()=>setView("collaborateurs"),style:{background:"#FEF2F2"}}),
-        sansMatSansBadge.length>0&&React.createElement(KPI,{label:"Ni matricule ni badge",value:sansMatSansBadge.length,color:"#F97316",icon:"⚠️",sub:"À compléter",onClick:()=>setView("collaborateurs"),style:{background:"#FFF7ED"}}),
-        avecMatSansBadge.length>0&&React.createElement(KPI,{label:"Matricule sans badge",value:avecMatSansBadge.length,color:"#EAB308",icon:"🟡",sub:"Badge non attribué",onClick:()=>setView("collaborateurs"),style:{background:"#FEFCE8"}})
-      ),
-      React.createElement(KPI,{label:"📅 Sorties prévues",value:actifs.filter(b=>b.date_sortie_prevue && b.date_sortie_prevue >= todayISO()).length,color:C.orange,icon:"📅",onClick:()=>setView("rapport"),style:{background:"#FFF7ED"}})
+   (sansMatAvecBadge.length>0||sansMatSansBadge.length>0||avecMatSansBadge.length>0) && React.createElement("div",{style:{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(130px,1fr))",gap:10,marginBottom:16}},
+  sansMatAvecBadge.length>0 && React.createElement(KPI,{label:"Badge sans matricule",value:sansMatAvecBadge.length,color:"#E74C3C",icon:"🔴",sub:"Ont un badge",onClick:()=>setView("collaborateurs"),style:{background:"#FEF2F2"}}),
+  sansMatSansBadge.length>0 && React.createElement(KPI,{label:"Ni matricule ni badge",value:sansMatSansBadge.length,color:"#F97316",icon:"⚠️",sub:"À compléter",onClick:()=>setView("collaborateurs"),style:{background:"#FFF7ED"}}),
+  avecMatSansBadge.length>0 && React.createElement(KPI,{label:"Matricule sans badge",value:avecMatSansBadge.length,color:"#EAB308",icon:"🟡",sub:"Badge non attribué",onClick:()=>setView("collaborateurs"),style:{background:"#FEFCE8"}}),
+  React.createElement(KPI,{label:"📅 Sorties prévues",value:actifs.filter(b=>b.date_sortie_prevue && b.date_sortie_prevue >= todayISO()).length,color:C.orange,icon:"📅",onClick:()=>setView("rapport"),style:{background:"#FFF7ED"}})
+)
 ),
     ),
     React.createElement("div",{style:{display:"grid",gridTemplateColumns:"1fr 1fr",gap:16,marginBottom:20}},
