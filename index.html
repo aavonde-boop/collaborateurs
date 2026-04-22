@@ -573,7 +573,16 @@ function VueCasiers({casiers,badges,setCasiers,showToast,addLog}){
   }
   setShowForm(false);
   setEditing(null);
-  setCasiers([...casiers]);
+};
+
+const del=async id=>{
+  if(!confirm("Supprimer ce casier ?"))return;
+  const c=casiers.find(x=>x.id===id);
+  setCasiers(p=>p.filter(x=>x.id!==id));
+  if(sb)sb.from("lp24_casiers").delete().eq("id",id);
+  addLog("Casier supprimé",c?.numero||"");
+  showToast("🗑️ Supprimé");
+};
 };
 
 const del=async id=>{
