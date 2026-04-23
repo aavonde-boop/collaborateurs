@@ -294,7 +294,7 @@ function VueCollaborateurs({badges,casiers,setBadges,setCasiers,showToast,wdCach
   const[showForm,setShowForm]=useState(false);const[editing,setEditing]=useState(null);
   const[sortCol,setSortCol]=useState("");const[sortDir,setSortDir]=useState("asc");
   const today=todayISO();const aV7=new Date();aV7.setDate(aV7.getDate()+7);const aV7ISO=aV7.toISOString().slice(0,10);
-  const empty={matricule:"",nom:"",prenom:"",email:"",serie:"",zeplug:"",carte_rechargement:"",casier:"",manager:"",mail_manager:"",statut:"Actif",date_sortie_prevue:"",commentaire:""};
+  const empty={matricule:"",nom:"",prenom:"",email:"",serie:"",zeplug:"",carte_rechargement:"",casier:"",manager:"",mail_manager:"",statut:"Actif",date_sortie_prevue:"",commentaire:"",badge_remis:false};
   const[form,setForm]=useState(empty);
   const statC={"Actif":C.green,"À récupérer":C.red,"Badge prêt":C.blue,"Badge VIP":"#7C3AED","Futur arrivant":"#0891B2","Archivé":C.gray};
   // Doublons badge
@@ -446,6 +446,17 @@ function VueCollaborateurs({badges,casiers,setBadges,setCasiers,showToast,wdCach
             React.createElement(SortTh,{col:"manager",label:"Manager"}),
             React.createElement("th",{style:{padding:"9px 8px",textAlign:"left"}},"Email Mgr"),
             React.createElement(SortTh,{col:"statut",label:"Statut"}),
+            React.createElement("td",{style:{padding:"7px 8px",textAlign:"center"}},
+            React.createElement("input",{
+            type:"checkbox",
+            checked:b.badge_remis===true,
+      onChange:()=>{
+      const nouveau = {...b, badge_remis: !b.badge_remis};
+      setBadges(prev=>prev.map(x=>x.id===b.id?nouveau:x));
+    },
+    style:{width:"16px",height:"16px",cursor:"pointer"}
+  })
+),
             React.createElement("th",{style:{padding:"9px 8px",textAlign:"left"}},"Mail"),
             React.createElement("th",{style:{padding:"9px 8px",textAlign:"left"}},"Actions")
           )
@@ -504,7 +515,7 @@ function VueCollaborateurs({badges,casiers,setBadges,setCasiers,showToast,wdCach
               )
             );
           }),
-          filtered.length===0&&React.createElement("tr",null,React.createElement("td",{colSpan:13,style:{padding:32,textAlign:"center",color:"#9CA3AF"}},"Aucun collaborateur."))
+          filtered.length===0&&React.createElement("tr",null,React.createElement("td",{colSpan:14,style:{padding:32,textAlign:"center",color:"#9CA3AF"}},"Aucun collaborateur."))
         )
       )
     )
