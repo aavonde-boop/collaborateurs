@@ -294,29 +294,33 @@ function VueCollaborateurs({badges,casiers,setBadges,setCasiers,showToast,wdCach
   const[showForm,setShowForm]=useState(false);const[editing,setEditing]=useState(null);
   const[sortCol,setSortCol]=useState("");const[sortDir,setSortDir]=useState("asc");
   const today=todayISO();const aV7=new Date();aV7.setDate(aV7.getDate()+7);const aV7ISO=aV7.toISOString().slice(0,10);
-  const empty={matricule:"",nom:"",prenom:"",email:"",serie:"",zeplug:"",carte_rechargement:"",casier:"",manager:"",mail_manager:"",statut:"Actif",date_sortie_prevue:"",commentaire:""};
+  const empty={matricule:"",nom:"",prenom:"",email:"",serie:"",zeplug:"",carte_rechargement:"",casier:"",manager:"",mail_manager:"",statut:"Actif",date_sortie_prevue:"",commentaire:"",badge_remis:false};
   const[form,setForm]=useState(empty);
   const statC={"Actif":C.green,"À récupérer":C.red,"Badge prêt":C.blue,"Badge VIP":"#7C3AED","Futur arrivant":"#0891B2","Archivé":C.gray};
+  
   // Doublons badge
   const serieCount=useMemo(()=>{const m={};badges.filter(b=>b.serie&&b.statut!=="Archivé").forEach(b=>{m[b.serie]=(m[b.serie]||0)+1;});return m;},[badges]);
+  
   // Tri
   const handleSort=col=>{if(sortCol===col)setSortDir(d=>d==="asc"?"desc":"asc");else{setSortCol(col);setSortDir("asc");}};
   const SortTh=({col,label,st})=>{const active=sortCol===col;return React.createElement("th",{className:"sortable"+(active?(sortDir==="asc"?" sort-asc":" sort-desc"):""),onClick:()=>handleSort(col),style:{padding:"9px 8px",textAlign:"left",fontWeight:600,whiteSpace:"nowrap",...st}},label);};
+  
   const filtered=useMemo(()=>{
     let r=badges.filter(b=>{if(!fStat&&b.statut==="Archivé")return false;if(fStat&&b.statut!==fStat)return false;const q=search.toLowerCase();return!q||(b.nom+" "+b.prenom+" "+(b.matricule||"")+" "+(b.serie||"")).toLowerCase().includes(q);});
     if(sortCol)r=[...r].sort((a,b)=>{let av=a[sortCol]||"",bv=b[sortCol]||"";return sortDir==="asc"?String(av).localeCompare(String(bv)):String(bv).localeCompare(String(av));});
     return r;
   },[badges,fStat,search,sortCol,sortDir]);
+  
   const syncCasier=async(oldC,newC,nom,prenom,mat)=>{
     if(oldC&&oldC!==newC){setCasiers(p=>p.map(c=>c.numero===oldC?{...c,statut:"Libre",occupant:"",matricule:""}:c));if(sb)sb.from("lp24_casiers").upsert(casiers.find(c=>c.numero===oldC)?{...casiers.find(c=>c.numero===oldC),statut:"Libre",occupant:"",matricule:""}:{});}
     if(newC&&newC!==oldC){setCasiers(p=>p.map(c=>c.numero===newC?{...c,statut:"Occupé",occupant:nom+" "+prenom,matricule:mat}:c));if(sb)sb.from("lp24_casiers").upsert(casiers.find(c=>c.numero===newC)?{...casiers.find(c=>c.numero===newC),statut:"Occupé",occupant:nom+" "+prenom,matricule:mat}:{});}
   };
+  
   const updateForm=(field,val)=>{
     const upd={...form,[field]:val};
     if((field==="nom"||field==="prenom")&&wdCache){
       const n=field==="nom"?val.toUpperCase():form.nom.toUpperCase();
       const p=field==="prenom"?val:form.prenom;
-      // FIX: chercher SEULEMENT si nom>=2 chars ET prénom>=1 char
       if(n.length>=2&&p.length>=1){
         const match=Object.values(wdCache).find(w=>{const wn=w.nom.toUpperCase();const wp=w.prenom.toLowerCase();return(wn.includes(n)||n.includes(wn))&&(wp.includes(p.toLowerCase())||p.toLowerCase().includes(wp));});
         if(match){const td=match.termDate||"";const hd=match.hireDate||"";const ds=(td&&(!hd||td>hd))?td:"";upd.matricule=upd.matricule||match.matricule;upd.email=upd.email||match.email;upd.manager=upd.manager||match.manager;upd.mail_manager=upd.mail_manager||match.mailMgr;upd.date_sortie_prevue=upd.date_sortie_prevue||ds;}
@@ -324,6 +328,7 @@ function VueCollaborateurs({badges,casiers,setBadges,setCasiers,showToast,wdCach
     }
     setForm(upd);
   };
+  
   const wdSearch=()=>{
     const n=form.nom.toUpperCase();const p=form.prenom.toLowerCase();
     if(!n&&!p){showToast("⚠️ Saisissez d'abord un nom ou prénom","err");return;}
@@ -331,6 +336,20 @@ function VueCollaborateurs({badges,casiers,setBadges,setCasiers,showToast,wdCach
     if(match){const td=match.termDate||"";const hd=match.hireDate||"";const ds=(td&&(!hd||td>hd))?td:"";setForm(f=>({...f,matricule:f.matricule||match.matricule||"",email:f.email||match.email||"",manager:f.manager||match.manager||"",mail_manager:f.mail_manager||match.mailMgr||"",date_sortie_prevue:f.date_sortie_prevue||ds}));showToast("✅ Workday : "+match.prenom+" "+match.nom+(ds?" — sortie : "+ds:""));}
     else showToast("⚠️ Introuvable dans Workday : "+form.prenom+" "+form.nom,"err");
   };
+  
+  const toggleBadgeRemis = async (badgeId, currentValue) => {
+    const updatedBadges = badges.map(b => 
+      b.id === badgeId ? {...b, badge_remis: !currentValue} : b
+    );
+    setBadges(updatedBadges);
+    const badge = badges.find(b => b.id === badgeId);
+    if(sb) {
+      await sb.from("lp24_badges").upsert({...badge, badge_remis: !currentValue});
+    }
+    addLog("Badge remis", badge.prenom + " " + badge.nom + " → " + (!currentValue ? "Oui" : "Non"));
+    showToast(✅ Badge ${!currentValue ? "marqué comme remis" : "décoché"} pour ${badge.prenom} ${badge.nom});
+  };
+  
   const save=async()=>{
     if(!form.nom.trim())return;
     if(form.serie){const autre=badges.find(b=>b.serie===form.serie&&b.id!==editing&&b.statut!=="Archivé");if(autre&&!confirm("⚠️ Badge N°"+form.serie+" déjà attribué à "+autre.prenom+" "+autre.nom+".\nContinuer ?"))return;}
@@ -348,6 +367,7 @@ function VueCollaborateurs({badges,casiers,setBadges,setCasiers,showToast,wdCach
     }
     setShowForm(false);setEditing(null);
   };
+  
   const archiver=async id=>{
     if(!confirm("Archiver ce collaborateur ?"))return;
     const b=badges.find(x=>x.id===id);
@@ -357,10 +377,12 @@ function VueCollaborateurs({badges,casiers,setBadges,setCasiers,showToast,wdCach
     if(sb)sb.from("lp24_badges").upsert(updated);
     addLog("Archivage",b.prenom+" "+b.nom);showToast("🗃️ Archivé");
   };
+  
   const casLibres=casiers.filter(c=>c.statut==="Libre"||(editing&&c.numero===form.casier));
   const restEmail=settings?.restaurantEmail||"";const ccEmails=settings?.ccEmails||"";
   const mailArrivee=b=>{const to=encodeURIComponent(restEmail);const cc=encodeURIComponent(ccEmails);const s=encodeURIComponent("Nouvelle arrivée — "+b.prenom+" "+b.nom);const c=encodeURIComponent("Bonjour,\n\nNous vous informons de l'arrivée d'un nouveau collaborateur accédant au restaurant d'entreprise :\n\nNom : "+b.nom+"\nPrénom : "+b.prenom+"\nAdresse e-mail : "+(b.email||"Non renseigné")+"\nN° de badge : "+(b.serie||"Non attribué")+"\n\nMerci de bien vouloir l'ajouter à vos systèmes.\n\nCordialement,\nService RH");window.open("mailto:"+to+"?subject="+s+"&body="+c+(cc?"&cc="+cc:""));};
   const mailDepart=b=>{const to=encodeURIComponent(restEmail);const cc=encodeURIComponent(ccEmails);const s=encodeURIComponent("Départ collaborateur — "+b.prenom+" "+b.nom);const c=encodeURIComponent("Bonjour,\n\nNous vous informons du départ du collaborateur suivant :\n\nNom : "+b.nom+"\nPrénom : "+b.prenom+"\nN° de badge : "+(b.serie||"Non attribué")+"\n\nMerci de bien vouloir le retirer de vos systèmes.\n\nCordialement,\nService RH");window.open("mailto:"+to+"?subject="+s+"&body="+c+(cc?"&cc="+cc:""));};
+  
   return React.createElement("div",null,
     React.createElement("div",{style:{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:12,flexWrap:"wrap",gap:8}},
       React.createElement("div",null,
@@ -394,6 +416,7 @@ function VueCollaborateurs({badges,casiers,setBadges,setCasiers,showToast,wdCach
             )
           ),
           React.createElement("div",null,React.createElement(Lbl,null,"Statut"),React.createElement(Sel,{value:form.statut,onChange:v=>setForm({...form,statut:v}),options:["Actif","À récupérer","Badge prêt","Badge VIP","Futur arrivant"],style:{width:"100%"}})),
+          React.createElement("div",null,React.createElement(Lbl,null,"Badge remis"),React.createElement("input",{type:"checkbox",checked:form.badge_remis||false,onChange:e=>setForm({...form,badge_remis:e.target.checked}),style:{width:20,height:20,cursor:"pointer",marginTop:4}})),
           React.createElement("div",null,React.createElement(Lbl,null,"Date de sortie"),React.createElement(Inp,{type:"date",value:form.date_sortie_prevue,onChange:v=>setForm({...form,date_sortie_prevue:v})})),
           React.createElement("div",null,React.createElement(Lbl,null,"Manager"),React.createElement(Inp,{value:form.manager,onChange:v=>setForm({...form,manager:v}),placeholder:"auto Workday"})),
           React.createElement("div",null,React.createElement(Lbl,null,"Email Manager"),React.createElement(Inp,{value:form.mail_manager,onChange:v=>setForm({...form,mail_manager:v}),placeholder:"auto Workday"}))
@@ -420,12 +443,11 @@ function VueCollaborateurs({badges,casiers,setBadges,setCasiers,showToast,wdCach
         ),
         (search||fStat)&&React.createElement(Btn,{variant:"outline",color:C.gray,onClick:()=>{setSearch("");setFStat("");}},"✕ Effacer"),
         React.createElement(Btn,{onClick:async()=>{
-          // Sauvegarder TOUS les badges vers Supabase
           const allBadges = badges.filter(b => b.statut !== "Archivé");
           for(const b of allBadges){
             await sb.from("lp24_badges").upsert(b);
           }
-          showToast(`✅ ${allBadges.length} collaborateurs sauvegardés`);
+          showToast(✅ ${allBadges.length} collaborateurs sauvegardés);
         },color:C.green},"💾 Enregistrer tout"),
         React.createElement("span",{style:{fontSize:12,color:"#9CA3AF",marginLeft:"auto"}},filtered.length+" collaborateur(s)")
       )
@@ -446,6 +468,7 @@ function VueCollaborateurs({badges,casiers,setBadges,setCasiers,showToast,wdCach
             React.createElement(SortTh,{col:"manager",label:"Manager"}),
             React.createElement("th",{style:{padding:"9px 8px",textAlign:"left"}},"Email Mgr"),
             React.createElement(SortTh,{col:"statut",label:"Statut"}),
+            React.createElement("th",{style:{padding:"9px 8px",textAlign:"center",whiteSpace:"nowrap"}},"🏷️ Badge remis"),
             React.createElement("th",{style:{padding:"9px 8px",textAlign:"left"}},"Mail"),
             React.createElement("th",{style:{padding:"9px 8px",textAlign:"left"}},"Actions")
           )
@@ -460,6 +483,7 @@ function VueCollaborateurs({badges,casiers,setBadges,setCasiers,showToast,wdCach
             const sortiePassee=b.date_sortie_prevue&&b.date_sortie_prevue<today&&b.statut==="Actif";
             const isVIP=b.statut==="Badge VIP";const isPret=b.statut==="Badge prêt";
             const bg=b.statut==="Archivé"?"#F5F5F5":b.statut==="À récupérer"?C.redBg:sortiePassee?"#FFF3CD":sortieProche?"#FFFBEB":isVIP?"#F5F3FF":isPret?"#EFF6FF":i%2===0?"#fff":"#F9FAFB";
+            const badgeRemis = b.badge_remis === true;
             return React.createElement("tr",{key:b.id,style:{background:bg,borderBottom:"1px solid #E5E7EB"},onMouseOver:e=>e.currentTarget.style.background=C.blueBg,onMouseOut:e=>e.currentTarget.style.background=bg},
               React.createElement("td",{style:{padding:"7px 8px",fontSize:11,color:"#CBD5E1",textAlign:"center"}},i+1),
               React.createElement("td",{style:{padding:"7px 8px",fontWeight:700,color:C.blue,fontSize:11}},!hasM?React.createElement("span",{style:{color:"#E74C3C",fontWeight:700,fontSize:10}},"NC"):b.matricule),
@@ -468,7 +492,6 @@ function VueCollaborateurs({badges,casiers,setBadges,setCasiers,showToast,wdCach
               React.createElement("td",{style:{padding:"7px 8px"}},hasB?React.createElement("span",null,React.createElement("code",{style:{background:doublon?"#FEF3C7":"#F3F4F6",color:doublon?"#92400E":"inherit",padding:"1px 5px",borderRadius:3,fontSize:10,border:doublon?"1px solid #F59E0B":"none"}},b.serie),doublon&&React.createElement("span",{title:"Badge attribué à plusieurs !",style:{marginLeft:2,color:"#F59E0B",fontSize:11}},"⚠️")):"—"),
               React.createElement("td",{style:{padding:"7px 8px",fontSize:10,color:"#6B7280"}},b.carte_rechargement||"—"),
               React.createElement("td",{style:{padding:"7px 8px"}},b.casier?React.createElement("span",{style:{background:zcol+"22",color:zcol,fontWeight:700,padding:"1px 5px",borderRadius:4,fontSize:10}},b.casier):React.createElement("span",{style:{color:"#9CA3AF"}},"—")),
-              // Date sortie — cliquable
               React.createElement("td",{style:{padding:"4px 5px"}},
                 b.statut!=="Archivé"?(
                   b.date_sortie_prevue
@@ -481,18 +504,34 @@ function VueCollaborateurs({badges,casiers,setBadges,setCasiers,showToast,wdCach
               React.createElement("td",{style:{padding:"7px 8px",fontSize:10,maxWidth:120,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}},b.manager||"—"),
               React.createElement("td",{style:{padding:"7px 8px",fontSize:10,color:"#6B7280",maxWidth:120,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}},b.mail_manager||"—"),
               React.createElement("td",{style:{padding:"7px 8px"}},React.createElement(Bdg,{color:"#fff",bg:statC[b.statut]||C.gray},b.statut)),
-              // Boutons mail
+              // Case à cocher Badge remis
+              React.createElement("td",{style:{padding:"7px 8px",textAlign:"center"}},
+                b.statut!=="Archivé" && b.statut!=="À récupérer" ? (
+                  React.createElement("input",{
+                    type:"checkbox",
+                    checked:badgeRemis,
+                    onChange:(e) => {
+                      e.stopPropagation();
+                      toggleBadgeRemis(b.id, badgeRemis);
+                    },
+                    onClick:e => e.stopPropagation(),
+                    style:{width:18,height:18,cursor:"pointer",transform:"scale(1.1)"},
+                    title:badgeRemis ? "Badge déjà remis - décocher" : "Cocher quand le badge est remis"
+                  })
+                ) : (
+                  React.createElement("span",{style:{fontSize:10,color:"#9CA3AF"}},"—")
+                )
+              ),
               React.createElement("td",{style:{padding:"4px 6px",whiteSpace:"nowrap"}},
                 b.statut!=="Archivé"?React.createElement("div",{style:{display:"flex",gap:3}},
                   React.createElement("button",{title:"Arrivée → Restaurant",style:{background:"#EBF5FB",border:"1px solid #AED6F1",borderRadius:5,cursor:"pointer",fontSize:12,padding:"2px 5px"},onClick:e=>{e.stopPropagation();mailArrivee(b);}},"🍽️"),
                   React.createElement("button",{title:"Départ → Restaurant",style:{background:"#FDEDEC",border:"1px solid #F1948A",borderRadius:5,cursor:"pointer",fontSize:12,padding:"2px 5px"},onClick:e=>{e.stopPropagation();mailDepart(b);}},"🚪")
                 ):null
               ),
-              // Actions
               React.createElement("td",{style:{padding:"7px 8px"}},
                 b.statut!=="Archivé"?React.createElement("div",{style:{display:"flex",gap:3}},
                   React.createElement("button",{title:"Modifier",onClick:()=>{
-                    const f={...b,carte_rechargement:b.carte_rechargement||""};setForm(f);setEditing(b.id);setShowForm(true);
+                    const f={...b,carte_rechargement:b.carte_rechargement||"",badge_remis:b.badge_remis||false};setForm(f);setEditing(b.id);setShowForm(true);
                     if(wdCache&&(!b.matricule||!b.email||!b.manager)){
                       const n=b.nom.toUpperCase();const p=b.prenom.toLowerCase();
                       const match=Object.values(wdCache).find(w=>{const wn=w.nom.toUpperCase();const wp=w.prenom.toLowerCase();return(wn.includes(n)||n.includes(wn))&&(wp.includes(p)||p.includes(wp));});
@@ -504,13 +543,12 @@ function VueCollaborateurs({badges,casiers,setBadges,setCasiers,showToast,wdCach
               )
             );
           }),
-          filtered.length===0&&React.createElement("tr",null,React.createElement("td",{colSpan:13,style:{padding:32,textAlign:"center",color:"#9CA3AF"}},"Aucun collaborateur."))
+          filtered.length===0&&React.createElement("tr",null,React.createElement("td",{colSpan:14,style:{padding:32,textAlign:"center",color:"#9CA3AF"}},"Aucun collaborateur."))
         )
       )
     )
   );
 }
-
 // ════════════════ VUE CASIERS ════════════════
 function VueCasiers({casiers,badges,setCasiers,showToast,addLog}){
   const[fZone,setFZone]=useState("");const[fStat,setFStat]=useState("");const[search,setSearch]=useState("");
