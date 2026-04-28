@@ -11,35 +11,49 @@
   <script src="https://unpkg.com/xlsx/dist/xlsx.full.min.js"></script>
   <style>
     *{margin:0;padding:0;box-sizing:border-box;}
-    body{font-family:'Segoe UI',system-ui,sans-serif;background:#F3F4F6;}
+    body{font-family:'Segoe UI',system-ui,sans-serif;background:#F1F5F9;}
     button,input,select,textarea{font-family:inherit;}
     table{border-spacing:0;}
-    ::-webkit-scrollbar{width:6px;height:6px;}
+    ::-webkit-scrollbar{width:5px;height:5px;}
     ::-webkit-scrollbar-thumb{background:#CBD5E1;border-radius:3px;}
     @keyframes toastIn{from{opacity:0;transform:translateY(-20px) scale(.95)}to{opacity:1;transform:translateY(0) scale(1)}}
     .toast-anim{animation:toastIn .3s ease forwards;}
     @keyframes shake{0%,100%{transform:translateX(0)}20%,60%{transform:translateX(-8px)}40%,80%{transform:translateX(8px)}}
     @keyframes pulse{0%,100%{opacity:1}50%{opacity:.6}}
-    @media(max-width:768px){.desktop-nav{display:none!important}.mobile-nav{display:flex!important}main{padding:12px!important;padding-bottom:calc(80px + env(safe-area-inset-bottom))!important}}
+    .app-shell{display:flex;min-height:100vh;}
+    .sidebar{background:#1E293B;display:flex;flex-direction:column;position:fixed;top:0;left:0;bottom:0;z-index:100;overflow:hidden;transition:width .2s ease;}
+    .sidebar-nav{flex:1;padding:12px 8px;overflow-y:auto;}
+    .nav-item{display:flex;align-items:center;gap:10px;padding:9px 12px;border-radius:8px;cursor:pointer;border:none;background:transparent;color:rgba(255,255,255,.6);font-size:13px;font-weight:500;width:100%;text-align:left;transition:all .15s;margin-bottom:2px;white-space:nowrap;}
+    .nav-item:hover{background:rgba(255,255,255,.07);color:#fff;}
+    .nav-item.active{background:#3B82F6;color:#fff;font-weight:600;}
+    .nav-item .nav-icon{font-size:16px;width:20px;text-align:center;flex-shrink:0;}
+    .nav-badge{background:rgba(255,255,255,.25);color:#fff;border-radius:999px;font-size:9px;font-weight:700;padding:1px 5px;margin-left:auto;}
+    .sidebar-footer{padding:12px 16px;border-top:1px solid rgba(255,255,255,.08);}
+    .main-area{flex:1;display:flex;flex-direction:column;min-height:100vh;}
+    .topbar{background:#fff;border-bottom:1px solid #E2E8F0;padding:0 20px;height:54px;display:flex;align-items:center;gap:12px;position:sticky;top:0;z-index:50;box-shadow:0 1px 3px rgba(0,0,0,.04);}
+    .topbar-title{font-size:15px;font-weight:700;color:#0F172A;}
+    .topbar-right{margin-left:auto;display:flex;align-items:center;gap:8px;}
+    .main-content{flex:1;padding:24px;}
+    @media(max-width:768px){.sidebar{display:none!important}.main-area{margin-left:0!important}.mobile-nav{display:flex!important}.main-content{padding:12px;padding-bottom:calc(70px + env(safe-area-inset-bottom))!important}}
     @media(min-width:769px){.mobile-nav{display:none!important}}
-    .mobile-nav{position:fixed;bottom:0;left:0;right:0;background:#0F172A;display:none;padding-bottom:env(safe-area-inset-bottom);box-shadow:0 -2px 12px rgba(0,0,0,.2);z-index:1000;}
+    .mobile-nav{position:fixed;bottom:0;left:0;right:0;background:#1E293B;display:none;padding-bottom:env(safe-area-inset-bottom);box-shadow:0 -2px 12px rgba(0,0,0,.2);z-index:1000;}
     @media print{.no-print{display:none!important}body{background:#fff}.badge-card{page-break-inside:avoid;break-inside:avoid;}}
     .print-only{display:none;}
     @media print{.print-only{display:block!important}}
-    .btn-icon{background:none;border:1px solid #D1D5DB;border-radius:8px;padding:6px 10px;cursor:pointer;font-size:16px;line-height:1;transition:all .15s;}
-    .btn-icon:hover{background:#F3F4F6;border-color:#9CA3AF;}
+    .btn-icon{background:none;border:1px solid #E2E8F0;border-radius:8px;padding:6px 10px;cursor:pointer;font-size:15px;line-height:1;transition:all .15s;color:#64748B;}
+    .btn-icon:hover{background:#F8FAFC;}
     input[type="file"]{display:none;}
     th.sortable{cursor:pointer;user-select:none;}
-    th.sortable:hover{background:rgba(255,255,255,.12);}
+    th.sortable:hover{background:rgba(0,0,0,.04);}
     .sort-asc::after{content:" ↑";font-size:10px;opacity:.8;}
     .sort-desc::after{content:" ↓";font-size:10px;opacity:.8;}
     .notif-bar{animation:pulse 2.5s infinite;}
     @keyframes savePulse{0%,100%{opacity:1}50%{opacity:.3}}
-    .save-dot{display:inline-block;width:8px;height:8px;border-radius:50%;background:#4ade80;margin-right:4px;}
+    .save-dot{display:inline-block;width:7px;height:7px;border-radius:50%;background:#22C55E;margin-right:4px;}
     .save-dot.saving{animation:savePulse 0.8s ease infinite;}
     @media(max-width:768px){.tbl-desktop{display:none!important}.cards-mobile{display:block!important}}
     @media(min-width:769px){.cards-mobile{display:none!important}}
-    .mob-card{background:#fff;border-radius:10px;padding:12px 14px;margin-bottom:8px;box-shadow:0 1px 3px rgba(0,0,0,.08);border-left:4px solid #0891B2;}
+    .mob-card{background:#fff;border-radius:10px;padding:12px 14px;margin-bottom:8px;box-shadow:0 1px 3px rgba(0,0,0,.08);border-left:4px solid #3B82F6;}
     .mob-row{display:flex;justify-content:space-between;align-items:center;padding:3px 0;font-size:12px;border-bottom:1px solid #F3F4F6;}
     .mob-row:last-child{border-bottom:none;}
     .mob-lbl{color:#9CA3AF;font-size:10px;font-weight:700;text-transform:uppercase;}
@@ -59,7 +73,7 @@ var SUPABASE_ANON_KEY="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFz
 var sb=null;
 try{if(window.supabase)sb=window.supabase.createClient(SUPABASE_URL,SUPABASE_ANON_KEY);}catch(e){}
 const PERM_WRITE='write',PERM_READ='read',PERM_NONE='none';
-const DEFAULT_PERMS={accueil:PERM_WRITE,collaborateurs:PERM_WRITE,casiers:PERM_WRITE,rapport:PERM_WRITE,impression:PERM_WRITE,historique:PERM_WRITE,archives:PERM_WRITE};
+const DEFAULT_PERMS={accueil:PERM_WRITE,collaborateurs:PERM_WRITE,casiers:PERM_WRITE,rapport:PERM_WRITE,impression:PERM_WRITE,historique:PERM_WRITE,archives:PERM_WRITE,fieldsupport:PERM_WRITE};
 const norm=s=>String(s||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toUpperCase().trim();
 const findInWD=(wdCache,nom,prenom)=>{if(!wdCache)return null;const n=norm(nom),p=norm(prenom);return Object.values(wdCache).find(w=>{const wn=norm(w.nom),wp=norm(w.prenom);return(!n||(wn.includes(n)||n.includes(wn)))&&(!p||(wp.includes(p)||p.includes(wp)));});};
 const nxId=arr=>Math.max(0,...arr.map(x=>x.id||0))+1;
@@ -82,7 +96,13 @@ const Bdg=({children,color,bg})=>React.createElement("span",{style:{background:b
 // ── Login ──
 function LoginScreen({onUnlock,users}){
   const[_email,setEmail]=useState("");const[pwd,setPwd]=useState("");const[err,setErr]=useState(false);const[shake,setShake]=useState(false);
-  const check=()=>{if(pwd==="AdminAAG"){onUnlock({role:"admin",email:"admin",label:"Administrateur",perms:DEFAULT_PERMS});return;}const _u=(users||[]).find(u=>u.email.toLowerCase()===_email.toLowerCase()&&u.pwd===pwd);if(_u){onUnlock({role:"user",email:_u.email,label:_u.label||_u.email,perms:_u.perms||DEFAULT_PERMS});return;}{setErr(true);setShake(true);setPwd("");setTimeout(()=>setShake(false),500);}if(false){setErr(true);setShake(true);setPwd("");setTimeout(()=>setShake(false),500);}};
+  const check=()=>{
+    if(pwd==="AdminAAG"){onUnlock({role:"admin",email:"admin",label:"Administrateur",perms:DEFAULT_PERMS});return;}
+    if(pwd==="FieldAAG"){onUnlock({role:"fieldsupport",email:"it@lp24.fr",label:"IT Field Support",perms:{accueil:"read",collaborateurs:PERM_NONE,casiers:PERM_NONE,rapport:PERM_NONE,impression:PERM_NONE,historique:PERM_NONE,archives:PERM_NONE,fieldsupport:PERM_WRITE,parametres:PERM_NONE}});return;}
+    const _u=(users||[]).find(u=>u.email.toLowerCase()===_email.toLowerCase()&&u.pwd===pwd);
+    if(_u){onUnlock({role:"user",email:_u.email,label:_u.label||_u.email,perms:_u.perms||DEFAULT_PERMS});return;}
+    setErr(true);setShake(true);setPwd("");setTimeout(()=>setShake(false),500);
+  };
   return React.createElement("div",{style:{minHeight:"100vh",background:"linear-gradient(135deg,#0F172A 0%,#0891B2 60%,#0F172A 100%)",display:"flex",alignItems:"center",justifyContent:"center"}},
     React.createElement("div",{style:{background:"#fff",borderRadius:16,boxShadow:"0 8px 40px rgba(0,0,0,.3)",padding:"40px 48px",width:380,textAlign:"center",animation:shake?"shake .4s":"none"}},
       React.createElement("div",{style:{fontSize:48,marginBottom:8}},"👥"),
@@ -136,13 +156,7 @@ function parseWDFileAsync(file,type,wdCache,setWdCache,showToast,setLoading){
         const prenom=String(o["Preferred Name - First Name"]||"").trim();
         if(!mat||!nom)return;
         const toISO=v=>{if(!v||v==="")return"";if(typeof v==="number")return xlsxDateToISO(v);const s=String(v).trim();if(!s||s==="NaN")return"";const dm=s.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})/);if(dm)return dm[3]+"-"+dm[2].padStart(2,"0")+"-"+dm[1].padStart(2,"0");if(s.match(/^\d{4}-\d{2}-\d{2}/))return s.slice(0,10);try{const d=new Date(s);if(!isNaN(d))return d.toISOString().slice(0,10);}catch{}return"";};
-        // Colonne G (index 6) = YES → collaborateur toujours en poste, ignorer colonne F (Termination Date)
-        const colG=String(r[6]||"").trim().toUpperCase();
-        const colGisYes=colG==="YES";
-        const inCoFromHeader=norm(String(o["In Company"]||o["Still Employed"]||""))==="YES";
-        const inCo=inCoFromHeader||colGisYes;
-        const termDate=inCo?"":toISO(o["Termination Date"]);
-        parsed.push({matricule:mat,nom,prenom,workerType:String(o["Worker Type"]||"").trim(),actif:String(o["Active Status"]||"").trim(),location:String(o["Location"]||"").trim(),email:String(o["Email - Primary Work"]||o["Work Email"]||"").trim(),manager:norm(String(o["Manager's Name"]||o["Manager"]||"")),mailMgr:String(o["Manager e-mail"]||o["Manager's Email"]||"").trim(),hireDate:toISO(o["Hire Date"]),termDate,inCo,source:type});
+        const inCo=norm(String(o["In Company"]||o["Still Employed"]||""))==="YES";const termDate=inCo?"":toISO(o["Termination Date"]);parsed.push({matricule:mat,nom,prenom,workerType:String(o["Worker Type"]||"").trim(),actif:String(o["Active Status"]||"").trim(),location:String(o["Location"]||"").trim(),email:String(o["Email - Primary Work"]||o["Work Email"]||"").trim(),manager:norm(String(o["Manager's Name"]||o["Manager"]||"")),mailMgr:String(o["Manager e-mail"]||o["Manager's Email"]||"").trim(),hireDate:toISO(o["Hire Date"]),termDate,source:type});
       });
       if(!parsed.length){alert("Aucune donnée valide.");setLoading(false);return;}
       setWdCache(prev=>{const next={...(prev||{})};parsed.forEach(p=>{next[p.matricule]=p;});return next;});
@@ -197,12 +211,9 @@ function parseRacineAsync(file,badges,setBadges,setCasiers,showToast,setLoading,
       const archives=badges.filter(b=>b.statut==="Archivé");
       const allBadges=[...newBadges,...archives];
       setBadges(allBadges);
-      // Dédupliquer les casiers par numéro avant d'enregistrer
-      const casiersMap={};newCasiers.forEach(c=>{if(c.numero)casiersMap[c.numero]=c;});
-      const casiersDedup=Object.values(casiersMap);
-      if(casiersDedup.length)setCasiers(casiersDedup);
+      if(newCasiers.length)setCasiers(newCasiers);
       addLog("Import Racine","Fichier: "+file.name+" — "+newBadges.filter(b=>b.statut==="Actif").length+" actifs, "+newBadges.filter(b=>b.statut==="À récupérer").length+" à récupérer"+(doublons.length?" ⚠️ Doublons: "+doublons.join(", "):""));
-      if(sb){sb.from("lp24_badges").delete().neq("id",0).then(()=>{const rows=allBadges.map(({id,...r})=>r);if(rows.length)sb.from("lp24_badges").insert(rows);});if(casiersDedup.length)sb.from("lp24_casiers").delete().neq("id",0).then(()=>{const rows=casiersDedup.map(({id,...r})=>r);if(rows.length)sb.from("lp24_casiers").insert(rows);});}
+      if(sb){sb.from("lp24_badges").delete().neq("id",0).then(()=>{const rows=allBadges.map(({id,...r})=>r);if(rows.length)sb.from("lp24_badges").insert(rows);});if(newCasiers.length)sb.from("lp24_casiers").delete().neq("id",0).then(()=>{const rows=newCasiers.map(({id,...r})=>r);if(rows.length)sb.from("lp24_casiers").insert(rows);});}
       showToast("✅ "+newBadges.filter(b=>b.statut==="Actif").length+" actifs · "+newBadges.filter(b=>b.statut==="À récupérer").length+" à récupérer · "+newCasiers.length+" casiers"+(doublons.length?" ⚠️ "+doublons.length+" doublon(s)":""));
       setLoading(false);
     }catch(err){alert("Erreur import : "+err.message);setLoading(false);}
@@ -222,207 +233,141 @@ function parseMSListsCSV(text){
 
 // ════════════════ VUE ACCUEIL ════════════════
 
-function buildBody(template, data){
-  return (template||"").replace(/\{(\w+)\}/g, (_,k)=>data[k]||"NC");
-}
+function buildBody(template,data){return(template||"").replace(/\{(\w+)\}/g,(_,k)=>data[k]||"NC");}
+
 function VueAccueil({badges,casiers,setView,wdCache,setBadges,setCasiers,showToast,addLog,settings}){
   const actifs=badges.filter(b=>b.statut==="Actif");
   const aRecuperer=badges.filter(b=>b.statut==="À récupérer");
-  const archives=badges.filter(b=>b.statut==="Archivé");
-  const libres=casiers.filter(c=>c.statut==="Libre");
+  const avecBadge=badges.filter(b=>b.statut!=="Archivé"&&b.serie);
+  const casOcc=casiers.filter(c=>c.statut==="Occupé");
+  const total=badges.filter(b=>b.statut!=="Archivé").length;
   const today=todayISO();
-  const aVenir7j=new Date();aVenir7j.setDate(aVenir7j.getDate()+7);const aVenir7jISO=aVenir7j.toISOString().slice(0,10);
-  const expirantBientot=actifs.filter(b=>b.date_sortie_prevue&&b.date_sortie_prevue>=today&&b.date_sortie_prevue<=aVenir7jISO);
-  const actifsSansArch=badges.filter(b=>b.statut!=="Archivé");
-  const sansMatAvecBadge=actifsSansArch.filter(b=>(!b.matricule||String(b.matricule)==="0")&&b.serie);
-  const sansMatSansBadge=actifsSansArch.filter(b=>(!b.matricule||String(b.matricule)==="0")&&!b.serie);
-  const avecMatSansBadge=actifsSansArch.filter(b=>b.matricule&&String(b.matricule)!=="0"&&!b.serie);
-  const[nomDep,setNomDep]=useState("");const[prenomDep,setPrenomDep]=useState("");const[dateDep,setDateDep]=useState("");
-  const[nomArr,setNomArr]=useState("");const[prenomArr,setPrenomArr]=useState("");const[dateArr,setDateArr]=useState("");const[foundArr,setFoundArr]=useState(null);const[foundDep,setFoundDep]=useState(null);const[managerArr,setManagerArr]=useState("");
-  const enrDep=()=>{if(!nomDep.trim()&&!prenomDep.trim()){showToast("⚠️ Saisissez nom ou prénom","err");return;}const c=badges.find(b=>(b.nom.toLowerCase().includes(nomDep.toLowerCase())||!nomDep)&&(b.prenom.toLowerCase().includes(prenomDep.toLowerCase())||!prenomDep)&&b.statut!=="Archivé");if(!c){showToast("⚠️ Collaborateur introuvable","err");return;}const u={...c,date_sortie_prevue:dateDep||today};setBadges(p=>p.map(b=>b.id===c.id?u:b));if(sb)sb.from("lp24_badges").upsert(u);addLog("Départ","Date sortie : "+c.prenom+" "+c.nom+(dateDep?" → "+dateDep:""));showToast("✅ Départ enregistré pour "+c.prenom+" "+c.nom);setNomDep("");setPrenomDep("");setDateDep("");};
-  const enrArr=()=>{if(!nomArr.trim()&&!prenomArr.trim()){showToast("⚠️ Saisissez nom ou prénom","err");return;}const wd=wdCache?Object.values(wdCache).find(w=>(w.nom.includes(nomArr.toUpperCase())||!nomArr)&&(w.prenom.toLowerCase().includes(prenomArr.toLowerCase())||!prenomArr)):null;const ex=badges.find(b=>(b.nom.toLowerCase().includes(nomArr.toLowerCase())||!nomArr)&&(b.prenom.toLowerCase().includes(prenomArr.toLowerCase())||!prenomArr)&&b.statut!=="Archivé");if(ex){showToast("⚠️ Ce collaborateur existe déjà","err");return;}const nb={id:nxId(badges),nom:wd?wd.nom:nomArr.toUpperCase(),prenom:wd?wd.prenom:prenomArr,matricule:wd?wd.matricule:"",email:wd?wd.email:"",serie:"",zeplug:"",carte_rechargement:"",casier:"",manager:wd?wd.manager:"",mail_manager:wd?wd.mailMgr:"",statut:"Actif",badge_donne:true,date_entree:dateArr||wd?.hireDate||"",date_sortie_prevue:"",date_archive:"",commentaire:""};setBadges(p=>[...p,nb]);if(sb){const{id,...row}=nb;sb.from("lp24_badges").insert(row);}addLog("Arrivée",(wd?"Workday":"Manuel")+" : "+nb.prenom+" "+nb.nom);showToast("✅ "+(wd?"Arrivée avec données Workday":"Arrivée enregistrée")+" — "+nb.prenom+" "+nb.nom);setItMailSent(nb);setNomArr("");setPrenomArr("");setDateArr("");};
+  const j30=new Date();j30.setDate(j30.getDate()+30);const j30s=j30.toISOString().slice(0,10);
+  const exp30=actifs.filter(b=>b.date_sortie_prevue&&b.date_sortie_prevue>=today&&b.date_sortie_prevue<=j30s);
+  const lundi=new Date();lundi.setDate(lundi.getDate()-lundi.getDay()+1);const lundiS=lundi.toISOString().slice(0,10);
+  const entreesM=badges.filter(b=>{const d=b.date_entree||"";return d&&d.slice(0,7)===today.slice(0,7);}).length;
+  const sansCase=badges.filter(b=>b.statut!=="Archivé"&&!b.casier);
+  const departsMois=badges.filter(b=>{const d=b.date_sortie_prevue||"";return d&&d.slice(0,7)===today.slice(0,7);}).length;
+  const recents=[...badges].filter(b=>b.statut!=="Archivé").sort((a,b)=>b.id-a.id).slice(0,10);
+  const txBadge=total?Math.round(avecBadge.length/total*100):0;
+  const txCase=casiers.length?Math.round(casOcc.length/casiers.length*100):0;
 
-  const mailIT=(b,type)=>{
-    const itEmail=settings&&settings.itEmail?settings.itEmail:"";
-    if(!itEmail){showToast("⚠️ Email IT non configuré dans les paramètres","err");return;}
-    const subj=type==="arrivee"?encodeURIComponent("Arrivée collaborateur — "+b.prenom+" "+b.nom):encodeURIComponent("Départ collaborateur — "+b.prenom+" "+b.nom);
-    const body=type==="arrivee"?encodeURIComponent("Bonjour,\n\nNous vous informons de l'arrivée d'un nouveau collaborateur :\n\nNom : "+b.nom+"\nPrénom : "+b.prenom+"\nMatricule : "+(b.matricule||"NC")+"\nEmail : "+(b.email||"NC")+"\nDate d'entrée : "+(b.date_entree||"NC")+"\nManager : "+(b.manager||"NC")+" ("+(b.mail_manager||"NC")+")\n\nMerci de créer les accès nécessaires.\n\nCordialement"):encodeURIComponent("Bonjour,\n\nNous vous informons du départ du collaborateur suivant :\n\nNom : "+b.nom+"\nPrénom : "+b.prenom+"\nMatricule : "+(b.matricule||"NC")+"\nN° badge : "+(b.serie||"NC")+"\nDate de sortie : "+(b.date_sortie_prevue||"NC")+"\n\nMerci de supprimer les accès.\n\nCordialement");
-    window.open("mailto:"+encodeURIComponent(itEmail)+"?subject="+subj+"&body="+body);
-  };
-  return React.createElement("div",null,
+  const statColors={"Actif":"#22C55E","À récupérer":"#EF4444","Badge prêt":"#3B82F6","Badge VIP":"#7C3AED","Futur arrivant":"#0891B2","Archivé":"#9CA3AF"};
 
-    badges.filter(b=>b.statut==="À récupérer"&&b.date_sortie_prevue&&b.date_sortie_prevue<=(()=>{const d=new Date();d.setDate(d.getDate()-2);return d.toISOString().slice(0,10);})()).length>0&&React.createElement("div",{className:"notif-bar no-print",style:{background:"#FEF3C7",border:"2px solid #F59E0B",borderRadius:10,padding:"10px 16px",marginBottom:16,display:"flex",alignItems:"center",gap:10}},
-      React.createElement("span",{style:{fontSize:20}},"🔔"),
-      React.createElement("div",{style:{flex:1}},
-        React.createElement("div",{style:{fontWeight:700,color:"#92400E",fontSize:14}},badges.filter(b=>b.statut==="À récupérer"&&b.date_sortie_prevue&&b.date_sortie_prevue<=(()=>{const d=new Date();d.setDate(d.getDate()-2);return d.toISOString().slice(0,10);})()).length+" badge(s) non récupéré(s) depuis 2+ jours"),
-        React.createElement("div",{style:{fontSize:12,color:"#78350F"}},badges.filter(b=>b.statut==="À récupérer"&&b.date_sortie_prevue&&b.date_sortie_prevue<=(()=>{const d=new Date();d.setDate(d.getDate()-2);return d.toISOString().slice(0,10);})()).map(b=>b.prenom+" "+b.nom).join(" · "))
-      ),
-      React.createElement(Btn,{onClick:()=>setView("collaborateurs"),color:"#92400E",style:{fontSize:12}},"Voir →")
-    ),    expirantBientot.length>0&&React.createElement("div",{className:"notif-bar no-print",style:{background:"#FEF3C7",border:"2px solid #F59E0B",borderRadius:10,padding:"10px 16px",marginBottom:16,display:"flex",alignItems:"center",gap:10}},
-      React.createElement("span",{style:{fontSize:20}},"⏰"),
-      React.createElement("div",{style:{flex:1}},
-        React.createElement("div",{style:{fontWeight:700,color:"#92400E",fontSize:14}},expirantBientot.length+" badge(s) expire(nt) dans les 7 prochains jours"),
-        React.createElement("div",{style:{fontSize:12,color:"#78350F"}},expirantBientot.map(b=>b.prenom+" "+b.nom+" ("+fmt(b.date_sortie_prevue)+")").join(" · "))
-      ),
-      React.createElement(Btn,{onClick:()=>setView("collaborateurs"),color:"#92400E",style:{fontSize:12}},"Voir →")
-    ),
-    React.createElement("div",{style:{display:"flex",alignItems:"center",gap:12,marginBottom:20,padding:"14px 20px",background:"linear-gradient(135deg,#0F172A,#1B3A6B)",borderRadius:12}},
+  const KpiCard=({icon,iconBg,label,value,sub,subColor,onClick})=>React.createElement("div",{
+    onClick,style:{background:"#fff",borderRadius:14,padding:"20px 22px",boxShadow:"0 1px 3px rgba(0,0,0,.06)",border:"1px solid #F1F5F9",display:"flex",alignItems:"center",gap:16,cursor:onClick?"pointer":"default",flex:1,transition:"box-shadow .15s"},
+    onMouseEnter:e=>{if(onClick)e.currentTarget.style.boxShadow="0 4px 16px rgba(0,0,0,.1)";},
+    onMouseLeave:e=>{e.currentTarget.style.boxShadow="0 1px 3px rgba(0,0,0,.06)";}
+  },
+    React.createElement("div",{style:{width:52,height:52,borderRadius:14,background:iconBg,display:"flex",alignItems:"center",justifyContent:"center",fontSize:24,flexShrink:0}},icon),
+    React.createElement("div",null,
+      React.createElement("div",{style:{fontSize:13,color:"#64748B",marginBottom:2}},label),
+      React.createElement("div",{style:{fontSize:30,fontWeight:800,color:"#0F172A",lineHeight:1}},value),
+      sub&&React.createElement("div",{style:{fontSize:12,fontWeight:600,color:subColor||"#22C55E",marginTop:3}},sub)
+    )
+  );
+
+  const AlertRow=({icon,iconBg,label,count,onClick})=>React.createElement("div",{
+    onClick,style:{display:"flex",alignItems:"center",gap:14,padding:"13px 16px",borderRadius:10,border:"1px solid #F1F5F9",cursor:"pointer",background:"#fff",marginBottom:8,transition:"background .12s"},
+    onMouseEnter:e=>e.currentTarget.style.background="#F8FAFC",
+    onMouseLeave:e=>e.currentTarget.style.background="#fff"
+  },
+    React.createElement("div",{style:{width:36,height:36,borderRadius:10,background:iconBg,display:"flex",alignItems:"center",justifyContent:"center",fontSize:18,flexShrink:0}},icon),
+    React.createElement("div",{style:{flex:1,fontWeight:600,fontSize:14,color:"#0F172A"}},label),
+    React.createElement("div",{style:{fontWeight:700,fontSize:16,color:"#0F172A",marginRight:6}},count),
+    React.createElement("span",{style:{color:"#CBD5E1",fontSize:18}},"›")
+  );
+
+  const ActionBtn=({icon,iconBg,title,sub,onClick})=>React.createElement("div",{
+    onClick,style:{background:"#fff",border:"1px solid #F1F5F9",borderRadius:14,padding:"16px 18px",cursor:"pointer",display:"flex",alignItems:"center",gap:14,transition:"all .15s",boxShadow:"0 1px 3px rgba(0,0,0,.05)"},
+    onMouseEnter:e=>{e.currentTarget.style.boxShadow="0 4px 16px rgba(0,0,0,.1)";e.currentTarget.style.borderColor="#E2E8F0";},
+    onMouseLeave:e=>{e.currentTarget.style.boxShadow="0 1px 3px rgba(0,0,0,.05)";e.currentTarget.style.borderColor="#F1F5F9";}
+  },
+    React.createElement("div",{style:{width:42,height:42,borderRadius:12,background:iconBg,display:"flex",alignItems:"center",justifyContent:"center",fontSize:20,flexShrink:0}},icon),
+    React.createElement("div",null,
+      React.createElement("div",{style:{fontWeight:700,fontSize:14,color:"#0F172A"}},title),
+      React.createElement("div",{style:{fontSize:12,color:"#64748B",marginTop:1}},sub)
+    )
+  );
+
+  return React.createElement("div",{style:{background:"#F8FAFC",minHeight:"100vh"}},
+    // HEADER
+    React.createElement("div",{style:{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:24}},
       React.createElement("div",null,
-        React.createElement("h1",{style:{color:"#fff",fontSize:20,fontWeight:700,marginBottom:2}},"Gestion des Collaborateurs"),
-        React.createElement("p",{style:{color:"rgba(255,255,255,.65)",fontSize:12}},"Badges & Casiers — Prochain rapport : "+getNextFriday()),React.createElement("button",{onClick:()=>{
-      const it=settings&&settings.itEmail?settings.itEmail:"";
-      if(!it){showToast("⚠️ Email IT non configuré","err");return;}
-      const dem=new Date();dem.setDate(dem.getDate()+1);const dISO=dem.toISOString().slice(0,10);
-      const sorties=badges.filter(b=>b.date_sortie_prevue===dISO&&b.statut!=="Archivé");
-      const entrees=badges.filter(b=>b.date_entree===dISO&&b.statut!=="Archivé");
-      if(!sorties.length&&!entrees.length){showToast("Aucun événement demain");return;}
-      const lines=[];
-      if(entrees.length){lines.push("ARRIVÉES DEMAIN :");entrees.forEach(b=>lines.push("• "+b.prenom+" "+b.nom+" ("+b.matricule+")"));}
-      if(sorties.length){lines.push("\nDÉPARTS DEMAIN :");sorties.forEach(b=>lines.push("• "+b.prenom+" "+b.nom+" — Badge:"+(b.serie||"NC")));}
-      window.open("mailto:"+encodeURIComponent(it)+"?subject="+encodeURIComponent("Rappel J-1 — "+new Date(dISO+"T00:00:00").toLocaleDateString("fr-FR"))+"&body="+encodeURIComponent("Bonjour,\n\n"+lines.join("\n")+"\n\nCordialement,\nLP24"));
-      showToast("✅ Mail rappel ouvert");
-    },style:{background:"rgba(255,255,255,.15)",border:"1px solid rgba(255,255,255,.3)",color:"#fff",borderRadius:8,padding:"6px 12px",cursor:"pointer",fontSize:12,fontWeight:600}},"📬 Rappels J-1")
+        React.createElement("h1",{style:{fontSize:22,fontWeight:700,color:"#0F172A"}},"Bonjour Admin ! 👋"),
+        React.createElement("div",{style:{fontSize:13,color:"#64748B",marginTop:2}},"Voici l'essentiel à retenir aujourd'hui.")
       )
     ),
-    React.createElement("div",{style:{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(120px,1fr))",gap:12,marginBottom:16}},
-      React.createElement(KPI,{label:"Actifs",value:actifs.length,color:C.green,onClick:()=>setView("collaborateurs")}),
-      React.createElement(KPI,{label:"À récupérer",value:aRecuperer.length,color:C.red,onClick:()=>setView("collaborateurs")}),
-      React.createElement(KPI,{label:"Casiers libres",value:libres.length,color:C.blue,sub:libres.length+"/"+casiers.length,onClick:()=>setView("casiers")}),
-      React.createElement(KPI,{label:"Workday chargé",value:wdCache?Object.keys(wdCache).length:0,color:C.purple}),
-      React.createElement(KPI,{label:"📅 Départs",value:badges.filter(b=>b.date_sortie_prevue && b.date_sortie_prevue !== "" && b.statut!=="Archivé").length,color:C.orange,onClick:()=>setView("rapport")}),
-      React.createElement(KPI,{label:"⚠️ Doublons",value:Object.values(badges.filter(b=>b.statut!=="Archivé").reduce((acc,b)=>{if(b.serie)acc[b.serie]=(acc[b.serie]||0)+1;return acc;},{})).filter(c=>c>1).length,color:"#F59E0B",onClick:()=>setView("collaborateurs")}),
+
+    // KPI CARDS
+    React.createElement("div",{style:{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:14,marginBottom:24}},
+      React.createElement(KpiCard,{icon:"👥",iconBg:"#EFF6FF",label:"Collaborateurs actifs",value:actifs.length,sub:"+"+entreesM+" ce mois",onClick:()=>setView("collaborateurs")}),
+      React.createElement(KpiCard,{icon:"🪪",iconBg:"#F0FDF4",label:"Badges attribués",value:avecBadge.length,sub:txBadge+"%",subColor:"#22C55E",onClick:()=>setView("collaborateurs")}),
+      React.createElement(KpiCard,{icon:"📦",iconBg:"#F0FDFA",label:"Casiers occupés",value:casOcc.length,sub:txCase+"%",subColor:"#10B981",onClick:()=>setView("casiers")}),
+      React.createElement(KpiCard,{icon:"⚠️",iconBg:"#FFF7ED",label:"Badges à récupérer",value:aRecuperer.length,sub:aRecuperer.length>0?"À traiter":"OK",subColor:aRecuperer.length>0?"#EF4444":"#22C55E",onClick:()=>setView("collaborateurs")})
     ),
-    (sansMatAvecBadge.length>0||sansMatSansBadge.length>0||avecMatSansBadge.length>0)&&React.createElement("div",{style:{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(130px,1fr))",gap:10,marginBottom:16}},
-      sansMatAvecBadge.length>0&&React.createElement(KPI,{label:"Badge sans matricule",value:sansMatAvecBadge.length,color:"#E74C3C",icon:"🔴",sub:"Ont un badge",onClick:()=>setView("collaborateurs"),style:{background:"#FEF2F2"}}),
-      sansMatSansBadge.length>0&&React.createElement(KPI,{label:"Ni matricule ni badge",value:sansMatSansBadge.length,color:"#F97316",icon:"⚠️",sub:"À compléter",onClick:()=>setView("collaborateurs"),style:{background:"#FFF7ED"}}),
-      avecMatSansBadge.length>0&&React.createElement(KPI,{label:"Matricule sans badge",value:avecMatSansBadge.length,color:"#EAB308",icon:"🟡",sub:"Badge non attribué",onClick:()=>setView("collaborateurs"),style:{background:"#FEFCE8"}})
-    ),
-    React.createElement("div",{style:{display:"grid",gridTemplateColumns:"1fr 1fr",gap:16,marginBottom:20}},
-      React.createElement(Card,{style:{borderTop:"4px solid "+C.red,background:"#FFF5F5"}},
-        React.createElement("h3",{style:{fontWeight:700,color:C.red,marginBottom:12,fontSize:14}},"🚪 Enregistrer un départ"),
-        React.createElement("div",{style:{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8,marginBottom:8}},
-          React.createElement("div",null,React.createElement(Lbl,null,"Nom"),React.createElement(Inp,{value:nomDep,onChange:v=>{setNomDep(v);setFoundDep(null);},placeholder:"DUPONT"})),
-          React.createElement("div",null,React.createElement(Lbl,null,"Prénom"),React.createElement(Inp,{value:prenomDep,onChange:v=>{setPrenomDep(v);setFoundDep(null);},placeholder:"Jean"}))
-        ),
-        React.createElement("div",{style:{marginBottom:10}},React.createElement(Lbl,null,"Date de sortie"),React.createElement(Inp,{type:"date",value:dateDep,onChange:setDateDep})),
-        foundDep&&React.createElement("div",{style:{background:"#FDEDEC",borderRadius:8,padding:"8px 12px",marginBottom:10,fontSize:12,borderLeft:"3px solid "+C.red}},
-          React.createElement("div",{style:{fontWeight:700,color:C.red}},foundDep.prenom+" "+foundDep.nom),
-          foundDep.manager&&React.createElement("div",{style:{color:"#6B7280",marginTop:2}},"👤 Manager : "+foundDep.manager+(foundDep.mail_manager?" — "+foundDep.mail_manager:""))
-        ),
-        React.createElement("div",{style:{display:"flex",gap:8,flexWrap:"wrap",alignItems:"center"}},
-          React.createElement(Btn,{onClick:enrDep,color:C.red},"Enregistrer le départ"),
-          React.createElement("button",{
-            title:"Mail IT — informer du départ",
-            onClick:()=>{
-              const it=(settings&&settings.itEmail)||"";
-              if(!it){showToast("⚠️ Email IT non configuré dans Paramètres","err");return;}
-              const b=badges.find(x=>(x.nom.toLowerCase().includes(nomDep.toLowerCase())||!nomDep)&&(x.prenom.toLowerCase().includes(prenomDep.toLowerCase())||!prenomDep)&&x.statut!=="Archivé");
-              const data=b?{...b,date_sortie_prevue:dateDep||b.date_sortie_prevue||"NC"}:{nom:nomDep.toUpperCase(),prenom:prenomDep,matricule:"NC",serie:"NC",date_sortie_prevue:dateDep||"NC",manager:"NC",mail_manager:"NC"};
-              const cc=encodeURIComponent((settings&&settings.ccEmails)||"");
-              const s=encodeURIComponent("Départ — "+data.prenom+" "+data.nom);
-              const body=encodeURIComponent(buildBody(settings.bodyDepartIT||"Départ de {prenom} {nom} — Date : {date_sortie_prevue}\nManager : {manager}",data));
-              window.open("mailto:"+encodeURIComponent(it)+(cc?"?cc="+cc:"")+"?subject="+s+"&body="+body);
-            },
-            style:{background:"#FDEDEC",border:"1px solid #F1948A",borderRadius:8,padding:"7px 12px",cursor:"pointer",fontSize:14,fontWeight:700,flexShrink:0}
-          },"✉️"),
-          foundDep&&React.createElement("button",{
-            title:"Ouvrir mail Restaurant (départ)",
-            onClick:()=>{
-              const to=encodeURIComponent((settings&&settings.restaurantEmail)||"");
-              const cc=encodeURIComponent((settings&&settings.ccEmails)||"");
-              const s=encodeURIComponent("Départ — "+foundDep.prenom+" "+foundDep.nom);
-              const body=encodeURIComponent(buildBody(settings.bodyDepartResto,foundDep));
-              window.open("mailto:"+to+(cc?"?cc="+cc:"")+"?subject="+s+"&body="+body);
-            },
-            style:{background:"#EBF5FB",border:"1px solid #AED6F1",borderRadius:8,padding:"7px 12px",cursor:"pointer",fontSize:13,fontWeight:600}
-          },"🍽️ Mail restaurant"),
-          foundDep&&React.createElement("button",{
-            title:"Ouvrir mail IT (départ)",
-            onClick:()=>{
-              const it=encodeURIComponent((settings&&settings.itEmail)||"");
-              const cc=encodeURIComponent((settings&&settings.ccEmails)||"");
-              const s=encodeURIComponent("Départ — "+foundDep.prenom+" "+foundDep.nom);
-              const body=encodeURIComponent(buildBody(settings.bodyDepartIT,foundDep));
-              window.open("mailto:"+it+(cc?"?cc="+cc:"")+"?subject="+s+"&body="+body);
-            },
-            style:{background:"#FDEDEC",border:"1px solid #F1948A",borderRadius:8,padding:"7px 12px",cursor:"pointer",fontSize:13,fontWeight:600}
-          },"✉️ Mail IT")
-        )
+
+    React.createElement("div",{style:{display:"grid",gridTemplateColumns:"1fr 400px",gap:20,marginBottom:24}},
+      // ALERTES
+      React.createElement("div",{style:{background:"#fff",borderRadius:14,padding:"20px 20px 12px",boxShadow:"0 1px 3px rgba(0,0,0,.06)",border:"1px solid #F1F5F9"}},
+        React.createElement("div",{style:{fontWeight:700,fontSize:16,color:"#0F172A",marginBottom:16}},"Alertes importantes"),
+        React.createElement(AlertRow,{icon:"⚠️",iconBg:"#FEF2F2",label:"Badges à récupérer",count:aRecuperer.length,onClick:()=>setView("collaborateurs")}),
+        React.createElement(AlertRow,{icon:"⏰",iconBg:"#FFFBEB",label:"Badges expirent bientôt",count:exp30.length,onClick:()=>setView("collaborateurs")}),
+        React.createElement(AlertRow,{icon:"📦",iconBg:"#FFFBEB",label:"Collaborateurs sans casier",count:sansCase.length,onClick:()=>setView("casiers")}),
+        React.createElement(AlertRow,{icon:"📅",iconBg:"#EFF6FF",label:"Départs ce mois",count:departsMois,onClick:()=>setView("collaborateurs")}),
+        React.createElement("button",{onClick:()=>setView("collaborateurs"),style:{background:"none",border:"none",color:"#3B82F6",fontSize:13,fontWeight:600,cursor:"pointer",padding:"8px 0",width:"100%",textAlign:"center"}},"Voir toutes les alertes")
       ),
-      React.createElement(Card,{style:{borderTop:"4px solid "+C.green,background:"#F0FDF4"}},
-        React.createElement("h3",{style:{fontWeight:700,color:C.green,marginBottom:12,fontSize:14}},"✅ Enregistrer une arrivée"),
-        React.createElement("div",{style:{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8,marginBottom:8}},
-          React.createElement("div",null,React.createElement(Lbl,null,"Nom"),React.createElement(Inp,{value:nomArr,onChange:v=>{setNomArr(v);setFoundArr(null);},placeholder:"MARTIN"})),
-          React.createElement("div",null,React.createElement(Lbl,null,"Prénom"),React.createElement(Inp,{value:prenomArr,onChange:v=>{setPrenomArr(v);setFoundArr(null);},placeholder:"Sophie"}))
-        ),
-        React.createElement("div",{style:{marginBottom:8}},React.createElement(Lbl,null,"Date d'entrée"),React.createElement(Inp,{type:"date",value:dateArr,onChange:setDateArr})),
-        React.createElement("div",{style:{marginBottom:8}},React.createElement(Lbl,null,"Manager (si non trouvé dans Workday)"),React.createElement(Inp,{value:managerArr,onChange:setManagerArr,placeholder:"Nom Manager"})),React.createElement("p",{style:{fontSize:11,color:"#065f46",marginBottom:8,background:"#a7f3d0",borderRadius:6,padding:"5px 10px"}},"💡 Données Workday récupérées automatiquement si disponibles."),
-        foundArr&&React.createElement("div",{style:{background:"#E6F9EE",borderRadius:8,padding:"8px 12px",marginBottom:8,fontSize:12,borderLeft:"3px solid "+C.green}},
-          React.createElement("div",{style:{fontWeight:700,color:C.green}},foundArr.prenom+" "+foundArr.nom+(foundArr.matricule?" — "+foundArr.matricule:"")),
-          foundArr.manager&&React.createElement("div",{style:{color:"#6B7280",marginTop:2}},"👤 Manager : "+foundArr.manager+(foundArr.mail_manager?" — "+foundArr.mail_manager:""))
-        ),
-        React.createElement("div",{style:{display:"flex",gap:8,flexWrap:"wrap",alignItems:"center"}},
-          React.createElement(Btn,{onClick:enrArr,color:C.green},"Enregistrer l'arrivée"),
-          React.createElement("button",{
-            title:"Mail IT — informer de l'arrivée",
-            onClick:()=>{
-              const it=(settings&&settings.itEmail)||"";
-              if(!it){showToast("⚠️ Email IT non configuré dans Paramètres","err");return;}
-              const wd=wdCache?Object.values(wdCache).find(w=>(norm(w.nom).includes(norm(nomArr))||!nomArr)&&(norm(w.prenom).includes(norm(prenomArr))||!prenomArr)):null;
-              const data={nom:wd?wd.nom:nomArr.toUpperCase()||"NC",prenom:wd?wd.prenom:prenomArr||"NC",matricule:wd?wd.matricule:"NC",email:wd?wd.email:"NC",date_entree:dateArr||wd?.hireDate||"NC",manager:managerArr||wd?.manager||"NC",mail_manager:wd?.mailMgr||"NC"};
-              const cc=encodeURIComponent((settings&&settings.ccEmails)||"");
-              const s=encodeURIComponent("Arrivée — "+data.prenom+" "+data.nom);
-              const body=encodeURIComponent(buildBody(settings.bodyArriveeIT||"Arrivée de {prenom} {nom} — Date : {date_entree}\nManager : {manager}",data));
-              window.open("mailto:"+encodeURIComponent(it)+(cc?"?cc="+cc:"")+"?subject="+s+"&body="+body);
-            },
-            style:{background:"#E6F9EE",border:"1px solid #86efac",borderRadius:8,padding:"7px 12px",cursor:"pointer",fontSize:14,fontWeight:700,flexShrink:0}
-          },"✉️"),
-          foundArr&&React.createElement("button",{
-            title:"Ouvrir mail Restaurant (arrivée)",
-            onClick:()=>{
-              const to=encodeURIComponent((settings&&settings.restaurantEmail)||"");
-              const cc=encodeURIComponent((settings&&settings.ccEmails)||"");
-              const s=encodeURIComponent("Arrivée — "+foundArr.prenom+" "+foundArr.nom);
-              const body=encodeURIComponent(buildBody(settings.bodyArriveeResto,{...foundArr,manager:managerArr||foundArr.manager||"NC",mail_manager:foundArr.mail_manager||"NC"}));
-              window.open("mailto:"+to+(cc?"?cc="+cc:"")+"?subject="+s+"&body="+body);
-            },
-            style:{background:"#EBF5FB",border:"1px solid #AED6F1",borderRadius:8,padding:"7px 12px",cursor:"pointer",fontSize:13,fontWeight:600}
-          },"🍽️ Mail restaurant"),
-          foundArr&&React.createElement("button",{
-            title:"Ouvrir mail IT (arrivée)",
-            onClick:()=>{
-              const it=encodeURIComponent((settings&&settings.itEmail)||"");
-              const cc=encodeURIComponent((settings&&settings.ccEmails)||"");
-              const s=encodeURIComponent("Arrivée — "+foundArr.prenom+" "+foundArr.nom);
-              const body=encodeURIComponent(buildBody(settings.bodyArriveeIT,{...foundArr,manager:managerArr||foundArr.manager||"NC",mail_manager:foundArr.mail_manager||"NC"}));
-              window.open("mailto:"+it+(cc?"?cc="+cc:"")+"?subject="+s+"&body="+body);
-            },
-            style:{background:"#E6F9EE",border:"1px solid #86efac",borderRadius:8,padding:"7px 12px",cursor:"pointer",fontSize:13,fontWeight:600}
-          },"✉️ Mail IT")
+      // ACTIONS RAPIDES
+      React.createElement("div",{style:{background:"#fff",borderRadius:14,padding:"20px",boxShadow:"0 1px 3px rgba(0,0,0,.06)",border:"1px solid #F1F5F9"}},
+        React.createElement("div",{style:{fontWeight:700,fontSize:16,color:"#0F172A",marginBottom:16}},"Actions rapides"),
+        React.createElement("div",{style:{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12}},
+          React.createElement(ActionBtn,{icon:"➕",iconBg:"#EFF6FF",title:"Arrivée",sub:"Ajouter un collaborateur",onClick:()=>setView("accueil")}),
+          React.createElement(ActionBtn,{icon:"🚪",iconBg:"#FEF2F2",title:"Départ",sub:"Enregistrer un départ",onClick:()=>setView("accueil")}),
+          React.createElement(ActionBtn,{icon:"🪪",iconBg:"#F0FDF4",title:"Attribuer un badge",sub:"Assigner un badge",onClick:()=>setView("collaborateurs")}),
+          React.createElement(ActionBtn,{icon:"📦",iconBg:"#F5F3FF",title:"Attribuer un casier",sub:"Assigner un casier",onClick:()=>setView("casiers")})
         )
       )
     ),
-    aRecuperer.length>0&&React.createElement(Card,{style:{padding:0,overflow:"hidden",marginBottom:16}},
-      React.createElement("div",{style:{display:"flex",alignItems:"center",gap:12,padding:"12px 18px",background:C.red}},
-        React.createElement("span",{style:{fontSize:20}},"⚠️"),
-        React.createElement("div",null,React.createElement("div",{style:{fontWeight:700,color:"#fff",fontSize:14}},"Badges à récupérer — "+aRecuperer.length+" en attente"),React.createElement("div",{style:{color:"rgba(255,255,255,.8)",fontSize:12}},"Ces personnes ont quitté le site"))
+
+    // DERNIERS COLLABORATEURS
+    React.createElement("div",{style:{background:"#fff",borderRadius:14,boxShadow:"0 1px 3px rgba(0,0,0,.06)",border:"1px solid #F1F5F9",overflow:"hidden"}},
+      React.createElement("div",{style:{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"18px 22px",borderBottom:"1px solid #F8FAFC"}},
+        React.createElement("div",{style:{fontWeight:700,fontSize:16,color:"#0F172A"}},"Derniers collaborateurs ajoutés"),
+        React.createElement("button",{onClick:()=>setView("collaborateurs"),style:{background:"none",border:"none",color:"#3B82F6",fontSize:13,fontWeight:600,cursor:"pointer"}},"Voir tout")
       ),
-      React.createElement("table",{style:{width:"100%",borderCollapse:"collapse",fontSize:13}},
-        React.createElement("thead",null,React.createElement("tr",{style:{background:"#FDDCDC"}},["Matricule","Nom","Prénom","N° Badge","Casier","Manager"].map(h=>React.createElement("th",{key:h,style:{padding:"7px 12px",textAlign:"left",fontWeight:600,color:C.red,fontSize:12}},h)))),
-        React.createElement("tbody",null,aRecuperer.map((b,i)=>React.createElement("tr",{key:b.id,style:{background:i%2===0?"#fff":"#FFF5F5",borderBottom:"1px solid #FDDCDC"}},
-          React.createElement("td",{style:{padding:"8px 12px",fontWeight:700,color:C.red}},b.matricule&&String(b.matricule)!=="0"?b.matricule:React.createElement("span",{style:{color:"#E74C3C",fontWeight:700,fontSize:11}},"NC")),
-          React.createElement("td",{style:{padding:"8px 12px",fontWeight:700}},b.nom),
-          React.createElement("td",{style:{padding:"8px 12px"}},b.prenom),
-          React.createElement("td",{style:{padding:"8px 12px"}},b.serie?React.createElement("code",{style:{background:"#F3F4F6",padding:"2px 6px",borderRadius:4,fontSize:11}},b.serie):"—"),
-          React.createElement("td",{style:{padding:"8px 12px"}},b.casier||"—"),
-          React.createElement("td",{style:{padding:"8px 12px",fontSize:12,color:"#6B7280"}},b.manager||"—")
-        )))
-      )
-    ),
-    React.createElement(Card,{style:{marginBottom:16}},
-      React.createElement("h3",{style:{fontWeight:600,fontSize:14,color:C.dark,marginBottom:12}},"📦 Casiers par zone"),
-      React.createElement("div",{style:{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:10}},
-        ZONES.map(z=>{const zc=casiers.filter(c=>c.zone===z);const zl=zc.filter(c=>c.statut==="Libre");const pct=zc.length?Math.round((zc.length-zl.length)/zc.length*100):0;const col=ZONES_COLORS[z];return React.createElement("div",{key:z,style:{background:col+"12",border:"2px solid "+col+"33",borderRadius:10,padding:"10px",textAlign:"center",cursor:"pointer"},onClick:()=>setView("casiers")},React.createElement("div",{style:{fontWeight:700,fontSize:13,color:col}},ZONES_LABELS[z]),React.createElement("div",{style:{fontSize:11,color:"#6B7280",margin:"2px 0"}},zc.length+" casiers"),React.createElement("div",{style:{fontSize:12,color:C.green,fontWeight:700}},zl.length+" libres"),React.createElement("div",{style:{background:"#E5E7EB",borderRadius:999,height:5,marginTop:6}},React.createElement("div",{style:{background:col,borderRadius:999,height:5,width:pct+"%"}})));})
+      React.createElement("table",{style:{width:"100%",borderCollapse:"collapse"}},
+        React.createElement("thead",null,
+          React.createElement("tr",{style:{background:"#F8FAFC"}},
+            ["Nom","Prénom","Zone","","Statut","Badge","Casier","Arrivée"].map((h,i)=>
+              React.createElement("th",{key:i,style:{padding:"10px 18px",textAlign:"left",fontSize:11,fontWeight:700,color:"#64748B",letterSpacing:".5px",textTransform:"uppercase"}},h)
+            )
+          )
+        ),
+        React.createElement("tbody",null,
+          recents.map((b,i)=>{
+            const zone=b.casier?b.casier.slice(0,2):"";
+            const zoneColor={"DE":"#DBEAFE","PA":"#FEE2E2","SE":"#D1FAE5","LV":"#FEF3C7"}[zone]||"#F3F4F6";
+            const zoneTxt={"DE":"#1D4ED8","PA":"#DC2626","SE":"#065F46","LV":"#92400E"}[zone]||"#374151";
+            return React.createElement("tr",{key:b.id,style:{borderBottom:"1px solid #F8FAFC",transition:"background .1s"},
+              onMouseEnter:e=>e.currentTarget.style.background="#F8FAFC",
+              onMouseLeave:e=>e.currentTarget.style.background="transparent"},
+              React.createElement("td",{style:{padding:"12px 18px",fontWeight:700,fontSize:13,color:"#0F172A"}},b.nom),
+              React.createElement("td",{style:{padding:"12px 18px",fontSize:13,color:"#374151"}},b.prenom),
+              React.createElement("td",{style:{padding:"12px 18px"}},
+                zone?React.createElement("span",{style:{background:zoneColor,color:zoneTxt,borderRadius:6,padding:"3px 8px",fontSize:11,fontWeight:700}},zone):"—"
+              ),
+              React.createElement("td",{style:{padding:"12px 18px"}},
+                React.createElement("span",{style:{display:"flex",alignItems:"center",gap:5,fontSize:12,color:statColors[b.statut]||"#9CA3AF"}},
+                  React.createElement("span",{style:{width:7,height:7,borderRadius:"50%",background:statColors[b.statut]||"#9CA3AF",display:"inline-block"}}),
+                  b.statut
+                )
+              ),
+              React.createElement("td",{style:{padding:"12px 18px",fontSize:12,color:"#22C55E",fontWeight:600}},b.serie?"Attribué":"—"),
+              React.createElement("td",{style:{padding:"12px 18px",fontSize:12,color:"#64748B"}},b.casier||"—"),
+              React.createElement("td",{style:{padding:"12px 18px",fontSize:12,color:"#64748B"}},b.date_entree?fmt(b.date_entree):"—")
+            );
+          })
+        )
       )
     )
   );
@@ -444,7 +389,8 @@ function VueCollaborateurs({badges,casiers,setBadges,setCasiers,showToast,wdCach
   const SortTh=({col,label,st})=>{const active=sortCol===col;return React.createElement("th",{className:"sortable"+(active?(sortDir==="asc"?" sort-asc":" sort-desc"):""),onClick:()=>handleSort(col),style:{padding:"9px 8px",textAlign:"left",fontWeight:600,whiteSpace:"nowrap",...st}},label);};
   const filtered=useMemo(()=>{
     let r=badges.filter(b=>{if(!fStat&&b.statut==="Archivé")return false;if(fStat&&b.statut!==fStat)return false;const q=search.toLowerCase();return!q||(b.nom+" "+b.prenom+" "+(b.matricule||"")+" "+(b.serie||"")).toLowerCase().includes(q);});
-    if(sortCol)r=[...r].sort((a,b)=>{let av=a[sortCol]||"",bv=b[sortCol]||"";return sortDir==="asc"?String(av).localeCompare(String(bv)):String(bv).localeCompare(String(av));});
+    if(sortCol==="id"){r=[...r].sort((a,b)=>sortDir==="asc"?a.id-b.id:b.id-a.id);}
+    else if(sortCol)r=[...r].sort((a,b)=>{let av=a[sortCol]||"",bv=b[sortCol]||"";return sortDir==="asc"?String(av).localeCompare(String(bv)):String(bv).localeCompare(String(av));});
     return r;
   },[badges,fStat,search,sortCol,sortDir]);
   const syncCasier=async(oldC,newC,nom,prenom,mat)=>{
@@ -459,7 +405,7 @@ function VueCollaborateurs({badges,casiers,setBadges,setCasiers,showToast,wdCach
       // FIX: chercher SEULEMENT si nom>=2 chars ET prénom>=1 char
       if(n.length>=2&&p.length>=1){
         const match=Object.values(wdCache).find(w=>{const wn=w.nom.toUpperCase();const wp=w.prenom.toLowerCase();return(wn.includes(n)||n.includes(wn))&&(wp.includes(p.toLowerCase())||p.toLowerCase().includes(wp));});
-        if(match){const ds=match.inCo?"":((match.termDate&&(!match.hireDate||match.termDate>match.hireDate))?match.termDate:"");upd.matricule=upd.matricule||match.matricule;upd.email=upd.email||match.email;upd.manager=upd.manager||match.manager;upd.mail_manager=upd.mail_manager||match.mailMgr;if(!match.inCo)upd.date_sortie_prevue=upd.date_sortie_prevue||ds;else if(upd.date_sortie_prevue)upd.date_sortie_prevue="";}
+        if(match){const td=match.termDate||"";const hd=match.hireDate||"";const ds=(td&&(!hd||td>hd))?td:"";upd.matricule=upd.matricule||match.matricule;upd.email=upd.email||match.email;upd.manager=upd.manager||match.manager;upd.mail_manager=upd.mail_manager||match.mailMgr;upd.date_sortie_prevue=upd.date_sortie_prevue||ds;}
       }
     }
     setForm(upd);
@@ -468,7 +414,7 @@ function VueCollaborateurs({badges,casiers,setBadges,setCasiers,showToast,wdCach
     const n=form.nom.toUpperCase();const p=form.prenom.toLowerCase();
     if(!n&&!p){showToast("⚠️ Saisissez d'abord un nom ou prénom","err");return;}
     const match=wdCache?Object.values(wdCache).find(w=>{const wn=w.nom.toUpperCase();const wp=w.prenom.toLowerCase();return(!n||(wn.includes(n)||n.includes(wn)))&&(!p||(wp.includes(p)||p.includes(wp)));}) :null;
-    if(match){const ds=match.inCo?"":((match.termDate&&(!match.hireDate||match.termDate>match.hireDate))?match.termDate:"");setForm(f=>({...f,matricule:f.matricule||match.matricule||"",email:f.email||match.email||"",manager:f.manager||match.manager||"",mail_manager:f.mail_manager||match.mailMgr||"",date_sortie_prevue:match.inCo?"":f.date_sortie_prevue||ds}));showToast("✅ Workday : "+match.prenom+" "+match.nom+(ds?" — sortie : "+ds:""));}
+    if(match){const td=match.termDate||"";const hd=match.hireDate||"";const ds=(td&&(!hd||td>hd))?td:"";setForm(f=>({...f,matricule:f.matricule||match.matricule||"",email:f.email||match.email||"",manager:f.manager||match.manager||"",mail_manager:f.mail_manager||match.mailMgr||"",date_sortie_prevue:f.date_sortie_prevue||ds}));showToast("✅ Workday : "+match.prenom+" "+match.nom+(ds?" — sortie : "+ds:""));}
     else showToast("⚠️ Introuvable dans Workday : "+form.prenom+" "+form.nom,"err");
   };
   const save=async()=>{
@@ -569,6 +515,7 @@ function VueCollaborateurs({badges,casiers,setBadges,setCasiers,showToast,wdCach
         React.createElement("thead",null,
           React.createElement("tr",{style:{background:C.blue,color:"#fff"}},
             React.createElement("th",{style:{padding:"9px 8px",width:32}},"#"),
+            React.createElement(SortTh,{col:"id",label:"Date ajout"}),
             React.createElement(SortTh,{col:"matricule",label:"Matricule"}),
             React.createElement(SortTh,{col:"nom",label:"Nom"}),
             React.createElement(SortTh,{col:"prenom",label:"Prénom"}),
@@ -595,6 +542,7 @@ function VueCollaborateurs({badges,casiers,setBadges,setCasiers,showToast,wdCach
             const bg=b.statut==="Archivé"?"#F5F5F5":b.statut==="À récupérer"?C.redBg:sortiePassee?"#FFF3CD":sortieProche?"#FFFBEB":isVIP?"#F5F3FF":isPret?"#EFF6FF":i%2===0?"#fff":"#F9FAFB";
             return React.createElement("tr",{key:b.id,style:{background:bg,borderBottom:"1px solid #E5E7EB"},onMouseOver:e=>e.currentTarget.style.background=C.blueBg,onMouseOut:e=>e.currentTarget.style.background=bg},
               React.createElement("td",{style:{padding:"7px 8px",fontSize:11,color:"#CBD5E1",textAlign:"center"}},i+1),
+              React.createElement("td",{style:{padding:"7px 8px",fontSize:10,color:"#94A3B8",whiteSpace:"nowrap"}},b.date_entree?fmt(b.date_entree):React.createElement("span",{style:{color:"#CBD5E1"}},"—")),
               React.createElement("td",{style:{padding:"7px 8px",fontWeight:700,color:C.blue,fontSize:11}},!hasM?React.createElement("span",{style:{color:"#E74C3C",fontWeight:700,fontSize:10}},"NC"):b.matricule),
               React.createElement("td",{style:{padding:"7px 8px",fontWeight:600}},b.nom||"—"),
               React.createElement("td",{style:{padding:"7px 8px"}},b.prenom||"—"),
@@ -629,7 +577,7 @@ function VueCollaborateurs({badges,casiers,setBadges,setCasiers,showToast,wdCach
                     if(wdCache&&(!b.matricule||!b.email||!b.manager)){
                       const n=b.nom.toUpperCase();const p=b.prenom.toLowerCase();
                       const match=Object.values(wdCache).find(w=>{const wn=w.nom.toUpperCase();const wp=w.prenom.toLowerCase();return(wn.includes(n)||n.includes(wn))&&(wp.includes(p)||p.includes(wp));});
-                      if(match){const ds2=match.inCo?"":((match.termDate&&(!match.hireDate||match.termDate>match.hireDate))?match.termDate:"");setTimeout(()=>setForm(prev=>({...prev,matricule:prev.matricule||match.matricule||"",email:prev.email||match.email||"",manager:prev.manager||match.manager||"",mail_manager:prev.mail_manager||match.mailMgr||"",date_entree:prev.date_entree||match.hireDate||"",date_sortie_prevue:match.inCo?"":prev.date_sortie_prevue||ds2})),50);showToast("✅ Workday auto-rempli : "+match.prenom+" "+match.nom);}
+                      if(match){const td2=match.termDate||"";const hd2=match.hireDate||"";const ds2=(td2&&(!hd2||td2>hd2))?td2:"";setTimeout(()=>setForm(prev=>({...prev,matricule:prev.matricule||match.matricule||"",email:prev.email||match.email||"",manager:prev.manager||match.manager||"",mail_manager:prev.mail_manager||match.mailMgr||"",date_entree:prev.date_entree||match.hireDate||"",date_sortie_prevue:prev.date_sortie_prevue||ds2})),50);showToast("✅ Workday auto-rempli : "+match.prenom+" "+match.nom);}
                     }
                   },style:{background:"none",border:"none",cursor:"pointer",fontSize:14}},"✏️"),
                   React.createElement("button",{onClick:()=>archiver(b.id),title:"Archiver",style:{background:"none",border:"none",cursor:"pointer",fontSize:14}},"🗃️")
@@ -784,8 +732,6 @@ function VueMSLists({badges,setBadges,showToast,addLog,wdCache}){
   );
 }
 
-// ════════════════ VUE IMPRESSION ÉTIQUETTES ════════════════
-// ════════ IMPRESSION DÉDIÉE — fenêtre séparée, dimensions exactes Avery L4785 ════════
 function doPrintEtiquettes(toPrint, startPos, IMG_BG, IMG_LOGO, BLUE){
   // AVERY L4785 : marges top=13.42mm bottom=11.45mm left=19.70mm right=7.87mm
   // Étiquettes  : 80mm × 50mm | écart col=15mm | écart ligne=5.53mm
@@ -822,7 +768,7 @@ function doPrintEtiquettes(toPrint, startPos, IMG_BG, IMG_LOGO, BLUE){
       inner += `<div style="display:flex;flex-direction:row;align-items:flex-start">${etiqHTML(sl[r*2])}<div style="width:15mm;min-width:15mm;height:50mm;flex-shrink:0"></div>${etiqHTML(sl[r*2+1])}</div>`;
       if(r<4) inner += `<div style="height:5.53mm;font-size:0;line-height:0"></div>`;
     }
-    pagesHTML += `<div style="width:210mm;height:297mm;padding:10.42mm 7.87mm 11.45mm 15.70mm;box-sizing:border-box;overflow:hidden;page-break-after:always">${inner}</div>`;
+    pagesHTML += `<div style="width:210mm;height:297mm;padding:12.42mm 7.87mm 11.45mm 15.70mm;box-sizing:border-box;overflow:hidden;page-break-after:always">${inner}</div>`;
   }
 
   const html = `<!DOCTYPE html><html><head><meta charset="utf-8"><style>
@@ -1008,6 +954,400 @@ function VueImpression({badges}){
   );
 }
 
+// ════════════════ VUE FIELD SUPPORT ════════════════
+function VueFieldSupport({badges,showToast,addLog,settings,session}){
+  const EMPTY_ARR={type:"arrivee",nom:"",prenom:"",dateArr:"",manager:"",localisation:"Hexagone",ritm:"",dateReception:"",materiel:"",commentaire:""};
+  const EMPTY_DEP={type:"depart",collaborateurId:"",nomLibre:"",prenomLibre:"",dateDep:"",commentaire:""};
+
+  const[entries,setEntries]=useState([]);
+  const[loadingFS,setLoadingFS]=useState(true);
+  const[modal,setModal]=useState(null); // "arrivee" | "depart" | null
+  const[formArr,setFormArr]=useState(EMPTY_ARR);
+  const[formDep,setFormDep]=useState(EMPTY_DEP);
+  const[search,setSearch]=useState("");
+
+  useEffect(()=>{
+    if(!sb){setLoadingFS(false);return;}
+    sb.from("lp24_fieldsupport").select("*").order("id",{ascending:false}).then(({data})=>{
+      setEntries(data||[]);setLoadingFS(false);
+    }).catch(()=>setLoadingFS(false));
+  },[]);
+
+  const save=async e=>{
+    const row={...e,createdAt:new Date().toISOString()};
+    if(sb){
+      const{data,error}=await sb.from("lp24_fieldsupport").insert(row).select().single();
+      if(!error&&data){setEntries(p=>[data,...p]);addLog("Field Support",e.type==="arrivee"?"Arrivée IT : "+e.prenom+" "+e.nom:"Départ IT : "+(e.nomLibre||""));showToast(e.type==="arrivee"?"✅ Arrivée IT enregistrée":"✅ Départ IT enregistré");return;}
+    }
+    const n={...row,id:Date.now()};
+    setEntries(p=>[n,...p]);
+    addLog("Field Support",e.type==="arrivee"?"Arrivée IT : "+e.prenom+" "+e.nom:"Départ IT : "+(e.nomLibre||""));
+    showToast(e.type==="arrivee"?"✅ Arrivée IT enregistrée":"✅ Départ IT enregistré");
+  };
+
+  const submitArr=()=>{
+    if(!formArr.nom.trim()&&!formArr.prenom.trim()){showToast("⚠️ Nom ou prénom requis","err");return;}
+    save(formArr);setFormArr(EMPTY_ARR);
+  };
+  const submitDep=()=>{
+    if(!formDep.collaborateurId&&!formDep.nomLibre.trim()){showToast("⚠️ Sélectionnez ou saisissez un collaborateur","err");return;}
+    save(formDep);setFormDep(EMPTY_DEP);
+  };
+  const del=async id=>{
+    if(sb)await sb.from("lp24_fieldsupport").delete().eq("id",id).catch(()=>{});
+    setEntries(p=>p.filter(e=>e.id!==id));
+  };
+
+  const filtered=entries.filter(e=>{
+    if(!search)return true;
+    const q=search.toLowerCase();
+    return(e.nom||e.nomLibre||"").toLowerCase().includes(q)||(e.prenom||e.prenomLibre||"").toLowerCase().includes(q)||(e.ritm||"").toLowerCase().includes(q)||(e.manager||"").toLowerCase().includes(q);
+  }).sort((a,b)=>b.id-a.id);
+
+  const colabs=badges.filter(b=>b.statut!=="Archivé").sort((a,b)=>a.nom.localeCompare(b.nom));
+
+  const INP={padding:"8px 10px",borderRadius:7,border:"1px solid #D1D5DB",fontSize:13,width:"100%",boxSizing:"border-box"};
+  const LBL={display:"block",fontSize:11,fontWeight:600,color:"#374151",marginBottom:4};
+  const fld=(label,el)=>React.createElement("div",{style:{marginBottom:12}},React.createElement("label",{style:LBL},label),el);
+
+  const arrColor="#DCFCE7"; // vert clair
+  const depColor="#FEE2E2"; // rouge clair
+  const arrBorder="#22C55E";
+  const depBorder="#EF4444";
+
+  return React.createElement("div",null,
+
+    // ── HEADER
+    React.createElement("div",{style:{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:20}},
+      React.createElement("div",null,
+        React.createElement("h1",{style:{fontSize:20,fontWeight:700,color:"#0F172A"}},"💻 Field Support IT"),
+        React.createElement("div",{style:{fontSize:13,color:"#64748B",marginTop:2}},"Suivi des arrivées et départs matériel IT")
+      ),
+      React.createElement("div",{style:{display:"flex",gap:6}},
+        React.createElement("div",{style:{background:arrColor,border:"2px solid "+arrBorder,borderRadius:8,padding:"4px 12px",fontSize:11,fontWeight:700,color:"#166534"}},"● Arrivée IT"),
+        React.createElement("div",{style:{background:depColor,border:"2px solid "+depBorder,borderRadius:8,padding:"4px 12px",fontSize:11,fontWeight:700,color:"#991B1B"}},"● Départ IT")
+      )
+    ),
+
+    // ── FORMULAIRES EN HAUT (côte à côte)
+    React.createElement("div",{style:{display:"grid",gridTemplateColumns:"1fr 1fr",gap:16,marginBottom:24}},
+
+      // Formulaire Arrivée
+      React.createElement("div",null,
+        React.createElement("div",{style:{background:arrColor,border:"2px solid "+arrBorder,borderRadius:12,padding:18}},
+          React.createElement("div",{style:{fontWeight:700,fontSize:14,color:"#166534",marginBottom:14,display:"flex",alignItems:"center",gap:8}},
+            React.createElement("span",{style:{background:arrBorder,color:"#fff",borderRadius:6,padding:"2px 10px",fontSize:12}},"ARRIVÉE")," Nouveau collaborateur IT"
+          ),
+          React.createElement("div",{style:{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10}},
+            fld("Nom *",React.createElement("input",{value:formArr.nom,onChange:e=>setFormArr(f=>({...f,nom:e.target.value.toUpperCase()})),placeholder:"NOM",style:{...INP,textTransform:"uppercase"}})),
+            fld("Prénom *",React.createElement("input",{value:formArr.prenom,onChange:e=>setFormArr(f=>({...f,prenom:e.target.value})),placeholder:"Prénom",style:INP}))
+          ),
+          React.createElement("div",{style:{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10}},
+            fld("Date d'arrivée",React.createElement("input",{type:"date",value:formArr.dateArr,onChange:e=>setFormArr(f=>({...f,dateArr:e.target.value})),style:INP})),
+            fld("Manager",React.createElement("input",{value:formArr.manager,onChange:e=>setFormArr(f=>({...f,manager:e.target.value})),placeholder:"Nom du manager",style:INP}))
+          ),
+          React.createElement("div",{style:{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10}},
+            fld("Localisation",React.createElement("select",{value:formArr.localisation,onChange:e=>setFormArr(f=>({...f,localisation:e.target.value})),style:INP},
+              React.createElement("option",{value:"Hexagone"},"🌍 Hexagone"),
+              React.createElement("option",{value:"Levallois"},"🏢 Levallois")
+            )),
+            fld("N° RITM",React.createElement("input",{value:formArr.ritm,onChange:e=>setFormArr(f=>({...f,ritm:e.target.value})),placeholder:"RITM0000000",style:INP}))
+          ),
+          React.createElement("div",{style:{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10}},
+            fld("Date réception matériel",React.createElement("input",{type:"date",value:formArr.dateReception,onChange:e=>setFormArr(f=>({...f,dateReception:e.target.value})),style:INP})),
+            fld("État matériel reçu",React.createElement("select",{value:formArr.materiel,onChange:e=>setFormArr(f=>({...f,materiel:e.target.value})),style:INP},
+              React.createElement("option",{value:""},"— Sélectionner —"),
+              React.createElement("option",{value:"Complet"},"✅ Complet"),
+              React.createElement("option",{value:"Partiel"},"⚠️ Partiel"),
+              React.createElement("option",{value:"Non reçu"},"❌ Non reçu")
+            ))
+          ),
+          fld("Commentaire",React.createElement("textarea",{value:formArr.commentaire,onChange:e=>setFormArr(f=>({...f,commentaire:e.target.value})),placeholder:"Notes, précisions...",rows:2,style:{...INP,resize:"vertical"}})),
+          React.createElement("button",{onClick:submitArr,style:{width:"100%",background:arrBorder,color:"#fff",border:"none",borderRadius:8,padding:"10px",fontWeight:700,fontSize:14,cursor:"pointer",marginTop:4}},"✅ Enregistrer l'arrivée")
+        )
+      ),
+
+      // Formulaire Départ
+      React.createElement("div",null,
+        React.createElement("div",{style:{background:depColor,border:"2px solid "+depBorder,borderRadius:12,padding:18}},
+          React.createElement("div",{style:{fontWeight:700,fontSize:14,color:"#991B1B",marginBottom:14,display:"flex",alignItems:"center",gap:8}},
+            React.createElement("span",{style:{background:depBorder,color:"#fff",borderRadius:6,padding:"2px 10px",fontSize:12}},"DÉPART")," Collaborateur sortant IT"
+          ),
+          fld("Collaborateur existant",React.createElement("select",{value:formDep.collaborateurId,onChange:e=>{const id=e.target.value;const b=badges.find(b=>String(b.id)===id);setFormDep(f=>({...f,collaborateurId:id,nomLibre:b?b.nom:"",prenomLibre:b?b.prenom:""}));},style:INP},
+            React.createElement("option",{value:""},"— Choisir dans les collaborateurs —"),
+            colabs.map(b=>React.createElement("option",{key:b.id,value:b.id},b.nom+" "+b.prenom+(b.matricule&&b.matricule!=="0"?" — "+b.matricule:"")))
+          )),
+          React.createElement("div",{style:{textAlign:"center",fontSize:12,color:"#9CA3AF",margin:"6px 0"}},"— ou saisie libre —"),
+          React.createElement("div",{style:{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10}},
+            fld("Nom",React.createElement("input",{value:formDep.nomLibre,onChange:e=>setFormDep(f=>({...f,nomLibre:e.target.value.toUpperCase(),collaborateurId:""})),placeholder:"NOM",style:{...INP,textTransform:"uppercase"}})),
+            fld("Prénom",React.createElement("input",{value:formDep.prenomLibre,onChange:e=>setFormDep(f=>({...f,prenomLibre:e.target.value,collaborateurId:""})),placeholder:"Prénom",style:INP}))
+          ),
+          fld("Date de départ",React.createElement("input",{type:"date",value:formDep.dateDep,onChange:e=>setFormDep(f=>({...f,dateDep:e.target.value})),style:INP})),
+          fld("Commentaire",React.createElement("textarea",{value:formDep.commentaire,onChange:e=>setFormDep(f=>({...f,commentaire:e.target.value})),placeholder:"Raison, matériel récupéré...",rows:3,style:{...INP,resize:"vertical"}})),
+          React.createElement("button",{onClick:submitDep,style:{width:"100%",background:depBorder,color:"#fff",border:"none",borderRadius:8,padding:"10px",fontWeight:700,fontSize:14,cursor:"pointer",marginTop:4}},"🚪 Enregistrer le départ")
+        )
+      )
+    ),
+
+    // ── LISTE EN BAS (pleine largeur)
+    React.createElement("div",null,
+      React.createElement("div",{style:{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:12}},
+        React.createElement("div",{style:{fontWeight:700,fontSize:15,color:"#0F172A"}},filtered.length+" entrée(s)"),
+        React.createElement("input",{value:search,onChange:e=>setSearch(e.target.value),placeholder:"🔍 Rechercher nom, RITM, manager...",style:{padding:"7px 12px",borderRadius:8,border:"1px solid #E2E8F0",fontSize:13,width:260}})
+      ),
+      loadingFS&&React.createElement("div",{style:{textAlign:"center",padding:20,color:"#64748B"}},"⏳ Chargement..."),
+      React.createElement("div",{style:{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10}},
+        filtered.length===0&&!loadingFS&&React.createElement("div",{style:{gridColumn:"1/-1",textAlign:"center",padding:40,color:"#9CA3AF",fontSize:14}},"Aucune entrée. Utilisez les formulaires ci-dessus pour commencer."),
+        filtered.map(e=>{
+          const isArr=e.type==="arrivee";
+          const dispName=isArr?(e.nom||"")+" "+(e.prenom||""):(e.nomLibre||"")+" "+(e.prenomLibre||"");
+          return React.createElement("div",{key:e.id,style:{
+            background:isArr?"#F0FDF4":"#FFF5F5",
+            border:"1.5px solid "+(isArr?"#86EFAC":"#FCA5A5"),
+            borderLeft:"5px solid "+(isArr?"#22C55E":"#EF4444"),
+            borderRadius:10,padding:"12px 16px"
+          }},
+            React.createElement("div",{style:{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:6}},
+              React.createElement("div",{style:{display:"flex",alignItems:"center",gap:8}},
+                React.createElement("span",{style:{background:isArr?"#22C55E":"#EF4444",color:"#fff",borderRadius:6,padding:"2px 8px",fontSize:11,fontWeight:700}},isArr?"ARRIVÉE":"DÉPART"),
+                React.createElement("span",{style:{fontWeight:700,fontSize:14,color:"#0F172A"}},dispName.trim()||"—")
+              ),
+              React.createElement("div",{style:{display:"flex",alignItems:"center",gap:6}},
+                React.createElement("span",{style:{fontSize:11,color:"#9CA3AF"}},e.createdAt?new Date(e.createdAt).toLocaleString("fr-FR",{day:"2-digit",month:"2-digit",year:"2-digit",hour:"2-digit",minute:"2-digit"}):""),
+                React.createElement("button",{onClick:()=>del(e.id),style:{background:"none",border:"none",cursor:"pointer",color:"#FCA5A5",fontSize:16,padding:0,lineHeight:1}},"✕")
+              )
+            ),
+            React.createElement("div",{style:{display:"flex",flexWrap:"wrap",gap:"4px 14px",fontSize:12,color:"#374151"}},
+              isArr&&e.dateArr&&React.createElement("span",null,"📅 ",new Date(e.dateArr+"T12:00").toLocaleDateString("fr-FR")),
+              isArr&&e.manager&&React.createElement("span",null,"👤 ",e.manager),
+              isArr&&e.localisation&&React.createElement("span",null,e.localisation==="Levallois"?"🏢":"🌍"," ",e.localisation),
+              isArr&&e.ritm&&React.createElement("span",{style:{background:"#EFF6FF",borderRadius:5,padding:"1px 7px",color:"#1D4ED8",fontWeight:600}},e.ritm),
+              isArr&&e.dateReception&&React.createElement("span",null,"📦 ",new Date(e.dateReception+"T12:00").toLocaleDateString("fr-FR")),
+              isArr&&e.materiel&&React.createElement("span",{style:{background:e.materiel==="Complet"?"#DCFCE7":e.materiel==="Partiel"?"#FEF9C3":"#FEE2E2",borderRadius:5,padding:"1px 7px",color:e.materiel==="Complet"?"#166534":e.materiel==="Partiel"?"#92400E":"#991B1B",fontWeight:600}},e.materiel==="Complet"?"✅ Complet":e.materiel==="Partiel"?"⚠️ Partiel":"❌ Non reçu"),
+              !isArr&&e.dateDep&&React.createElement("span",null,"📅 Départ : ",new Date(e.dateDep+"T12:00").toLocaleDateString("fr-FR")),
+              e.commentaire&&React.createElement("span",{style:{width:"100%",color:"#6B7280",fontStyle:"italic",marginTop:2}},"💬 "+e.commentaire)
+            )
+          );
+        })
+      )
+    )
+  );
+}
+
+
+// ════════════════ VUE PARAMÈTRES ════════════════
+function VueParametres({settings,setSettings,badges,setBadges,setCasiers,showToast,addLog,wdCache,setWdCache,setLoading,racineRef,hrRef,hcmRef,importJsonRef,exportExcel,exportJSON,importJSON,parseRacineAsync,parseWDFileAsync,histo}){
+  const[section,setSection]=useState(null); // null=home | "utilisateurs" | "emails" | "import" | "purge"
+
+  const Row=({icon,iconBg,iconColor,title,sub,value,onClick})=>React.createElement("div",{
+    onClick,style:{display:"flex",alignItems:"center",gap:14,padding:"14px 18px",borderRadius:10,background:"#fff",border:"1px solid #F1F5F9",cursor:"pointer",marginBottom:8,transition:"background .1s"},
+    onMouseEnter:e=>e.currentTarget.style.background="#F8FAFC",
+    onMouseLeave:e=>e.currentTarget.style.background="#fff"
+  },
+    React.createElement("div",{style:{width:36,height:36,borderRadius:10,background:iconBg,display:"flex",alignItems:"center",justifyContent:"center",fontSize:18,flexShrink:0,color:iconColor||"inherit"}},icon),
+    React.createElement("div",{style:{flex:1}},
+      React.createElement("div",{style:{fontWeight:600,fontSize:14,color:"#0F172A"}},title),
+      React.createElement("div",{style:{fontSize:12,color:"#64748B",marginTop:1}},sub)
+    ),
+    value&&React.createElement("span",{style:{fontSize:13,color:"#94A3B8",marginRight:6}},value),
+    React.createElement("span",{style:{color:"#CBD5E1",fontSize:18}},"›")
+  );
+
+  const QuickCard=({icon,iconBg,title,sub,onClick})=>React.createElement("div",{
+    onClick,style:{background:"#fff",border:"1px solid #F1F5F9",borderRadius:14,padding:"20px 18px 16px",cursor:"pointer",flex:1,minWidth:0,transition:"all .15s"},
+    onMouseEnter:e=>{e.currentTarget.style.boxShadow="0 4px 16px rgba(0,0,0,.08)";e.currentTarget.style.borderColor="#E2E8F0";},
+    onMouseLeave:e=>{e.currentTarget.style.boxShadow="none";e.currentTarget.style.borderColor="#F1F5F9";}
+  },
+    React.createElement("div",{style:{width:48,height:48,borderRadius:14,background:iconBg,display:"flex",alignItems:"center",justifyContent:"center",fontSize:22,marginBottom:12}},icon),
+    React.createElement("div",{style:{fontWeight:700,fontSize:14,color:"#0F172A",marginBottom:4}},title),
+    React.createElement("div",{style:{fontSize:12,color:"#64748B",lineHeight:1.4}},sub),
+    React.createElement("div",{style:{marginTop:10,color:"#94A3B8",fontSize:18}},"›")
+  );
+
+  const SectionTitle=({back,title})=>React.createElement("div",{style:{display:"flex",alignItems:"center",gap:12,marginBottom:20}},
+    React.createElement("button",{onClick:()=>setSection(null),style:{background:"#F1F5F9",border:"none",borderRadius:8,padding:"6px 12px",cursor:"pointer",fontSize:13,color:"#374151",fontWeight:600}},"← Retour"),
+    React.createElement("h2",{style:{fontSize:18,fontWeight:700,color:"#0F172A"}},title)
+  );
+
+  if(section==="utilisateurs") return React.createElement("div",null,
+    React.createElement(SectionTitle,{title:"Gestion des utilisateurs"}),
+    React.createElement("div",{style:{background:"#F0FDF4",borderRadius:10,padding:"10px 14px",fontSize:12,color:"#166534",marginBottom:14,display:"flex",alignItems:"center",gap:8}},
+      "🔒 Administrateur (AdminAAG) — accès complet, non modifiable"
+    ),
+    React.createElement("div",{style:{background:"#EFF6FF",borderRadius:10,padding:"10px 14px",fontSize:12,color:"#1E40AF",marginBottom:16,display:"flex",alignItems:"center",gap:8}},
+      "🛠️ IT Field Support (FieldAAG) — accès Field Support uniquement, non modifiable"
+    ),
+    React.createElement("div",{style:{marginBottom:16}},
+      (settings.users||[]).map((u,i)=>React.createElement("div",{key:i,style:{display:"flex",alignItems:"center",gap:10,padding:"12px 16px",background:"#fff",border:"1px solid #F1F5F9",borderRadius:10,marginBottom:8}},
+        React.createElement("div",{style:{width:36,height:36,borderRadius:"50%",background:"#EFF6FF",display:"flex",alignItems:"center",justifyContent:"center",fontWeight:700,fontSize:14,color:"#3B82F6"}},(u.label||u.email)[0].toUpperCase()),
+        React.createElement("div",{style:{flex:1}},
+          React.createElement("div",{style:{fontWeight:600,fontSize:13,color:"#0F172A"}},u.label||u.email),
+          React.createElement("div",{style:{fontSize:11,color:"#64748B"}},u.email),
+          u.perms&&Object.entries(u.perms).filter(([,v])=>v==="none").length>0&&React.createElement("div",{style:{fontSize:10,color:"#EF4444",marginTop:2}},"🔒 Restreint : "+Object.entries(u.perms).filter(([,v])=>v==="none").map(([k])=>k).join(", "))
+        ),
+        React.createElement("button",{onClick:()=>setSettings(s=>({...s,users:(s.users||[]).filter((_,j)=>j!==i)})),style:{background:"#FEF2F2",border:"1px solid #FEE2E2",borderRadius:8,padding:"5px 10px",cursor:"pointer",fontSize:12,color:"#EF4444",fontWeight:600}},"Supprimer")
+      ))
+    ),
+    React.createElement(AddUserForm,{settings,setSettings,showToast})
+  );
+
+  if(section==="emails") return React.createElement("div",null,
+    React.createElement(SectionTitle,{title:"Configuration des emails"}),
+    // Adresses
+    React.createElement("div",{style:{background:"#fff",border:"1px solid #F1F5F9",borderRadius:12,padding:20,marginBottom:16}},
+      React.createElement("div",{style:{fontWeight:700,fontSize:14,color:"#0F172A",marginBottom:16}},"📮 Adresses email"),
+      ...[
+        ["Email restaurant 🍽️","restaurantEmail","restaurant@exemple.fr","email"],
+        ["Email IT 💻","itEmail","it@exemple.fr","email"],
+        ["CC (séparées par virgules)","ccEmails","cc1@ex.fr,cc2@ex.fr","text"]
+      ].map(([lbl,key,ph,type])=>React.createElement("div",{key,style:{marginBottom:14}},
+        React.createElement("label",{style:{fontSize:12,fontWeight:600,color:"#374151",display:"block",marginBottom:4}},lbl),
+        React.createElement("input",{type,value:settings[key]||"",onChange:e=>setSettings(s=>({...s,[key]:e.target.value})),placeholder:ph,style:{width:"100%",padding:"9px 12px",borderRadius:8,border:"1px solid #E2E8F0",fontSize:13,boxSizing:"border-box"}})
+      ))
+    ),
+    // Corps des emails — cartes expandables
+    React.createElement("div",{style:{marginBottom:8}},
+      React.createElement("div",{style:{fontWeight:700,fontSize:14,color:"#0F172A",marginBottom:4}},"✉️ Corps des emails"),
+      React.createElement("div",{style:{fontSize:12,color:"#64748B",marginBottom:14}},"Variables disponibles : {nom} {prenom} {matricule} {email} {date_entree} {date_sortie_prevue} {serie} {manager} {mail_manager}")
+    ),
+    React.createElement("div",{style:{display:"grid",gap:10}},
+      ...[
+        {lbl:"Arrivée → Restaurant 🍽️",key:"bodyArriveeResto",icon:"✅",color:"#22C55E",bg:"#F0FDF4"},
+        {lbl:"Arrivée → IT 💻",key:"bodyArriveeIT",icon:"✅",color:"#3B82F6",bg:"#EFF6FF"},
+        {lbl:"Départ → Restaurant 🍽️",key:"bodyDepartResto",icon:"🚪",color:"#F59E0B",bg:"#FFFBEB"},
+        {lbl:"Départ → IT 💻",key:"bodyDepartIT",icon:"🚪",color:"#EF4444",bg:"#FEF2F2"}
+      ].map(({lbl,key,icon,color,bg})=>{
+        const[open,setOpen]=useState(false);
+        const[editing,setEditing]=useState(false);
+        const[draft,setDraft]=useState(settings[key]||"");
+        return React.createElement("div",{key,style:{background:"#fff",border:"1px solid #F1F5F9",borderRadius:12,overflow:"hidden"}},
+          // Header card
+          React.createElement("div",{style:{display:"flex",alignItems:"center",gap:12,padding:"14px 18px",cursor:"pointer",background:open?bg:"#fff",transition:"background .15s"},onClick:()=>setOpen(o=>!o)},
+            React.createElement("div",{style:{width:36,height:36,borderRadius:10,background:color+"20",display:"flex",alignItems:"center",justifyContent:"center",fontSize:18,flexShrink:0,color}},icon),
+            React.createElement("div",{style:{flex:1}},
+              React.createElement("div",{style:{fontWeight:600,fontSize:14,color:"#0F172A"}},lbl),
+              React.createElement("div",{style:{fontSize:11,color:"#94A3B8",marginTop:1}},open?"Cliquez pour fermer":"Cliquez pour voir et modifier")
+            ),
+            React.createElement("span",{style:{color:"#CBD5E1",fontSize:16,transition:"transform .2s",display:"inline-block",transform:open?"rotate(90deg)":"rotate(0deg)"}},"›")
+          ),
+          // Corps expandable
+          open&&React.createElement("div",{style:{borderTop:"1px solid #F1F5F9",padding:18,background:bg}},
+            editing
+              ? React.createElement("div",null,
+                  React.createElement("textarea",{value:draft,onChange:e=>setDraft(e.target.value),rows:8,autoFocus:true,style:{width:"100%",padding:"10px 12px",borderRadius:8,border:"2px solid "+color,fontSize:12,fontFamily:"monospace",resize:"vertical",boxSizing:"border-box",background:"#fff"}}),
+                  React.createElement("div",{style:{display:"flex",gap:8,marginTop:10}},
+                    React.createElement("button",{onClick:()=>{setSettings(s=>({...s,[key]:draft}));setEditing(false);showToast("✅ Email enregistré");},style:{background:color,color:"#fff",border:"none",borderRadius:8,padding:"8px 16px",fontWeight:700,fontSize:13,cursor:"pointer"}},"💾 Enregistrer"),
+                    React.createElement("button",{onClick:()=>{setDraft(settings[key]||"");setEditing(false);},style:{background:"#F1F5F9",color:"#374151",border:"none",borderRadius:8,padding:"8px 16px",fontWeight:600,fontSize:13,cursor:"pointer"}},"Annuler")
+                  )
+                )
+              : React.createElement("div",null,
+                  React.createElement("pre",{style:{fontFamily:"monospace",fontSize:12,color:"#374151",whiteSpace:"pre-wrap",margin:0,padding:"10px 12px",background:"#fff",borderRadius:8,border:"1px solid #E2E8F0",minHeight:80}},settings[key]||"(vide)"),
+                  React.createElement("button",{onClick:()=>{setDraft(settings[key]||"");setEditing(true);},style:{marginTop:10,background:"#fff",color:color,border:"1.5px solid "+color,borderRadius:8,padding:"7px 16px",fontWeight:700,fontSize:13,cursor:"pointer"}},"✏️ Modifier")
+                )
+          )
+        );
+      })
+    )
+  );
+
+  if(section==="import") return React.createElement("div",null,
+    React.createElement(SectionTitle,{title:"Import / Export"}),
+    React.createElement("div",{style:{display:"grid",gap:10}},
+      React.createElement("div",{style:{background:"#fff",border:"1px solid #F1F5F9",borderRadius:12,padding:20}},
+        React.createElement("div",{style:{fontWeight:700,fontSize:14,color:"#0F172A",marginBottom:4}},"📥 Import Workday"),
+        React.createElement("div",{style:{fontSize:12,color:"#64748B",marginBottom:14}},"Importez les fichiers Excel Workday pour synchroniser les données collaborateurs"),
+        React.createElement("div",{style:{display:"flex",gap:10,flexWrap:"wrap"}},
+          React.createElement("label",{style:{display:"inline-flex",alignItems:"center",gap:8,background:"#0F172A",color:"#fff",borderRadius:8,padding:"9px 16px",cursor:"pointer",fontWeight:600,fontSize:13}},"📂 Racine Commune",React.createElement("input",{type:"file",ref:racineRef,accept:".xlsx,.xls",onChange:e=>{if(e.target.files[0]){parseRacineAsync(e.target.files[0],badges,setBadges,setCasiers,showToast,setLoading,addLog);}e.target.value="";}})),
+          React.createElement("label",{style:{display:"inline-flex",alignItems:"center",gap:8,background:"#0369A1",color:"#fff",borderRadius:8,padding:"9px 16px",cursor:"pointer",fontWeight:600,fontSize:13}},"👤 HR Data",React.createElement("input",{type:"file",ref:hrRef,accept:".xlsx,.xls",onChange:e=>{if(e.target.files[0]){parseWDFileAsync(e.target.files[0],"hr",wdCache,setWdCache,showToast,setLoading);}e.target.value="";}})),
+          React.createElement("label",{style:{display:"inline-flex",alignItems:"center",gap:8,background:"#7C3AED",color:"#fff",borderRadius:8,padding:"9px 16px",cursor:"pointer",fontWeight:600,fontSize:13}},"🔮 Future Hires",React.createElement("input",{type:"file",ref:hcmRef,accept:".xlsx,.xls",onChange:e=>{if(e.target.files[0]){parseWDFileAsync(e.target.files[0],"fh",wdCache,setWdCache,showToast,setLoading);}e.target.value="";}})),
+          wdCache&&React.createElement("div",{style:{fontSize:12,color:"#22C55E",fontWeight:600,display:"flex",alignItems:"center",gap:4,padding:"9px 0"}},"✅ "+Object.keys(wdCache).length+" collaborateurs chargés")
+        )
+      ),
+      React.createElement("div",{style:{background:"#fff",border:"1px solid #F1F5F9",borderRadius:12,padding:20}},
+        React.createElement("div",{style:{fontWeight:700,fontSize:14,color:"#0F172A",marginBottom:4}},"📤 Export"),
+        React.createElement("div",{style:{fontSize:12,color:"#64748B",marginBottom:14}},"Exportez vos données en Excel ou JSON"),
+        React.createElement("div",{style:{display:"flex",gap:10}},
+          React.createElement("button",{onClick:exportExcel,style:{background:"#16A34A",color:"#fff",border:"none",borderRadius:8,padding:"9px 16px",cursor:"pointer",fontWeight:600,fontSize:13}},"📊 Exporter Excel"),
+          React.createElement("button",{onClick:exportJSON,style:{background:"#64748B",color:"#fff",border:"none",borderRadius:8,padding:"9px 16px",cursor:"pointer",fontWeight:600,fontSize:13}},"⬇️ Exporter JSON"),
+          React.createElement("label",{style:{display:"inline-flex",alignItems:"center",gap:8,background:"#374151",color:"#fff",borderRadius:8,padding:"9px 16px",cursor:"pointer",fontWeight:600,fontSize:13}},"⬆️ Restaurer JSON",React.createElement("input",{type:"file",ref:importJsonRef,accept:".json",onChange:importJSON}))
+        )
+      )
+    )
+  );
+
+  if(section==="purge") return React.createElement("div",null,
+    React.createElement(SectionTitle,{title:"Purge des données"}),
+    React.createElement("div",{style:{background:"#FEF2F2",border:"1px solid #FEE2E2",borderRadius:12,padding:20}},
+      React.createElement("div",{style:{fontWeight:700,fontSize:14,color:"#991B1B",marginBottom:8}},"⚠️ Zone dangereuse"),
+      React.createElement("div",{style:{fontSize:13,color:"#64748B",marginBottom:16}},"Ces actions sont irréversibles. Les données supprimées ne peuvent pas être récupérées."),
+      React.createElement("div",{style:{display:"flex",gap:10,flexWrap:"wrap"}},
+        React.createElement("button",{onClick:()=>{if(window.confirm("Supprimer définitivement tous les badges archivés ?")){setBadges(p=>p.filter(b=>b.statut!=="Archivé"));addLog("Purge","Badges archivés supprimés");showToast("🗑️ Badges archivés supprimés");}},style:{background:"#EF4444",color:"#fff",border:"none",borderRadius:8,padding:"9px 16px",cursor:"pointer",fontWeight:600,fontSize:13}},"🗑️ Purger les archives")
+      )
+    )
+  );
+
+  // PAGE PRINCIPALE PARAMÈTRES
+  return React.createElement("div",null,
+    React.createElement("div",{style:{marginBottom:28}},
+      React.createElement("h1",{style:{fontSize:24,fontWeight:700,color:"#0F172A"}},"Paramètres"),
+      React.createElement("div",{style:{fontSize:14,color:"#64748B",marginTop:4}},"Gérez les préférences et configurations de l'application.")
+    ),
+
+    // ACCÈS RAPIDE
+    React.createElement("div",{style:{marginBottom:28}},
+      React.createElement("div",{style:{fontWeight:700,fontSize:16,color:"#0F172A",marginBottom:14}},"Accès rapide"),
+      React.createElement("div",{style:{display:"grid",gridTemplateColumns:"repeat(5,1fr)",gap:14}},
+        React.createElement(QuickCard,{icon:"👥",iconBg:"#EFF6FF",title:"Gestion des utilisateurs",sub:"Ajouter, modifier et gérer les accès utilisateurs",onClick:()=>setSection("utilisateurs")}),
+        React.createElement(QuickCard,{icon:"🛡️",iconBg:"#F0FDF4",title:"Rôles et permissions",sub:"Définir les rôles et droits d'accès",onClick:()=>setSection("utilisateurs")}),
+        React.createElement(QuickCard,{icon:"🏛️",iconBg:"#F5F3FF",title:"Zones",sub:"Gérer les zones géographiques et leurs paramètres",onClick:()=>{}}),
+        React.createElement(QuickCard,{icon:"📬",iconBg:"#FFF7ED",title:"Configuration emails",sub:"Paramétrer les adresses et modèles d'emails",onClick:()=>setSection("emails")}),
+        React.createElement(QuickCard,{icon:"📥",iconBg:"#F0FDFA",title:"Import / Export",sub:"Gérer les imports Workday et exports",onClick:()=>setSection("import")})
+      )
+    ),
+
+    React.createElement("div",{style:{display:"grid",gridTemplateColumns:"1fr 380px",gap:20}},
+
+      // COLONNE GAUCHE
+      React.createElement("div",null,
+        React.createElement("div",{style:{fontWeight:700,fontSize:16,color:"#0F172A",marginBottom:14}},"Préférences générales"),
+        React.createElement("div",{style:{background:"#fff",border:"1px solid #F1F5F9",borderRadius:14,overflow:"hidden",marginBottom:20}},
+          React.createElement(Row,{icon:"🏢",iconBg:"#EFF6FF",iconColor:"#3B82F6",title:"Informations de l'entreprise",sub:"Nom, adresse et informations générales",value:"LP24",onClick:()=>{}}),
+          React.createElement(Row,{icon:"🌐",iconBg:"#F0FDF4",iconColor:"#22C55E",title:"Paramètres locaux",sub:"Langue, fuseau horaire, format de date",value:"Français (FR)",onClick:()=>{}}),
+          React.createElement(Row,{icon:"☁️",iconBg:"#F0F9FF",iconColor:"#0EA5E9",title:"Sauvegarde des données",sub:"Gérer les sauvegardes et restaurations",onClick:()=>setSection("import")}),
+          React.createElement(Row,{icon:"⬆️",iconBg:"#FFF7ED",iconColor:"#F59E0B",title:"Import / Export",sub:"Paramétrer les imports Workday et exports",onClick:()=>setSection("import")}),
+          React.createElement(Row,{icon:"🗑️",iconBg:"#FEF2F2",iconColor:"#EF4444",title:"Purge des données",sub:"Archiver ou supprimer les données anciennes",onClick:()=>setSection("purge")})
+        ),
+
+        React.createElement("div",{style:{fontWeight:700,fontSize:16,color:"#0F172A",marginBottom:14}},"Support & maintenance"),
+        React.createElement("div",{style:{background:"#fff",border:"1px solid #F1F5F9",borderRadius:14,overflow:"hidden"}},
+          React.createElement(Row,{icon:"❓",iconBg:"#EFF6FF",iconColor:"#3B82F6",title:"Centre d'aide",sub:"Guides et documentation",onClick:()=>{}}),
+          React.createElement(Row,{icon:"🎧",iconBg:"#F0FDF4",iconColor:"#22C55E",title:"Contacter le support",sub:"Envoyer une demande au support",onClick:()=>{}}),
+          React.createElement(Row,{icon:"ℹ️",iconBg:"#F5F3FF",iconColor:"#8B5CF6",title:"À propos",sub:"Version et informations légales",value:"v1.0",onClick:()=>{}})
+        )
+      ),
+
+      // COLONNE DROITE
+      React.createElement("div",null,
+        React.createElement("div",{style:{fontWeight:700,fontSize:16,color:"#0F172A",marginBottom:14}},"Personnalisation"),
+        React.createElement("div",{style:{background:"#fff",border:"1px solid #F1F5F9",borderRadius:14,overflow:"hidden",marginBottom:20}},
+          React.createElement(Row,{icon:"✉️",iconBg:"#FFF7ED",iconColor:"#F59E0B",title:"Modèles d'emails",sub:"Configurer les corps des emails envoyés",onClick:()=>setSection("emails")}),
+          React.createElement(Row,{icon:"📋",iconBg:"#F0FDF4",iconColor:"#22C55E",title:"Statuts collaborateurs",sub:"Actif, À récupérer, Badge prêt, VIP…",onClick:()=>{}}),
+          React.createElement(Row,{icon:"📊",iconBg:"#EFF6FF",iconColor:"#3B82F6",title:"Données Workday",sub:wdCache?("✅ "+Object.keys(wdCache).length+" collaborateurs chargés"):"Aucune donnée chargée",onClick:()=>setSection("import")})
+        ),
+
+        React.createElement("div",{style:{fontWeight:700,fontSize:16,color:"#0F172A",marginBottom:14}},"Sécurité & accès"),
+        React.createElement("div",{style:{background:"#fff",border:"1px solid #F1F5F9",borderRadius:14,overflow:"hidden"}},
+          React.createElement(Row,{icon:"🔐",iconBg:"#EFF6FF",iconColor:"#3B82F6",title:"Authentification",sub:"Mots de passe et méthodes de connexion",onClick:()=>setSection("utilisateurs")}),
+          React.createElement(Row,{icon:"👤",iconBg:"#F5F3FF",iconColor:"#8B5CF6",title:"Comptes utilisateurs",sub:((settings.users||[]).length+2)+" comptes configurés",onClick:()=>setSection("utilisateurs")}),
+          React.createElement(Row,{icon:"📖",iconBg:"#F0FDF4",iconColor:"#22C55E",title:"Journal d'activité",sub:(histo||[]).length+" entrées dans l'historique",onClick:()=>{}})
+        )
+      )
+    )
+  );
+}
+
+
+// ════════════════ VUE HISTORIQUE ════════════════
 // ════════════════ VUE HISTORIQUE ════════════════
 function VueHistorique({histo}){
   const[search,setSearch]=useState("");
@@ -1076,13 +1416,14 @@ function VueArchives({badges,setBadges,showToast,addLog}){
 
 // ════════════════ APP ════════════════
 function App(){
-  const[unlocked,setUnlocked]=useState(false);const[session,setSession]=useState({role:"admin",label:"Admin"});
+  const[unlocked,setUnlocked]=useState(false);const[session,setSession]=useState({role:"admin",label:"Admin"});const[globalSearch,setGlobalSearch]=useState("");const[showGlobalSearch,setShowGlobalSearch]=useState(false);
   const[view,setView]=useState("accueil");
+  const[sidebarOpen,setSidebarOpen]=useState(true);
   const[badges,setBadges]=useState([]);
   const[casiers,setCasiers]=useState([]);
   const[wdCache,setWdCache]=useState(null);
   const[histo,setHisto]=useState([]);
-  const[settings,setSettings]=useState({restaurantEmail:"placedeseine@11h59.fr",ccEmails:"a.avonde@allianceautomotive.fr,ju.poitier@allianceautomotive.fr",itEmail:"",users:[],bodyArriveeResto:"Bonjour,\n\nNous vous informons de l'arrivée d'un nouveau collaborateur :\n\nNom : {nom}\nPrénom : {prenom}\nMatricule : {matricule}\nEmail : {email}\nDate d'entrée : {date_entree}\nManager : {manager}\n\nMerci de bien vouloir l'ajouter à vos systèmes.\n\nCordialement,\nLP24",bodyArriveeIT:"Bonjour,\n\nNous vous informons de l'arrivée d'un nouveau collaborateur :\n\nNom : {nom}\nPrénom : {prenom}\nMatricule : {matricule}\nEmail : {email}\nDate d'entrée : {date_entree}\nManager : {manager} ({mail_manager})\n\nMerci de créer les accès nécessaires.\n\nCordialement,\nLP24",bodyDepartResto:"Bonjour,\n\nNous vous informons du départ du collaborateur suivant :\n\nNom : {nom}\nPrénom : {prenom}\nMatricule : {matricule}\nN° badge : {serie}\nDate de sortie : {date_sortie_prevue}\nManager : {manager}\n\nMerci de bien vouloir le retirer de vos systèmes.\n\nCordialement,\nLP24",bodyDepartIT:"Bonjour,\n\nNous vous informons du départ du collaborateur suivant :\n\nNom : {nom}\nPrénom : {prenom}\nMatricule : {matricule}\nN° badge : {serie}\nDate de sortie : {date_sortie_prevue}\nManager : {manager} ({mail_manager})\n\nMerci de supprimer les accès.\n\nCordialement,\nLP24"});
+  const[settings,setSettings]=useState({restaurantEmail:"placedeseine@11h59.fr",ccEmails:"a.avonde@allianceautomotive.fr,ju.poitier@allianceautomotive.fr",itEmail:"",users:[{label:"IT Field Support",email:"it@lp24.fr",pwd:"FieldAAG",perms:{accueil:"read",collaborateurs:PERM_NONE,casiers:PERM_NONE,rapport:PERM_NONE,impression:PERM_NONE,historique:PERM_NONE,archives:PERM_NONE,fieldsupport:PERM_WRITE}}],bodyArriveeResto:"Bonjour,\n\nNous vous informons de l'arrivée d'un nouveau collaborateur :\n\nNom : {nom}\nPrénom : {prenom}\nMatricule : {matricule}\nEmail : {email}\nDate d'entrée : {date_entree}\nManager : {manager}\n\nMerci de bien vouloir l'ajouter à vos systèmes.\n\nCordialement,\nLP24",bodyArriveeIT:"Bonjour,\n\nNous vous informons de l'arrivée d'un nouveau collaborateur :\n\nNom : {nom}\nPrénom : {prenom}\nMatricule : {matricule}\nEmail : {email}\nDate d'entrée : {date_entree}\nManager : {manager} ({mail_manager})\n\nMerci de créer les accès nécessaires.\n\nCordialement,\nLP24",bodyDepartResto:"Bonjour,\n\nNous vous informons du départ du collaborateur suivant :\n\nNom : {nom}\nPrénom : {prenom}\nMatricule : {matricule}\nN° badge : {serie}\nDate de sortie : {date_sortie_prevue}\nManager : {manager}\n\nMerci de bien vouloir le retirer de vos systèmes.\n\nCordialement,\nLP24",bodyDepartIT:"Bonjour,\n\nNous vous informons du départ du collaborateur suivant :\n\nNom : {nom}\nPrénom : {prenom}\nMatricule : {matricule}\nN° badge : {serie}\nDate de sortie : {date_sortie_prevue}\nManager : {manager} ({mail_manager})\n\nMerci de supprimer les accès.\n\nCordialement,\nLP24"});
   const[showSettings,setShowSettings]=useState(false);
   const[dbStatus,setDbStatus]=useState("loading");
   const[loading,setLoading]=useState(false);
@@ -1094,7 +1435,20 @@ function App(){
   const saveTimer=useRef(null);
   const[saving,setSaving]=useState(false);
 
-  // Dates gérées manuellement uniquement — pas de sync auto Workday
+  // ── Sync auto dates quand Workday chargé ──
+  useEffect(()=>{
+    if(!wdCache||!badges.length)return;
+    setBadges(prev=>prev.map(b=>{
+      if(!b.matricule||String(b.matricule)==="0"||b.statut==="Archivé")return b;
+      const wd=wdCache[String(b.matricule)];if(!wd)return b;
+      let upd={...b};
+      const td=wd.termDate||"";const hd=wd.hireDate||"";
+      const ds=(td&&(!hd||td>hd))?td:"";
+      if(ds&&!b.date_sortie_prevue)upd={...upd,date_sortie_prevue:ds};
+      if(wd.hireDate&&!b.date_entree)upd={...upd,date_entree:wd.hireDate};
+      return upd;
+    }));
+  },[wdCache]);
   useEffect(()=>{
     if(!unlocked||!sb||!badges.length)return;
     if(saveTimer.current)clearTimeout(saveTimer.current);
@@ -1104,16 +1458,6 @@ function App(){
       Promise.all(rows.map(b=>sb.from("lp24_badges").upsert(b))).then(()=>setTimeout(()=>setSaving(false),800)).catch(()=>setSaving(false));
     },2000);
   },[badges,unlocked]);
-
-  // ── Auto-save settings (users, emails) dans Supabase ──
-  const settingsTimer=useRef(null);
-  useEffect(()=>{
-    if(!unlocked||!sb)return;
-    if(settingsTimer.current)clearTimeout(settingsTimer.current);
-    settingsTimer.current=setTimeout(()=>{
-      sb.from("lp24_settings").upsert({id:1,data:JSON.stringify(settings)}).catch(()=>{});
-    },1500);
-  },[settings,unlocked]);
 
   const showToast=(msg,type="ok")=>{if(toastTimer.current)clearTimeout(toastTimer.current);setToast({msg,type});toastTimer.current=setTimeout(()=>setToast(null),3500);};
   const addLog=useCallback((action,detail)=>{
@@ -1130,19 +1474,7 @@ useEffect(()=>{
         const[bRes,cRes]=await Promise.all([sb.from("lp24_badges").select("*").order("id"),sb.from("lp24_casiers").select("*").order("id")]);
         if(bRes.error)throw bRes.error;
         setBadges(bRes.data||[]);
-        // Dédupliquer les casiers par numéro (protection contre les doublons Supabase)
-        const rawCasiers=cRes.data||[];
-        const casiersMap={};rawCasiers.forEach(c=>{if(c.numero)casiersMap[c.numero]=c;});
-        setCasiers(Object.values(casiersMap));
-        
-        // Charger les paramètres persistants (users, emails)
-        try{
-          const {data:sData}=await sb.from("lp24_settings").select("*").eq("id",1).single();
-          if(sData&&sData.data){
-            const parsed=typeof sData.data==="string"?JSON.parse(sData.data):sData.data;
-            setSettings(prev=>({...prev,...parsed}));
-          }
-        }catch(se){console.log("Settings non trouvés (normal au 1er démarrage)",se);}
+        setCasiers(cRes.data||[]);
         
         // Charger l'historique
         const { data: histoData } = await sb.from("historique").select("*").order("id", { ascending: false }).limit(500);
@@ -1201,6 +1533,19 @@ useEffect(()=>{
     reader.readAsText(file);e.target.value="";
   },[addLog]);
 
+  const syncDatesWorkday=useCallback(()=>{
+    if(!wdCache){showToast("⚠️ Workday non chargé","err");return;}
+    let count=0;
+    setBadges(prev=>prev.map(b=>{
+      if(!b.matricule||String(b.matricule)==="0"||b.statut==="Archivé")return b;
+      const wd=wdCache[String(b.matricule)];if(!wd)return b;
+      const td=wd.termDate||"";const hd=wd.hireDate||"";
+      const ds=(td&&(!hd||td>hd))?td:"";
+      let upd={...b};if(ds&&!b.date_sortie_prevue){count++;upd.date_sortie_prevue=ds;}if(wd.hireDate&&!b.date_entree){upd.date_entree=wd.hireDate;}return upd;
+    }));
+    addLog("Sync Workday",count+" date(s) de sortie mises à jour");
+    showToast("✅ "+count+" date(s) de sortie synchronisées depuis Workday");
+  },[wdCache,addLog]);
 
   const nav=[
     {id:"accueil",label:"Accueil",icon:"🏠"},
@@ -1210,39 +1555,52 @@ useEffect(()=>{
     {id:"impression",label:"Étiquettes",icon:"🏷️"},
     {id:"historique",label:"Historique",icon:"🕐"},
     {id:"archives",label:"Archives",icon:"🗃️"},
+    {id:"fieldsupport",label:"Field Support",icon:"💻"},
+    {id:"parametres",label:"Paramètres",icon:"⚙️"},
   ];
-  const archivesCount=badges.filter(b=>b.statut==="Archivé").length;
-  const histoCount=histo.length;
-  // Vérifier permissions pour l'utilisateur courant
   const canAccess=useCallback(viewId=>{
     if(!session||session.role==="admin")return true;
     const p=session.perms||{};
     return p[viewId]!==PERM_NONE;
   },[session]);
+  const isReadOnly=useCallback(viewId=>{
+    if(!session||session.role==="admin")return false;
+    const p=session.perms||{};
+    return p[viewId]==="read";
+  },[session]);
+  const isFieldSupportUser=session&&(session.role==="fieldsupport"||(session.role!=="admin"&&session.perms&&session.perms.fieldsupport===PERM_WRITE&&session.perms.collaborateurs===PERM_NONE));
+  const[fsModalType,setFsModalType]=useState(null); // "arrivee" | "depart" | null
+  const[fsFormArr,setFsFormArr]=useState({nom:"",prenom:"",dateArr:"",manager:"",localisation:"Hexagone",ritm:"",dateReception:"",materiel:"",commentaire:""});
+  const[fsFormDep,setFsFormDep]=useState({collaborateurId:"",nomLibre:"",prenomLibre:"",dateDep:"",commentaire:""});
+  const[fsSaving,setFsSaving]=useState(false);
   const visibleNav=nav.filter(n=>canAccess(n.id));
+  const archivesCount=badges.filter(b=>b.statut==="Archivé").length;
+  const histoCount=histo.length;
 
   const renderView=()=>{
     if(!canAccess(view)){return React.createElement("div",{style:{textAlign:"center",padding:80}},React.createElement("div",{style:{fontSize:48,marginBottom:12}},"🔒"),React.createElement("div",{style:{fontWeight:700,fontSize:18,color:"#0F172A",marginBottom:8}},"Accès refusé"),React.createElement("div",{style:{color:"#6B7280"}},"Vous n'avez pas accès à cette section."));}
-    const props={badges,casiers,setBadges,setCasiers,showToast,wdCache,addLog,setView,settings,setSettings};
+    const readOnly=isReadOnly(view);
+    const props={badges,casiers,setBadges,setCasiers,showToast,wdCache,addLog,setView:readOnly?()=>{}:setView,settings,setSettings};
     switch(view){
       case "accueil": return React.createElement(VueAccueil,props);
       case "collaborateurs": return React.createElement(VueCollaborateurs,props);
       case "casiers": return React.createElement(VueCasiers,props);
       case "rapport": return React.createElement(VueRapport,{badges});
+      
       case "impression": return React.createElement(VueImpression,{badges});
       case "historique": return React.createElement(VueHistorique,{histo});
       case "archives": return React.createElement(VueArchives,{badges,setBadges,showToast,addLog});
+      case "fieldsupport": return React.createElement(VueFieldSupport,{badges,showToast,addLog,settings,session});
+      case "parametres": return React.createElement(VueParametres,{settings,setSettings,badges,setBadges,setCasiers,showToast,addLog,wdCache,setWdCache,setLoading,racineRef,hrRef,hcmRef,importJsonRef,exportExcel,exportJSON,importJSON,parseRacineAsync,parseWDFileAsync,histo});
       default: return null;
     }
   };
 
-  // ── Pré-chargement des settings (users) avant connexion ──
+  // Pré-chargement settings avant login
   useEffect(()=>{
     if(!sb)return;
     sb.from("lp24_settings").select("*").eq("id",1).single().then(({data})=>{
-      if(data&&data.data){
-        try{const parsed=typeof data.data==="string"?JSON.parse(data.data):data.data;setSettings(prev=>({...prev,...parsed}));}catch(e){}
-      }
+      if(data&&data.data){try{const p=typeof data.data==="string"?JSON.parse(data.data):data.data;setSettings(prev=>({...prev,...p}));}catch(e){}}
     }).catch(()=>{});
   },[]);
 
@@ -1252,100 +1610,139 @@ useEffect(()=>{
   const dbDot=React.createElement("div",{style:{display:"flex",alignItems:"center",gap:6,fontSize:11,color:"#fff",opacity:.8}},React.createElement("span",{className:"save-dot"+(saving?" saving":""),title:saving?"Sauvegarde...":"Sauvegardé"}),saving?"Sauvegarde...":dbStatus==="ok"?"✓ Sync":"Hors ligne");
 
   const toolbarButtons=React.createElement("div",{style:{display:"flex",gap:6,alignItems:"center"}},
-    React.createElement("button",{title:"Paramètres & Import/Export",className:"btn-icon",onClick:()=>setShowSettings(true)},"⚙️"),
+    showGlobalSearch&&React.createElement("input",{value:globalSearch,onChange:e=>setGlobalSearch(e.target.value),placeholder:"Rechercher...",autoFocus:true,style:{padding:"5px 10px",borderRadius:6,border:"1px solid #D1D5DB",fontSize:13,width:200}}),React.createElement("button",{title:"Recherche globale",className:"btn-icon",onClick:()=>setShowGlobalSearch(v=>!v),style:{background:showGlobalSearch?"#E0F2FE":"none"}},"🔍"),
+    
     session&&React.createElement("span",{style:{fontSize:11,color:"rgba(255,255,255,.6)",marginLeft:2}},session.label),
     session&&React.createElement("button",{title:"Déconnexion",onClick:()=>{setUnlocked(false);setSession(null);},style:{background:"rgba(255,255,255,.1)",border:"none",color:"#fff",borderRadius:6,padding:"3px 8px",fontSize:11,cursor:"pointer"}},"⏻"),
     dbDot
   );
 
-  return React.createElement("div",{style:{minHeight:"100vh",background:"#F3F4F6"}},
+  const navLabels={accueil:"Accueil",collaborateurs:"Collaborateurs",casiers:"Casiers",rapport:"Rapports",impression:"Étiquettes",historique:"Historique",archives:"Archives"};
+  const currentLabel=navLabels[view]||"";
+  const HBar=()=>React.createElement("button",{onClick:()=>setSidebarOpen(o=>!o),style:{background:"rgba(255,255,255,.1)",border:"none",cursor:"pointer",borderRadius:6,padding:"6px 8px",display:"flex",flexDirection:"column",gap:"4px",flexShrink:0}},
+    React.createElement("span",{style:{display:"block",width:16,height:2,background:"rgba(255,255,255,.8)",borderRadius:1}}),
+    React.createElement("span",{style:{display:"block",width:16,height:2,background:"rgba(255,255,255,.8)",borderRadius:1}}),
+    React.createElement("span",{style:{display:"block",width:16,height:2,background:"rgba(255,255,255,.8)",borderRadius:1}})
+  );
+
+  return React.createElement("div",{className:"app-shell"},
     loading&&React.createElement("div",{style:{position:"fixed",inset:0,background:"rgba(0,0,0,.3)",zIndex:9998,display:"flex",alignItems:"center",justifyContent:"center"}},React.createElement("div",{style:{background:"#fff",borderRadius:12,padding:"24px 36px",fontSize:15,fontWeight:700}},"⏳ Chargement en cours...")),
     toast&&React.createElement("div",{className:"toast-anim",style:{position:"fixed",top:20,left:"50%",transform:"translateX(-50%)",zIndex:9999,background:toast.type==="err"?"#dc2626":"#16a34a",color:"#fff",padding:"12px 24px",borderRadius:12,fontSize:14,fontWeight:700,boxShadow:"0 4px 24px rgba(0,0,0,.25)",whiteSpace:"nowrap",pointerEvents:"none"}},toast.msg),
-    // Modal Paramètres
-    showSettings&&React.createElement("div",{style:{position:"fixed",inset:0,background:"rgba(0,0,0,.5)",zIndex:2000,display:"flex",alignItems:"center",justifyContent:"center",padding:16},onClick:e=>{if(e.target===e.currentTarget)setShowSettings(false);}},
-      React.createElement("div",{style:{background:"#fff",borderRadius:14,padding:28,width:"100%",maxWidth:560,boxShadow:"0 8px 40px rgba(0,0,0,.25)",maxHeight:"90vh",overflowY:"auto"}},
-        React.createElement("div",{style:{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:16}},
-          React.createElement("h3",{style:{fontWeight:700,fontSize:16,color:"#0F172A"}},"⚙️ Paramètres"),
-          React.createElement("button",{onClick:()=>setShowSettings(false),style:{background:"none",border:"none",fontSize:22,cursor:"pointer",color:"#9CA3AF"}},"×")
+    showSettings&&React.createElement("div",{style:{display:"none"}}),
+    React.createElement("aside",{className:"sidebar no-print",style:{width:sidebarOpen?"220px":"64px"}},
+      React.createElement("div",{style:{padding:sidebarOpen?"16px 12px 14px":"14px 8px",borderBottom:"1px solid rgba(255,255,255,.08)",display:"flex",alignItems:"center",gap:8,justifyContent:sidebarOpen?"space-between":"center"}},
+        sidebarOpen&&React.createElement("div",null,
+          React.createElement("div",{style:{color:"#fff",fontWeight:700,fontSize:13,whiteSpace:"nowrap"}},"Gestion Collaborateur"),
+          React.createElement("div",{style:{color:"rgba(255,255,255,.4)",fontSize:10,marginTop:1}},"LP24")
         ),
-        React.createElement("div",{style:{marginBottom:10}},
-          React.createElement(Lbl,null,"Email restaurant (mails 🍽️ 🚪)"),
-          React.createElement("input",{type:"email",value:settings.restaurantEmail,onChange:e=>setSettings(s=>({...s,restaurantEmail:e.target.value})),style:{width:"100%",padding:"8px 10px",borderRadius:6,border:"1px solid #D1D5DB",fontSize:13},placeholder:"restaurant@exemple.fr"})
-        ),
-        React.createElement("div",{style:{marginBottom:10}},
-          React.createElement(Lbl,null,"Email IT (mails ✉️ arrivées/départs)"),
-          React.createElement("input",{type:"email",value:settings.itEmail||"",onChange:e=>setSettings(s=>({...s,itEmail:e.target.value})),style:{width:"100%",padding:"8px 10px",borderRadius:6,border:"1px solid #D1D5DB",fontSize:13},placeholder:"it@exemple.fr"})
-        ),
-        React.createElement("div",{style:{marginBottom:20}},
-          React.createElement(Lbl,null,"CC (séparées par virgules)"),
-          React.createElement("input",{type:"text",value:settings.ccEmails,onChange:e=>setSettings(s=>({...s,ccEmails:e.target.value})),style:{width:"100%",padding:"8px 10px",borderRadius:6,border:"1px solid #D1D5DB",fontSize:13},placeholder:"cc1@ex.fr,cc2@ex.fr"})
-        ),
-        React.createElement("div",{style:{borderTop:"1px solid #E5E7EB",paddingTop:14,marginBottom:14}},
-          React.createElement("div",{style:{fontWeight:700,fontSize:13,color:"#374151",marginBottom:10}},"📁 Import / Export"),
-          React.createElement("div",{style:{display:"flex",gap:8,flexWrap:"wrap"}},
-            React.createElement("label",{style:{display:"inline-flex",alignItems:"center",gap:5,background:"#0F172A",color:"#fff",borderRadius:7,padding:"7px 12px",cursor:"pointer",fontWeight:600,fontSize:12}},"📂 Racine Commune",React.createElement("input",{type:"file",ref:racineRef,accept:".xlsx,.xls",onChange:e=>{if(e.target.files[0]){parseRacineAsync(e.target.files[0],badges,setBadges,setCasiers,showToast,setLoading,addLog);setShowSettings(false);}e.target.value="";}})),
-            React.createElement("label",{style:{display:"inline-flex",alignItems:"center",gap:5,background:"#0369a1",color:"#fff",borderRadius:7,padding:"7px 12px",cursor:"pointer",fontWeight:600,fontSize:12}},"👤 HR Data",React.createElement("input",{type:"file",ref:hrRef,accept:".xlsx,.xls",onChange:e=>{if(e.target.files[0]){parseWDFileAsync(e.target.files[0],"hr",wdCache,setWdCache,showToast,setLoading);setShowSettings(false);}e.target.value="";}})),
-            React.createElement("label",{style:{display:"inline-flex",alignItems:"center",gap:5,background:"#7C3AED",color:"#fff",borderRadius:7,padding:"7px 12px",cursor:"pointer",fontWeight:600,fontSize:12}},"🔮 Future Hires",React.createElement("input",{type:"file",ref:hcmRef,accept:".xlsx,.xls",onChange:e=>{if(e.target.files[0]){parseWDFileAsync(e.target.files[0],"fh",wdCache,setWdCache,showToast,setLoading);setShowSettings(false);}e.target.value="";}})),
-            wdCache&&React.createElement("span",{style:{fontSize:11,color:"#16a34a",fontWeight:600}},"✅ "+Object.keys(wdCache).length+" collaborateurs Workday chargés"),
-            React.createElement("button",{onClick:exportExcel,style:{background:"#16a34a",color:"#fff",border:"none",borderRadius:7,padding:"7px 12px",cursor:"pointer",fontWeight:600,fontSize:12}},"📊 Excel"),
-            React.createElement("button",{onClick:exportJSON,style:{background:"#6B7280",color:"#fff",border:"none",borderRadius:7,padding:"7px 12px",cursor:"pointer",fontWeight:600,fontSize:12}},"⬇️ JSON"),
-            React.createElement("label",{style:{display:"inline-flex",alignItems:"center",gap:5,background:"#374151",color:"#fff",borderRadius:7,padding:"7px 12px",cursor:"pointer",fontWeight:600,fontSize:12}},"⬆️ Restaurer",React.createElement("input",{type:"file",ref:importJsonRef,accept:".json",onChange:importJSON}))
-          )
-        ),
-        React.createElement("div",{style:{borderTop:"1px solid #E5E7EB",paddingTop:14,marginBottom:14}},
-          React.createElement("div",{style:{fontWeight:700,fontSize:13,color:"#374151",marginBottom:8}},"👤 Comptes utilisateurs"),
-          React.createElement("div",{style:{background:"#F0FDF4",borderRadius:7,padding:"8px 12px",fontSize:12,color:"#166534",marginBottom:10}},"🔒 Admin : mot de passe AdminAAG (fixe)"),
-          (settings.users||[]).map((u,i)=>React.createElement("div",{key:i,style:{display:"flex",alignItems:"center",gap:8,padding:"7px 10px",background:"#F9FAFB",borderRadius:7,marginBottom:5}},
-            React.createElement("div",{style:{flex:1}},
-              React.createElement("div",{style:{fontWeight:700,fontSize:12}},u.label||u.email),
-              React.createElement("div",{style:{fontSize:10,color:"#6B7280"}},u.email),
-              u.perms&&Object.entries(u.perms).filter(([,v])=>v===PERM_NONE).length>0&&React.createElement("div",{style:{fontSize:10,color:"#E74C3C",marginTop:2}},"🔒 Bloqué : "+Object.entries(u.perms).filter(([,v])=>v===PERM_NONE).map(([k])=>k).join(", "))
-            ),
-            React.createElement("button",{onClick:()=>setSettings(s=>({...s,users:(s.users||[]).filter((_,j)=>j!==i)})),style:{background:"none",border:"none",cursor:"pointer",fontSize:14,color:"#E74C3C"}},"🗑️")
-          )),
-          React.createElement(AddUserForm,{settings,setSettings,showToast})
-        ),
-        React.createElement("div",{style:{borderTop:"1px solid #E5E7EB",paddingTop:14,marginBottom:14}},
-          React.createElement("div",{style:{fontWeight:700,fontSize:13,color:"#374151",marginBottom:4}},"📝 Corps des emails (utilisez {nom}, {prenom}, {matricule}, {email}, {date_entree}, {date_sortie_prevue}, {serie}, {manager}, {mail_manager})"),
-          React.createElement("div",{style:{display:"grid",gap:10,marginTop:8}},
-            React.createElement("div",null,React.createElement(Lbl,null,"Arrivée → Restaurant"),React.createElement("textarea",{value:settings.bodyArriveeResto||"",onChange:e=>setSettings(s=>({...s,bodyArriveeResto:e.target.value})),rows:4,style:{width:"100%",padding:"6px 8px",borderRadius:6,border:"1px solid #D1D5DB",fontSize:11,fontFamily:"monospace",resize:"vertical"}})),
-            React.createElement("div",null,React.createElement(Lbl,null,"Arrivée → IT"),React.createElement("textarea",{value:settings.bodyArriveeIT||"",onChange:e=>setSettings(s=>({...s,bodyArriveeIT:e.target.value})),rows:4,style:{width:"100%",padding:"6px 8px",borderRadius:6,border:"1px solid #D1D5DB",fontSize:11,fontFamily:"monospace",resize:"vertical"}})),
-            React.createElement("div",null,React.createElement(Lbl,null,"Départ → Restaurant"),React.createElement("textarea",{value:settings.bodyDepartResto||"",onChange:e=>setSettings(s=>({...s,bodyDepartResto:e.target.value})),rows:4,style:{width:"100%",padding:"6px 8px",borderRadius:6,border:"1px solid #D1D5DB",fontSize:11,fontFamily:"monospace",resize:"vertical"}})),
-            React.createElement("div",null,React.createElement(Lbl,null,"Départ → IT"),React.createElement("textarea",{value:settings.bodyDepartIT||"",onChange:e=>setSettings(s=>({...s,bodyDepartIT:e.target.value})),rows:4,style:{width:"100%",padding:"6px 8px",borderRadius:6,border:"1px solid #D1D5DB",fontSize:11,fontFamily:"monospace",resize:"vertical"}}))
-          )
-        ),
-        React.createElement(Btn,{onClick:()=>setShowSettings(false),color:"#0891B2"},"Fermer")
+        React.createElement(HBar,null)
+      ),
+      React.createElement("nav",{className:"sidebar-nav"},
+        visibleNav.map(n=>{
+          const cnt=n.id==="archives"?archivesCount:n.id==="historique"?histoCount:0;
+          return React.createElement("button",{key:n.id,className:"nav-item"+(view===n.id?" active":""),
+            onClick:()=>{setView(n.id);setSidebarOpen(false);},
+            title:!sidebarOpen?n.label:"",
+            style:{justifyContent:sidebarOpen?"flex-start":"center",padding:sidebarOpen?"9px 12px":"10px 0"}
+          },
+            React.createElement("span",{className:"nav-icon"},n.icon),
+            sidebarOpen&&React.createElement("span",null,n.label),
+            sidebarOpen&&cnt>0&&React.createElement("span",{className:"nav-badge"},cnt)
+          );
+        })
+      ),
+      React.createElement("div",{className:"sidebar-footer"},
+        React.createElement("div",{style:{display:"flex",alignItems:"center",gap:8,overflow:"hidden",justifyContent:sidebarOpen?"flex-start":"center"}},
+          React.createElement("div",{style:{width:30,height:30,borderRadius:"50%",background:"#3B82F6",display:"flex",alignItems:"center",justifyContent:"center",fontSize:12,fontWeight:700,color:"#fff",flexShrink:0}},session?(session.label||"A")[0].toUpperCase():"A"),
+          sidebarOpen&&React.createElement("div",{style:{flex:1,minWidth:0}},
+            React.createElement("div",{style:{color:"#fff",fontSize:12,fontWeight:600,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}},session?.label||"Admin"),
+            React.createElement("div",{style:{color:"rgba(255,255,255,.45)",fontSize:10}},session?.role==="admin"?"Administrateur":"Utilisateur")
+          ),
+          sidebarOpen&&React.createElement("button",{onClick:()=>{setUnlocked(false);setSession(null);},style:{background:"rgba(255,255,255,.1)",border:"none",color:"rgba(255,255,255,.6)",borderRadius:6,padding:"4px 6px",fontSize:13,cursor:"pointer",flexShrink:0}},"⏻")
+        )
       )
     ),
-    React.createElement("nav",{className:"desktop-nav no-print",style:{background:"#0F172A",padding:"0 12px",display:"flex",alignItems:"center",gap:2,height:52,boxShadow:"0 2px 8px rgba(0,0,0,.2)"}},
-      React.createElement("span",{style:{color:"#fff",fontWeight:700,fontSize:13,marginRight:10,whiteSpace:"nowrap"}},"Collaborateurs LP24"),
-      visibleNav.map(n=>React.createElement("button",{key:n.id,onClick:()=>setView(n.id),style:{background:view===n.id?"rgba(255,255,255,.15)":"transparent",color:"#fff",border:"none",borderRadius:8,padding:"5px 9px",fontSize:11,fontWeight:600,cursor:"pointer",display:"flex",alignItems:"center",gap:4,position:"relative",borderBottom:view===n.id?"2px solid #0891B2":"2px solid transparent",whiteSpace:"nowrap"}},
-        React.createElement("span",null,n.icon)," ",n.label,
-        n.id==="archives"&&archivesCount>0&&React.createElement("span",{style:{background:"#ED7D31",color:"#fff",borderRadius:999,fontSize:9,fontWeight:700,padding:"1px 4px",marginLeft:2}},archivesCount),
-        n.id==="historique"&&histoCount>0&&React.createElement("span",{style:{background:"#0891B2",color:"#fff",borderRadius:999,fontSize:9,fontWeight:700,padding:"1px 4px",marginLeft:2}},histoCount)
-      )),
-      React.createElement("div",{style:{marginLeft:"auto"}},toolbarButtons)
+    React.createElement("div",{className:"main-area",style:{marginLeft:sidebarOpen?"220px":"64px",transition:"margin-left .2s ease"}},
+      React.createElement("header",{className:"topbar no-print"},
+        React.createElement("span",{style:{fontSize:15,fontWeight:700,color:"#0F172A"}},currentLabel),
+        React.createElement("div",{style:{marginLeft:"auto",display:"flex",alignItems:"center",gap:8}},
+          isFieldSupportUser&&React.createElement("div",{style:{display:"flex",gap:8}},
+            React.createElement("button",{onClick:()=>setFsModalType("arrivee"),style:{background:"#22C55E",color:"#fff",border:"none",borderRadius:10,padding:"8px 16px",fontWeight:700,fontSize:13,cursor:"pointer"}},"➕ Arrivée"),
+            React.createElement("button",{onClick:()=>setFsModalType("depart"),style:{background:"#EF4444",color:"#fff",border:"none",borderRadius:10,padding:"8px 16px",fontWeight:700,fontSize:13,cursor:"pointer"}},"🚪 Départ")
+          ),
+          !isFieldSupportUser&&React.createElement("div",{style:{display:"flex",alignItems:"center",gap:4,fontSize:11,color:"#64748B"}},
+            React.createElement("span",{className:"save-dot"+(saving?" saving":"")}),
+            React.createElement("span",null,saving?"Sauvegarde...":dbStatus==="ok"?"Synchronisé":"Hors ligne")
+          ),
+          
+          session&&React.createElement("span",{style:{fontSize:11,color:"#64748B"}},session.label),
+          session&&React.createElement("button",{onClick:()=>{setUnlocked(false);setSession(null);},style:{background:"none",border:"1px solid #E2E8F0",color:"#64748B",borderRadius:8,padding:"4px 8px",fontSize:11,cursor:"pointer"}},"⏻")
+        )
+      ),
+      React.createElement("main",{style:{padding:24}},renderView())
     ),
+
+    isFieldSupportUser&&React.createElement("div",{className:"no-print",style:{position:"fixed",bottom:28,right:28,display:"flex",flexDirection:"column",gap:12,zIndex:900}},
+      React.createElement("button",{onClick:()=>setFsModalType("arrivee"),title:"Nouvelle arrivée IT",style:{background:"#22C55E",color:"#fff",border:"none",borderRadius:"50%",width:56,height:56,fontSize:24,cursor:"pointer",boxShadow:"0 4px 20px rgba(34,197,94,.45)",display:"flex",alignItems:"center",justifyContent:"center",transition:"transform .15s"},onMouseEnter:e=>e.currentTarget.style.transform="scale(1.12)",onMouseLeave:e=>e.currentTarget.style.transform="scale(1)"},"➕"),
+      React.createElement("button",{onClick:()=>setFsModalType("depart"),title:"Nouveau départ IT",style:{background:"#EF4444",color:"#fff",border:"none",borderRadius:"50%",width:56,height:56,fontSize:24,cursor:"pointer",boxShadow:"0 4px 20px rgba(239,68,68,.45)",display:"flex",alignItems:"center",justifyContent:"center",transition:"transform .15s"},onMouseEnter:e=>e.currentTarget.style.transform="scale(1.12)",onMouseLeave:e=>e.currentTarget.style.transform="scale(1)"},"🚪")
+    ),
+
+    fsModalType&&React.createElement("div",{style:{position:"fixed",inset:0,background:"rgba(0,0,0,.5)",zIndex:2000,display:"flex",alignItems:"center",justifyContent:"center",padding:16},onClick:e=>{if(e.target===e.currentTarget)setFsModalType(null);}},
+      React.createElement("div",{style:{background:"#fff",borderRadius:16,padding:28,width:"100%",maxWidth:520,boxShadow:"0 16px 64px rgba(0,0,0,.25)",maxHeight:"90vh",overflowY:"auto"}},
+        React.createElement("div",{style:{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:20}},
+          React.createElement("div",{style:{display:"flex",alignItems:"center",gap:10}},
+            React.createElement("div",{style:{width:42,height:42,borderRadius:12,background:fsModalType==="arrivee"?"#DCFCE7":"#FEE2E2",display:"flex",alignItems:"center",justifyContent:"center",fontSize:22}},fsModalType==="arrivee"?"➕":"🚪"),
+            React.createElement("div",null,
+              React.createElement("div",{style:{fontWeight:700,fontSize:17,color:"#0F172A"}},fsModalType==="arrivee"?"Nouvelle arrivée IT":"Nouveau départ IT"),
+              React.createElement("div",{style:{fontSize:12,color:"#64748B",marginTop:1}},fsModalType==="arrivee"?"Enregistrer un collaborateur entrant":"Enregistrer un collaborateur sortant")
+            )
+          ),
+          React.createElement("button",{onClick:()=>setFsModalType(null),style:{background:"none",border:"none",fontSize:26,cursor:"pointer",color:"#9CA3AF",lineHeight:1}},"×")
+        ),
+
+        fsModalType==="arrivee"&&React.createElement("div",null,
+          React.createElement("div",{style:{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12,marginBottom:12}},
+            ...[["Nom *","nom","NOM",true],["Prénom *","prenom","Prénom",false]].map(([lbl,key,ph,upper])=>React.createElement("div",{key},React.createElement("label",{style:{fontSize:11,fontWeight:600,color:"#374151",display:"block",marginBottom:4}},lbl),React.createElement("input",{value:fsFormArr[key],onChange:e=>setFsFormArr(f=>({...f,[key]:upper?e.target.value.toUpperCase():e.target.value})),placeholder:ph,style:{width:"100%",padding:"9px 12px",borderRadius:8,border:"1px solid #E2E8F0",fontSize:13,boxSizing:"border-box",textTransform:upper?"uppercase":"none"}})))
+          ),
+          React.createElement("div",{style:{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12,marginBottom:12}},
+            React.createElement("div",null,React.createElement("label",{style:{fontSize:11,fontWeight:600,color:"#374151",display:"block",marginBottom:4}},"Date d'arrivée"),React.createElement("input",{type:"date",value:fsFormArr.dateArr,onChange:e=>setFsFormArr(f=>({...f,dateArr:e.target.value})),style:{width:"100%",padding:"9px 12px",borderRadius:8,border:"1px solid #E2E8F0",fontSize:13,boxSizing:"border-box"}})),
+            React.createElement("div",null,React.createElement("label",{style:{fontSize:11,fontWeight:600,color:"#374151",display:"block",marginBottom:4}},"Manager"),React.createElement("input",{value:fsFormArr.manager,onChange:e=>setFsFormArr(f=>({...f,manager:e.target.value})),placeholder:"Nom du manager",style:{width:"100%",padding:"9px 12px",borderRadius:8,border:"1px solid #E2E8F0",fontSize:13,boxSizing:"border-box"}}))
+          ),
+          React.createElement("div",{style:{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12,marginBottom:12}},
+            React.createElement("div",null,React.createElement("label",{style:{fontSize:11,fontWeight:600,color:"#374151",display:"block",marginBottom:4}},"Localisation"),React.createElement("select",{value:fsFormArr.localisation,onChange:e=>setFsFormArr(f=>({...f,localisation:e.target.value})),style:{width:"100%",padding:"9px 12px",borderRadius:8,border:"1px solid #E2E8F0",fontSize:13,boxSizing:"border-box"}},React.createElement("option",{value:"Hexagone"},"🌍 Hexagone"),React.createElement("option",{value:"Levallois"},"🏢 Levallois"))),
+            React.createElement("div",null,React.createElement("label",{style:{fontSize:11,fontWeight:600,color:"#374151",display:"block",marginBottom:4}},"N° RITM"),React.createElement("input",{value:fsFormArr.ritm,onChange:e=>setFsFormArr(f=>({...f,ritm:e.target.value})),placeholder:"RITM0000000",style:{width:"100%",padding:"9px 12px",borderRadius:8,border:"1px solid #E2E8F0",fontSize:13,boxSizing:"border-box"}}))
+          ),
+          React.createElement("div",{style:{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12,marginBottom:12}},
+            React.createElement("div",null,React.createElement("label",{style:{fontSize:11,fontWeight:600,color:"#374151",display:"block",marginBottom:4}},"Date réception matériel"),React.createElement("input",{type:"date",value:fsFormArr.dateReception,onChange:e=>setFsFormArr(f=>({...f,dateReception:e.target.value})),style:{width:"100%",padding:"9px 12px",borderRadius:8,border:"1px solid #E2E8F0",fontSize:13,boxSizing:"border-box"}})),
+            React.createElement("div",null,React.createElement("label",{style:{fontSize:11,fontWeight:600,color:"#374151",display:"block",marginBottom:4}},"État matériel reçu"),React.createElement("select",{value:fsFormArr.materiel,onChange:e=>setFsFormArr(f=>({...f,materiel:e.target.value})),style:{width:"100%",padding:"9px 12px",borderRadius:8,border:"1px solid #E2E8F0",fontSize:13,boxSizing:"border-box"}},React.createElement("option",{value:""},"— Sélectionner —"),React.createElement("option",{value:"Complet"},"✅ Complet"),React.createElement("option",{value:"Partiel"},"⚠️ Partiel"),React.createElement("option",{value:"Non reçu"},"❌ Non reçu")))
+          ),
+          React.createElement("div",{style:{marginBottom:16}},React.createElement("label",{style:{fontSize:11,fontWeight:600,color:"#374151",display:"block",marginBottom:4}},"Commentaire"),React.createElement("textarea",{value:fsFormArr.commentaire,onChange:e=>setFsFormArr(f=>({...f,commentaire:e.target.value})),placeholder:"Notes, précisions...",rows:2,style:{width:"100%",padding:"9px 12px",borderRadius:8,border:"1px solid #E2E8F0",fontSize:13,resize:"vertical",boxSizing:"border-box"}})),
+          React.createElement("button",{onClick:async()=>{if(!fsFormArr.nom.trim()&&!fsFormArr.prenom.trim()){showToast("⚠️ Nom ou prénom requis","err");return;}setFsSaving(true);const row={...fsFormArr,type:"arrivee",createdAt:new Date().toISOString()};if(sb){await sb.from("lp24_fieldsupport").insert(row).catch(()=>{});}addLog("Field Support","Arrivée IT : "+fsFormArr.prenom+" "+fsFormArr.nom);showToast("✅ Arrivée IT enregistrée");setFsFormArr({nom:"",prenom:"",dateArr:"",manager:"",localisation:"Hexagone",ritm:"",dateReception:"",materiel:"",commentaire:""});setFsModalType(null);setFsSaving(false);},style:{width:"100%",background:"#22C55E",color:"#fff",border:"none",borderRadius:10,padding:"12px",fontWeight:700,fontSize:14,cursor:"pointer"}},fsSaving?"⏳ Enregistrement...":"✅ Enregistrer l'arrivée")
+        ),
+
+        fsModalType==="depart"&&React.createElement("div",null,
+          React.createElement("div",{style:{marginBottom:12}},React.createElement("label",{style:{fontSize:11,fontWeight:600,color:"#374151",display:"block",marginBottom:4}},"Collaborateur existant"),React.createElement("select",{value:fsFormDep.collaborateurId,onChange:e=>{const id=e.target.value;const b=badges.find(b=>String(b.id)===id);setFsFormDep(f=>({...f,collaborateurId:id,nomLibre:b?b.nom:"",prenomLibre:b?b.prenom:""}));},style:{width:"100%",padding:"9px 12px",borderRadius:8,border:"1px solid #E2E8F0",fontSize:13,boxSizing:"border-box"}},React.createElement("option",{value:""},"— Choisir dans les collaborateurs —"),[...badges].filter(b=>b.statut!=="Archivé").sort((a,b)=>a.nom.localeCompare(b.nom)).map(b=>React.createElement("option",{key:b.id,value:b.id},b.nom+" "+b.prenom+(b.matricule&&b.matricule!=="0"?" — "+b.matricule:""))))),
+          React.createElement("div",{style:{textAlign:"center",fontSize:12,color:"#9CA3AF",margin:"8px 0"}},"— ou saisie libre —"),
+          React.createElement("div",{style:{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12,marginBottom:12}},
+            React.createElement("div",null,React.createElement("label",{style:{fontSize:11,fontWeight:600,color:"#374151",display:"block",marginBottom:4}},"Nom"),React.createElement("input",{value:fsFormDep.nomLibre,onChange:e=>setFsFormDep(f=>({...f,nomLibre:e.target.value.toUpperCase(),collaborateurId:""})),placeholder:"NOM",style:{width:"100%",padding:"9px 12px",borderRadius:8,border:"1px solid #E2E8F0",fontSize:13,textTransform:"uppercase",boxSizing:"border-box"}})),
+            React.createElement("div",null,React.createElement("label",{style:{fontSize:11,fontWeight:600,color:"#374151",display:"block",marginBottom:4}},"Prénom"),React.createElement("input",{value:fsFormDep.prenomLibre,onChange:e=>setFsFormDep(f=>({...f,prenomLibre:e.target.value,collaborateurId:""})),placeholder:"Prénom",style:{width:"100%",padding:"9px 12px",borderRadius:8,border:"1px solid #E2E8F0",fontSize:13,boxSizing:"border-box"}}))
+          ),
+          React.createElement("div",{style:{marginBottom:12}},React.createElement("label",{style:{fontSize:11,fontWeight:600,color:"#374151",display:"block",marginBottom:4}},"Date de départ"),React.createElement("input",{type:"date",value:fsFormDep.dateDep,onChange:e=>setFsFormDep(f=>({...f,dateDep:e.target.value})),style:{width:"100%",padding:"9px 12px",borderRadius:8,border:"1px solid #E2E8F0",fontSize:13,boxSizing:"border-box"}})),
+          React.createElement("div",{style:{marginBottom:16}},React.createElement("label",{style:{fontSize:11,fontWeight:600,color:"#374151",display:"block",marginBottom:4}},"Commentaire"),React.createElement("textarea",{value:fsFormDep.commentaire,onChange:e=>setFsFormDep(f=>({...f,commentaire:e.target.value})),placeholder:"Raison, matériel récupéré...",rows:2,style:{width:"100%",padding:"9px 12px",borderRadius:8,border:"1px solid #E2E8F0",fontSize:13,resize:"vertical",boxSizing:"border-box"}})),
+          React.createElement("button",{onClick:async()=>{if(!fsFormDep.collaborateurId&&!fsFormDep.nomLibre.trim()){showToast("⚠️ Sélectionnez ou saisissez un collaborateur","err");return;}setFsSaving(true);const row={...fsFormDep,type:"depart",createdAt:new Date().toISOString()};if(sb){await sb.from("lp24_fieldsupport").insert(row).catch(()=>{});}addLog("Field Support","Départ IT : "+(fsFormDep.nomLibre||""));showToast("✅ Départ IT enregistré");setFsFormDep({collaborateurId:"",nomLibre:"",prenomLibre:"",dateDep:"",commentaire:""});setFsModalType(null);setFsSaving(false);},style:{width:"100%",background:"#EF4444",color:"#fff",border:"none",borderRadius:10,padding:"12px",fontWeight:700,fontSize:14,cursor:"pointer"}},fsSaving?"⏳ Enregistrement...":"🚪 Enregistrer le départ")
+        )
+      )
+    ),
+
     React.createElement("div",{className:"mobile-nav no-print"},
-      visibleNav.map(n=>React.createElement("button",{key:n.id,onClick:()=>setView(n.id),style:{flex:1,background:"transparent",color:view===n.id?"#fff":"rgba(255,255,255,.5)",border:"none",padding:"6px 1px",fontSize:7,fontWeight:600,cursor:"pointer",display:"flex",flexDirection:"column",alignItems:"center",gap:1,borderTop:view===n.id?"3px solid #0891B2":"3px solid transparent"}},React.createElement("span",{style:{fontSize:13}},n.icon),n.label))
-    ),
-    React.createElement("main",{style:{maxWidth:1400,margin:"0 auto",padding:24}},renderView())
+      visibleNav.map(n=>React.createElement("button",{key:n.id,onClick:()=>setView(n.id),style:{flex:1,background:"transparent",color:view===n.id?"#fff":"rgba(255,255,255,.45)",border:"none",padding:"6px 1px",fontSize:7,fontWeight:600,cursor:"pointer",display:"flex",flexDirection:"column",alignItems:"center",gap:1,borderTop:view===n.id?"3px solid #3B82F6":"3px solid transparent"}},React.createElement("span",{style:{fontSize:13}},n.icon),n.label))
+    )
   );
 }
 
 
 function AddUserForm({settings,setSettings,showToast}){
   const[nu,setNu]=useState({email:"",pwd:"",label:""});
-  const allViews=["accueil","collaborateurs","casiers","rapport","impression","historique","archives"];
-  const[blocked,setBlocked]=useState(new Set());
-  const toggleBlock=v=>setBlocked(p=>{const n=new Set(p);n.has(v)?n.delete(v):n.add(v);return n;});
-  const addUser=()=>{
-    if(!nu.email||!nu.pwd){showToast("⚠️ Email et mot de passe requis","err");return;}
-    const perms={};allViews.forEach(v=>{perms[v]=blocked.has(v)?PERM_NONE:PERM_WRITE;});
-    setSettings(s=>({...s,users:[...(s.users||[]),{...nu,perms}]}));
-    setNu({email:"",pwd:"",label:""});setBlocked(new Set());
-    showToast("✅ Compte ajouté");
-  };
   return React.createElement("div",{style:{background:"#F9FAFB",borderRadius:7,padding:12,border:"1px solid #E5E7EB",marginTop:8}},
     React.createElement("div",{style:{fontWeight:600,fontSize:12,color:"#374151",marginBottom:8}},"+ Ajouter un compte"),
     React.createElement("div",{style:{display:"grid",gridTemplateColumns:"1fr 1fr",gap:6,marginBottom:6}},
@@ -1353,15 +1750,12 @@ function AddUserForm({settings,setSettings,showToast}){
       React.createElement("input",{type:"email",value:nu.email,onChange:e=>setNu(u=>({...u,email:e.target.value})),placeholder:"Email",style:{padding:"6px 8px",borderRadius:5,border:"1px solid #D1D5DB",fontSize:12}}),
       React.createElement("input",{type:"text",value:nu.pwd,onChange:e=>setNu(u=>({...u,pwd:e.target.value})),placeholder:"Mot de passe",style:{padding:"6px 8px",borderRadius:5,border:"1px solid #D1D5DB",fontSize:12,gridColumn:"1/-1"}})
     ),
-    React.createElement("div",{style:{marginBottom:8}},
-      React.createElement("div",{style:{fontSize:11,fontWeight:600,color:"#6B7280",marginBottom:4}},"🔒 Bloquer l'accès à ces vues :"),
-      React.createElement("div",{style:{display:"flex",flexWrap:"wrap",gap:6}},
-        allViews.map(v=>React.createElement("label",{key:v,style:{display:"flex",alignItems:"center",gap:4,fontSize:11,cursor:"pointer",background:blocked.has(v)?"#FDEDEC":"#F3F4F6",color:blocked.has(v)?"#E74C3C":"#374151",borderRadius:5,padding:"3px 8px",border:"1px solid "+(blocked.has(v)?"#F1948A":"#E5E7EB")}},
-          React.createElement("input",{type:"checkbox",checked:blocked.has(v),onChange:()=>toggleBlock(v),style:{margin:0}}),v
-        ))
-      )
-    ),
-    React.createElement("button",{onClick:addUser,style:{background:"#00B050",color:"#fff",border:"none",borderRadius:6,padding:"6px 12px",fontSize:12,fontWeight:600,cursor:"pointer"}},"+ Ajouter")
+    React.createElement("button",{onClick:()=>{
+      if(!nu.email||!nu.pwd){showToast("⚠️ Email et MDP requis","err");return;}
+      setSettings(s=>({...s,users:[...(s.users||[]),{...nu}]}));
+      setNu({email:"",pwd:"",label:""});
+      showToast("✅ Compte ajouté");
+    },style:{background:"#00B050",color:"#fff",border:"none",borderRadius:6,padding:"6px 12px",fontSize:12,fontWeight:600,cursor:"pointer"}},"+ Ajouter")
   );
 }
 
