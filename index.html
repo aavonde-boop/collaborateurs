@@ -314,16 +314,25 @@ function VueAccueil({badges,casiers,setView,wdCache,setBadges,setCasiers,showToa
   const fssATraiter=(fssData||[]).filter(f=>f.statut==="A traiter").length;
   const fssEnCours=(fssData||[]).filter(f=>f.statut==="En cours").length;
   const fssCloture=(fssData||[]).filter(f=>f.cloture||f.statut==="Terminée").length;
-  const addFssEntry=async(entry)=>{
-    if(!setFssData)return;
-    if(sb){
-      try{
-        const{data,error}=await sb.from("lp24_fss").insert([{nom:entry.nom||"",prenom:entry.prenom||"",situation:entry.situation||"",statut:entry.statut||"A traiter",lieu:entry.lieu||"",dateEvt:entry.dateEvt||"",manager:entry.manager||"",matPC:"",ritm:"",matRecu:"",idMat:"",dateRecep:"",matDonne:"",commentaires:"",cloture:false}]).select();
-        if(!error&&data&&data[0]){setFssData(prev=>[...(prev||[]),data[0]]);return;}
-      }catch(e){console.error("FSS addEntry",e);}
-    }
-    const newId=Math.max(0,...(fssData||[]).map(f=>f.id||0))+1;
-    setFssData(prev=>[...(prev||[]),{id:newId,...entry}]);
+  const addFssEntry=(entry)=>{
+    if(!setFssData){console.warn("setFssData non disponible");return;}
+    const row={nom:entry.nom||"",prenom:entry.prenom||"",situation:entry.situation||"",statut:entry.statut||"A traiter",lieu:entry.lieu||"",dateEvt:entry.dateEvt||"",manager:entry.manager||"",matPC:"",ritm:"",matRecu:"",idMat:"",dateRecep:"",matDonne:"",commentaires:"",cloture:false};
+    // Utiliser la forme fonctionnelle pour éviter les closures stale
+    setFssData(prev=>{
+      const list=prev||[];
+      const newId=Math.max(0,...list.map(f=>Number(f.id)||0))+1;
+      const newRow={...row,id:newId};
+      // Sauvegarder en Supabase en arrière-plan
+      if(sb){
+        sb.from("lp24_fss").insert([row]).select()
+          .then(({data,error})=>{
+            if(!error&&data&&data[0]){
+              setFssData(p=>(p||[]).map(f=>f.id===newId?data[0]:f));
+            }else if(error){console.error("FSS insert error",error);}
+          }).catch(e=>console.error("FSS insert",e));
+      }
+      return [...list,newRow];
+    });
   };
   const[nomDep,setNomDep]=useState("");const[prenomDep,setPrenomDep]=useState("");const[dateDep,setDateDep]=useState("");
   const[nomArr,setNomArr]=useState("");const[prenomArr,setPrenomArr]=useState("");const[dateArr,setDateArr]=useState("");const[foundArr,setFoundArr]=useState(null);const[foundDep,setFoundDep]=useState(null);const[managerArr,setManagerArr]=useState("");
@@ -1323,6 +1332,23 @@ function VueFieldSupport({fssData,setFssData,showToast,addLog,badges,casiers,set
     setNomArr("");setPrenomArr("");setDateArr("");setManagerArr("");setShowAddArrivee(false);
   };
 
+  const[showAddManuel,setShowAddManuel]=useState(false);
+  const[manuelForm,setManuelForm]=useState({nom:"",prenom:"",situation:"Arrivée",lieu:"",dateEvt:"",manager:"",statut:"A traiter",matPC:"",ritm:"",matRecu:"",idMat:"",dateRecep:"",matDonne:"",commentaires:""});
+  const enrManuel=()=>{
+    if(!manuelForm.nom.trim()&&!manuelForm.prenom.trim()){showToast("⚠️ Nom ou prénom requis","err");return;}
+    const row={nom:manuelForm.nom.toUpperCase(),prenom:manuelForm.prenom,situation:manuelForm.situation||"Arrivée",statut:manuelForm.statut||"A traiter",lieu:manuelForm.lieu||"",dateEvt:manuelForm.dateEvt||todayISO(),manager:manuelForm.manager||"",matPC:manuelForm.matPC||"",ritm:manuelForm.ritm||"",matRecu:manuelForm.matRecu||"",idMat:manuelForm.idMat||"",dateRecep:manuelForm.dateRecep||"",matDonne:manuelForm.matDonne||"",commentaires:manuelForm.commentaires||"",cloture:false};
+    setFssData(prev=>{
+      const list=prev||[];
+      const newId=Math.max(0,...list.map(f=>Number(f.id)||0))+1;
+      const newRow={...row,id:newId};
+      if(sb){sb.from("lp24_fss").insert([row]).select().then(({data,error})=>{if(!error&&data&&data[0])setFssData(p=>(p||[]).map(f=>f.id===newId?data[0]:f));else if(error)console.error("FSS manual insert",error);}).catch(e=>console.error(e));}
+      return [...list,newRow];
+    });
+    showToast("✅ Fiche créée manuellement");
+    addLog("Ajout manuel FS",manuelForm.prenom+" "+manuelForm.nom);
+    setManuelForm({nom:"",prenom:"",situation:"Arrivée",lieu:"",dateEvt:"",manager:"",statut:"A traiter",matPC:"",ritm:"",matRecu:"",idMat:"",dateRecep:"",matDonne:"",commentaires:""});
+    setShowAddManuel(false);
+  };
   const clotureCount=fssData.filter(f=>f.cloture||f.statut==="Terminée").length;
   const openCount=fssData.filter(f=>!f.cloture&&f.statut!=="Terminée").length;
   const getSituationIcon=s=>s==="Arrivée"?"🟢":s==="Départ"?"🔴":"⚪";
@@ -1362,8 +1388,9 @@ function VueFieldSupport({fssData,setFssData,showToast,addLog,badges,casiers,set
         )
       ),
       React.createElement("div",{style:{display:"flex",gap:8,flexWrap:"wrap"}},
-        React.createElement("button",{onClick:()=>{setShowAddDepart(!showAddDepart);setShowAddArrivee(false);},className:"btn",style:{background:"var(--redBg)",border:"1px solid rgba(220,38,38,.25)",color:"var(--red)"}},"🔴 Enregistrer un départ"),
-        React.createElement("button",{onClick:()=>{setShowAddArrivee(!showAddArrivee);setShowAddDepart(false);},className:"btn",style:{background:"var(--greenBg)",border:"1px solid rgba(22,163,74,.25)",color:"var(--green)"}},"🟢 Enregistrer une arrivée"),
+        React.createElement("button",{onClick:()=>{setShowAddDepart(!showAddDepart);setShowAddArrivee(false);setShowAddManuel(false);},className:"btn",style:{background:"var(--redBg)",border:"1px solid rgba(220,38,38,.25)",color:"var(--red)"}},"🔴 Enregistrer un départ"),
+        React.createElement("button",{onClick:()=>{setShowAddArrivee(!showAddArrivee);setShowAddDepart(false);setShowAddManuel(false);},className:"btn",style:{background:"var(--greenBg)",border:"1px solid rgba(22,163,74,.25)",color:"var(--green)"}},"🟢 Enregistrer une arrivée"),
+        React.createElement("button",{onClick:()=>{setShowAddManuel(!showAddManuel);setShowAddDepart(false);setShowAddArrivee(false);},className:"btn btn-outline",style:{fontSize:12}},"✏️ Ajout manuel"),
         React.createElement("label",{className:"btn btn-outline",style:{cursor:"pointer",fontSize:12}},
           "📂 Importer CSV",React.createElement("input",{type:"file",ref:fssRef,accept:".csv",onChange:importFSS})
         ),
@@ -1401,7 +1428,42 @@ function VueFieldSupport({fssData,setFssData,showToast,addLog,badges,casiers,set
       React.createElement("p",{style:{fontSize:11,color:"var(--green)",marginTop:8,background:"var(--greenBg)",borderRadius:6,padding:"5px 10px"}},"💡 Données Workday récupérées automatiquement si disponibles.")
     ),
 
-    // Filtres multi-colonnes
+    // Panel ajout manuel
+    showAddManuel&&React.createElement("div",{style:{background:"var(--surface)",border:"1px solid var(--border)",borderRadius:"var(--radius-lg)",padding:16,marginBottom:16,borderLeft:"4px solid var(--accent)"}},
+      React.createElement("h3",{style:{fontWeight:700,color:"var(--accent2)",marginBottom:14,fontSize:14}},"✏️ Ajout manuel d'une fiche Field Support"),
+      React.createElement("div",{style:{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(140px,1fr))",gap:10,marginBottom:10}},
+        React.createElement("div",null,React.createElement(Lbl,null,"Nom *"),React.createElement(Inp,{value:manuelForm.nom,onChange:v=>setManuelForm(f=>({...f,nom:v})),placeholder:"DUPONT"})),
+        React.createElement("div",null,React.createElement(Lbl,null,"Prénom"),React.createElement(Inp,{value:manuelForm.prenom,onChange:v=>setManuelForm(f=>({...f,prenom:v})),placeholder:"Jean"})),
+        React.createElement("div",null,React.createElement(Lbl,null,"Situation"),
+          React.createElement(Sel,{value:manuelForm.situation,onChange:v=>setManuelForm(f=>({...f,situation:v})),options:[{v:"Arrivée",l:"🟢 Arrivée"},{v:"Départ",l:"🔴 Départ"}],style:{width:"100%"}})
+        ),
+        React.createElement("div",null,React.createElement(Lbl,null,"Statut"),
+          React.createElement(Sel,{value:manuelForm.statut,onChange:v=>setManuelForm(f=>({...f,statut:v})),options:[{v:"A traiter",l:"⚡ À traiter"},{v:"En cours",l:"⏳ En cours"},{v:"Terminée",l:"✓ Terminée"},{v:"Suspendue",l:"⏸ Suspendue"}],style:{width:"100%"}})
+        ),
+        React.createElement("div",null,React.createElement(Lbl,null,"Localisation"),
+          React.createElement(Sel,{value:manuelForm.lieu,onChange:v=>setManuelForm(f=>({...f,lieu:v})),options:[{v:"Levallois",l:"Levallois"},{v:"Hexagone",l:"Hexagone"},{v:"Paris",l:"Paris"},{v:"Défense",l:"Défense"},{v:"Seine",l:"Seine"}],placeholder:"— Lieu —",style:{width:"100%"}})
+        ),
+        React.createElement("div",null,React.createElement(Lbl,null,"Date événement"),React.createElement(Inp,{type:"date",value:manuelForm.dateEvt,onChange:v=>setManuelForm(f=>({...f,dateEvt:v}))})),
+        React.createElement("div",null,React.createElement(Lbl,null,"Manager"),React.createElement(Inp,{value:manuelForm.manager,onChange:v=>setManuelForm(f=>({...f,manager:v})),placeholder:"Nom manager"})),
+        React.createElement("div",null,React.createElement(Lbl,null,"Matériel PC"),
+          React.createElement(Sel,{value:manuelForm.matPC,onChange:v=>setManuelForm(f=>({...f,matPC:v})),options:[{v:"Oui",l:"✓ Oui"},{v:"Non",l:"✗ Non"},{v:"En attente",l:"⏳ En attente"},{v:"Non applicable",l:"— N/A"}],placeholder:"— PC —",style:{width:"100%"}})
+        ),
+        React.createElement("div",null,React.createElement(Lbl,null,"N° RITM"),React.createElement(Inp,{value:manuelForm.ritm,onChange:v=>setManuelForm(f=>({...f,ritm:v})),placeholder:"RITM000000"})),
+        React.createElement("div",null,React.createElement(Lbl,null,"Mat. reçu"),
+          React.createElement(Sel,{value:manuelForm.matRecu,onChange:v=>setManuelForm(f=>({...f,matRecu:v})),options:[{v:"Oui",l:"✓ Oui"},{v:"Non",l:"✗ Non"},{v:"A vérifier",l:"🔍 À vérifier"}],placeholder:"— Reçu —",style:{width:"100%"}})
+        ),
+        React.createElement("div",null,React.createElement(Lbl,null,"ID Matériel"),React.createElement(Inp,{value:manuelForm.idMat,onChange:v=>setManuelForm(f=>({...f,idMat:v})),placeholder:"PC-XXXXX"})),
+        React.createElement("div",null,React.createElement(Lbl,null,"Date réception"),React.createElement(Inp,{type:"date",value:manuelForm.dateRecep,onChange:v=>setManuelForm(f=>({...f,dateRecep:v}))})),
+        React.createElement("div",null,React.createElement(Lbl,null,"Mat. donné"),
+          React.createElement(Sel,{value:manuelForm.matDonne,onChange:v=>setManuelForm(f=>({...f,matDonne:v})),options:[{v:"Oui",l:"✓ Oui"},{v:"Non",l:"✗ Non"},{v:"Partiel",l:"◑ Partiel"}],placeholder:"— Donné —",style:{width:"100%"}})
+        )
+      ),
+      React.createElement("div",{style:{marginBottom:12}},React.createElement(Lbl,null,"Commentaires"),React.createElement("textarea",{value:manuelForm.commentaires,onChange:e=>setManuelForm(f=>({...f,commentaires:e.target.value})),rows:2,className:"inp",style:{resize:"vertical",fontSize:12}})),
+      React.createElement("div",{style:{display:"flex",gap:8}},
+        React.createElement("button",{onClick:enrManuel,className:"btn btn-primary"},"💾 Créer la fiche"),
+        React.createElement("button",{onClick:()=>{setShowAddManuel(false);setManuelForm({nom:"",prenom:"",situation:"Arrivée",lieu:"",dateEvt:"",manager:"",statut:"A traiter",matPC:"",ritm:"",matRecu:"",idMat:"",dateRecep:"",matDonne:"",commentaires:""});},className:"btn btn-outline"},"Annuler")
+      )
+    ),
     React.createElement("div",{style:{background:"var(--surface)",border:"1px solid var(--border)",borderRadius:"var(--radius)",padding:"10px 14px",marginBottom:12}},
       React.createElement("div",{style:{display:"flex",gap:8,flexWrap:"wrap",alignItems:"center"}},
         React.createElement(Inp,{value:search,onChange:setSearch,placeholder:"🔍 Nom, RITM, notes...",style:{maxWidth:200}}),
