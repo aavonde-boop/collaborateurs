@@ -932,12 +932,12 @@ function VueCollaborateurs({badges,casiers,setBadges,setCasiers,showToast,wdCach
   const archiver=async id=>{
     if(!confirm("Archiver ce collaborateur ?"))return;
     const b=badges.find(x=>x.id===id);
-    // Ne pas vider le casier automatiquement — l'alerte 👻 guidera l'utilisateur
+    // Le casier n'est pas vidé auto — l'alerte 👻 dans l'onglet Casiers guidera
     const updated={...b,statut:"Archivé",date_archive:todayISO()};
     setBadges(p=>p.map(x=>x.id===id?updated:x));
     if(sb)sb.from("lp24_badges").upsert(updated);
     addLog("Archivage",b.prenom+" "+b.nom);
-    showToast(b.casier?"🗃️ Archivé — pensez à vider le casier "+b.casier+" ":"🗃️ Archivé");
+    showToast(b.casier?"🗃️ Archivé — pensez à vider le casier "+b.casier:"🗃️ Archivé");
   };
   const casLibres=casiers.filter(c=>c.statut==="Libre"||(editing&&c.numero===form.casier));
   const restEmail=settings?.restaurantEmail||"";const ccEmails=settings?.ccEmails||"";
@@ -1138,6 +1138,7 @@ function VueCasiers({casiers,badges,setCasiers,showToast,addLog}){
   const[viewMode,setViewMode]=useState("grille");
   const[showPhantoms,setShowPhantoms]=useState(false);
 
+  // Détection casiers fantômes : Occupé mais badge introuvable ou archivé
   const phantoms=useMemo(()=>casiers.filter(c=>{
     if(c.statut!=="Occupé")return false;
     if(!c.occupant&&!c.matricule)return true;
@@ -1145,9 +1146,7 @@ function VueCasiers({casiers,badges,setCasiers,showToast,addLog}){
       if(b.statut==="Archivé")return false;
       if(c.matricule&&b.matricule&&String(b.matricule).trim()===String(c.matricule).trim())return true;
       if(c.occupant&&b.nom){
-        const cn=norm(c.occupant);
-        const bn=norm(b.nom+" "+b.prenom);
-        const bn2=norm(b.prenom+" "+b.nom);
+        const cn=norm(c.occupant);const bn=norm(b.nom+" "+b.prenom);const bn2=norm(b.prenom+" "+b.nom);
         if(cn===bn||cn===bn2||bn.includes(cn)||bn2.includes(cn)||cn.includes(norm(b.nom)))return true;
       }
       return false;
@@ -1155,6 +1154,7 @@ function VueCasiers({casiers,badges,setCasiers,showToast,addLog}){
     return !actif;
   }),[casiers,badges]);
 
+  // Marquer casier comme vidé (après avoir physiquement vidé)
   const viderCasier=async(c)=>{
     const updated={...c,statut:"Libre",occupant:"",matricule:""};
     setCasiers(p=>p.map(x=>x.id===c.id?updated:x));
@@ -1162,6 +1162,7 @@ function VueCasiers({casiers,badges,setCasiers,showToast,addLog}){
     addLog("Casier vidé",c.numero+(c.occupant?" — était: "+c.occupant:""));
     showToast("✅ Casier "+c.numero+" libéré");
   };
+
   const isPhantom=c=>phantoms.some(p=>p.id===c.id);
   const filtered=useMemo(()=>casiers.filter(c=>{
     if(fZone&&c.zone!==fZone)return false;
@@ -1174,8 +1175,7 @@ function VueCasiers({casiers,badges,setCasiers,showToast,addLog}){
   const libres=casiers.filter(c=>c.statut==="Libre").length;
 
   const renderCarte=c=>{
-    const libre=c.statut==="Libre";
-    const ghost=isPhantom(c);
+    const libre=c.statut==="Libre";const ghost=isPhantom(c);
     const col=ZONES_COLORS[c.zone]||C.gray;
     const border=ghost?"#F59E0B":libre?C.green:c.statut==="Réservé"?C.orange:c.statut==="Hors service"?C.gray:col;
     const bg=ghost?"#FFF7ED":libre?C.greenBg:c.statut==="Réservé"?C.orangeBg:c.statut==="Hors service"?C.grayBg:"#fff";
@@ -1185,20 +1185,25 @@ function VueCasiers({casiers,badges,setCasiers,showToast,addLog}){
       libre
         ?React.createElement("div",{style:{fontSize:10,color:C.green,marginTop:3,fontWeight:600}},"✅ Libre")
         :ghost
-          ?React.createElement("div",{style:{fontSize:9,color:"#92400E",marginTop:3,fontWeight:600}},c.occupant?(c.occupant.length>14?c.occupant.slice(0,14)+"…":c.occupant):"archivé")
+          ?React.createElement("div",null,
+              React.createElement("div",{style:{fontSize:9,color:"#92400E",marginTop:2,fontWeight:600,lineHeight:1.3}},c.occupant?(c.occupant.length>14?c.occupant.slice(0,14)+"…":c.occupant):"à vider"),
+              React.createElement("button",{onClick:e=>{e.stopPropagation();viderCasier(c);},style:{marginTop:5,background:"#16A34A",color:"#fff",border:"none",borderRadius:4,padding:"3px 7px",fontSize:8,fontWeight:700,cursor:"pointer",width:"100%"}},"✅ Fait, vidé")
+            )
           :React.createElement("div",{style:{fontSize:9,color:"#6B7280",marginTop:3}},c.occupant?(c.occupant.length>16?c.occupant.slice(0,16)+"…":c.occupant):"Occupé")
     );
   };
 
   return React.createElement("div",null,
+    // Alerte fantômes
     phantoms.length>0&&React.createElement("div",{style:{background:"#FFF7ED",border:"2px solid #F59E0B",borderRadius:10,padding:"12px 16px",marginBottom:16,display:"flex",alignItems:"center",gap:12,flexWrap:"wrap"}},
       React.createElement("span",{style:{fontSize:22}},"👻"),
       React.createElement("div",{style:{flex:1,minWidth:180}},
-        React.createElement("div",{style:{fontWeight:700,color:"#92400E",fontSize:14}},phantoms.length+' casier'+(phantoms.length>1?"s":"")+" à vider — collaborateur"+(phantoms.length>1?"s":"")+" archivé"+(phantoms.length>1?"s":"")),
+        React.createElement("div",{style:{fontWeight:700,color:"#92400E",fontSize:14}},phantoms.length+' casier'+(phantoms.length>1?"s":"")+" à vider physiquement"),
         React.createElement("div",{style:{fontSize:12,color:"#78350F",marginTop:2}},phantoms.map(c=>c.numero+(c.occupant?" ("+c.occupant+")":"")).join(" · "))
       ),
       React.createElement("button",{onClick:()=>setShowPhantoms(v=>!v),style:{background:"#FEF3C7",border:"1px solid #F59E0B",color:"#92400E",borderRadius:8,padding:"6px 12px",fontSize:12,fontWeight:600,cursor:"pointer",flexShrink:0}},showPhantoms?"▲ Masquer":"▼ Voir détail")
     ),
+    // Détail fantômes avec bouton Fait
     showPhantoms&&phantoms.length>0&&React.createElement(Card,{style:{marginBottom:16,padding:0,overflow:"hidden",border:"2px solid #F59E0B"}},
       React.createElement("table",{style:{width:"100%",borderCollapse:"collapse",fontSize:13}},
         React.createElement("thead",null,
@@ -1219,6 +1224,7 @@ function VueCasiers({casiers,badges,setCasiers,showToast,addLog}){
         ))
       )
     ),
+    // Header
     React.createElement("div",{style:{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:16,flexWrap:"wrap",gap:8}},
       React.createElement("div",null,
         React.createElement("h1",{style:{fontSize:22,fontWeight:700,color:C.purple}},"📦 Casiers"),
@@ -1230,6 +1236,7 @@ function VueCasiers({casiers,badges,setCasiers,showToast,addLog}){
       ),
       React.createElement(Btn,{onClick:()=>setViewMode(v=>v==="grille"?"liste":"grille"),variant:"outline",color:C.gray,style:{fontSize:12}},viewMode==="grille"?"☰ Liste":"⊞ Grille")
     ),
+    // Filtres
     React.createElement(Card,{style:{marginBottom:12,padding:12}},
       React.createElement("div",{style:{display:"flex",gap:10,flexWrap:"wrap",alignItems:"center"}},
         React.createElement(Inp,{value:search,onChange:setSearch,placeholder:"🔍 N° casier, occupant...",style:{maxWidth:200}}),
@@ -1239,10 +1246,10 @@ function VueCasiers({casiers,badges,setCasiers,showToast,addLog}){
         React.createElement("span",{style:{fontSize:12,color:"#9CA3AF",marginLeft:"auto"}},filtered.length+" casier(s)")
       )
     ),
+    // Vue grille
     viewMode==="grille"
       ?React.createElement("div",null,ZONES.filter(z=>!fZone||z===fZone).map(z=>{
-          const zc=filtered.filter(c=>c.zone===z);
-          if(!zc.length)return null;
+          const zc=filtered.filter(c=>c.zone===z);if(!zc.length)return null;
           const col=ZONES_COLORS[z];
           return React.createElement(Card,{key:z,style:{marginBottom:16,borderTop:"4px solid "+col}},
             React.createElement("div",{style:{display:"flex",alignItems:"center",gap:10,marginBottom:12,flexWrap:"wrap"}},
@@ -1257,19 +1264,17 @@ function VueCasiers({casiers,badges,setCasiers,showToast,addLog}){
           );
         })
       )
+    // Vue liste
       :React.createElement(Card,{style:{padding:0,overflow:"auto"}},
         React.createElement("table",{style:{width:"100%",borderCollapse:"collapse",fontSize:13}},
           React.createElement("thead",null,
             React.createElement("tr",{style:{background:C.purple,color:"#fff"}},
-              ["N° Casier","Zone","Occupant","Matricule","Statut"].map(h=>
-                React.createElement("th",{key:h,style:{padding:"9px 12px",textAlign:"left",fontWeight:600,whiteSpace:"nowrap"}},h)
-              )
+              ["N° Casier","Zone","Occupant","Matricule","Statut","Action"].map(h=>React.createElement("th",{key:h,style:{padding:"9px 12px",textAlign:"left",fontWeight:600,whiteSpace:"nowrap"}},h))
             )
           ),
           React.createElement("tbody",null,
             filtered.sort((a,b)=>a.zone.localeCompare(b.zone)||a.numero.localeCompare(b.numero)).map((c,i)=>{
-              const col=ZONES_COLORS[c.zone]||C.gray;
-              const ghost=isPhantom(c);
+              const col=ZONES_COLORS[c.zone]||C.gray;const ghost=isPhantom(c);
               const bg=ghost?"#FFF7ED":c.statut==="Libre"?C.greenBg:i%2===0?"#fff":"#F9FAFB";
               return React.createElement("tr",{key:c.id,style:{background:bg,borderBottom:"1px solid #E5E7EB"},
                 onMouseOver:e=>e.currentTarget.style.background=ghost?"#FEF3C7":C.purpleBg,
@@ -1281,7 +1286,10 @@ function VueCasiers({casiers,badges,setCasiers,showToast,addLog}){
                   ghost&&React.createElement("span",{style:{marginLeft:6,background:"#FEF3C7",color:"#92400E",border:"1px solid #F59E0B",borderRadius:999,fontSize:9,fontWeight:700,padding:"1px 5px"}},"archivé")
                 ),
                 React.createElement("td",{style:{padding:"8px 12px",color:"#6B7280",fontSize:12}},c.matricule||"—"),
-                React.createElement("td",{style:{padding:"8px 12px"}},React.createElement(Bdg,{color:"#fff",bg:statC[c.statut]||C.gray},c.statut))
+                React.createElement("td",{style:{padding:"8px 12px"}},React.createElement(Bdg,{color:"#fff",bg:statC[c.statut]||C.gray},c.statut)),
+                React.createElement("td",{style:{padding:"8px 12px"}},
+                  ghost&&React.createElement("button",{onClick:()=>viderCasier(c),style:{background:"#16A34A",color:"#fff",border:"none",borderRadius:6,padding:"4px 10px",fontSize:12,fontWeight:600,cursor:"pointer",whiteSpace:"nowrap"}},"✅ Fait, vidé")
+                )
               );
             })
           )
@@ -2368,7 +2376,7 @@ function SettingsModal({histo,settings,setSettings,showToast,setShowSettings,rac
         React.createElement("div",null,
           React.createElement("h3",{style:{fontWeight:700,fontSize:16,marginBottom:16,color:"var(--text1)"}},"📋 Historique des modifications"),
           histo&&histo.length>0
-            ?React.createElement("div",{style:{display:"flex",flexDirection:"column",gap:0,border:"1px solid var(--border)",borderRadius:10,overflow:"hidden"}},
+            ?React.createElement("div",{style:{display:"flex",flexDirection:"column",border:"1px solid var(--border)",borderRadius:10,overflow:"hidden"}},
                 histo.slice(0,200).map((h,i)=>React.createElement("div",{key:i,style:{display:"flex",gap:12,alignItems:"flex-start",padding:"10px 14px",background:i%2===0?"var(--bg2)":"var(--bg1)",borderBottom:i<histo.length-1?"1px solid var(--border)":"none"}},
                   React.createElement("span",{style:{fontSize:10,color:"var(--text3)",whiteSpace:"nowrap",marginTop:2,minWidth:110}},h.ts||""),
                   React.createElement("div",null,
