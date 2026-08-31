@@ -932,11 +932,12 @@ function VueCollaborateurs({badges,casiers,setBadges,setCasiers,showToast,wdCach
   const archiver=async id=>{
     if(!confirm("Archiver ce collaborateur ?"))return;
     const b=badges.find(x=>x.id===id);
-    if(b?.casier)await syncCasier(b.casier,"","","","");
+    // Ne pas vider le casier automatiquement — l'alerte 👻 guidera l'utilisateur
     const updated={...b,statut:"Archivé",date_archive:todayISO()};
     setBadges(p=>p.map(x=>x.id===id?updated:x));
     if(sb)sb.from("lp24_badges").upsert(updated);
-    addLog("Archivage",b.prenom+" "+b.nom);showToast("🗃️ Archivé");
+    addLog("Archivage",b.prenom+" "+b.nom);
+    showToast(b.casier?"🗃️ Archivé — pensez à vider le casier "+b.casier+" ":"🗃️ Archivé");
   };
   const casLibres=casiers.filter(c=>c.statut==="Libre"||(editing&&c.numero===form.casier));
   const restEmail=settings?.restaurantEmail||"";const ccEmails=settings?.ccEmails||"";
@@ -1134,39 +1135,33 @@ function VueCollaborateurs({badges,casiers,setBadges,setCasiers,showToast,wdCach
 // ════════════════ VUE CASIERS ════════════════
 function VueCasiers({casiers,badges,setCasiers,showToast,addLog}){
   const[fZone,setFZone]=useState("");const[fStat,setFStat]=useState("");const[search,setSearch]=useState("");
-  const[showForm,setShowForm]=useState(false);const[editing,setEditing]=useState(null);const[viewMode,setViewMode]=useState("grille");
+  const[viewMode,setViewMode]=useState("grille");
   const[showPhantoms,setShowPhantoms]=useState(false);
-  const empty={numero:"",zone:"DE",occupant:"",matricule:"",statut:"Libre"};const[form,setForm]=useState(empty);
 
   const phantoms=useMemo(()=>casiers.filter(c=>{
-    if(c.statut==="Libre"||c.statut==="Réservé"||c.statut==="Hors service")return false;
-    if(!c.occupant&&!c.matricule)return false;
+    if(c.statut!=="Occupé")return false;
+    if(!c.occupant&&!c.matricule)return true;
     const actif=badges.find(b=>{
       if(b.statut==="Archivé")return false;
-      const byMat=c.matricule&&b.matricule&&String(b.matricule)===String(c.matricule);
-      const byName=c.occupant&&b.nom&&(norm(c.occupant).includes(norm(b.nom))||norm(b.nom+" "+b.prenom).includes(norm(c.occupant)));
-      return byMat||byName;
+      if(c.matricule&&b.matricule&&String(b.matricule).trim()===String(c.matricule).trim())return true;
+      if(c.occupant&&b.nom){
+        const cn=norm(c.occupant);
+        const bn=norm(b.nom+" "+b.prenom);
+        const bn2=norm(b.prenom+" "+b.nom);
+        if(cn===bn||cn===bn2||bn.includes(cn)||bn2.includes(cn)||cn.includes(norm(b.nom)))return true;
+      }
+      return false;
     });
     return !actif;
   }),[casiers,badges]);
 
   const viderCasier=async(c)=>{
-    const u={...c,statut:"Libre",occupant:"",matricule:""};
-    setCasiers(p=>p.map(x=>x.id===c.id?u:x));
-    if(sb)sb.from("lp24_casiers").upsert(u);
-    addLog("Casier vidé",c.numero+(c.occupant?" (était: "+c.occupant+")":""));
+    const updated={...c,statut:"Libre",occupant:"",matricule:""};
+    setCasiers(p=>p.map(x=>x.id===c.id?updated:x));
+    if(sb)await sb.from("lp24_casiers").upsert(updated);
+    addLog("Casier vidé",c.numero+(c.occupant?" — était: "+c.occupant:""));
     showToast("✅ Casier "+c.numero+" libéré");
   };
-  const viderTousPhantoms=async()=>{
-    if(!confirm("Vider les "+phantoms.length+" casier(s) fantôme(s) ?"))return;
-    const updates=phantoms.map(c=>({...c,statut:"Libre",occupant:"",matricule:""}));
-    setCasiers(p=>p.map(c=>{const u=updates.find(x=>x.id===c.id);return u||c;}));
-    if(sb)await Promise.all(updates.map(u=>sb.from("lp24_casiers").upsert(u)));
-    addLog("Casiers vidés",phantoms.length+" fantômes libérés");
-    showToast("✅ "+updates.length+" casier(s) libéré(s)");
-    setShowPhantoms(false);
-  };
-
   const isPhantom=c=>phantoms.some(p=>p.id===c.id);
   const filtered=useMemo(()=>casiers.filter(c=>{
     if(fZone&&c.zone!==fZone)return false;
@@ -1174,29 +1169,6 @@ function VueCasiers({casiers,badges,setCasiers,showToast,addLog}){
     const q=search.toLowerCase();
     return !q||(c.numero+c.occupant+c.matricule).toLowerCase().includes(q);
   }),[casiers,fZone,fStat,search]);
-
-  const save=async()=>{
-    if(!form.numero.trim())return;
-    if(editing){
-      setCasiers(p=>p.map(c=>c.id===editing?{...c,...form}:c));
-      const orig=casiers.find(c=>c.id===editing);
-      if(sb)sb.from("lp24_casiers").upsert({...orig,...form});
-      addLog("Casier modifié",form.numero);showToast("✅ Casier mis à jour");
-    }else{
-      const nc={...form,id:nxId(casiers)};
-      setCasiers(p=>[...p,nc]);
-      if(sb){const{id,...row}=nc;sb.from("lp24_casiers").insert(row);}
-      addLog("Casier ajouté",form.numero);showToast("✅ Casier ajouté");
-    }
-    setShowForm(false);setEditing(null);
-  };
-  const del=async id=>{
-    if(!confirm("Supprimer ce casier ?"))return;
-    const c=casiers.find(x=>x.id===id);
-    setCasiers(p=>p.filter(x=>x.id!==id));
-    if(sb)sb.from("lp24_casiers").delete().eq("id",id);
-    addLog("Casier supprimé",c?.numero||"");showToast("🗑️ Supprimé");
-  };
 
   const statC={Libre:C.green,Occupé:C.blue,Réservé:C.orange,"Hors service":C.gray};
   const libres=casiers.filter(c=>c.statut==="Libre").length;
@@ -1207,18 +1179,14 @@ function VueCasiers({casiers,badges,setCasiers,showToast,addLog}){
     const col=ZONES_COLORS[c.zone]||C.gray;
     const border=ghost?"#F59E0B":libre?C.green:c.statut==="Réservé"?C.orange:c.statut==="Hors service"?C.gray:col;
     const bg=ghost?"#FFF7ED":libre?C.greenBg:c.statut==="Réservé"?C.orangeBg:c.statut==="Hors service"?C.grayBg:"#fff";
-    return React.createElement("div",{key:c.id,style:{background:bg,border:"2px solid "+border,borderRadius:8,padding:"10px 8px",textAlign:"center",position:"relative",cursor:"pointer"},
-      onMouseOver:e=>e.currentTarget.style.opacity=".8",onMouseOut:e=>e.currentTarget.style.opacity="1"},
+    return React.createElement("div",{key:c.id,style:{background:bg,border:"2px solid "+border,borderRadius:8,padding:"10px 8px",textAlign:"center",position:"relative"}},
       ghost&&React.createElement("div",{style:{position:"absolute",top:3,right:4,fontSize:10}},"👻"),
       React.createElement("div",{style:{fontWeight:700,fontSize:13,color:ghost?"#92400E":border}},c.numero),
       libre
         ?React.createElement("div",{style:{fontSize:10,color:C.green,marginTop:3,fontWeight:600}},"✅ Libre")
         :ghost
           ?React.createElement("div",{style:{fontSize:9,color:"#92400E",marginTop:3,fontWeight:600}},c.occupant?(c.occupant.length>14?c.occupant.slice(0,14)+"…":c.occupant):"archivé")
-          :React.createElement("div",{style:{fontSize:9,color:"#6B7280",marginTop:3}},c.occupant?(c.occupant.length>16?c.occupant.slice(0,16)+"…":c.occupant):"Occupé"),
-      ghost
-        ?React.createElement("button",{onClick:e=>{e.stopPropagation();viderCasier(c);},style:{marginTop:5,background:"#92400E",color:"#fff",border:"none",borderRadius:4,padding:"3px 8px",fontSize:9,fontWeight:700,cursor:"pointer",width:"100%"}},"🧹 Vider")
-        :React.createElement("button",{onClick:e=>{e.stopPropagation();setForm({...c});setEditing(c.id);setShowForm(true);},style:{marginTop:4,background:"transparent",color:border,border:"1px solid "+border+"55",borderRadius:4,padding:"2px 6px",fontSize:9,cursor:"pointer",width:"100%"}},"✏️")
+          :React.createElement("div",{style:{fontSize:9,color:"#6B7280",marginTop:3}},c.occupant?(c.occupant.length>16?c.occupant.slice(0,16)+"…":c.occupant):"Occupé")
     );
   };
 
@@ -1229,10 +1197,7 @@ function VueCasiers({casiers,badges,setCasiers,showToast,addLog}){
         React.createElement("div",{style:{fontWeight:700,color:"#92400E",fontSize:14}},phantoms.length+' casier'+(phantoms.length>1?"s":"")+" à vider — collaborateur"+(phantoms.length>1?"s":"")+" archivé"+(phantoms.length>1?"s":"")),
         React.createElement("div",{style:{fontSize:12,color:"#78350F",marginTop:2}},phantoms.map(c=>c.numero+(c.occupant?" ("+c.occupant+")":"")).join(" · "))
       ),
-      React.createElement("div",{style:{display:"flex",gap:8,flexShrink:0}},
-        React.createElement("button",{onClick:()=>setShowPhantoms(v=>!v),style:{background:"#FEF3C7",border:"1px solid #F59E0B",color:"#92400E",borderRadius:8,padding:"6px 12px",fontSize:12,fontWeight:600,cursor:"pointer"}},showPhantoms?"▲ Masquer":"▼ Voir"),
-        React.createElement("button",{onClick:viderTousPhantoms,style:{background:"#92400E",color:"#fff",border:"none",borderRadius:8,padding:"6px 14px",fontSize:12,fontWeight:700,cursor:"pointer"}},"🧹 Tout vider")
-      )
+      React.createElement("button",{onClick:()=>setShowPhantoms(v=>!v),style:{background:"#FEF3C7",border:"1px solid #F59E0B",color:"#92400E",borderRadius:8,padding:"6px 12px",fontSize:12,fontWeight:600,cursor:"pointer",flexShrink:0}},showPhantoms?"▲ Masquer":"▼ Voir détail")
     ),
     showPhantoms&&phantoms.length>0&&React.createElement(Card,{style:{marginBottom:16,padding:0,overflow:"hidden",border:"2px solid #F59E0B"}},
       React.createElement("table",{style:{width:"100%",borderCollapse:"collapse",fontSize:13}},
@@ -1248,7 +1213,7 @@ function VueCasiers({casiers,badges,setCasiers,showToast,addLog}){
             React.createElement("td",{style:{padding:"8px 12px",fontWeight:600,color:"#92400E"}},c.occupant||"—"),
             React.createElement("td",{style:{padding:"8px 12px",color:"#6B7280",fontSize:12}},c.matricule||"—"),
             React.createElement("td",{style:{padding:"8px 12px"}},
-              React.createElement("button",{onClick:()=>viderCasier(c),style:{background:"rgba(22,163,74,.12)",border:"1px solid rgba(22,163,74,.3)",color:"#16A34A",borderRadius:6,padding:"4px 12px",fontSize:12,fontWeight:600,cursor:"pointer"}},"✅ Vider")
+              React.createElement("button",{onClick:()=>viderCasier(c),style:{background:"#16A34A",color:"#fff",border:"none",borderRadius:6,padding:"5px 14px",fontSize:12,fontWeight:700,cursor:"pointer",whiteSpace:"nowrap"}},"✅ Fait, casier vidé")
             )
           )
         ))
@@ -1263,22 +1228,7 @@ function VueCasiers({casiers,badges,setCasiers,showToast,addLog}){
           phantoms.length>0&&React.createElement("span",{onClick:()=>setShowPhantoms(v=>!v),style:{background:"#FEF3C7",color:"#92400E",border:"1px solid #F59E0B",borderRadius:999,fontSize:12,fontWeight:700,padding:"2px 10px",cursor:"pointer"}},"👻 "+phantoms.length+" à vider")
         )
       ),
-      React.createElement("div",{style:{display:"flex",gap:8}},
-        React.createElement(Btn,{onClick:()=>setViewMode(v=>v==="grille"?"liste":"grille"),variant:"outline",color:C.gray,style:{fontSize:12}},viewMode==="grille"?"☰ Liste":"⊞ Grille"),
-        React.createElement(Btn,{onClick:()=>{setForm(empty);setEditing(null);setShowForm(!showForm);},color:C.purple},"+ Nouveau casier")
-      )
-    ),
-    showForm&&React.createElement(Card,{style:{marginBottom:16,borderLeft:"4px solid "+C.purple,background:"#F5F3FF"}},
-      React.createElement("div",{style:{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(150px,1fr))",gap:10,marginBottom:10}},
-        React.createElement("div",null,React.createElement(Lbl,null,"N° Casier *"),React.createElement(Inp,{value:form.numero,onChange:v=>setForm({...form,numero:v}),placeholder:"DE103"})),
-        React.createElement("div",null,React.createElement(Lbl,null,"Zone"),React.createElement(Sel,{value:form.zone,onChange:v=>setForm({...form,zone:v}),options:ZONES.map(z=>({v:z,l:z+" — "+ZONES_LABELS[z]})),style:{width:"100%"}})),
-        React.createElement("div",null,React.createElement(Lbl,null,"Statut"),React.createElement(Sel,{value:form.statut,onChange:v=>setForm({...form,statut:v}),options:["Libre","Occupé","Réservé","Hors service"],style:{width:"100%"}})),
-        React.createElement("div",null,React.createElement(Lbl,null,"Occupant"),React.createElement(Inp,{value:form.occupant,onChange:v=>setForm({...form,occupant:v}),placeholder:"NOM Prénom"}))
-      ),
-      React.createElement("div",{style:{display:"flex",gap:8}},
-        React.createElement(Btn,{onClick:save,color:C.purple},"💾 Enregistrer"),
-        React.createElement(Btn,{onClick:()=>{setShowForm(false);setEditing(null);},variant:"outline",color:C.gray},"Annuler")
-      )
+      React.createElement(Btn,{onClick:()=>setViewMode(v=>v==="grille"?"liste":"grille"),variant:"outline",color:C.gray,style:{fontSize:12}},viewMode==="grille"?"☰ Liste":"⊞ Grille")
     ),
     React.createElement(Card,{style:{marginBottom:12,padding:12}},
       React.createElement("div",{style:{display:"flex",gap:10,flexWrap:"wrap",alignItems:"center"}},
@@ -1311,7 +1261,9 @@ function VueCasiers({casiers,badges,setCasiers,showToast,addLog}){
         React.createElement("table",{style:{width:"100%",borderCollapse:"collapse",fontSize:13}},
           React.createElement("thead",null,
             React.createElement("tr",{style:{background:C.purple,color:"#fff"}},
-              ["N° Casier","Zone","Occupant","Matricule","Statut","Actions"].map(h=>React.createElement("th",{key:h,style:{padding:"9px 12px",textAlign:"left",fontWeight:600,whiteSpace:"nowrap"}},h))
+              ["N° Casier","Zone","Occupant","Matricule","Statut"].map(h=>
+                React.createElement("th",{key:h,style:{padding:"9px 12px",textAlign:"left",fontWeight:600,whiteSpace:"nowrap"}},h)
+              )
             )
           ),
           React.createElement("tbody",null,
@@ -1329,14 +1281,7 @@ function VueCasiers({casiers,badges,setCasiers,showToast,addLog}){
                   ghost&&React.createElement("span",{style:{marginLeft:6,background:"#FEF3C7",color:"#92400E",border:"1px solid #F59E0B",borderRadius:999,fontSize:9,fontWeight:700,padding:"1px 5px"}},"archivé")
                 ),
                 React.createElement("td",{style:{padding:"8px 12px",color:"#6B7280",fontSize:12}},c.matricule||"—"),
-                React.createElement("td",{style:{padding:"8px 12px"}},React.createElement(Bdg,{color:"#fff",bg:statC[c.statut]||C.gray},c.statut)),
-                React.createElement("td",{style:{padding:"8px 12px"}},
-                  React.createElement("div",{style:{display:"flex",gap:4}},
-                    ghost&&React.createElement("button",{onClick:()=>viderCasier(c),style:{background:"rgba(22,163,74,.12)",border:"1px solid rgba(22,163,74,.3)",color:"#16A34A",borderRadius:6,padding:"4px 10px",fontSize:12,fontWeight:600,cursor:"pointer",whiteSpace:"nowrap"}},"🧹 Vider"),
-                    React.createElement("button",{onClick:()=>{setForm({...c});setEditing(c.id);setShowForm(true);},style:{background:"none",border:"none",cursor:"pointer",fontSize:14}},"✏️"),
-                    React.createElement("button",{onClick:()=>del(c.id),style:{background:"none",border:"none",cursor:"pointer",fontSize:14}},"🗑️")
-                  )
-                )
+                React.createElement("td",{style:{padding:"8px 12px"}},React.createElement(Bdg,{color:"#fff",bg:statC[c.statut]||C.gray},c.statut))
               );
             })
           )
