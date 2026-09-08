@@ -58,6 +58,7 @@
     .save-dot.saving{animation:savePulse 0.8s ease infinite;background:var(--yellow);}
     @media(max-width:768px){.tbl-desktop{display:none!important}.cards-mobile{display:block!important}}
     @media(min-width:769px){.cards-mobile{display:none!important}}
+    @media(max-width:1000px){.rapport-cols{grid-template-columns:1fr!important}}
     .mob-card{background:var(--surface2);border-radius:var(--radius);padding:12px 14px;margin-bottom:8px;border-left:3px solid var(--accent);}
     .mob-row{display:flex;justify-content:space-between;align-items:center;padding:4px 0;font-size:12px;border-bottom:1px solid var(--border);}
     .mob-row:last-child{border-bottom:none;}
@@ -543,13 +544,20 @@ function VueAccueil({badges,casiers,setView,wdCache,setBadges,setCasiers,showToa
 }
 
 // ════════════════ VUE COLLABORATEURS ════════════════
-function VueCollaborateurs({badges,casiers,setBadges,setCasiers,showToast,wdCache,addLog,settings,newMats,setNewMats}){
+function VueCollaborateurs({badges,casiers,setBadges,setCasiers,showToast,wdCache,addLog,settings,newMats,setNewMats,pendingOpen,setPendingOpen}){
   const[search,setSearch]=useState("");const[fStat,setFStat]=useState("");
   const[showForm,setShowForm]=useState(false);const[editing,setEditing]=useState(null);
   const[sortCol,setSortCol]=useState("date_ajout");const[sortDir,setSortDir]=useState("desc");
   const _newMats=newMats||new Set();
   const today=todayISO();const aV7=new Date();aV7.setDate(aV7.getDate()+7);const aV7ISO=aV7.toISOString().slice(0,10);
   const empty={matricule:"",nom:"",prenom:"",email:"",serie:"",zeplug:"",carte_rechargement:"",casier:"",manager:"",mail_manager:"",statut:"Actif",badge_donne:true,date_entree:"",date_sortie_prevue:"",commentaire:"",date_ajout:todayISO(),etiquette_imprimee:false};
+  // ── Ouverture ciblée depuis le Rapport (résolution d'incohérence) ──
+  useEffect(()=>{
+    if(!pendingOpen||pendingOpen.view!=="collaborateurs")return;
+    const b=badges.find(x=>x.id===pendingOpen.id);
+    if(b){setForm({...b,carte_rechargement:b.carte_rechargement||""});setEditing(b.id);setShowForm(true);}
+    setPendingOpen(null);
+  },[pendingOpen,badges]);
   const[form,setForm]=useState(empty);
   const statC={"Actif":C.green,"À récupérer":C.red,"Badge prêt":C.blue,"Badge VIP":"#7C3AED","Futur arrivant":"#0891B2","Archivé":C.gray};
   const serieCount=useMemo(()=>{const m={};badges.filter(b=>b.serie&&b.statut!=="Archivé").forEach(b=>{m[b.serie]=(m[b.serie]||0)+1;});return m;},[badges]);
@@ -715,15 +723,13 @@ function VueCollaborateurs({badges,casiers,setBadges,setCasiers,showToast,wdCach
             React.createElement(SortTh,{col:"matricule",label:"Mat.",st:{padding:"7px 5px",color:"#fff"}}),
             React.createElement(SortTh,{col:"nom",label:"Nom",st:{padding:"7px 5px",color:"#fff"}}),
             React.createElement(SortTh,{col:"prenom",label:"Prénom",st:{padding:"7px 5px",color:"#fff"}}),
+            React.createElement(SortTh,{col:"email",label:"Email",st:{padding:"7px 5px",color:"#fff"}}),
             React.createElement(SortTh,{col:"serie",label:"Badge",st:{padding:"7px 5px",color:"#fff"}}),
             React.createElement(SortTh,{col:"carte_rechargement",label:"Recharg.",st:{padding:"7px 5px",color:"#fff"}}),
-            React.createElement("th",{style:{padding:"7px 5px",textAlign:"center",whiteSpace:"nowrap",title:"Badge donné"}},"✅"),
-            React.createElement("th",{style:{padding:"7px 5px",textAlign:"center",whiteSpace:"nowrap",title:"Étiquette imprimée"}},"🏷️"),
             React.createElement(SortTh,{col:"date_entree",label:"Entrée",st:{padding:"7px 5px",color:"#fff"}}),
             React.createElement(SortTh,{col:"casier",label:"Casier",st:{padding:"7px 5px",color:"#fff"}}),
             React.createElement(SortTh,{col:"date_sortie_prevue",label:"Sortie",st:{padding:"7px 5px",color:"#fff"}}),
             React.createElement(SortTh,{col:"manager",label:"Manager",st:{padding:"7px 5px",color:"#fff"}}),
-            React.createElement(SortTh,{col:"email",label:"Email",st:{padding:"7px 5px",color:"#fff"}}),
             React.createElement(SortTh,{col:"statut",label:"Statut",st:{padding:"7px 5px",color:"#fff"}}),
             React.createElement(SortTh,{col:"date_ajout",label:"Ajouté",st:{padding:"7px 5px",color:"#fff"}}),
             React.createElement("th",{style:{padding:"7px 5px",textAlign:"left"}},"✉️"),
@@ -750,10 +756,9 @@ function VueCollaborateurs({badges,casiers,setBadges,setCasiers,showToast,wdCach
               React.createElement("td",{style:{padding:"5px 5px",fontWeight:700,color:C.blue,fontSize:10}},!hasM?React.createElement("span",{style:{color:"#E74C3C",fontWeight:700,fontSize:9}},"NC"):b.matricule),
               React.createElement("td",{style:{padding:"5px 5px",fontWeight:600,fontSize:11}},b.nom||"—"),
               React.createElement("td",{style:{padding:"5px 5px",fontSize:11}},b.prenom||"—"),
+              React.createElement("td",{style:{padding:"5px 5px",fontSize:9,color:"#6B7280",maxWidth:120,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}},b.email||"—"),
               React.createElement("td",{style:{padding:"5px 5px"}},hasB?React.createElement("span",null,React.createElement("code",{style:{background:doublon?"#FEF3C7":"#F3F4F6",color:doublon?"#92400E":"inherit",padding:"1px 4px",borderRadius:3,fontSize:9,border:doublon?"1px solid #F59E0B":"none"}},b.serie),doublon&&React.createElement("span",{title:"Badge attribué à plusieurs !",style:{marginLeft:2,color:"#F59E0B",fontSize:10}},"⚠️")):"—"),
               React.createElement("td",{style:{padding:"5px 5px",fontSize:9,color:"#6B7280"}},b.carte_rechargement||"—"),
-              React.createElement("td",{style:{padding:"5px 5px",textAlign:"center"},onClick:e=>e.stopPropagation()},React.createElement("input",{type:"checkbox",checked:!!b.badge_donne,onChange:e=>{const upd={...b,badge_donne:e.target.checked};setBadges(p=>p.map(x=>x.id===b.id?upd:x));if(sb)sb.from("lp24_badges").upsert(upd);},style:{width:13,height:13,accentColor:"#00B050",cursor:"pointer"}})),
-              React.createElement("td",{style:{padding:"5px 5px",textAlign:"center"},onClick:e=>e.stopPropagation()},React.createElement("input",{type:"checkbox",checked:!!b.etiquette_imprimee,title:"Étiquette imprimée",onChange:e=>{const upd={...b,etiquette_imprimee:e.target.checked};setBadges(p=>p.map(x=>x.id===b.id?upd:x));if(sb)sb.from("lp24_badges").upsert(upd);},style:{width:13,height:13,accentColor:C.blue,cursor:"pointer"}})),
               React.createElement("td",{style:{padding:"5px 5px",fontSize:10,color:"#6B7280"}},b.date_entree?new Date(b.date_entree+"T00:00:00").toLocaleDateString("fr-FR"):"—"),
               React.createElement("td",{style:{padding:"5px 5px"}},b.casier?React.createElement("span",{style:{background:zcol+"22",color:zcol,fontWeight:700,padding:"1px 4px",borderRadius:4,fontSize:9}},b.casier):React.createElement("span",{style:{color:"#9CA3AF"}},"—")),
               React.createElement("td",{style:{padding:"3px 3px"},onClick:e=>e.stopPropagation()},
@@ -766,7 +771,6 @@ function VueCollaborateurs({badges,casiers,setBadges,setCasiers,showToast,wdCach
                 ):React.createElement("span",{style:{fontSize:9,color:"#9CA3AF"}},fmt(b.date_sortie_prevue))
               ),
               React.createElement("td",{style:{padding:"5px 5px",fontSize:9,maxWidth:100,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}},b.manager||"—"),
-              React.createElement("td",{style:{padding:"5px 5px",fontSize:9,color:"#6B7280",maxWidth:100,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}},b.email||"—"),
               React.createElement("td",{style:{padding:"5px 5px"}},React.createElement(Bdg,{color:"#fff",bg:statC[b.statut]||C.gray},b.statut)),
               React.createElement("td",{style:{padding:"5px 5px",fontSize:9,color:"#9CA3AF",whiteSpace:"nowrap"}},b.date_ajout?new Date(b.date_ajout+"T00:00:00").toLocaleDateString("fr-FR"):"—"),
               // Boutons mail
@@ -785,7 +789,7 @@ function VueCollaborateurs({badges,casiers,setBadges,setCasiers,showToast,wdCach
               )
             );
           }),
-          filtered.length===0&&React.createElement("tr",null,React.createElement("td",{colSpan:17,style:{padding:32,textAlign:"center",color:"#9CA3AF"}},"Aucun collaborateur."))
+          filtered.length===0&&React.createElement("tr",null,React.createElement("td",{colSpan:15,style:{padding:32,textAlign:"center",color:"#9CA3AF"}},"Aucun collaborateur."))
         )
       )
     )),
@@ -951,61 +955,149 @@ function VueCasiers({casiers,badges,setCasiers,showToast,addLog,setView}){
 }
 
 // ════════════════ VUE RAPPORT ════════════════
-function VueRapport({badges,fssData}){
+function VueRapport({badges,fssData,setBadges,setFssData,showToast,addLog,setView,setPendingOpen}){
   const today=todayISO();
   const fmtD=d=>d?new Date(d).toLocaleDateString("fr-FR"):"—";
+  const keyOf=(n,p)=>norm(n)+"|"+norm(p);
 
   // ── Collaborateurs : futurs départs (date_sortie_prevue >= aujourd'hui)
   const futursDeparts=useMemo(()=>
     badges.filter(b=>b.date_sortie_prevue&&b.date_sortie_prevue>=today&&b.statut!=="Archivé")
-      .sort((a,b)=>a.date_sortie_prevue.localeCompare(b.date_sortie_prevue))
   ,[badges,today]);
 
   // ── Collaborateurs : futures arrivées (date_entree >= aujourd'hui)
   const futuresArrivees=useMemo(()=>
     badges.filter(b=>b.date_entree&&b.date_entree>=today&&b.statut!=="Archivé")
-      .sort((a,b)=>a.date_entree.localeCompare(b.date_entree))
   ,[badges,today]);
 
   // ── FSS : futures arrivées (situation=Arrivée, dateEvt >= aujourd'hui)
   const fssArrivees=useMemo(()=>
     (fssData||[]).filter(f=>f.situation==="Arrivée"&&f.dateEvt&&f.dateEvt>=today&&!f.cloture)
-      .sort((a,b)=>a.dateEvt.localeCompare(b.dateEvt))
   ,[fssData,today]);
 
   // ── FSS : futurs départs (situation=Départ, dateEvt >= aujourd'hui)
   const fssDeparts=useMemo(()=>
     (fssData||[]).filter(f=>f.situation==="Départ"&&f.dateEvt&&f.dateEvt>=today&&!f.cloture)
-      .sort((a,b)=>a.dateEvt.localeCompare(b.dateEvt))
   ,[fssData,today]);
 
-  const Section=({title,color,count,children})=>React.createElement("div",{style:{marginBottom:28}},
-    React.createElement("div",{style:{display:"flex",alignItems:"center",gap:12,marginBottom:12,paddingBottom:8,borderBottom:"2px solid "+color}},
-      React.createElement("h2",{style:{fontSize:16,fontWeight:800,color,margin:0}},title),
-      React.createElement("span",{style:{background:color+"22",color,borderRadius:999,fontSize:12,fontWeight:700,padding:"2px 10px"}},count+" entrée"+(count>1?"s":""))
+  // ── Fusion Collaborateurs + Field Support par personne (nom+prénom), pour repérer les incohérences ──
+  // Une personne présente d'un seul côté (badge sans fiche FSS, ou fiche FSS sans badge) est marquée ⚠️.
+  const mergeSide=(badgeList,fssList,dateFieldBadge)=>{
+    const map={};
+    badgeList.forEach(b=>{
+      const k=keyOf(b.nom,b.prenom);
+      map[k]={key:k,nom:b.nom,prenom:b.prenom,manager:b.manager,date:b[dateFieldBadge],statut:b.statut,hasBadge:true,hasFss:false};
+    });
+    fssList.forEach(f=>{
+      const k=keyOf(f.nom,f.prenom);
+      if(map[k]){
+        map[k].hasFss=true;
+        if(!map[k].date)map[k].date=f.dateEvt;
+        if(!map[k].manager)map[k].manager=f.manager;
+      }else{
+        map[k]={key:k,nom:f.nom,prenom:f.prenom,manager:f.manager,date:f.dateEvt,statut:f.statut||"A traiter",hasBadge:false,hasFss:true};
+      }
+    });
+    return Object.values(map).sort((a,b)=>(a.date||"").localeCompare(b.date||""));
+  };
+  const arrivees=useMemo(()=>mergeSide(futuresArrivees,fssArrivees,"date_entree"),[futuresArrivees,fssArrivees]);
+  const departs=useMemo(()=>mergeSide(futursDeparts,fssDeparts,"date_sortie_prevue"),[futursDeparts,fssDeparts]);
+  const mismatchCount=list=>list.filter(m=>!(m.hasBadge&&m.hasFss)).length;
+
+  // ── Résoudre une incohérence : créer la fiche manquante (FSS ou badge) et ouvrir directement pour compléter ──
+  const resolveMismatch=(m,category)=>{
+    if(!m.hasFss){
+      const situation=category==="arrivee"?"Arrivée":"Départ";
+      const row={nom:m.nom,prenom:m.prenom,situation,statut:"A traiter",lieu:"",dateEvt:m.date||today,manager:m.manager||"",matPC:"",ritm:"",matRecu:"",idMat:"",dateRecep:"",matDonne:"",commentaires:"",cloture:false,is_new:true};
+      const tmpId="tmp_"+Date.now();
+      setFssData(prev=>[...(prev||[]),{...row,id:tmpId}]);
+      if(sb){
+        sb.from("lp24_fss").insert([row]).select().then(({data,error})=>{
+          if(!error&&data&&data[0])setFssData(p=>(p||[]).map(f=>f.id===tmpId?data[0]:f));
+        });
+      }
+      if(addLog)addLog("Fiche FSS créée (Rapport)",m.prenom+" "+m.nom);
+      if(showToast)showToast("✅ Fiche Field Support créée — "+m.prenom+" "+m.nom+", à compléter");
+      if(setView)setView("field_support");
+      if(setPendingOpen)setPendingOpen({view:"field_support",id:tmpId});
+    }else if(!m.hasBadge){
+      const nb={id:nxId(badges),nom:m.nom,prenom:m.prenom,matricule:"",email:"",serie:"",zeplug:"",carte_rechargement:"",
+        casier:"",manager:m.manager||"",mail_manager:"",statut:category==="depart"?"À récupérer":"Actif",badge_donne:false,
+        date_entree:category==="arrivee"?(m.date||today):"",date_sortie_prevue:category==="depart"?(m.date||today):"",
+        date_archive:"",commentaire:"",date_ajout:todayISO(),etiquette_imprimee:false};
+      setBadges(p=>[...p,nb]);
+      if(sb){const{id,...row}=nb;sb.from("lp24_badges").insert(row);}
+      if(addLog)addLog("Badge créé (Rapport)",m.prenom+" "+m.nom);
+      if(showToast)showToast("✅ Badge collaborateur créé — "+m.prenom+" "+m.nom+", à compléter");
+      if(setView)setView("collaborateurs");
+      if(setPendingOpen)setPendingOpen({view:"collaborateurs",id:nb.id});
+    }
+  };
+
+  const Panel=({title,color,count,children})=>React.createElement("div",{style:{background:"var(--surface)",border:"1px solid var(--border)",borderRadius:"var(--radius-lg)",overflow:"hidden"}},
+    React.createElement("div",{style:{display:"flex",alignItems:"center",gap:10,padding:"12px 14px",borderBottom:"2px solid "+color}},
+      React.createElement("h2",{style:{fontSize:15,fontWeight:800,margin:0,color}},title),
+      React.createElement("span",{style:{background:color+"22",color,borderRadius:999,fontSize:11,fontWeight:700,padding:"2px 10px"}},count+" entrée"+(count>1?"s":""))
     ),
     count===0
       ?React.createElement("div",{style:{textAlign:"center",padding:"24px 0",color:"var(--text3)",fontSize:13}},"Aucune entrée à venir")
-      :children
+      :React.createElement("div",{style:{overflowX:"auto"}},children)
   );
 
-  const TblHead=({cols})=>React.createElement("thead",null,
-    React.createElement("tr",{style:{background:"var(--surface2)"}},
-      cols.map(h=>React.createElement("th",{key:h,style:{padding:"8px 12px",fontSize:11,fontWeight:700,
-        color:"var(--text2)",textAlign:"left",textTransform:"uppercase",letterSpacing:".4px",
-        borderBottom:"1px solid var(--border)",whiteSpace:"nowrap"}},h))
-    )
-  );
+  // ── Toutes les cellules ont la même hauteur fixe et ne passent jamais à la ligne ──
+  const tblStyle={width:"100%",borderCollapse:"collapse",fontSize:12,tableLayout:"fixed"};
+  const tdS={height:36,padding:"0 10px",borderBottom:"1px solid var(--border)",whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis",verticalAlign:"middle"};
+  const thS={padding:"8px 10px",fontSize:10,fontWeight:700,color:"var(--text2)",textAlign:"left",
+    textTransform:"uppercase",letterSpacing:".4px",borderBottom:"1px solid var(--border)",
+    background:"var(--surface2)",whiteSpace:"nowrap"};
 
-  const tblStyle={width:"100%",borderCollapse:"collapse",fontSize:12};
-  const tdS={padding:"8px 12px",borderBottom:"1px solid var(--border)"};
+  // Pastilles compactes (icône seule + info-bulle) pour ne jamais déborder de la colonne Source.
+  const Pill=(ok,icon,label)=>React.createElement("span",{key:label,title:label,style:{display:"inline-flex",alignItems:"center",
+    justifyContent:"center",width:22,height:18,borderRadius:6,fontSize:11,fontWeight:700,marginRight:4,
+    background:ok?"rgba(22,163,74,.15)":"rgba(220,38,38,.12)",filter:ok?"none":"grayscale(1) opacity(.55)"}},icon);
+
+  // Colonne Action dédiée pour le bouton d'incohérence : jamais tronquée par le texte de la colonne Source.
+  const renderTable=(list,color,category)=>React.createElement("table",{style:tblStyle},
+    React.createElement("colgroup",null,
+      React.createElement("col",{style:{width:"28%"}}),
+      React.createElement("col",{style:{width:"16%"}}),
+      React.createElement("col",{style:{width:"22%"}}),
+      React.createElement("col",{style:{width:"15%"}}),
+      React.createElement("col",{style:{width:"19%"}})
+    ),
+    React.createElement("thead",null,React.createElement("tr",null,
+      ["Nom Prénom","Source","Manager","Date",""].map(h=>React.createElement("th",{key:h||"action",style:thS},h))
+    )),
+    React.createElement("tbody",null,list.map((m,i)=>{
+      const mismatch=!(m.hasBadge&&m.hasFss);
+      return React.createElement("tr",{key:m.key,style:{background:i%2===0?"transparent":"var(--surface2)",
+        boxShadow:mismatch?"inset 3px 0 0 #D97706":"none"}},
+        React.createElement("td",{style:{...tdS,fontWeight:700}},m.prenom+" "+m.nom),
+        React.createElement("td",{style:{...tdS,overflow:"visible"}},
+          Pill(m.hasBadge,"🪪","Badge collaborateur"+(m.hasBadge?" ✓":" — manquant")),
+          Pill(m.hasFss,"🎫","Fiche Field Support"+(m.hasFss?" ✓":" — manquante"))
+        ),
+        React.createElement("td",{style:{...tdS,color:"var(--text2)"}},m.manager||"—"),
+        React.createElement("td",{style:{...tdS,fontWeight:600,color}},fmtD(m.date)),
+        React.createElement("td",{style:{...tdS,overflow:"visible",textAlign:"right"}},
+          mismatch&&React.createElement("button",{key:"w",
+            onClick:()=>resolveMismatch(m,category),
+            title:(m.hasBadge?"Créer la fiche Field Support manquante":"Créer le badge collaborateur manquant"),
+            style:{display:"inline-flex",alignItems:"center",gap:4,color:"#D97706",fontSize:11,fontWeight:700,
+              background:"rgba(217,119,6,.12)",border:"1px solid rgba(217,119,6,.35)",borderRadius:999,
+              padding:"3px 9px",cursor:"pointer",whiteSpace:"nowrap"}},"⚠️ Créer")
+        )
+      );
+    }))
+  );
 
   return React.createElement("div",null,
     // Header
     React.createElement("div",{style:{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:24,flexWrap:"wrap",gap:8}},
       React.createElement("div",null,
         React.createElement("h1",{style:{fontSize:22,fontWeight:800,margin:0}},"📊 Rapport — Événements à venir"),
-        React.createElement("p",{style:{fontSize:12,color:"var(--text2)",marginTop:4}},"À partir d'aujourd'hui : "+fmtD(today))
+        React.createElement("p",{style:{fontSize:12,color:"var(--text2)",marginTop:4}},
+          "À partir d'aujourd'hui : "+fmtD(today)+" — Collaborateurs et Field Support fusionnés, ⚠️ = présent d'un seul côté (clique dessus pour créer la fiche manquante)")
       ),
       React.createElement("button",{onClick:()=>window.print(),
         style:{background:"var(--accentBg)",border:"1px solid var(--accent)",color:"var(--accent2)",
@@ -1014,11 +1106,11 @@ function VueRapport({badges,fssData}){
     ),
 
     // KPIs
-    React.createElement("div",{style:{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:12,marginBottom:28}},
-      [{label:"Arrivées collab.",val:futuresArrivees.length,color:"#16A34A"},
-       {label:"Départs collab.",val:futursDeparts.length,color:"#DC2626"},
-       {label:"Arrivées FSS",val:fssArrivees.length,color:"#0891B2"},
-       {label:"Départs FSS",val:fssDeparts.length,color:"#D97706"},
+    React.createElement("div",{style:{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:12,marginBottom:24}},
+      [{label:"Arrivées",val:arrivees.length,color:"#16A34A"},
+       {label:"Départs",val:departs.length,color:"#DC2626"},
+       {label:"Incohérences arrivées",val:mismatchCount(arrivees),color:"#D97706"},
+       {label:"Incohérences départs",val:mismatchCount(departs),color:"#D97706"},
       ].map(k=>React.createElement("div",{key:k.label,style:{background:"var(--surface)",border:"1px solid var(--border)",
         borderTop:"3px solid "+k.color,borderRadius:"var(--radius-lg)",padding:"14px 18px",textAlign:"center"}},
         React.createElement("div",{style:{fontSize:28,fontWeight:800,color:k.color,lineHeight:1}},k.val),
@@ -1026,80 +1118,13 @@ function VueRapport({badges,fssData}){
       ))
     ),
 
-    // ── Arrivées collaborateurs
-    React.createElement(Section,{title:"🟢 Futures arrivées — Collaborateurs",color:"#16A34A",count:futuresArrivees.length},
-      React.createElement("div",{style:{background:"var(--surface)",border:"1px solid var(--border)",borderRadius:"var(--radius-lg)",overflow:"hidden"}},
-        React.createElement("table",{style:tblStyle},
-          React.createElement(TblHead,{cols:["Nom Prénom","Matricule","Email","Manager","Date entrée","Statut"]}),
-          React.createElement("tbody",null,futuresArrivees.map((b,i)=>
-            React.createElement("tr",{key:b.id,style:{background:i%2===0?"transparent":"var(--surface2)"}},
-              React.createElement("td",{style:{...tdS,fontWeight:700}},b.prenom+" "+b.nom),
-              React.createElement("td",{style:{...tdS,fontFamily:"monospace",color:"var(--accent2)"}},b.matricule||React.createElement("span",{style:{color:"var(--red)",fontSize:10}},"NC")),
-              React.createElement("td",{style:{...tdS,color:"var(--text2)"}},b.email||"—"),
-              React.createElement("td",{style:{...tdS,color:"var(--text2)"}},b.manager||"—"),
-              React.createElement("td",{style:{...tdS,fontWeight:600,color:"#16A34A"}},fmtD(b.date_entree)),
-              React.createElement("td",{style:tdS},React.createElement("span",{style:{background:"rgba(22,163,74,.12)",color:"#16A34A",borderRadius:999,padding:"2px 8px",fontSize:11,fontWeight:600}},b.statut))
-            )
-          ))
-        )
-      )
-    ),
-
-    // ── Départs collaborateurs
-    React.createElement(Section,{title:"🔴 Futurs départs — Collaborateurs",color:"#DC2626",count:futursDeparts.length},
-      React.createElement("div",{style:{background:"var(--surface)",border:"1px solid var(--border)",borderRadius:"var(--radius-lg)",overflow:"hidden"}},
-        React.createElement("table",{style:tblStyle},
-          React.createElement(TblHead,{cols:["Nom Prénom","Matricule","N° Badge","Casier","Manager","Date sortie","Statut"]}),
-          React.createElement("tbody",null,futursDeparts.map((b,i)=>
-            React.createElement("tr",{key:b.id,style:{background:i%2===0?"transparent":"var(--surface2)"}},
-              React.createElement("td",{style:{...tdS,fontWeight:700}},b.prenom+" "+b.nom),
-              React.createElement("td",{style:{...tdS,fontFamily:"monospace",color:"var(--accent2)"}},b.matricule||React.createElement("span",{style:{color:"var(--red)",fontSize:10}},"NC")),
-              React.createElement("td",{style:{...tdS,fontFamily:"monospace",fontSize:11}},b.serie||"—"),
-              React.createElement("td",{style:{...tdS,color:"var(--text2)"}},b.casier||"—"),
-              React.createElement("td",{style:{...tdS,color:"var(--text2)"}},b.manager||"—"),
-              React.createElement("td",{style:{...tdS,fontWeight:600,color:"#DC2626"}},fmtD(b.date_sortie_prevue)),
-              React.createElement("td",{style:tdS},React.createElement("span",{style:{background:"rgba(220,38,38,.12)",color:"#DC2626",borderRadius:999,padding:"2px 8px",fontSize:11,fontWeight:600}},b.statut))
-            )
-          ))
-        )
-      )
-    ),
-
-    // ── Arrivées FSS
-    React.createElement(Section,{title:"🔵 Futures arrivées — Field Support",color:"#0891B2",count:fssArrivees.length},
-      React.createElement("div",{style:{background:"var(--surface)",border:"1px solid var(--border)",borderRadius:"var(--radius-lg)",overflow:"hidden"}},
-        React.createElement("table",{style:tblStyle},
-          React.createElement(TblHead,{cols:["Nom Prénom","Lieu","Manager","Mat. PC","Date","Statut"]}),
-          React.createElement("tbody",null,fssArrivees.map((f,i)=>
-            React.createElement("tr",{key:f.id,style:{background:i%2===0?"transparent":"var(--surface2)"}},
-              React.createElement("td",{style:{...tdS,fontWeight:700}},f.prenom+" "+f.nom),
-              React.createElement("td",{style:{...tdS,color:"var(--text2)"}},f.lieu||"—"),
-              React.createElement("td",{style:{...tdS,color:"var(--text2)"}},f.manager||"—"),
-              React.createElement("td",{style:{...tdS,fontFamily:"monospace",fontSize:11}},f.matPC||"—"),
-              React.createElement("td",{style:{...tdS,fontWeight:600,color:"#0891B2"}},fmtD(f.dateEvt)),
-              React.createElement("td",{style:tdS},React.createElement("span",{style:{background:"rgba(8,145,178,.12)",color:"#0891B2",borderRadius:999,padding:"2px 8px",fontSize:11,fontWeight:600}},f.statut||"À traiter"))
-            )
-          ))
-        )
-      )
-    ),
-
-    // ── Départs FSS
-    React.createElement(Section,{title:"🟠 Futurs départs — Field Support",color:"#D97706",count:fssDeparts.length},
-      React.createElement("div",{style:{background:"var(--surface)",border:"1px solid var(--border)",borderRadius:"var(--radius-lg)",overflow:"hidden"}},
-        React.createElement("table",{style:tblStyle},
-          React.createElement(TblHead,{cols:["Nom Prénom","Lieu","Manager","Mat. PC","Date","Statut"]}),
-          React.createElement("tbody",null,fssDeparts.map((f,i)=>
-            React.createElement("tr",{key:f.id,style:{background:i%2===0?"transparent":"var(--surface2)"}},
-              React.createElement("td",{style:{...tdS,fontWeight:700}},f.prenom+" "+f.nom),
-              React.createElement("td",{style:{...tdS,color:"var(--text2)"}},f.lieu||"—"),
-              React.createElement("td",{style:{...tdS,color:"var(--text2)"}},f.manager||"—"),
-              React.createElement("td",{style:{...tdS,fontFamily:"monospace",fontSize:11}},f.matPC||"—"),
-              React.createElement("td",{style:{...tdS,fontWeight:600,color:"#D97706"}},fmtD(f.dateEvt)),
-              React.createElement("td",{style:tdS},React.createElement("span",{style:{background:"rgba(217,119,6,.12)",color:"#D97706",borderRadius:999,padding:"2px 8px",fontSize:11,fontWeight:600}},f.statut||"À traiter"))
-            )
-          ))
-        )
+    // ── Deux tableaux côte à côte : Arrivées | Départs ──
+    React.createElement("div",{className:"rapport-cols",style:{display:"grid",gridTemplateColumns:"1fr 1fr",gap:20}},
+      React.createElement(Panel,{title:"🟢 Arrivées",color:"#16A34A",count:arrivees.length},
+        renderTable(arrivees,"#16A34A","arrivee")
+      ),
+      React.createElement(Panel,{title:"🔴 Départs",color:"#DC2626",count:departs.length},
+        renderTable(departs,"#DC2626","depart")
       )
     )
   );
@@ -1551,7 +1576,7 @@ function Portal({children}){
 }
 
 // ════════════════ VUE FIELD SUPPORT ════════════════
-function VueFieldSupport({fssData,setFssData,showToast,addLog,badges,casiers,setBadges,setCasiers,wdCache,settings}){
+function VueFieldSupport({fssData,setFssData,showToast,addLog,badges,casiers,setBadges,setCasiers,wdCache,settings,pendingOpen,setPendingOpen}){
   const{useState,useMemo,useCallback,useRef,useEffect}=React;
   const el=React.createElement;
   const today=todayISO();
@@ -1578,6 +1603,13 @@ function VueFieldSupport({fssData,setFssData,showToast,addLog,badges,casiers,set
   const[editForm,setEditForm]=useState(null);
   const[showAddManuel,setShowAddManuel]=useState(false);
   const[showAddDepart,setShowAddDepart]=useState(false);
+  // ── Ouverture ciblée depuis le Rapport (résolution d'incohérence) ──
+  useEffect(()=>{
+    if(!pendingOpen||pendingOpen.view!=="field_support")return;
+    const f=(fssData||[]).find(x=>x.id===pendingOpen.id);
+    if(f){setSelectedCard(f);setEditMode(true);setEditForm({...f});}
+    setPendingOpen(null);
+  },[pendingOpen,fssData]);
   const[showAddArrivee,setShowAddArrivee]=useState(false);
   const[fssSyncStatus,setFssSyncStatus]=useState("idle");
   const syncTimerRef=useRef(null);
@@ -1663,7 +1695,7 @@ function VueFieldSupport({fssData,setFssData,showToast,addLog,badges,casiers,set
       try{
         const rows=parseMSListsCSV(ev.target.result);
         if(!rows.length){showToast("⚠️ Aucune ligne trouvée","err");return;}
-        const mapped=rows.map(r=>({nom:(r["Nom"]||r["NOM"]||"").toUpperCase(),prenom:r["Prénom"]||r["Prenom"]||"",situation:r["Situation collaborateur"]||r["Situation"]||"",statut:r["Statut demande pour le FSS"]||r["Statut"]||"A traiter",lieu:r["Localisation"]||r["Lieu"]||"",dateEvt:normDate(r["Date \u00e9v\u00e9nement "]||r["Date \u00e9v\u00e9nement"]||r["Date Evenement"]||""),manager:r["Manager de l'embauch\u00e9(e)"]||r["Manager"]||"",matPC:r["Demande de mat\u00e9riel en cours ? (PC)"]||r["Demande mat\u00e9riel (PC)"]||r["MatPC"]||"",ritm:r["N\u00b0 RITM (plusieurs possibles)"]||r["N\u00b0 RITM"]||r["RITM"]||"",matRecu:r["Materiel re\u00e7u au FSS local ? "]||r["Materiel re\u00e7u au FSS local ?"]||r["Mat\u00e9riel re\u00e7u"]||"",idMat:r["ID materiel (d\u00e9part collab uniquement)"]||r["ID mat\u00e9riel"]||"",dateRecep:normDate(r["Date de r\u00e9ception "]||r["Date de r\u00e9ception"]||r["Date r\u00e9ception"]||""),matDonne:r["Mat\u00e9riel donn\u00e9 au client ?  (Arriv\u00e9s uniquement)"]||r["Mat\u00e9riel donn\u00e9"]||"",commentaires:r["Commentaires"]||"",cloture:(r["Cl\u00f4tur\u00e9"]||"").toLowerCase()==="oui"||(r["Statut demande pour le FSS"]||"")==="Termin\u00e9e"}));
+        const mapped=rows.map(r=>({nom:(r["Nom"]||r["NOM"]||"").toUpperCase(),prenom:(r["Prénom"]||r["Prenom"]||"").toUpperCase(),situation:r["Situation collaborateur"]||r["Situation"]||"",statut:r["Statut demande pour le FSS"]||r["Statut"]||"A traiter",lieu:r["Localisation"]||r["Lieu"]||"",dateEvt:normDate(r["Date \u00e9v\u00e9nement "]||r["Date \u00e9v\u00e9nement"]||r["Date Evenement"]||""),manager:(r["Manager de l'embauch\u00e9(e)"]||r["Manager"]||"").toUpperCase(),matPC:r["Demande de mat\u00e9riel en cours ? (PC)"]||r["Demande mat\u00e9riel (PC)"]||r["MatPC"]||"",ritm:(r["N\u00b0 RITM (plusieurs possibles)"]||r["N\u00b0 RITM"]||r["RITM"]||"").toUpperCase(),matRecu:r["Materiel re\u00e7u au FSS local ? "]||r["Materiel re\u00e7u au FSS local ?"]||r["Mat\u00e9riel re\u00e7u"]||"",idMat:(r["ID materiel (d\u00e9part collab uniquement)"]||r["ID mat\u00e9riel"]||"").toUpperCase(),dateRecep:normDate(r["Date de r\u00e9ception "]||r["Date de r\u00e9ception"]||r["Date r\u00e9ception"]||""),matDonne:r["Mat\u00e9riel donn\u00e9 au client ?  (Arriv\u00e9s uniquement)"]||r["Mat\u00e9riel donn\u00e9"]||"",commentaires:(r["Commentaires"]||"").toUpperCase(),cloture:(r["Cl\u00f4tur\u00e9"]||"").toLowerCase()==="oui"||(r["Statut demande pour le FSS"]||"")==="Termin\u00e9e"}));
         setFssData(prev=>[...(prev||[]),...mapped]);
         if(sb)(async()=>{for(const row of mapped){try{await sb.from("lp24_fss").insert([row]);}catch(err){}}})();
         showToast("✅ "+mapped.length+" fiches importées");addLog("Import FSS CSV",mapped.length+" fiches");
@@ -1916,7 +1948,7 @@ function VueFieldSupport({fssData,setFssData,showToast,addLog,badges,casiers,set
             ),
             el("div",{style:{marginBottom:14}},
               el(Lbl,null,"Commentaires"),
-              el("textarea",{value:editForm.commentaires||"",onChange:e=>setEditForm(f=>({...f,commentaires:e.target.value})),rows:2,className:"inp",style:{resize:"vertical",fontSize:12}})
+              el("textarea",{value:editForm.commentaires||"",onChange:e=>setEditForm(f=>({...f,commentaires:e.target.value.toUpperCase()})),rows:2,className:"inp",style:{resize:"vertical",fontSize:12}})
             ),
             el("div",{style:{display:"flex",gap:8,flexWrap:"wrap",alignItems:"center",borderTop:"1px solid var(--border)",paddingTop:12}},
               el("button",{onClick:saveEdit,className:"btn btn-primary",style:{fontSize:12}},"💾 Enregistrer"),
@@ -2391,6 +2423,8 @@ function App(){
   const[newMats,setNewMats]=useState(new Set());
   const[settings,setSettings]=useState({fssEmail:"",restaurantEmail:"placedeseine@11h59.fr",ccEmails:"a.avonde@allianceautomotive.fr,ju.poitier@allianceautomotive.fr",itEmail:"",users:[],bodyArriveeResto:"Bonjour,\n\nNous vous informons de l'arrivée d'un nouveau collaborateur :\n\nNom : {nom}\nPrénom : {prenom}\nMatricule : {matricule}\nEmail : {email}\nDate d'entrée : {date_entree}\nManager : {manager}\n\nMerci de bien vouloir l'ajouter à vos systèmes.\n\nCordialement",bodyArriveeIT:"Bonjour,\n\nNous vous informons de l'arrivée d'un nouveau collaborateur :\n\nNom : {nom}\nPrénom : {prenom}\nMatricule : {matricule}\nEmail : {email}\nDate d'entrée : {date_entree}\nManager : {manager} ({mail_manager})\n\nMerci de créer les accès nécessaires.\n\nCordialement",bodyDepartResto:"Bonjour,\n\nNous vous informons du départ du collaborateur suivant :\n\nNom : {nom}\nPrénom : {prenom}\nMatricule : {matricule}\nN° badge : {serie}\nDate de sortie : {date_sortie_prevue}\nManager : {manager}\n\nMerci de bien vouloir le retirer de vos systèmes.\n\nCordialement",bodyDepartIT:"Bonjour,\n\nNous vous informons du départ du collaborateur suivant :\n\nNom : {nom}\nPrénom : {prenom}\nMatricule : {matricule}\nN° badge : {serie}\nDate de sortie : {date_sortie_prevue}\nManager : {manager} ({mail_manager})\n\nMerci de supprimer les accès.\n\nCordialement"});
   const[showSettings,setShowSettings]=useState(false);
+  // ── Ouverture ciblée d'une fiche depuis le Rapport (résolution d'incohérence) ──
+  const[pendingOpen,setPendingOpen]=useState(null); // {view:"collaborateurs"|"field_support", id}
   const[dbStatus,setDbStatus]=useState("loading");
   const[loading,setLoading]=useState(false);
   const[toast,setToast]=useState(null);
@@ -2460,6 +2494,9 @@ function App(){
     migratedRef.current=true;
     const FIELDS_B=["nom","prenom","email","serie","zeplug","carte_rechargement","manager","mail_manager","matricule","casier"];
     const FIELDS_C=["occupant","matricule","numero"];
+    // Field Support : uniquement les champs texte libre (jamais situation/statut/lieu/matPC/matRecu/matDonne,
+    // qui sont des listes déroulantes à valeurs fixes — les majusculer casserait la sélection).
+    const FIELDS_FSS=["nom","prenom","manager","ritm","idMat","commentaires"];
     setBadges(prev=>{
       let changed=false;
       const upd=prev.map(b=>{
@@ -2477,6 +2514,16 @@ function App(){
         FIELDS_C.forEach(f=>{const v=c[f];if(typeof v==="string"&&v&&v!==v.toUpperCase()){if(!nc)nc={...c};nc[f]=v.toUpperCase();}});
         if(nc){changed=true;if(sb&&typeof c.id==="number")sb.from("lp24_casiers").upsert(nc);return nc;}
         return c;
+      });
+      return changed?upd:prev;
+    });
+    setFssData(prev=>{
+      let changed=false;
+      const upd=(prev||[]).map(f=>{
+        let nf=null;
+        FIELDS_FSS.forEach(k=>{const v=f[k];if(typeof v==="string"&&v&&v!==v.toUpperCase()){if(!nf)nf={...f};nf[k]=v.toUpperCase();}});
+        if(nf){changed=true;if(sb&&typeof f.id==="number")sb.from("lp24_fss").upsert(nf,{onConflict:"id"});return nf;}
+        return f;
       });
       return changed?upd:prev;
     });
@@ -2700,10 +2747,10 @@ useEffect(()=>{
     const props={badges,casiers,setBadges,setCasiers,showToast,wdCache,addLog,setView,settings,setSettings};
     switch(view){
       case "accueil": return React.createElement(VueAccueil,{...props,fssData,setFssData,isIT});
-      case "field_support": return React.createElement(VueFieldSupport,{fssData,setFssData,showToast,addLog,badges,casiers,setBadges,setCasiers,wdCache,settings});
-      case "collaborateurs": return React.createElement(VueCollaborateurs,{...props,newMats,setNewMats});
+      case "field_support": return React.createElement(VueFieldSupport,{fssData,setFssData,showToast,addLog,badges,casiers,setBadges,setCasiers,wdCache,settings,pendingOpen,setPendingOpen});
+      case "collaborateurs": return React.createElement(VueCollaborateurs,{...props,newMats,setNewMats,pendingOpen,setPendingOpen});
       case "casiers": return React.createElement(VueCasiers,props);
-      case "rapport": return React.createElement(VueRapport,{badges,fssData});
+      case "rapport": return React.createElement(VueRapport,{badges,fssData,setBadges,setFssData,showToast,addLog,setView,setPendingOpen});
       case "impression": return React.createElement(VueImpression,{badges});
       case "badges_pret": return React.createElement(VueBadgesPret,{showToast,addLog});
       default: return null;
