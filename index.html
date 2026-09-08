@@ -162,7 +162,9 @@ const Btn=({children,onClick,color,variant,style,disabled,title})=>{
   const customStyle=color?{background:variant?"transparent":color,color:variant?color:"#fff",borderColor:variant?color:"transparent",...style}:{...style};
   return React.createElement("button",{onClick,disabled,title,className:cls,style:{...customStyle,opacity:disabled?.4:1,cursor:disabled?"not-allowed":"pointer"}},children);
 };
-const Inp=({value,onChange,placeholder,type,style,readOnly,onKeyDown})=>React.createElement("input",{type:type||"text",value:value||"",onChange:e=>onChange&&onChange(e.target.value),placeholder,readOnly,onKeyDown,className:"inp",style:{background:readOnly?"var(--surface3)":"var(--surface2)",...style}});
+const UC_EXCLUDE_TYPES=new Set(["date","password","number","file"]);
+const ucVal=(t,v)=>UC_EXCLUDE_TYPES.has(t)?v:(v||"").toUpperCase();
+const Inp=({value,onChange,placeholder,type,style,readOnly,onKeyDown})=>React.createElement("input",{type:type||"text",value:value||"",onChange:e=>onChange&&onChange(ucVal(type,e.target.value)),placeholder,readOnly,onKeyDown,className:"inp",style:{background:readOnly?"var(--surface3)":"var(--surface2)",...style}});
 const Sel=({value,onChange,options,placeholder,style})=>React.createElement("select",{value:value||"",onChange:e=>onChange(e.target.value),className:"inp",style:{cursor:"pointer",...style}},placeholder&&React.createElement("option",{value:""},placeholder),options.map(o=>typeof o==="string"?React.createElement("option",{key:o,value:o},o):React.createElement("option",{key:o.v,value:o.v},o.l)));
 const Lbl=({children})=>React.createElement("label",{className:"lbl"},children);
 const Bdg=({children,color,bg})=>React.createElement("span",{className:"badge",style:{background:bg||"var(--surface3)",color:color||"var(--text2)"}},children);
@@ -568,8 +570,11 @@ function VueCollaborateurs({badges,casiers,setBadges,setCasiers,showToast,wdCach
     if(sortCol){r=[...r].sort((a,b2)=>{let av=a[sortCol]||"",bv=b2[sortCol]||"";if(typeof av==="boolean")av=av?1:0;if(typeof bv==="boolean")bv=bv?1:0;const cmp=String(av).localeCompare(String(bv),undefined,{numeric:true});return sortDir==="asc"?cmp:-cmp;});}
     return r;
   },[badges,fStat,search,sortCol,sortDir,_newMats]);
+  // ── Attribution automatique d'un casier depuis la fiche collaborateur ──
+  // NB: l'ancien casier n'est plus libéré automatiquement ici : il reste "Occupé" avec le nom
+  // de l'ancien occupant et apparaît comme "à vider" dans l'onglet Casiers tant qu'il n'a pas
+  // été vidé manuellement (bouton 🧹) — on garde ainsi la trace du dernier occupant.
   const syncCasier=async(oldC,newC,nom,prenom,mat)=>{
-    if(oldC&&oldC!==newC){setCasiers(p=>p.map(c=>c.numero===oldC?{...c,statut:"Libre",occupant:"",matricule:""}:c));if(sb)sb.from("lp24_casiers").upsert(casiers.find(c=>c.numero===oldC)?{...casiers.find(c=>c.numero===oldC),statut:"Libre",occupant:"",matricule:""}:{});}
     if(newC&&newC!==oldC){setCasiers(p=>p.map(c=>c.numero===newC?{...c,statut:"Occupé",occupant:nom+" "+prenom,matricule:mat}:c));if(sb)sb.from("lp24_casiers").upsert(casiers.find(c=>c.numero===newC)?{...casiers.find(c=>c.numero===newC),statut:"Occupé",occupant:nom+" "+prenom,matricule:mat}:{});}
   };
   const updateForm=(field,val)=>{
@@ -612,7 +617,8 @@ function VueCollaborateurs({badges,casiers,setBadges,setCasiers,showToast,wdCach
   const archiver=async id=>{
     if(!confirm("Archiver ce collaborateur ?"))return;
     const b=badges.find(x=>x.id===id);
-    if(b?.casier)await syncCasier(b.casier,"","","","");
+    // Le casier n'est plus libéré automatiquement : il apparaîtra "à vider" dans l'onglet
+    // Casiers (avec le nom de b conservé) jusqu'à ce qu'il soit vidé manuellement.
     const updated={...b,statut:"Archivé",date_archive:todayISO()};
     setBadges(p=>p.map(x=>x.id===id?updated:x));
     if(sb)sb.from("lp24_badges").upsert(updated);
@@ -626,13 +632,12 @@ function VueCollaborateurs({badges,casiers,setBadges,setCasiers,showToast,wdCach
     React.createElement("div",{style:{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:12,flexWrap:"wrap",gap:8}},
       React.createElement("div",{style:{flex:1}},
         React.createElement("h1",{style:{fontSize:22,fontWeight:700,color:C.blue,marginBottom:10}},"👥 Collaborateurs ("+filtered.length+"/"+badges.filter(b=>b.statut!=="Archivé").length+")"),
-        React.createElement("div",{style:{display:"grid",gridTemplateColumns:"repeat(6,1fr)",gap:8,marginBottom:4}},
+        React.createElement("div",{style:{display:"grid",gridTemplateColumns:"repeat(5,1fr)",gap:8,marginBottom:4}},
           [
             {label:"Total",val:badges.filter(b=>b.statut!=="Archivé").length,color:"#3B82F6",id:""},
             {label:"Actifs",val:badges.filter(b=>b.statut==="Actif").length,color:C.green,id:"Actif"},
             {label:"À récupérer",val:badges.filter(b=>b.statut==="À récupérer").length,color:C.red,id:"À récupérer"},
             {label:"Sans matricule",val:badges.filter(b=>(!b.matricule||String(b.matricule)==="0")&&b.statut!=="Archivé").length,color:"#F59E0B",id:"sans_matricule"},
-            {label:"Archivés",val:badges.filter(b=>b.statut==="Archivé").length,color:C.gray,id:"Archivé"},
             {label:"Nouveaux",val:badges.filter(b=>b.from_accueil&&!b.serie).length,color:"#EA580C",id:"nouveau_mat"},
           ].map(k=>React.createElement("div",{key:k.label,
             onClick:k.id?()=>setFStat(fStat===k.id?"":k.id):undefined,
@@ -718,7 +723,7 @@ function VueCollaborateurs({badges,casiers,setBadges,setCasiers,showToast,wdCach
             React.createElement(SortTh,{col:"casier",label:"Casier",st:{padding:"7px 5px",color:"#fff"}}),
             React.createElement(SortTh,{col:"date_sortie_prevue",label:"Sortie",st:{padding:"7px 5px",color:"#fff"}}),
             React.createElement(SortTh,{col:"manager",label:"Manager",st:{padding:"7px 5px",color:"#fff"}}),
-            React.createElement(SortTh,{col:"mail_manager",label:"Mail Mgr",st:{padding:"7px 5px",color:"#fff"}}),
+            React.createElement(SortTh,{col:"email",label:"Email",st:{padding:"7px 5px",color:"#fff"}}),
             React.createElement(SortTh,{col:"statut",label:"Statut",st:{padding:"7px 5px",color:"#fff"}}),
             React.createElement(SortTh,{col:"date_ajout",label:"Ajouté",st:{padding:"7px 5px",color:"#fff"}}),
             React.createElement("th",{style:{padding:"7px 5px",textAlign:"left"}},"✉️"),
@@ -740,7 +745,7 @@ function VueCollaborateurs({badges,casiers,setBadges,setCasiers,showToast,wdCach
             const openEdit=()=>{const f={...b,carte_rechargement:b.carte_rechargement||""};setForm(f);setEditing(b.id);setShowForm(true);if(wdCache&&(!b.matricule||!b.email||!b.manager)){const n=b.nom.toUpperCase();const p=b.prenom.toLowerCase();const match=Object.values(wdCache).find(w=>{const wn=w.nom.toUpperCase();const wp=w.prenom.toLowerCase();return(wn.includes(n)||n.includes(wn))&&(wp.includes(p)||p.includes(wp));});if(match){setTimeout(()=>setForm(prev=>({...prev,matricule:prev.matricule||match.matricule||"",email:prev.email||match.email||"",manager:prev.manager||match.manager||"",mail_manager:prev.mail_manager||match.mailMgr||"",date_entree:prev.date_entree||match.hireDate||""})),50);}}};
             return React.createElement("tr",{key:b.id,style:{background:bg,borderBottom:"1px solid #E5E7EB",cursor:"pointer"},onClick:openEdit,onMouseOver:e=>e.currentTarget.style.background=C.blueBg,onMouseOut:e=>e.currentTarget.style.background=bg},
               React.createElement("td",{style:{padding:"5px 5px",fontSize:10,color:"#CBD5E1",textAlign:"center"}},
-                isNewCollab?React.createElement("span",{title:"Nouveau collaborateur — badge non attribué",style:{background:"#EA580C",color:"#fff",borderRadius:4,padding:"1px 5px",fontSize:8,fontWeight:700},className:"new-badge-pulse"},"NEW"):isNewMat?React.createElement("span",{title:"Nouveau matricule Workday",style:{background:C.blue,color:"#fff",borderRadius:4,padding:"1px 4px",fontSize:8,fontWeight:700}},"NEW"):i+1
+                isNewMat?React.createElement("span",{title:"Nouveau matricule Workday",style:{background:C.blue,color:"#fff",borderRadius:4,padding:"1px 4px",fontSize:8,fontWeight:700}},"NEW"):i+1
               ),
               React.createElement("td",{style:{padding:"5px 5px",fontWeight:700,color:C.blue,fontSize:10}},!hasM?React.createElement("span",{style:{color:"#E74C3C",fontWeight:700,fontSize:9}},"NC"):b.matricule),
               React.createElement("td",{style:{padding:"5px 5px",fontWeight:600,fontSize:11}},b.nom||"—"),
@@ -761,7 +766,7 @@ function VueCollaborateurs({badges,casiers,setBadges,setCasiers,showToast,wdCach
                 ):React.createElement("span",{style:{fontSize:9,color:"#9CA3AF"}},fmt(b.date_sortie_prevue))
               ),
               React.createElement("td",{style:{padding:"5px 5px",fontSize:9,maxWidth:100,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}},b.manager||"—"),
-              React.createElement("td",{style:{padding:"5px 5px",fontSize:9,color:"#6B7280",maxWidth:100,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}},b.mail_manager||"—"),
+              React.createElement("td",{style:{padding:"5px 5px",fontSize:9,color:"#6B7280",maxWidth:100,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}},b.email||"—"),
               React.createElement("td",{style:{padding:"5px 5px"}},React.createElement(Bdg,{color:"#fff",bg:statC[b.statut]||C.gray},b.statut)),
               React.createElement("td",{style:{padding:"5px 5px",fontSize:9,color:"#9CA3AF",whiteSpace:"nowrap"}},b.date_ajout?new Date(b.date_ajout+"T00:00:00").toLocaleDateString("fr-FR"):"—"),
               // Boutons mail
@@ -812,29 +817,123 @@ function VueCollaborateurs({badges,casiers,setBadges,setCasiers,showToast,wdCach
 }
 
 // ════════════════ VUE CASIERS ════════════════
-function VueCasiers({casiers,badges,setCasiers,showToast,addLog}){
+function VueCasiers({casiers,badges,setCasiers,showToast,addLog,setView}){
   const[fZone,setFZone]=useState("");const[fStat,setFStat]=useState("");const[search,setSearch]=useState("");
   const[showForm,setShowForm]=useState(false);const[editing,setEditing]=useState(null);const[viewMode,setViewMode]=useState("grille");
   const empty={numero:"",zone:"DE",occupant:"",matricule:"",statut:"Libre"};const[form,setForm]=useState(empty);
-  const filtered=useMemo(()=>casiers.filter(c=>{if(fZone&&c.zone!==fZone)return false;if(fStat&&c.statut!==fStat)return false;const q=search.toLowerCase();return!q||(c.numero+c.occupant+c.matricule).toLowerCase().includes(q);}),[casiers,fZone,fStat,search]);
+
+  // ── Lien casier ↔ collaborateur : la seule source de vérité est le champ "casier" de la fiche
+  // collaborateur (attribué depuis l'onglet Collaborateurs). Un casier marqué "Occupé" dont plus
+  // aucun collaborateur actif ne pointe vers lui (parti, réaffecté ailleurs...) est "à vider" —
+  // il garde le nom de l'ancien occupant jusqu'à ce qu'il soit vidé manuellement.
+  const badgeByCasier=useMemo(()=>{const m={};badges.forEach(b=>{if(b.statut!=="Archivé"&&b.casier)m[b.casier]=b;});return m;},[badges]);
+  const findLinked=useCallback(c=>badgeByCasier[c.numero]||null,[badgeByCasier]);
+  const isOccupied=c=>c.statut==="Occupé"||!!c.occupant;
+  const isAVider=useCallback(c=>isOccupied(c)&&!findLinked(c),[findLinked]);
+  const statCLinked=st=>({"Actif":C.green,"À récupérer":C.red,"Badge prêt":C.blue,"Badge VIP":"#7C3AED","Futur arrivant":"#0891B2"}[st]||C.gray);
+  const aViderCount=useMemo(()=>casiers.filter(isAVider).length,[casiers,isAVider]);
+
+  const viderCasier=async(c,e)=>{
+    if(e)e.stopPropagation();
+    if(!confirm("Vider le casier "+c.numero+" ? (le collaborateur n'est plus dans la liste)"))return;
+    const upd={...c,statut:"Libre",occupant:"",matricule:""};
+    setCasiers(p=>p.map(x=>x.id===c.id?upd:x));
+    if(sb)sb.from("lp24_casiers").upsert(upd);
+    addLog("Casier vidé","🧹 "+c.numero+" (ancien occupant : "+(c.occupant||"—")+")");
+    showToast("🧹 Casier "+c.numero+" vidé");
+  };
+
+  const filtered=useMemo(()=>casiers.filter(c=>{
+    if(fZone&&c.zone!==fZone)return false;
+    if(fStat==="a_vider"){if(!isAVider(c))return false;}
+    else if(fStat&&c.statut!==fStat)return false;
+    const q=search.toLowerCase();return!q||(c.numero+c.occupant+c.matricule).toLowerCase().includes(q);
+  }),[casiers,fZone,fStat,search,isAVider]);
   const save=async()=>{if(!form.numero.trim())return;if(editing){setCasiers(p=>p.map(c=>c.id===editing?{...c,...form}:c));const orig=casiers.find(c=>c.id===editing);if(sb)sb.from("lp24_casiers").upsert({...orig,...form});addLog("Casier modifié",form.numero);showToast("✅ Casier mis à jour");}else{const nc={...form,id:nxId(casiers)};setCasiers(p=>[...p,nc]);if(sb){const{id,...row}=nc;sb.from("lp24_casiers").insert(row);}addLog("Casier ajouté",form.numero);showToast("✅ Casier ajouté");}setShowForm(false);setEditing(null);};
   const del=async id=>{if(!confirm("Supprimer ce casier ?"))return;const c=casiers.find(x=>x.id===id);setCasiers(p=>p.filter(x=>x.id!==id));if(sb)sb.from("lp24_casiers").delete().eq("id",id);addLog("Casier supprimé",c?.numero||"");showToast("🗑️ Supprimé");};
   const statC={Libre:C.green,Occupé:C.blue,Réservé:C.orange,"Hors service":C.gray};
   const libres=casiers.filter(c=>c.statut==="Libre").length;
+  // ── Rendu grille (par zone) ──
+  const zonesGrid=ZONES.filter(z=>!fZone||z===fZone).map(z=>{
+    const zc=filtered.filter(c=>c.zone===z);
+    if(!zc.length)return null;
+    const col=ZONES_COLORS[z];
+    const cells=zc.sort((a,b)=>a.numero.localeCompare(b.numero)).map(c=>{
+      const libre=c.statut==="Libre";const linked=findLinked(c);const aVider=isAVider(c);
+      const occupied=isOccupied(c);
+      const bg=aVider?C.redBg:libre?C.greenBg:c.statut==="Réservé"?C.orangeBg:c.statut==="Hors service"?C.grayBg:"#fff";
+      const border=aVider?C.red:libre?C.green:c.statut==="Réservé"?C.orange:c.statut==="Hors service"?C.gray:col;
+      // Consultation uniquement pour un casier occupé : pas d'édition manuelle de l'attribution
+      // (elle se fait depuis la fiche collaborateur). On peut juste consulter, et vider si "à vider".
+      const onCellClick=occupied?(linked&&setView?()=>setView("collaborateurs"):undefined):()=>{setForm({...c});setEditing(c.id);setShowForm(true);};
+      return React.createElement("div",{key:c.id,onClick:onCellClick,title:occupied?(aVider?"À vider — ancien occupant : "+(c.occupant||"—"):"Attribué depuis la fiche collaborateur"):"Cliquer pour modifier",style:{background:bg,border:"2px solid "+border+"44",borderRadius:8,padding:"10px 8px",cursor:onCellClick?"pointer":"default",textAlign:"center",transition:"transform .1s",position:"relative"},onMouseOver:e=>e.currentTarget.style.transform="scale(1.04)",onMouseOut:e=>e.currentTarget.style.transform="scale(1)"},
+        aVider&&React.createElement("button",{key:"v",title:"Vider ce casier",onClick:e=>viderCasier(c,e),style:{position:"absolute",top:2,right:2,background:"#fff",border:"1px solid "+C.red,borderRadius:5,fontSize:9,lineHeight:1,padding:"2px 4px",cursor:"pointer"}},"🧹"),
+        React.createElement("div",{key:"n",style:{fontWeight:700,fontSize:13,color:border}},c.numero),
+        React.createElement("div",{key:"s",style:{fontSize:aVider?9:libre?10:9,color:aVider?C.red:libre?C.green:"#6B7280",marginTop:3,fontWeight:aVider||libre?700:400,lineHeight:1.3}},
+          aVider?"🧹 À vider":libre?"✅ Libre":(c.occupant?(c.occupant.length>16?c.occupant.substring(0,16)+"…":c.occupant):"Occupé")
+        ),
+        aVider&&c.occupant&&React.createElement("div",{key:"on",style:{fontSize:9,color:"#7C2D12",marginTop:2,lineHeight:1.3,fontStyle:"italic",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}},"Ancien : "+c.occupant),
+        linked&&!aVider&&React.createElement("div",{key:"l",style:{fontSize:8,color:statCLinked(linked.statut),marginTop:2,fontWeight:700}},"● "+linked.statut)
+      );
+    });
+    const header=React.createElement("div",{style:{display:"flex",alignItems:"center",gap:10,marginBottom:12}},
+      React.createElement("h3",{style:{fontWeight:700,fontSize:14,color:col}},"Zone "+ZONES_LABELS[z]),
+      React.createElement("span",{style:{background:C.greenBg,color:C.green,borderRadius:999,fontSize:12,fontWeight:700,padding:"2px 8px"}},zc.filter(c=>c.statut==="Libre").length+" libres"),
+      React.createElement("span",{style:{background:col+"22",color:col,borderRadius:999,fontSize:12,padding:"2px 8px"}},zc.length+" total")
+    );
+    const grid=React.createElement("div",{style:{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(105px,1fr))",gap:8}},cells);
+    return React.createElement(Card,{key:z,style:{marginBottom:16,borderTop:"4px solid "+col}},header,grid);
+  });
+
+  // ── Rendu liste ──
+  const listRows=filtered.sort((a,b)=>a.zone.localeCompare(b.zone)||a.numero.localeCompare(b.numero)).map((c,i)=>{
+    const col=ZONES_COLORS[c.zone]||C.gray;const linked=findLinked(c);const aVider=isAVider(c);
+    const bg=aVider?C.redBg:c.statut==="Libre"?C.greenBg:i%2===0?"#fff":"#F9FAFB";
+    return React.createElement("tr",{key:c.id,style:{background:bg,borderBottom:"1px solid #E5E7EB"},onMouseOver:e=>e.currentTarget.style.background=C.purpleBg,onMouseOut:e=>e.currentTarget.style.background=bg},
+      React.createElement("td",{style:{padding:"8px 12px",fontWeight:700,color:col}},c.numero),
+      React.createElement("td",{style:{padding:"8px 12px"}},React.createElement(Bdg,{color:col,bg:col+"22"},ZONES_LABELS[c.zone]||c.zone)),
+      React.createElement("td",{style:{padding:"8px 12px",fontWeight:600}},c.occupant||React.createElement("span",{style:{color:"#9CA3AF"}},"—")),
+      React.createElement("td",{style:{padding:"8px 12px",color:"#6B7280",fontSize:12}},c.matricule||"—"),
+      React.createElement("td",{style:{padding:"8px 12px",fontSize:11}},
+        aVider?React.createElement("span",{style:{color:C.red,fontWeight:700}},"🧹 "+(c.occupant?c.occupant+" — ":"")+"plus dans la liste")
+        :linked?React.createElement("span",{onClick:()=>setView&&setView("collaborateurs"),title:"Voir dans Collaborateurs",style:{color:statCLinked(linked.statut),fontWeight:700,cursor:setView?"pointer":"default"}},"👤 "+linked.prenom+" "+linked.nom+" · "+linked.statut)
+        :React.createElement("span",{style:{color:"#9CA3AF"}},"—")
+      ),
+      React.createElement("td",{style:{padding:"8px 12px"}},React.createElement(Bdg,{color:"#fff",bg:statC[c.statut]||C.gray},c.statut)),
+      React.createElement("td",{style:{padding:"8px 12px"}},React.createElement("div",{style:{display:"flex",gap:4}},
+        aVider&&React.createElement("button",{key:"v",onClick:()=>viderCasier(c),title:"Vider ce casier",style:{background:"none",border:"none",cursor:"pointer",fontSize:14}},"🧹"),
+        !isOccupied(c)&&React.createElement("button",{key:"e",onClick:()=>{setForm({...c});setEditing(c.id);setShowForm(true);},title:"Modifier",style:{background:"none",border:"none",cursor:"pointer",fontSize:14}},"✏️"),
+        React.createElement("button",{key:"d",onClick:()=>del(c.id),title:"Supprimer",style:{background:"none",border:"none",cursor:"pointer",fontSize:14}},"🗑️")
+      ))
+    );
+  });
+  if(filtered.length===0)listRows.push(React.createElement("tr",{key:"empty"},React.createElement("td",{colSpan:7,style:{padding:32,textAlign:"center",color:"#9CA3AF"}},"Aucun résultat.")));
+  const listView=React.createElement(Card,{style:{padding:0,overflow:"auto"}},
+    React.createElement("table",{style:{width:"100%",borderCollapse:"collapse",fontSize:13}},
+      React.createElement("thead",null,React.createElement("tr",{style:{background:C.purple,color:"#fff"}},
+        ["N° Casier","Zone","Occupant","Matricule","Collaborateur lié","Statut","Actions"].map(h=>React.createElement("th",{key:h,style:{padding:"9px 12px",textAlign:"left",fontWeight:600,whiteSpace:"nowrap"}},h))
+      )),
+      React.createElement("tbody",null,listRows)
+    )
+  );
+
   return React.createElement("div",null,
     React.createElement("div",{style:{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:16,flexWrap:"wrap",gap:8}},
-      React.createElement("h1",{style:{fontSize:22,fontWeight:700,color:C.purple}},"📦 Casiers ("+libres+" libres / "+casiers.length+")"),
+      React.createElement("div",{style:{display:"flex",alignItems:"center",gap:10,flexWrap:"wrap"}},
+        React.createElement("h1",{style:{fontSize:22,fontWeight:700,color:C.purple}},"📦 Casiers ("+libres+" libres / "+casiers.length+")"),
+        aViderCount>0&&React.createElement("span",{onClick:()=>setFStat(fStat==="a_vider"?"":"a_vider"),title:"Filtrer sur les casiers à vider",style:{cursor:"pointer",background:C.redBg,color:C.red,border:"1px solid rgba(220,38,38,.3)",borderRadius:999,fontSize:11,fontWeight:700,padding:"3px 10px"}},"🧹 "+aViderCount+" à vider")
+      ),
       React.createElement("div",{style:{display:"flex",gap:8}},
         React.createElement(Btn,{onClick:()=>setViewMode(v=>v==="grille"?"liste":"grille"),variant:"outline",color:C.gray,style:{fontSize:12}},viewMode==="grille"?"☰ Liste":"⊞ Grille"),
         React.createElement(Btn,{onClick:()=>{setForm(empty);setEditing(null);setShowForm(!showForm);},color:C.purple},"+ Nouveau casier")
       )
     ),
     showForm&&React.createElement(Card,{style:{marginBottom:16,borderLeft:"4px solid "+C.purple,background:"#F5F3FF"}},
+      React.createElement("div",{style:{fontSize:11,color:"#7C3AED",marginBottom:10}},"ℹ️ L'attribution d'un casier à un collaborateur se fait depuis la fiche Collaborateur — ici on ne gère que l'inventaire (numéro, zone, réservation, hors service)."),
       React.createElement("div",{style:{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(150px,1fr))",gap:10,marginBottom:10}},
         React.createElement("div",null,React.createElement(Lbl,null,"N° Casier *"),React.createElement(Inp,{value:form.numero,onChange:v=>setForm({...form,numero:v}),placeholder:"DE103"})),
         React.createElement("div",null,React.createElement(Lbl,null,"Zone"),React.createElement(Sel,{value:form.zone,onChange:v=>setForm({...form,zone:v}),options:ZONES.map(z=>({v:z,l:z+" — "+ZONES_LABELS[z]})),style:{width:"100%"}})),
-        React.createElement("div",null,React.createElement(Lbl,null,"Statut"),React.createElement(Sel,{value:form.statut,onChange:v=>setForm({...form,statut:v}),options:["Libre","Occupé","Réservé","Hors service"],style:{width:"100%"}})),
-        React.createElement("div",null,React.createElement(Lbl,null,"Occupant"),React.createElement(Inp,{value:form.occupant,onChange:v=>setForm({...form,occupant:v}),placeholder:"NOM Prénom"})),
+        React.createElement("div",null,React.createElement(Lbl,null,"Statut"),React.createElement(Sel,{value:form.statut,onChange:v=>setForm({...form,statut:v}),options:["Libre","Réservé","Hors service"],style:{width:"100%"}})),
       ),
       React.createElement("div",{style:{display:"flex",gap:8}},React.createElement(Btn,{onClick:save,color:C.purple},"💾 Enregistrer"),React.createElement(Btn,{onClick:()=>{setShowForm(false);setEditing(null);},variant:"outline",color:C.gray},"Annuler"))
     ),
@@ -842,14 +941,13 @@ function VueCasiers({casiers,badges,setCasiers,showToast,addLog}){
       React.createElement("div",{style:{display:"flex",gap:10,flexWrap:"wrap",alignItems:"center"}},
         React.createElement(Inp,{value:search,onChange:setSearch,placeholder:"🔍 N° casier, occupant...",style:{maxWidth:200}}),
         React.createElement(Sel,{value:fZone,onChange:setFZone,options:ZONES.map(z=>({v:z,l:ZONES_LABELS[z]})),placeholder:"Toutes zones"}),
-        React.createElement(Sel,{value:fStat,onChange:setFStat,options:["Libre","Occupé","Réservé","Hors service"],placeholder:"Tous statuts"}),
+        React.createElement(Sel,{value:fStat,onChange:setFStat,options:[{v:"Libre",l:"Libre"},{v:"Occupé",l:"Occupé"},{v:"Réservé",l:"Réservé"},{v:"Hors service",l:"Hors service"},{v:"a_vider",l:"🧹 À vider"}],placeholder:"Tous statuts"}),
         (search||fZone||fStat)&&React.createElement(Btn,{variant:"outline",color:C.gray,onClick:()=>{setSearch("");setFZone("");setFStat("");}},"✕ Effacer"),
         React.createElement("span",{style:{fontSize:12,color:"#9CA3AF",marginLeft:"auto"}},filtered.length+" casier(s)")
       )
     ),
-    viewMode==="grille"?React.createElement("div",null,ZONES.filter(z=>!fZone||z===fZone).map(z=>{const zc=filtered.filter(c=>c.zone===z);if(!zc.length)return null;const col=ZONES_COLORS[z];return React.createElement(Card,{key:z,style:{marginBottom:16,borderTop:"4px solid "+col}},React.createElement("div",{style:{display:"flex",alignItems:"center",gap:10,marginBottom:12}},React.createElement("h3",{style:{fontWeight:700,fontSize:14,color:col}},"Zone "+ZONES_LABELS[z]),React.createElement("span",{style:{background:C.greenBg,color:C.green,borderRadius:999,fontSize:12,fontWeight:700,padding:"2px 8px"}},zc.filter(c=>c.statut==="Libre").length+" libres"),React.createElement("span",{style:{background:col+"22",color:col,borderRadius:999,fontSize:12,padding:"2px 8px"}},zc.length+" total")),React.createElement("div",{style:{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(105px,1fr))",gap:8}},zc.sort((a,b)=>a.numero.localeCompare(b.numero)).map(c=>{const libre=c.statut==="Libre";const bg=libre?C.greenBg:c.statut==="Réservé"?C.orangeBg:c.statut==="Hors service"?C.grayBg:"#fff";const border=libre?C.green:c.statut==="Réservé"?C.orange:c.statut==="Hors service"?C.gray:col;return React.createElement("div",{key:c.id,onClick:()=>{setForm({...c});setEditing(c.id);setShowForm(true);},style:{background:bg,border:"2px solid "+border+"44",borderRadius:8,padding:"10px 8px",cursor:"pointer",textAlign:"center",transition:"transform .1s"},onMouseOver:e=>e.currentTarget.style.transform="scale(1.04)",onMouseOut:e=>e.currentTarget.style.transform="scale(1)"},React.createElement("div",{style:{fontWeight:700,fontSize:13,color:border}},c.numero),libre?React.createElement("div",{style:{fontSize:10,color:C.green,marginTop:3,fontWeight:600}},"✅ Libre"):React.createElement("div",{style:{fontSize:9,color:"#6B7280",marginTop:3,lineHeight:1.3}},c.occupant?(c.occupant.length>16?c.occupant.substring(0,16)+"…":c.occupant):"Occupé"));})));})
-    ):React.createElement(Card,{style:{padding:0,overflow:"auto"}},React.createElement("table",{style:{width:"100%",borderCollapse:"collapse",fontSize:13}},React.createElement("thead",null,React.createElement("tr",{style:{background:C.purple,color:"#fff"}},["N° Casier","Zone","Occupant","Matricule","Statut","Actions"].map(h=>React.createElement("th",{key:h,style:{padding:"9px 12px",textAlign:"left",fontWeight:600,whiteSpace:"nowrap"}},h)))),React.createElement("tbody",null,filtered.sort((a,b)=>a.zone.localeCompare(b.zone)||a.numero.localeCompare(b.numero)).map((c,i)=>{const col=ZONES_COLORS[c.zone]||C.gray;const bg=c.statut==="Libre"?C.greenBg:i%2===0?"#fff":"#F9FAFB";return React.createElement("tr",{key:c.id,style:{background:bg,borderBottom:"1px solid #E5E7EB"},onMouseOver:e=>e.currentTarget.style.background=C.purpleBg,onMouseOut:e=>e.currentTarget.style.background=bg},React.createElement("td",{style:{padding:"8px 12px",fontWeight:700,color:col}},c.numero),React.createElement("td",{style:{padding:"8px 12px"}},React.createElement(Bdg,{color:col,bg:col+"22"},ZONES_LABELS[c.zone]||c.zone)),React.createElement("td",{style:{padding:"8px 12px",fontWeight:600}},c.occupant||React.createElement("span",{style:{color:"#9CA3AF"}},"—")),React.createElement("td",{style:{padding:"8px 12px",color:"#6B7280",fontSize:12}},c.matricule||"—"),React.createElement("td",{style:{padding:"8px 12px"}},React.createElement(Bdg,{color:"#fff",bg:statC[c.statut]||C.gray},c.statut)),React.createElement("td",{style:{padding:"8px 12px"}},React.createElement("div",{style:{display:"flex",gap:4}},React.createElement("button",{onClick:()=>{setForm({...c});setEditing(c.id);setShowForm(true);},style:{background:"none",border:"none",cursor:"pointer",fontSize:14}},"✏️"),React.createElement("button",{onClick:()=>del(c.id),style:{background:"none",border:"none",cursor:"pointer",fontSize:14}},"🗑️"))));})))))
-  ;
+    viewMode==="grille"?React.createElement("div",null,zonesGrid):listView
+  );
 }
 
 // ════════════════ VUE RAPPORT ════════════════
@@ -1175,7 +1273,7 @@ function VueImpression({badges}){
   const[startPos,setStartPos]=useState(0);
   const[manualEtiqs,setManualEtiqs]=useState([]);
   const[manualForm,setManualForm]=useState({prenom:"",nom:"",matricule:""});
-  const[showManual,setShowManual]=useState(false);
+  const[showManual,setShowManual]=useState(true);
 
   const filtered=useMemo(()=>badges.filter(b=>{
     if(b.statut==="Archivé")return false;
@@ -1296,20 +1394,26 @@ function VueImpression({badges}){
         ),
         showManual&&React.createElement("div",null,
           React.createElement("div",{style:{display:"grid",gridTemplateColumns:"1fr 1fr 1fr auto",gap:8,marginBottom:8}},
-            React.createElement("input",{value:manualForm.prenom,onChange:e=>setManualForm(f=>({...f,prenom:e.target.value})),placeholder:"Prénom",style:{padding:"6px 8px",borderRadius:6,border:"1px solid #D1D5DB",fontSize:12}}),
-            React.createElement("input",{value:manualForm.nom,onChange:e=>setManualForm(f=>({...f,nom:e.target.value})),placeholder:"Nom",style:{padding:"6px 8px",borderRadius:6,border:"1px solid #D1D5DB",fontSize:12}}),
-            React.createElement("input",{value:manualForm.matricule,onChange:e=>setManualForm(f=>({...f,matricule:e.target.value})),placeholder:"Matricule",style:{padding:"6px 8px",borderRadius:6,border:"1px solid #D1D5DB",fontSize:12}}),
+            React.createElement("input",{value:manualForm.prenom,onChange:e=>setManualForm(f=>({...f,prenom:e.target.value.toUpperCase()})),placeholder:"Prénom",style:{padding:"6px 8px",borderRadius:6,border:"1px solid #D1D5DB",fontSize:12}}),
+            React.createElement("input",{value:manualForm.nom,onChange:e=>setManualForm(f=>({...f,nom:e.target.value.toUpperCase()})),placeholder:"Nom",style:{padding:"6px 8px",borderRadius:6,border:"1px solid #D1D5DB",fontSize:12}}),
+            React.createElement("input",{value:manualForm.matricule,onChange:e=>setManualForm(f=>({...f,matricule:e.target.value.toUpperCase()})),placeholder:"Matricule",style:{padding:"6px 8px",borderRadius:6,border:"1px solid #D1D5DB",fontSize:12}}),
             React.createElement("button",{onClick:()=>{if(!manualForm.prenom&&!manualForm.nom)return;setManualEtiqs(l=>[...l,{...manualForm,id:"manual_"+Date.now()}]);setManualForm({prenom:"",nom:"",matricule:""});},style:{background:"#002E8A",color:"#fff",border:"none",borderRadius:6,padding:"6px 14px",fontSize:12,fontWeight:700,cursor:"pointer"}},"+ Ajouter")
           ),
-          manualEtiqs.length>0&&React.createElement("div",{style:{display:"flex",flexWrap:"wrap",gap:6}},
-            manualEtiqs.map((m,i)=>React.createElement("div",{key:m.id,style:{display:"flex",alignItems:"center",gap:6,background:"#EFF6FF",border:"1px solid #BFDBFE",borderRadius:6,padding:"4px 10px",fontSize:11}},
-              React.createElement("span",{style:{color:"#002E8A",fontWeight:600}},m.prenom+" "+m.nom+(m.matricule?" · "+m.matricule:"")),
-              React.createElement("button",{onClick:()=>setManualEtiqs(l=>l.filter((_,j)=>j!==i)),style:{background:"none",border:"none",cursor:"pointer",color:"#E74C3C",fontSize:13,lineHeight:1,padding:0}},"✕")
-            ))
-          )
+          React.createElement("div",{style:{fontSize:10,color:"#9CA3AF"}},"Les étiquettes ajoutées apparaissent ci-dessous avec les collaborateurs — cliquez dessus pour les retirer.")
         )
       ),
+      manualEtiqs.length>0&&React.createElement("div",{style:{fontSize:11,fontWeight:700,color:"#374151",marginBottom:6}},"🏷️ Étiquettes manuelles ("+manualEtiqs.length+") — cliquer pour retirer"),
       React.createElement("div",{style:{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(200px,1fr))",gap:8,marginBottom:8}},
+        manualEtiqs.map(m=>React.createElement("div",{key:m.id,onClick:()=>setManualEtiqs(l=>l.filter(x=>x.id!==m.id)),title:"Cliquer pour retirer cette étiquette",style:{
+          border:"2px solid #002E8A",borderRadius:10,overflow:"hidden",background:"#fff",cursor:"pointer",
+          position:"relative",transition:"all .15s",boxShadow:"0 1px 3px rgba(0,0,0,.06)"}},
+          renderEtiqPreview(m),
+          React.createElement("div",{style:{position:"absolute",top:6,right:6,background:"#DC2626",color:"#fff",borderRadius:"50%",width:20,height:20,display:"flex",alignItems:"center",justifyContent:"center",fontSize:11,fontWeight:700,boxShadow:"0 1px 3px rgba(0,0,0,.3)"}},"✕"),
+          React.createElement("div",{style:{padding:"6px 10px",display:"flex",justifyContent:"space-between",alignItems:"center",borderTop:"1px solid #F3F4F6"}},
+            React.createElement("span",{style:{fontSize:10,color:"#002E8A",fontWeight:600}},"Étiquette manuelle"),
+            React.createElement("span",{style:{background:"#002E8A",color:"#fff",borderRadius:"50%",width:18,height:18,display:"flex",alignItems:"center",justifyContent:"center",fontSize:10,fontWeight:700}},"✓")
+          )
+        )),
         filtered.map(b=>{
           const isSel=selected.size===0||selected.has(b.id);
           const checked=selected.has(b.id);
@@ -1581,7 +1685,7 @@ function VueFieldSupport({fssData,setFssData,showToast,addLog,badges,casiers,set
   };
   const StatBadge=({s})=>{const c=statutColor[s]||{bg:"var(--surface2)",color:"var(--text2)",border:"var(--border)"};return el("span",{style:{display:"inline-flex",alignItems:"center",padding:"2px 8px",borderRadius:999,fontSize:10,fontWeight:700,background:c.bg,color:c.color,border:"1px solid "+c.border,whiteSpace:"nowrap"}},s||"—");};
 
-  const Inp=({value,onChange,placeholder,type="text",style:st})=>el("input",{type,value,onChange:e=>onChange(e.target.value),placeholder,className:"inp",style:{fontSize:12,...st}});
+  const Inp=({value,onChange,placeholder,type="text",style:st})=>el("input",{type,value,onChange:e=>onChange(ucVal(type,e.target.value)),placeholder,className:"inp",style:{fontSize:12,...st}});
   const Lbl=({children})=>el("div",{className:"lbl",style:{marginBottom:4}},children);
   const Sel=({value,onChange,options,placeholder,style:st})=>el("select",{value,onChange:e=>onChange(e.target.value),className:"inp",style:{fontSize:12,...st}},placeholder&&el("option",{value:""},placeholder),...options.map(o=>el("option",{key:o.v,value:o.v},o.l)));
 
@@ -1670,8 +1774,8 @@ function VueFieldSupport({fssData,setFssData,showToast,addLog,badges,casiers,set
     showAddManuel&&el("div",{style:{background:"var(--surface)",border:"1px solid rgba(59,130,246,.3)",borderRadius:"var(--radius-lg)",padding:16,marginBottom:16,borderLeft:"4px solid var(--accent)"}},
       el("h3",{style:{fontWeight:700,color:"var(--accent2)",marginBottom:12,fontSize:14}},"✏️ Ajout manuel"),
       el("div",{style:{display:"grid",gridTemplateColumns:"1fr 1fr 1fr 1fr",gap:8,marginBottom:8}},
-        el("div",null,el("div",{className:"lbl",style:{marginBottom:4}},"Nom"),el("input",{type:"text",value:manuelForm.nom,onChange:e=>setManuelForm(f=>({...f,nom:e.target.value})),placeholder:"MARTIN",className:"inp",style:{fontSize:12}})),
-        el("div",null,el("div",{className:"lbl",style:{marginBottom:4}},"Prénom"),el("input",{type:"text",value:manuelForm.prenom,onChange:e=>setManuelForm(f=>({...f,prenom:e.target.value})),placeholder:"Sophie",className:"inp",style:{fontSize:12}})),
+        el("div",null,el("div",{className:"lbl",style:{marginBottom:4}},"Nom"),el("input",{type:"text",value:manuelForm.nom,onChange:e=>setManuelForm(f=>({...f,nom:e.target.value.toUpperCase()})),placeholder:"MARTIN",className:"inp",style:{fontSize:12}})),
+        el("div",null,el("div",{className:"lbl",style:{marginBottom:4}},"Prénom"),el("input",{type:"text",value:manuelForm.prenom,onChange:e=>setManuelForm(f=>({...f,prenom:e.target.value.toUpperCase()})),placeholder:"Sophie",className:"inp",style:{fontSize:12}})),
         el("div",null,el(Lbl,null,"Situation"),el(Sel,{value:manuelForm.situation,onChange:v=>setManuelForm(f=>({...f,situation:v})),options:[{v:"Arrivée",l:"🟢 Arrivée"},{v:"Départ",l:"🔴 Départ"}]})),
         el("div",null,el(Lbl,null,"Date"),el(Inp,{type:"date",value:manuelForm.dateEvt,onChange:v=>setManuelForm(f=>({...f,dateEvt:v}))}))
       ),
@@ -1797,16 +1901,16 @@ function VueFieldSupport({fssData,setFssData,showToast,addLog,badges,casiers,set
           editMode&&editForm&&el("div",null,
             el("div",{style:{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10,marginBottom:12}},
               el("div",null,el("div",{className:"lbl",style:{marginBottom:4}},"Nom"),el("input",{type:"text",value:editForm.nom||"",onChange:e=>setEditForm(f=>({...f,nom:e.target.value.toUpperCase()})),className:"inp",style:{fontSize:12}})),
-              el("div",null,el("div",{className:"lbl",style:{marginBottom:4}},"Prénom"),el("input",{type:"text",value:editForm.prenom||"",onChange:e=>setEditForm(f=>({...f,prenom:e.target.value})),className:"inp",style:{fontSize:12}})),
+              el("div",null,el("div",{className:"lbl",style:{marginBottom:4}},"Prénom"),el("input",{type:"text",value:editForm.prenom||"",onChange:e=>setEditForm(f=>({...f,prenom:e.target.value.toUpperCase()})),className:"inp",style:{fontSize:12}})),
               el("div",null,el(Lbl,null,"Lieu"),el(Sel,{value:editForm.lieu||"",onChange:v=>setEditForm(f=>({...f,lieu:v})),placeholder:"— Choisir —",options:[{v:"Levallois-Perret",l:"Levallois-Perret"},{v:"Hexagone",l:"Hexagone"}]})),
               el("div",null,el(Lbl,null,"Situation"),el(Sel,{value:editForm.situation||"",onChange:v=>setEditForm(f=>({...f,situation:v})),options:[{v:"Arrivée",l:"🟢 Arrivée"},{v:"Départ",l:"🔴 Départ"}]})),
               el("div",null,el(Lbl,null,"Statut"),el(Sel,{value:editForm.statut||"",onChange:v=>setEditForm(f=>({...f,statut:v,cloture:v==="Terminée"})),options:[{v:"A traiter",l:"⚡ À traiter"},{v:"En cours",l:"⏳ En cours"},{v:"Terminée",l:"✓ Terminée"},{v:"Suspendue",l:"⏸ Suspendue"}]})),
               el("div",null,el("div",{className:"lbl",style:{marginBottom:4}},"Date événement"),el("input",{type:"date",value:editForm.dateEvt||"",onChange:e=>setEditForm(f=>({...f,dateEvt:e.target.value})),className:"inp",style:{fontSize:12}})),
-              el("div",null,el("div",{className:"lbl",style:{marginBottom:4}},"Manager"),el("input",{type:"text",value:editForm.manager||"",onChange:e=>setEditForm(f=>({...f,manager:e.target.value})),placeholder:"Nom du manager",className:"inp",style:{fontSize:12}})),
+              el("div",null,el("div",{className:"lbl",style:{marginBottom:4}},"Manager"),el("input",{type:"text",value:editForm.manager||"",onChange:e=>setEditForm(f=>({...f,manager:e.target.value.toUpperCase()})),placeholder:"Nom du manager",className:"inp",style:{fontSize:12}})),
               el("div",null,el(Lbl,null,"Demande Mat. PC"),el(Sel,{value:editForm.matPC||"",onChange:v=>setEditForm(f=>({...f,matPC:v})),placeholder:"— Choisir —",options:[{v:"Oui",l:"✓ Oui"},{v:"Non",l:"✗ Non"},{v:"En attente",l:"⏳ En attente"},{v:"Non applicable",l:"— Non applicable"}]})),
-              el("div",null,el("div",{className:"lbl",style:{marginBottom:4}},"N° RITM"),el("input",{type:"text",value:editForm.ritm||"",onChange:e=>setEditForm(f=>({...f,ritm:e.target.value})),placeholder:"RITM000000",className:"inp",style:{fontSize:12}})),
+              el("div",null,el("div",{className:"lbl",style:{marginBottom:4}},"N° RITM"),el("input",{type:"text",value:editForm.ritm||"",onChange:e=>setEditForm(f=>({...f,ritm:e.target.value.toUpperCase()})),placeholder:"RITM000000",className:"inp",style:{fontSize:12}})),
               el("div",null,el(Lbl,null,"Matériel reçu"),el(Sel,{value:editForm.matRecu||"",onChange:v=>setEditForm(f=>({...f,matRecu:v})),placeholder:"— Choisir —",options:[{v:"Oui",l:"✓ Oui"},{v:"Non",l:"✗ Non"},{v:"A vérifier",l:"🔍 À vérifier"}]})),
-              el("div",null,el("div",{className:"lbl",style:{marginBottom:4}},"ID matériel"),el("input",{type:"text",value:editForm.idMat||"",onChange:e=>setEditForm(f=>({...f,idMat:e.target.value})),placeholder:"ID...",className:"inp",style:{fontSize:12}})),
+              el("div",null,el("div",{className:"lbl",style:{marginBottom:4}},"ID matériel"),el("input",{type:"text",value:editForm.idMat||"",onChange:e=>setEditForm(f=>({...f,idMat:e.target.value.toUpperCase()})),placeholder:"ID...",className:"inp",style:{fontSize:12}})),
               el("div",null,el("div",{className:"lbl",style:{marginBottom:4}},"Date réception"),el("input",{type:"date",value:editForm.dateRecep||"",onChange:e=>setEditForm(f=>({...f,dateRecep:e.target.value})),className:"inp",style:{fontSize:12}})),
               el("div",null,el(Lbl,null,"Matériel donné au client"),el(Sel,{value:editForm.matDonne||"",onChange:v=>setEditForm(f=>({...f,matDonne:v})),placeholder:"— Choisir —",options:[{v:"Oui",l:"✓ Oui"},{v:"Non",l:"✗ Non"},{v:"Partiel",l:"◑ Partiel"}]}))
             ),
@@ -1828,16 +1932,27 @@ function VueFieldSupport({fssData,setFssData,showToast,addLog,badges,casiers,set
 }
 
 // ════════════════ SETTINGS MODAL ════════════════
-function SettingsModal({settings,setSettings,showToast,setShowSettings,racineRef,hrRef,hcmRef,importJsonRef,exportExcel,exportJSON,importJSON,badges,casiers,wdCache}){
+function SettingsModal({settings,setSettings,showToast,setShowSettings,racineRef,hrRef,hcmRef,importJsonRef,exportExcel,exportJSON,importJSON,badges,setBadges,casiers,wdCache,histo,addLog,canHistorique,canArchives,canHistoriquePret}){
   const[tab,setTab]=useState("emails");
-  const tabs=[{id:"emails",label:"📧 Emails",icon:"📧"},{id:"import",label:"📁 Données",icon:"📁"},{id:"users",label:"👤 Comptes",icon:"👤"},{id:"templates",label:"✉️ Modèles",icon:"✉️"}];
+  const archivesCount=badges.filter(b=>b.statut==="Archivé").length;
+  const histoCount=(histo||[]).length;
+  const tabs=[
+    {id:"emails",label:"📧 Emails",icon:"📧"},
+    {id:"import",label:"📁 Données",icon:"📁"},
+    {id:"users",label:"👤 Comptes",icon:"👤"},
+    {id:"templates",label:"✉️ Modèles",icon:"✉️"},
+    canHistorique!==false&&{id:"historique",label:"🕐 Historique"+(histoCount>0?" ("+histoCount+")":"")},
+    canArchives!==false&&{id:"archives",label:"🗃️ Archives"+(archivesCount>0?" ("+archivesCount+")":"")},
+    canHistoriquePret!==false&&{id:"historique_pret",label:"🕐 Historique Prêts"}
+  ].filter(Boolean);
+  const wide=tab==="historique"||tab==="archives"||tab==="historique_pret";
   useEffect(()=>{
     if(racineRef.current)racineRef.current.onchange=e=>{if(e.target.files[0]){window._handleRacine&&window._handleRacine(e.target.files[0]);}e.target.value="";};
     if(hrRef.current)hrRef.current.onchange=e=>{if(e.target.files[0]){window._handleHR&&window._handleHR(e.target.files[0],"hr");}e.target.value="";};
     if(hcmRef.current)hcmRef.current.onchange=e=>{if(e.target.files[0]){window._handleHR&&window._handleHR(e.target.files[0],"fh");}e.target.value="";};
   });
   return React.createElement("div",{style:{position:"fixed",inset:0,background:"rgba(30,40,60,.45)",zIndex:2000,display:"flex",alignItems:"center",justifyContent:"center",padding:16,backdropFilter:"blur(4px)"},onClick:e=>{if(e.target===e.currentTarget)setShowSettings(false);}},
-    React.createElement("div",{style:{background:"var(--surface)",border:"1px solid var(--border)",borderRadius:20,width:"100%",maxWidth:620,boxShadow:"0 32px 80px rgba(0,0,0,.2)",maxHeight:"90vh",display:"flex",flexDirection:"column",overflow:"hidden"}},
+    React.createElement("div",{style:{background:"var(--surface)",border:"1px solid var(--border)",borderRadius:20,width:"100%",maxWidth:wide?1100:620,boxShadow:"0 32px 80px rgba(0,0,0,.2)",maxHeight:"90vh",display:"flex",flexDirection:"column",overflow:"hidden",transition:"max-width .15s"}},
       // Header
       React.createElement("div",{style:{padding:"20px 24px 0",borderBottom:"1px solid var(--border)"}},
         React.createElement("div",{style:{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:16}},
@@ -1856,20 +1971,20 @@ function SettingsModal({settings,setSettings,showToast,setShowSettings,racineRef
         tab==="emails"&&React.createElement("div",{style:{display:"grid",gap:14}},
           React.createElement("div",null,
             React.createElement(Lbl,null,"Email restaurant"),
-            React.createElement("input",{type:"email",value:settings.restaurantEmail||"",onChange:e=>setSettings(s=>({...s,restaurantEmail:e.target.value})),className:"inp",placeholder:"restaurant@exemple.fr"})
+            React.createElement("input",{type:"email",value:settings.restaurantEmail||"",onChange:e=>setSettings(s=>({...s,restaurantEmail:e.target.value.toUpperCase()})),className:"inp",placeholder:"restaurant@exemple.fr"})
           ),
           React.createElement("div",null,
             React.createElement(Lbl,null,"Email IT"),
-            React.createElement("input",{type:"email",value:settings.itEmail||"",onChange:e=>setSettings(s=>({...s,itEmail:e.target.value})),className:"inp",placeholder:"it@exemple.fr"}),
+            React.createElement("input",{type:"email",value:settings.itEmail||"",onChange:e=>setSettings(s=>({...s,itEmail:e.target.value.toUpperCase()})),className:"inp",placeholder:"it@exemple.fr"}),
           React.createElement("div",{style:{marginTop:12}},
             React.createElement("div",{className:"lbl",style:{marginBottom:4}},"📋 Email notifications Field Support"),
-            React.createElement("input",{type:"email",value:settings.fssEmail||"",onChange:e=>setSettings(s=>({...s,fssEmail:e.target.value})),className:"inp",placeholder:"fieldsupport@exemple.fr"}),
+            React.createElement("input",{type:"email",value:settings.fssEmail||"",onChange:e=>setSettings(s=>({...s,fssEmail:e.target.value.toUpperCase()})),className:"inp",placeholder:"fieldsupport@exemple.fr"}),
             React.createElement("div",{style:{fontSize:10,color:"var(--text3)",marginTop:4}},"Reçoit un email automatique à chaque nouvelle fiche FSS créée depuis l'accueil")
           )
           ),
           React.createElement("div",null,
             React.createElement(Lbl,null,"CC (séparées par virgules)"),
-            React.createElement("input",{type:"text",value:settings.ccEmails||"",onChange:e=>setSettings(s=>({...s,ccEmails:e.target.value})),className:"inp",placeholder:"cc1@ex.fr, cc2@ex.fr"})
+            React.createElement("input",{type:"text",value:settings.ccEmails||"",onChange:e=>setSettings(s=>({...s,ccEmails:e.target.value.toUpperCase()})),className:"inp",placeholder:"cc1@ex.fr, cc2@ex.fr"})
           ),
           React.createElement("div",{style:{background:"var(--accentBg)",border:"1px solid rgba(59,130,246,.2)",borderRadius:8,padding:"10px 14px",fontSize:12,color:"var(--accent2)"}},"💡 Ces emails sont utilisés pour les mails d'arrivée et de départ depuis l'accueil et Field Support.")
         ),
@@ -1923,7 +2038,10 @@ function SettingsModal({settings,setSettings,showToast,setShowSettings,racineRef
           React.createElement("div",null,React.createElement(Lbl,null,"Arrivée → IT"),React.createElement("textarea",{value:settings.bodyArriveeIT||"",onChange:e=>setSettings(s=>({...s,bodyArriveeIT:e.target.value})),rows:4,className:"inp",style:{resize:"vertical",fontFamily:"'JetBrains Mono',monospace",fontSize:11}})),
           React.createElement("div",null,React.createElement(Lbl,null,"Départ → Restaurant"),React.createElement("textarea",{value:settings.bodyDepartResto||"",onChange:e=>setSettings(s=>({...s,bodyDepartResto:e.target.value})),rows:4,className:"inp",style:{resize:"vertical",fontFamily:"'JetBrains Mono',monospace",fontSize:11}})),
           React.createElement("div",null,React.createElement(Lbl,null,"Départ → IT"),React.createElement("textarea",{value:settings.bodyDepartIT||"",onChange:e=>setSettings(s=>({...s,bodyDepartIT:e.target.value})),rows:4,className:"inp",style:{resize:"vertical",fontFamily:"'JetBrains Mono',monospace",fontSize:11}}))
-        )
+        ),
+        tab==="historique"&&React.createElement(VueHistorique,{histo:histo||[]}),
+        tab==="archives"&&React.createElement(VueArchives,{badges,setBadges,showToast,addLog}),
+        tab==="historique_pret"&&React.createElement(VueHistoriquePret,null)
       ),
       // Footer
       React.createElement("div",{style:{padding:"14px 24px",borderTop:"1px solid var(--border)",display:"flex",justifyContent:"flex-end"}},
@@ -2083,7 +2201,7 @@ function VueBadgesPret({showToast,addLog}){
       el("tbody",null,
         filtered.length===0
           ?el("tr",null,el("td",{colSpan:8,style:{textAlign:"center",padding:48,color:"var(--text3)",fontSize:13}},
-              el("div",{style:{fontSize:32,marginBottom:8}},"🏷️"),"Aucun badge trouvé"))
+              el("div",{style:{fontSize:32,marginBottom:8}},"🪪"),"Aucun badge trouvé"))
           :filtered.map((badge,i)=>el("tr",{key:badge.id,style:{
               borderBottom:"1px solid var(--border)",
               background:i%2===0?"transparent":"var(--surface2)",
@@ -2099,8 +2217,8 @@ function VueBadgesPret({showToast,addLog}){
               badge.date_retour_prevu&&badge.date_retour_prevu<todayISO()?"⚠️ ":""
               ,fmtDate(badge.date_retour_prevu)),
             el("td",{style:{padding:"10px 14px",maxWidth:160}},
-              el("input",{value:badge.commentaire||"",onChange:e=>{const u=updateField(badge.id,"commentaire",e.target.value);},
-                onBlur:e=>save(badges.map(b=>b.id===badge.id?{...b,commentaire:e.target.value}:b)),
+              el("input",{value:badge.commentaire||"",onChange:e=>{const u=updateField(badge.id,"commentaire",e.target.value.toUpperCase());},
+                onBlur:e=>save(badges.map(b=>b.id===badge.id?{...b,commentaire:e.target.value.toUpperCase()}:b)),
                 placeholder:"—",style:{background:"transparent",border:"none",outline:"none",fontSize:11,
                   color:"var(--text2)",width:"100%"}})
             ),
@@ -2138,7 +2256,7 @@ function VueBadgesPret({showToast,addLog}){
         el("div",null,
           el("div",{style:{fontSize:11,fontWeight:600,color:"var(--text3)",textTransform:"uppercase",letterSpacing:".5px",marginBottom:4}},"Badge de prêt"),
           el("div",{style:{fontSize:20,fontWeight:800,color:"var(--text)",display:"flex",alignItems:"center",gap:8}},
-            el("span",null,"🏷️"),selected.code," — ",selected.nom)
+            el("span",null,"🪪"),selected.code," — ",selected.nom)
         ),
         el("button",{onClick:()=>setSelected(null),
           style:{background:"var(--surface3)",border:"none",borderRadius:8,padding:"6px 10px",
@@ -2150,7 +2268,7 @@ function VueBadgesPret({showToast,addLog}){
         el("div",null,
           el("div",{style:{fontSize:11,fontWeight:600,color:"var(--text2)",marginBottom:6,textTransform:"uppercase",letterSpacing:".4px"}},"👤 Emprunteur"),
           el("input",{type:"text",value:selected.emprunteur||"",className:"inp",
-            onChange:e=>setSelected({...selected,emprunteur:e.target.value}),
+            onChange:e=>setSelected({...selected,emprunteur:e.target.value.toUpperCase()}),
             placeholder:"Nom et prénom..."})
         ),
         el("div",null,
@@ -2161,7 +2279,7 @@ function VueBadgesPret({showToast,addLog}){
         el("div",null,
           el("div",{style:{fontSize:11,fontWeight:600,color:"var(--text2)",marginBottom:6,textTransform:"uppercase",letterSpacing:".4px"}},"💬 Commentaire"),
           el("input",{type:"text",value:selected.commentaire||"",className:"inp",
-            onChange:e=>setSelected({...selected,commentaire:e.target.value}),
+            onChange:e=>setSelected({...selected,commentaire:e.target.value.toUpperCase()}),
             placeholder:"Observations..."})
         )
       ),
@@ -2296,11 +2414,73 @@ function App(){
     },2000);
   },[badges,unlocked]);
 
+  // ── Auto-transition "À récupérer" : UNIQUEMENT quand la sortie est à J-7 ──
+  // Bascule dans les deux sens : Actif→À récupérer en entrant dans la fenêtre des 7 jours,
+  // et À récupérer→Actif si la date de sortie a été repoussée à plus de 7 jours (la personne
+  // ne part plus si vite). On ne touche jamais aux fiches sans date de sortie, ni à celles déjà
+  // en retard (date passée, statut "À récupérer" conservé tant que le badge n'est pas récupéré).
+  useEffect(()=>{
+    if(!unlocked||!badges.length)return;
+    const today=todayISO();
+    const j7=new Date();j7.setDate(j7.getDate()+7);const j7ISO=j7.toISOString().slice(0,10);
+    const versARecuperer=badges.filter(b=>b.statut==="Actif"&&b.date_sortie_prevue&&b.date_sortie_prevue<=j7ISO&&b.date_sortie_prevue>=today);
+    const versActif=badges.filter(b=>b.statut==="À récupérer"&&b.date_sortie_prevue&&b.date_sortie_prevue>j7ISO);
+    if(!versARecuperer.length&&!versActif.length)return;
+    const idsRec=new Set(versARecuperer.map(b=>b.id));
+    const idsAct=new Set(versActif.map(b=>b.id));
+    setBadges(prev=>prev.map(b=>{
+      if(idsRec.has(b.id))return{...b,statut:"À récupérer"};
+      if(idsAct.has(b.id))return{...b,statut:"Actif"};
+      return b;
+    }));
+    versARecuperer.forEach(b=>{
+      if(sb&&typeof b.id==="number")sb.from("lp24_badges").upsert({...b,statut:"À récupérer"});
+      addLog("Statut auto","À récupérer (sortie le "+fmt(b.date_sortie_prevue)+") — "+b.prenom+" "+b.nom);
+    });
+    versActif.forEach(b=>{
+      if(sb&&typeof b.id==="number")sb.from("lp24_badges").upsert({...b,statut:"Actif"});
+      addLog("Statut auto","Actif (sortie repoussée au "+fmt(b.date_sortie_prevue)+") — "+b.prenom+" "+b.nom);
+    });
+    if(versARecuperer.length)showToast("🔴 "+versARecuperer.length+" badge(s) passé(s) en « À récupérer » (sortie ≤ 7 jours)");
+    if(versActif.length)showToast("✅ "+versActif.length+" badge(s) repassé(s) en « Actif » (sortie > 7 jours)");
+  },[badges,unlocked]);
+
   // ── Auto-save FSS désactivé — chaque action sauvegarde individuellement ──
   // (upsert global risqué si IDs locaux ≠ IDs Supabase)
 
   // ── Exposer fssEmail pour EmailJS ──
   useEffect(()=>{window._fssNotifEmail=settings.fssEmail||"";},[settings.fssEmail]);
+
+  // ── Migration ponctuelle : mettre en MAJUSCULES les champs texte déjà enregistrés ──
+  // Ne touche jamais : statut, zone, dates, id, booléens (utilisés en comparaisons strictes).
+  // "casier"/"numero" sont migrés ensemble pour ne pas casser le lien casier ↔ collaborateur.
+  const migratedRef=useRef(false);
+  useEffect(()=>{
+    if(dbStatus!=="ok"||migratedRef.current)return;
+    migratedRef.current=true;
+    const FIELDS_B=["nom","prenom","email","serie","zeplug","carte_rechargement","manager","mail_manager","matricule","casier"];
+    const FIELDS_C=["occupant","matricule","numero"];
+    setBadges(prev=>{
+      let changed=false;
+      const upd=prev.map(b=>{
+        let nb=null;
+        FIELDS_B.forEach(f=>{const v=b[f];if(typeof v==="string"&&v&&v!==v.toUpperCase()){if(!nb)nb={...b};nb[f]=v.toUpperCase();}});
+        if(nb){changed=true;if(sb&&typeof b.id==="number")sb.from("lp24_badges").upsert(nb);return nb;}
+        return b;
+      });
+      return changed?upd:prev;
+    });
+    setCasiers(prev=>{
+      let changed=false;
+      const upd=prev.map(c=>{
+        let nc=null;
+        FIELDS_C.forEach(f=>{const v=c[f];if(typeof v==="string"&&v&&v!==v.toUpperCase()){if(!nc)nc={...c};nc[f]=v.toUpperCase();}});
+        if(nc){changed=true;if(sb&&typeof c.id==="number")sb.from("lp24_casiers").upsert(nc);return nc;}
+        return c;
+      });
+      return changed?upd:prev;
+    });
+  },[dbStatus]);
 
   // ── Auto-save settings (users, emails) dans Supabase ──
   const settingsTimer=useRef(null);
@@ -2494,10 +2674,7 @@ useEffect(()=>{
     {id:"casiers",label:"Casiers",icon:"📦"},
     {id:"rapport",label:"Rapport",icon:"📊"},
     {id:"impression",label:"Étiquettes",icon:"🏷️"},
-    {id:"historique",label:"Historique",icon:"🕐"},
-    {id:"archives",label:"Archives",icon:"🗃️"},
-    {id:"badges_pret",label:"Badges Prêt",icon:"🏷️"},
-    {id:"historique_pret",label:"Historique Prêts",icon:"🕐"},
+    {id:"badges_pret",label:"Badges Prêt",icon:"🪪"},
   ];
   const archivesCount=badges.filter(b=>b.statut==="Archivé").length;
   const histoCount=histo.length;
@@ -2528,10 +2705,7 @@ useEffect(()=>{
       case "casiers": return React.createElement(VueCasiers,props);
       case "rapport": return React.createElement(VueRapport,{badges,fssData});
       case "impression": return React.createElement(VueImpression,{badges});
-      case "historique": return React.createElement(VueHistorique,{histo});
-      case "archives": return React.createElement(VueArchives,{badges,setBadges,showToast,addLog});
       case "badges_pret": return React.createElement(VueBadgesPret,{showToast,addLog});
-      case "historique_pret": return React.createElement(VueHistoriquePret,null);
       default: return null;
     }
   };
@@ -2552,7 +2726,7 @@ useEffect(()=>{
   const dbDot=React.createElement("div",{style:{display:"flex",alignItems:"center",gap:5,fontSize:11,color:"var(--text3)"}},React.createElement("span",{className:"save-dot"+(saving?" saving":""),title:saving?"Sauvegarde...":"Sauvegardé"}),saving?"Sync...":dbStatus==="ok"?"✓":"Hors ligne");
 
   const toolbarButtons=React.createElement("div",{style:{display:"flex",gap:8,alignItems:"center"}},
-    !isIT&&React.createElement("button",{title:"Paramètres & Import/Export",className:"btn-icon",onClick:()=>setShowSettings(true)},"⚙️"),
+    !isIT&&React.createElement("button",{title:"Paramètres & Import/Export",className:"btn-icon",onClick:()=>setShowSettings(true),style:{position:"relative"}},"⚙️",archivesCount>0&&React.createElement("span",{style:{position:"absolute",top:-4,right:-4,background:"var(--orange)",color:"#fff",borderRadius:999,fontSize:8,fontWeight:700,padding:"1px 4px",lineHeight:"11px"}},archivesCount)),
     session&&React.createElement("span",{style:{fontSize:11,color:"var(--text3)",marginLeft:2}},session.label),
     session&&React.createElement("button",{title:"Déconnexion",onClick:()=>{setUnlocked(false);setSession(null);},style:{background:"var(--redBg)",border:"1px solid rgba(220,38,38,.2)",color:"var(--red)",borderRadius:6,padding:"3px 8px",fontSize:11,cursor:"pointer"}},"⏻"),
     dbDot
@@ -2566,11 +2740,11 @@ useEffect(()=>{
       React.createElement("nav",{style:{background:"var(--surface)",borderBottom:"1px solid var(--border)",padding:"0 20px",display:"flex",alignItems:"center",justifyContent:"space-between",height:48,position:"sticky",top:0,zIndex:500}},
         React.createElement("div",{style:{display:"flex",alignItems:"center",gap:16}},
           React.createElement("div",{style:{display:"flex",alignItems:"center",gap:8}},
-            React.createElement("span",{style:{fontSize:18}},"🏷️"),
+            React.createElement("span",{style:{fontSize:18}},"🪪"),
             React.createElement("span",{style:{fontWeight:700,fontSize:14}},"Badges de Prêt")
           ),
           React.createElement("div",{style:{display:"flex",gap:4}},
-            React.createElement("button",{onClick:()=>setView("badges_pret"),className:"nav-item"+(badgeView==="badges_pret"?" active":""),style:{fontSize:12,padding:"5px 10px"}},"🏷️ Badges"),
+            React.createElement("button",{onClick:()=>setView("badges_pret"),className:"nav-item"+(badgeView==="badges_pret"?" active":""),style:{fontSize:12,padding:"5px 10px"}},"🪪 Badges"),
             React.createElement("button",{onClick:()=>setView("historique_pret"),className:"nav-item"+(badgeView==="historique_pret"?" active":""),style:{fontSize:12,padding:"5px 10px"}},"🕐 Historique")
           )
         ),
@@ -2590,7 +2764,7 @@ useEffect(()=>{
   return React.createElement("div",{style:{minHeight:"100vh",background:"var(--bg)"}},
     loading&&React.createElement("div",{style:{position:"fixed",inset:0,background:"rgba(30,40,60,.45)",zIndex:9998,display:"flex",alignItems:"center",justifyContent:"center"}},React.createElement("div",{style:{background:"var(--surface)",border:"1px solid var(--border)",borderRadius:14,padding:"24px 36px",fontSize:15,fontWeight:700,color:"var(--text)"}},"⏳ Chargement en cours...")),
     toast&&React.createElement("div",{className:"toast-anim",style:{position:"fixed",top:20,left:"50%",transform:"translateX(-50%)",zIndex:9999,background:toast.type==="err"?"#7F1D1D":"#14532D",border:"1px solid "+(toast.type==="err"?"rgba(220,38,38,.3)":"rgba(22,163,74,.3)"),color:"#fff",padding:"12px 24px",borderRadius:12,fontSize:13,fontWeight:700,boxShadow:"0 4px 24px rgba(0,0,0,.12)",whiteSpace:"nowrap",pointerEvents:"none"}},toast.msg),
-    showSettings&&!isIT&&React.createElement(SettingsModal,{settings,setSettings,showToast,setShowSettings,racineRef,hrRef,hcmRef,importJsonRef,exportExcel,exportJSON,importJSON,badges,casiers,wdCache}),
+    showSettings&&!isIT&&React.createElement(SettingsModal,{settings,setSettings,showToast,setShowSettings,racineRef,hrRef,hcmRef,importJsonRef,exportExcel,exportJSON,importJSON,badges,setBadges,casiers,wdCache,histo,addLog,canHistorique:canAccess("historique"),canArchives:canAccess("archives"),canHistoriquePret:canAccess("historique_pret")}),
     React.createElement("nav",{className:"desktop-nav no-print",style:{background:"var(--surface)",borderBottom:"1px solid var(--border)",padding:"0 12px",display:"flex",alignItems:"center",gap:2,height:48,position:"sticky",top:0,zIndex:500,boxShadow:"0 1px 0 var(--border)",overflow:"hidden"}},
       React.createElement("div",{style:{display:"flex",alignItems:"center",gap:6,marginRight:10,paddingRight:10,borderRight:"1px solid var(--border)",flexShrink:0}},
         React.createElement("span",{style:{fontSize:16}},"👥"),
@@ -2599,9 +2773,7 @@ useEffect(()=>{
       React.createElement("div",{style:{display:"flex",alignItems:"center",gap:1,flex:1,overflow:"hidden"}},
         visibleNav.map(n=>React.createElement("button",{key:n.id,onClick:()=>setView(n.id),className:"nav-item"+(view===n.id?" active":""),style:{fontSize:11,padding:"5px 8px",flexShrink:0}},
           n.icon," ",n.label,
-          n.id==="archives"&&archivesCount>0&&React.createElement("span",{style:{background:"var(--orange)",color:"#fff",borderRadius:999,fontSize:8,fontWeight:700,padding:"1px 4px",marginLeft:2}},archivesCount),
-          n.id==="field_support"&&fssOpenCount>0&&React.createElement("span",{style:{background:"var(--red)",color:"#fff",borderRadius:999,fontSize:8,fontWeight:700,padding:"1px 4px",marginLeft:2}},fssOpenCount),
-          n.id==="historique"&&histoCount>0&&React.createElement("span",{style:{background:"var(--accent)",color:"#fff",borderRadius:999,fontSize:8,fontWeight:700,padding:"1px 4px",marginLeft:2}},histoCount)
+          n.id==="field_support"&&fssOpenCount>0&&React.createElement("span",{style:{background:"var(--red)",color:"#fff",borderRadius:999,fontSize:8,fontWeight:700,padding:"1px 4px",marginLeft:2}},fssOpenCount)
         ))
       ),
       React.createElement("div",{style:{marginLeft:8,flexShrink:0}},toolbarButtons)
@@ -2631,8 +2803,8 @@ function AddUserForm({settings,setSettings,showToast}){
   return React.createElement("div",{style:{background:"#F9FAFB",borderRadius:7,padding:12,border:"1px solid #E5E7EB",marginTop:8}},
     React.createElement("div",{style:{fontWeight:600,fontSize:12,color:"#374151",marginBottom:8}},"+ Ajouter un compte"),
     React.createElement("div",{style:{display:"grid",gridTemplateColumns:"1fr 1fr",gap:6,marginBottom:6}},
-      React.createElement("input",{value:nu.label,onChange:e=>setNu(u=>({...u,label:e.target.value})),placeholder:"Nom affiché",style:{padding:"6px 8px",borderRadius:5,border:"1px solid #D1D5DB",fontSize:12}}),
-      React.createElement("input",{type:"email",value:nu.email,onChange:e=>setNu(u=>({...u,email:e.target.value})),placeholder:"Email",style:{padding:"6px 8px",borderRadius:5,border:"1px solid #D1D5DB",fontSize:12}}),
+      React.createElement("input",{value:nu.label,onChange:e=>setNu(u=>({...u,label:e.target.value.toUpperCase()})),placeholder:"Nom affiché",style:{padding:"6px 8px",borderRadius:5,border:"1px solid #D1D5DB",fontSize:12}}),
+      React.createElement("input",{type:"email",value:nu.email,onChange:e=>setNu(u=>({...u,email:e.target.value.toUpperCase()})),placeholder:"Email",style:{padding:"6px 8px",borderRadius:5,border:"1px solid #D1D5DB",fontSize:12}}),
       React.createElement("input",{type:"text",value:nu.pwd,onChange:e=>setNu(u=>({...u,pwd:e.target.value})),placeholder:"Mot de passe",style:{padding:"6px 8px",borderRadius:5,border:"1px solid #D1D5DB",fontSize:12,gridColumn:"1/-1"}})
     ),
     React.createElement("div",{style:{marginBottom:8}},
