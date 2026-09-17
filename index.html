@@ -59,6 +59,21 @@
     @media(max-width:768px){.tbl-desktop{display:none!important}.cards-mobile{display:block!important}}
     @media(min-width:769px){.cards-mobile{display:none!important}}
     @media(max-width:1000px){.rapport-cols{grid-template-columns:1fr!important}}
+    /* ── Lisibilité mobile, sans toucher aux vues : uniquement des overrides CSS ── */
+    @media(max-width:768px){
+      /* En dessous de 16px, Safari iOS zoome automatiquement sur un champ au focus */
+      input,select,textarea{font-size:16px!important;}
+      /* Beaucoup de tableaux (Rapport, Casiers, Badges Prêt, Historique, Archives, Field Support)
+         sont pensés pour un écran d'ordinateur et affichent un texte minuscule sur téléphone.
+         On agrandit le texte ; les tableaux qui ne tiennent pas défilent horizontalement
+         (la plupart sont déjà dans un conteneur overflow:auto). */
+      table{font-size:14px!important;}
+      table th{font-size:12px!important;}
+      table td{font-size:13px!important;}
+      .lbl{font-size:12px!important;}
+      .btn,.btn-icon,.badge,.nav-item{font-size:13px!important;}
+      .mob-row{font-size:13px!important;}
+    }
     .mob-card{background:var(--surface2);border-radius:var(--radius);padding:12px 14px;margin-bottom:8px;border-left:3px solid var(--accent);}
     .mob-row{display:flex;justify-content:space-between;align-items:center;padding:4px 0;font-size:12px;border-bottom:1px solid var(--border);}
     .mob-row:last-child{border-bottom:none;}
