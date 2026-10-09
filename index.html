@@ -27,8 +27,20 @@
       --cyan:#0891B2;--cyanBg:rgba(8,145,178,.1);
       --orange:#EA580C;--orangeB:rgba(234,88,12,.1);
       --radius:10px;--radius-sm:6px;--radius-lg:14px;
+      /* ── Teintes arrivée / départ (accueil), adoucies pour ne pas agresser l'œil ── */
+      --arr:#4C9A7C;--arr-bg:#EAF5EF;--arr-soft:#CFE9DC;
+      --dep:#BD5F77;--dep-bg:#FBEAEF;--dep-soft:#F2D2DC;
     }
-    body{font-family:'Plus Jakarta Sans',system-ui,sans-serif;background:var(--bg);color:var(--text);min-height:100vh;}
+    body.dark{
+      --bg:#0B1220;--surface:#141B2E;--surface2:#1B2338;--surface3:#242D47;
+      --border:#2A3350;--border2:#394468;
+      --text:#E7EBF4;--text2:#AEB7CC;--text3:#7A86A3;
+      --accentBg:rgba(59,130,246,.18);--greenBg:rgba(22,163,74,.18);--redBg:rgba(220,38,38,.18);
+      --orangeBg:rgba(234,88,12,.18);--purpleBg:rgba(147,51,234,.18);--yellowBg:rgba(202,138,4,.18);--cyanBg:rgba(8,145,178,.18);
+      --arr-bg:rgba(76,154,124,.18);--arr-soft:rgba(76,154,124,.35);
+      --dep-bg:rgba(189,95,119,.18);--dep-soft:rgba(189,95,119,.35);
+    }
+    body{font-family:'Plus Jakarta Sans',system-ui,sans-serif;background:var(--bg);color:var(--text);min-height:100vh;transition:background .2s,color .2s;}
     button,input,select,textarea{font-family:inherit;}
     table{border-spacing:0;}
     ::-webkit-scrollbar{width:5px;height:5px;}
@@ -115,6 +127,186 @@
     .settings-tab:hover:not(.active){background:var(--surface2);color:var(--text);}
     .new-badge-pulse{animation:newPulse 2s infinite;}
   @keyframes newPulse{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.8;transform:scale(1.08)}}
+
+  /* ════════════════ ACCUEIL — refonte (header, mouvements, calendrier, etc.) ════════════════ */
+  .hero{background:linear-gradient(135deg,#0F172A,#1B3A6B);border-radius:12px;padding:14px 18px;color:#fff;}
+  .hero-top{display:flex;justify-content:space-between;align-items:flex-start;gap:16px;flex-wrap:wrap;}
+  .hero h1{font-size:18px;font-weight:700;margin-bottom:3px;}
+  .hero .greet{font-size:12px;color:rgba(255,255,255,.75);}
+  .hero .anniv-line{font-size:12px;color:#FBBF24;font-weight:700;margin-top:3px;}
+  .hero-actions{display:flex;align-items:center;gap:8px;flex-wrap:wrap;}
+  .j1-btn,.export-btn{background:rgba(255,255,255,.15);border:1px solid rgba(255,255,255,.3);color:#fff;border-radius:8px;padding:6px 12px;cursor:pointer;font-size:12px;font-weight:600;white-space:nowrap;}
+  .theme-toggle{display:flex;align-items:center;gap:6px;background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.28);border-radius:999px;padding:5px 10px;cursor:pointer;font-size:12px;color:#fff;font-weight:600;}
+  .search-tabs{display:flex;gap:6px;margin-top:14px;}
+  .search-tab{background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.22);color:rgba(255,255,255,.72);border-radius:999px;padding:4px 13px;font-size:11px;font-weight:700;cursor:pointer;}
+  .search-tab.active{background:rgba(255,255,255,.24);color:#fff;}
+  .hero-search-wrap{position:relative;margin-top:8px;max-width:420px;}
+  .hero-search-wrap input{width:100%;padding:10px 14px 10px 36px;border-radius:999px;border:1px solid rgba(255,255,255,.25);background:rgba(255,255,255,.1);color:#fff;font-size:13px;font-weight:600;outline:none;}
+  .hero-search-wrap input::placeholder{color:rgba(255,255,255,.55);font-weight:500;}
+  .hero-search-wrap .ic{position:absolute;left:13px;top:50%;transform:translateY(-50%);color:rgba(255,255,255,.65);font-size:13px;}
+  .hero-search-dd{position:absolute;top:calc(100% + 6px);left:0;right:0;background:var(--surface);border:1px solid var(--border);border-radius:10px;box-shadow:0 10px 28px rgba(0,0,0,.25);overflow:hidden;z-index:40;max-height:260px;overflow-y:auto;}
+  .hero-search-dd .r{display:flex;align-items:center;gap:9px;padding:8px 12px;cursor:pointer;color:var(--text);border-bottom:1px solid var(--border);}
+  .hero-search-dd .r:last-child{border:none;}
+  .hero-search-dd .r:hover{background:var(--surface2);}
+  .hero-search-dd .av{width:26px;height:26px;border-radius:50%;background:var(--accentBg);color:var(--accent);font-size:10px;font-weight:800;display:flex;align-items:center;justify-content:center;flex-shrink:0;}
+  .hero-search-dd .nm{font-size:12.5px;font-weight:700;flex:1;}
+  .hero-search-dd .st{font-size:10.5px;color:var(--text3);}
+
+  .news-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;}
+  .news-card{padding:14px 16px;border-top:3px solid var(--accent);cursor:pointer;}
+  .news-card .hd{display:flex;align-items:center;gap:8px;margin-bottom:8px;}
+  .news-card .ico{font-size:18px;}
+  .news-card .cnt{font-size:20px;font-weight:800;margin-left:auto;}
+  .news-card .ttl{font-size:12.5px;font-weight:700;}
+  .news-card .sub{font-size:11px;color:var(--text3);margin-top:2px;}
+
+  .banners-row{display:flex;flex-wrap:wrap;gap:10px;}
+  .banner{flex:1;min-width:220px;display:flex;align-items:center;gap:11px;border-radius:var(--radius-lg);padding:10px 14px;border:1px solid;}
+  .banner .ico{font-size:18px;flex-shrink:0;}
+  .banner .txt{font-size:12px;font-weight:700;}
+  .banner .sub{font-size:10.5px;margin-top:1px;font-weight:600;}
+  .banner.bravo{background:var(--arr-bg);border-color:var(--arr-soft);}
+  .banner.bravo .txt{color:#2E6B52;}body.dark .banner.bravo .txt{color:#8FD7B9;}
+  .banner.bravo .sub{color:var(--arr);}
+  .banner.anniv{background:var(--yellowBg);border-color:#F3DFA1;}
+  .banner.anniv .txt{color:#8A6400;}body.dark .banner.anniv .txt{color:#F0CE6E;}
+  .banner.anniv .sub{color:var(--yellow);}
+  .banner.tip{background:var(--accentBg);border-color:#BFDBFE;}
+  .banner.tip .txt{color:#1E4F9C;}body.dark .banner.tip .txt{color:#9DC2F7;}
+  .banner.tip .sub{color:var(--accent);}
+
+  .mvt-icon-row{display:flex;gap:10px;}
+  .mvt-icon{flex:1;display:flex;align-items:center;gap:11px;background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-lg);padding:11px 16px;cursor:pointer;transition:all .15s;}
+  .mvt-icon:hover{border-color:var(--border2);transform:translateY(-1px);}
+  .mvt-icon .ico{width:36px;height:36px;border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0;}
+  .mvt-icon.arr .ico{background:var(--arr-bg);}
+  .mvt-icon.dep .ico{background:var(--dep-bg);}
+  .mvt-icon .ttl{font-weight:800;font-size:13.5px;}
+  .mvt-icon .sub{font-size:10.5px;color:var(--text3);margin-top:1px;}
+  .mvt-icon .tag{margin-left:auto;font-size:10px;font-weight:700;color:var(--arr);background:var(--arr-bg);border-radius:999px;padding:3px 9px;}
+
+  .todo-card{padding:14px 18px;}
+  .todo-top{display:flex;align-items:center;gap:8px;margin-bottom:10px;}
+  .todo-top h3{font-size:14px;font-weight:800;}
+  .todo-top .cnt{margin-left:auto;font-size:11px;color:var(--text3);font-weight:700;}
+  .todo-item{display:flex;align-items:center;gap:10px;padding:9px 4px;border-bottom:1px solid var(--border);cursor:pointer;}
+  .todo-item:last-child{border-bottom:none;}
+  .todo-check{width:18px;height:18px;border-radius:5px;border:2px solid var(--border2);flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:11px;color:#fff;transition:all .15s;}
+  .todo-item.done .todo-check{background:var(--arr);border-color:var(--arr);}
+  .todo-item.done .todo-txt{text-decoration:line-through;color:var(--text3);}
+  .todo-txt{flex:1;font-size:12.5px;font-weight:600;}
+  .todo-tag{font-size:10px;font-weight:700;padding:2px 8px;border-radius:999px;white-space:nowrap;}
+
+  .mvt-grid{display:grid;grid-template-columns:1.5fr 1fr;gap:14px;align-items:start;}
+  .mvt-arrivee{background:linear-gradient(160deg,var(--surface),var(--arr-bg) 140%);border:1px solid var(--border);border-radius:var(--radius-lg);padding:20px;position:relative;}
+  .mvt-arrivee::before{content:"";position:absolute;top:0;left:0;right:0;height:4px;border-radius:var(--radius-lg) var(--radius-lg) 0 0;background:var(--arr);}
+  .mvt-head{display:flex;align-items:center;gap:10px;margin-bottom:14px;}
+  .mvt-head .ico{width:34px;height:34px;border-radius:9px;background:var(--arr-bg);display:flex;align-items:center;justify-content:center;font-size:17px;flex-shrink:0;}
+  .mvt-head .ttl{font-weight:800;font-size:15px;}
+  .mvt-head .sub{font-size:11px;color:var(--text3);margin-top:1px;}
+  .wd-search{position:relative;margin-bottom:12px;}
+  .wd-search label{font-size:11px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.4px;display:block;margin-bottom:5px;}
+  .wd-search-input{position:relative;}
+  .wd-search-input input{width:100%;padding:11px 38px 11px 14px;border-radius:999px;border:1.5px solid var(--arr);background:var(--surface);color:var(--text);font-size:14px;font-weight:600;outline:none;}
+  .wd-search-input input::placeholder{color:var(--text3);font-weight:500;}
+  .wd-search-input .ic{position:absolute;right:13px;top:50%;transform:translateY(-50%);color:var(--arr);font-size:15px;pointer-events:none;}
+  .wd-dropdown{position:absolute;top:calc(100% + 6px);left:0;right:0;background:var(--surface);border:1px solid var(--border);border-radius:12px;box-shadow:0 8px 24px rgba(20,30,50,.18);z-index:30;max-height:260px;overflow-y:auto;}
+  .wd-row{display:flex;align-items:center;gap:10px;padding:9px 12px;cursor:pointer;border-bottom:1px solid var(--border);}
+  .wd-row:last-child{border-bottom:none;}
+  .wd-row:hover{background:var(--arr-bg);}
+  .wd-av{width:30px;height:30px;border-radius:50%;background:var(--accentBg);color:var(--accent);font-size:11px;font-weight:800;display:flex;align-items:center;justify-content:center;flex-shrink:0;}
+  .wd-row .nm{font-size:13px;font-weight:700;flex:1;}
+  .wd-row .meta{font-size:10.5px;color:var(--text3);text-align:right;}
+  .wd-badge{display:inline-flex;align-items:center;gap:5px;background:var(--arr-bg);color:var(--arr);font-size:11px;font-weight:700;padding:5px 11px;border-radius:999px;margin-bottom:12px;}
+  .wd-badge button{background:none;border:none;color:var(--arr);font-weight:800;cursor:pointer;font-size:12px;margin-left:2px;}
+  .mvt-fields{display:grid;grid-template-columns:1fr 1fr;gap:9px;margin-bottom:10px;}
+  .mvt-fields .full{grid-column:1/-1;}
+  .fld label{font-size:10.5px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.3px;display:block;margin-bottom:4px;}
+  .mvt-actions{display:flex;gap:8px;margin-top:4px;}
+  .btn-main{flex:1;background:var(--arr);color:#fff;border:none;border-radius:999px;padding:10px 0;font-weight:700;font-size:13px;cursor:pointer;}
+  .btn-ghost{background:var(--surface2);border:1px solid var(--border);color:var(--text2);border-radius:999px;padding:10px 14px;font-weight:700;font-size:12px;cursor:pointer;}
+  .mvt-depart{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-lg);padding:18px;position:relative;}
+  .mvt-depart::before{content:"";position:absolute;top:0;left:0;right:0;height:4px;border-radius:var(--radius-lg) var(--radius-lg) 0 0;background:var(--dep);}
+  .mvt-depart .mvt-fields{grid-template-columns:1fr;}
+  .btn-depart{width:100%;background:var(--dep);color:#fff;border:none;border-radius:999px;padding:10px 0;font-weight:700;font-size:13px;cursor:pointer;margin-top:4px;}
+  .depart-checklist{margin:10px 0;padding:10px 12px;background:var(--dep-bg);border-radius:10px;display:grid;gap:7px;}
+  .dc-title{font-size:10px;font-weight:800;color:var(--dep);text-transform:uppercase;letter-spacing:.4px;margin-bottom:2px;}
+  .dc-item{display:flex;align-items:center;gap:7px;font-size:11.5px;color:var(--text2);font-weight:600;cursor:pointer;}
+  .dc-box{width:15px;height:15px;border-radius:4px;border:2px solid var(--border2);flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:9px;color:#fff;background:var(--surface);}
+  .dc-item.checked .dc-box{background:var(--dep);border-color:var(--dep);}
+  .dc-item.checked .dc-txt{color:var(--text3);text-decoration:line-through;}
+
+  .kpi-grid{display:grid;grid-template-columns:repeat(6,1fr);gap:10px;}
+
+  .charts-row{display:grid;grid-template-columns:1fr 1fr;gap:12px;}
+  .chart-card{padding:16px 18px;display:flex;align-items:center;gap:16px;}
+  .chart-card h4{font-size:12.5px;font-weight:800;margin-bottom:3px;}
+  .chart-card .chart-sub{font-size:10.5px;color:var(--text3);}
+  .donut-wrap{position:relative;width:76px;height:76px;flex-shrink:0;}
+  .donut-wrap svg{transform:rotate(-90deg);}
+  .donut-center{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;}
+  .donut-center .n{font-size:14px;font-weight:800;}
+  .legend-mini{display:flex;flex-direction:column;gap:5px;margin-left:auto;}
+  .legend-mini .li{display:flex;align-items:center;gap:6px;font-size:11px;color:var(--text2);font-weight:600;white-space:nowrap;}
+  .legend-mini .dot{width:8px;height:8px;border-radius:50%;flex-shrink:0;}
+  .spark-wrap{flex:1;min-width:0;}
+  .spark-val{display:flex;align-items:baseline;gap:6px;margin-bottom:6px;}
+  .spark-val .n{font-size:20px;font-weight:800;color:var(--accent);}
+  .spark-val .delta{font-size:11px;font-weight:700;border-radius:999px;padding:2px 7px;}
+
+  .sla-card{padding:15px 20px;display:flex;align-items:center;gap:22px;flex-wrap:wrap;}
+  .sla-stat{display:flex;flex-direction:column;gap:2px;}
+  .sla-stat .n{font-size:19px;font-weight:800;color:var(--cyan);}
+  .sla-stat .l{font-size:10px;color:var(--text3);font-weight:700;text-transform:uppercase;letter-spacing:.3px;}
+  .sla-divider{width:1px;align-self:stretch;background:var(--border);}
+  .sla-alert{margin-left:auto;background:var(--dep-bg);color:var(--dep);font-size:11.5px;font-weight:700;padding:7px 13px;border-radius:999px;cursor:pointer;}
+
+  .semaine-card{padding:18px 20px;}
+  .semaine-top{display:flex;align-items:center;gap:8px;margin-bottom:4px;}
+  .semaine-top h3{font-size:14px;font-weight:800;}
+  .semaine-top .week-no{font-size:10.5px;color:var(--text3);font-weight:700;background:var(--surface2);padding:2px 9px;border-radius:999px;}
+  .semaine-top .cnt{margin-left:auto;background:var(--accentBg);color:var(--accent);font-size:11px;font-weight:700;padding:3px 10px;border-radius:999px;}
+  .days-row{display:grid;grid-template-columns:repeat(7,1fr);gap:8px;margin-top:14px;}
+  .day-col{min-height:40px;}
+  .day-head{display:flex;flex-direction:column;align-items:center;gap:3px;margin-bottom:8px;}
+  .day-head .dname{font-size:9.5px;font-weight:800;color:var(--text3);text-transform:uppercase;letter-spacing:.3px;}
+  .day-head .dnum{width:26px;height:26px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;color:var(--text);}
+  .day-head.today .dnum{background:var(--accent);color:#fff;}
+  .day-head.weekend .dname,.day-head.weekend .dnum{color:var(--border2);}
+  .person-chip{display:flex;align-items:center;gap:6px;background:var(--surface2);border-radius:999px;padding:5px 9px 5px 4px;margin-bottom:6px;cursor:pointer;transition:background .15s;}
+  .person-chip:hover{background:var(--surface3);}
+  .person-chip .dot{width:20px;height:20px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:9px;font-weight:800;color:#fff;flex-shrink:0;}
+  .person-chip.arr .dot{background:var(--arr);}
+  .person-chip.dep .dot{background:var(--dep);}
+  .person-chip .nm{font-size:10.5px;font-weight:700;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+  .day-empty{font-size:14px;color:var(--border2);text-align:center;padding-top:4px;}
+  .countdown-row{display:grid;grid-template-columns:1fr auto;gap:12px;align-items:center;padding-top:14px;margin-top:14px;border-top:1px solid var(--border);}
+  .countdown-txt .t1{font-size:12.5px;font-weight:700;}
+  .countdown-txt .t2{font-size:11px;color:var(--text3);margin-top:1px;}
+  .acc-ring{position:relative;width:46px;height:46px;flex-shrink:0;}
+  .acc-ring svg{transform:rotate(-90deg);}
+  .acc-ring .center{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:800;color:var(--accent);}
+
+  .shortcuts-row{display:flex;gap:10px;flex-wrap:wrap;align-items:center;}
+  .shortcut{display:flex;align-items:center;gap:7px;background:var(--surface);border:1px solid var(--border);border-radius:999px;padding:8px 15px;font-size:12px;font-weight:700;color:var(--text2);cursor:pointer;}
+  .shortcut:hover{border-color:var(--accent);color:var(--accent);}
+  .shortcut .ico{font-size:14px;}
+
+  .activity-card{padding:18px 20px;}
+  .activity-top{display:flex;align-items:center;gap:8px;margin-bottom:14px;}
+  .activity-top h3{font-size:14px;font-weight:800;}
+  .tl{position:relative;padding-left:26px;}
+  .tl::before{content:"";position:absolute;left:9px;top:4px;bottom:4px;width:2px;background:var(--border);}
+  .tl-item{position:relative;padding-bottom:16px;}
+  .tl-item:last-child{padding-bottom:0;}
+  .tl-dot{position:absolute;left:-26px;top:1px;width:20px;height:20px;border-radius:50%;background:var(--surface);border:2.5px solid var(--cyan);display:flex;align-items:center;justify-content:center;font-size:9px;}
+  .tl-item.created .tl-dot{border-color:var(--arr);}
+  .tl-item.modified .tl-dot{border-color:var(--cyan);}
+  .tl-row{display:flex;align-items:baseline;gap:8px;flex-wrap:wrap;}
+  .tl-action{font-size:12.5px;font-weight:700;}
+  .tl-who{font-size:12px;color:var(--text2);font-weight:600;}
+  .tl-time{font-size:10.5px;color:var(--text3);margin-left:auto;}
+  .tl-foot{margin-top:14px;padding-top:12px;border-top:1px solid var(--border);font-size:11px;color:var(--purple);font-weight:700;cursor:pointer;}
 </style>
 </head>
 <body>
@@ -167,8 +359,30 @@ const getNextFriday=()=>{const d=new Date();const day=d.getDay();d.setDate(d.get
 const TS=()=>new Date().toLocaleString("fr-FR",{day:"2-digit",month:"2-digit",year:"numeric",hour:"2-digit",minute:"2-digit"});
 
 // ── UI primitives ──
-const Card=({children,style,onClick})=>React.createElement("div",{onClick,className:"card",style:{cursor:onClick?"pointer":"default",...style}},children);
+const Card=({children,style,onClick,className})=>React.createElement("div",{onClick,className:"card"+(className?" "+className:""),style:{cursor:onClick?"pointer":"default",...style}},children);
 const KPI=({label,value,color,sub,onClick,icon,style:st})=>React.createElement("div",{onClick,className:"kpi-card"+(onClick?" clickable":""),style:{borderTop:"2px solid "+color,...st}},icon&&React.createElement("div",{style:{fontSize:20,marginBottom:4}},icon),React.createElement("div",{style:{fontSize:28,fontWeight:800,color,lineHeight:1}},value),React.createElement("div",{style:{fontSize:11,color:"var(--text2)",marginTop:4,fontWeight:600,textTransform:"uppercase",letterSpacing:".4px"}},label),sub&&React.createElement("div",{style:{fontSize:11,color:"var(--text3)",marginTop:2}},sub));
+// ── Carte "nouveautés" compacte (accueil) : reprend l'esprit de la maquette, avec le design existant ──
+const NewsCard=({icon,count,title,sub,when,color,onClick})=>React.createElement("div",{onClick,className:"card"+(onClick?" clickable":""),style:{cursor:onClick?"pointer":"default",padding:"14px 16px",borderTop:"3px solid "+color}},
+  React.createElement("div",{style:{display:"flex",alignItems:"center",gap:8,marginBottom:8}},
+    React.createElement("span",{style:{fontSize:18}},icon),
+    count!=null&&React.createElement("span",{style:{fontSize:20,fontWeight:800,color,marginLeft:"auto",lineHeight:1}},count)
+  ),
+  React.createElement("div",{style:{fontSize:12.5,fontWeight:700,color:"var(--text)"}},title),
+  sub&&React.createElement("div",{style:{fontSize:11,color:"var(--text3)",marginTop:2}},sub),
+  when&&React.createElement("div",{style:{fontSize:10,color:"var(--text3)",marginTop:6,fontWeight:600}},when)
+);
+// ── Mini-modale centrée (Portal + classes .modal-overlay/.modal déjà existantes) ──
+const AccueilModal=({title,icon,onClose,children,maxWidth})=>React.createElement(Portal,null,
+  React.createElement("div",{className:"modal-overlay",onClick:e=>{if(e.target===e.currentTarget)onClose();}},
+    React.createElement("div",{className:"modal",style:{maxWidth:maxWidth||560}},
+      React.createElement("div",{style:{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:14}},
+        React.createElement("h3",{style:{fontWeight:800,fontSize:16,color:"var(--text)",margin:0,display:"flex",alignItems:"center",gap:8}},icon&&React.createElement("span",null,icon),title),
+        React.createElement("button",{onClick:onClose,style:{background:"none",border:"none",fontSize:22,cursor:"pointer",color:"var(--text3)",lineHeight:1}},"×")
+      ),
+      children
+    )
+  )
+);
 const Btn=({children,onClick,color,variant,style,disabled,title})=>{
   let cls="btn";
   if(variant==="outline")cls+=" btn-outline";
@@ -265,6 +479,7 @@ function parseWDFileAsync(file,type,wdCache,setWdCache,showToast,setLoading){
         return next;});
       // Mettre à jour les badges existants sans matricule et les marquer comme "nouveaux"
       if(typeof window._onWdImport==="function")window._onWdImport(parsed);
+      if(typeof window._onWdImportMeta==="function")window._onWdImportMeta({count:parsed.length,type,fileName:file.name,date:new Date().toISOString()});
       setLoading(false);
       showToast("✅ "+parsed.length+" collaborateurs chargés ("+(type==="hr"?"HR Data":"Future Hires")+")");
     }catch(err){alert("Erreur : "+err.message);setLoading(false);}
@@ -351,23 +566,36 @@ function parseMSListsCSV(text){
 function buildBody(template, data){
   return (template||"").replace(/\{(\w+)\}/g, (_,k)=>data[k]||"NC");
 }
-function VueAccueil({badges,casiers,setView,wdCache,setBadges,setCasiers,showToast,addLog,settings,fssData,setFssData,isIT}){
+function VueAccueil({badges,casiers,setView,wdCache,setBadges,setCasiers,showToast,addLog,settings,fssData,setFssData,isIT,histo,openHistorique,openDonnees,pendingOpen,setPendingOpen}){
+  // ── Ouvre directement la fiche d'un collaborateur depuis l'accueil (au lieu de juste changer d'onglet) ──
+  const openCollab=b=>{
+    if(isIT)return;
+    if(setPendingOpen)setPendingOpen({view:"collaborateurs",id:b.id});
+    setView("collaborateurs");
+  };
+  const goCollab=()=>{if(isIT)return;setView("collaborateurs");};
   const actifs=badges.filter(b=>b.statut==="Actif");
   const aRecuperer=badges.filter(b=>b.statut==="À récupérer");
   const archives=badges.filter(b=>b.statut==="Archivé");
-  const libres=casiers.filter(c=>c.statut==="Libre");
   const today=todayISO();
   const aVenir7j=new Date();aVenir7j.setDate(aVenir7j.getDate()+7);const aVenir7jISO=aVenir7j.toISOString().slice(0,10);
-  const expirantBientot=actifs.filter(b=>b.date_sortie_prevue&&b.date_sortie_prevue>=today&&b.date_sortie_prevue<=aVenir7jISO);
+  // ── Cette semaine (KPI, 7 jours glissants), séparé Arrivées / Départs ──
+  const arrSemaine=useMemo(()=>badges.filter(b=>b.statut!=="Archivé"&&b.date_entree&&b.date_entree>=today&&b.date_entree<=aVenir7jISO).sort((a,b)=>a.date_entree.localeCompare(b.date_entree)),[badges,today,aVenir7jISO]);
+  const depSemaine=useMemo(()=>badges.filter(b=>b.statut!=="Archivé"&&b.date_sortie_prevue&&b.date_sortie_prevue>=today&&b.date_sortie_prevue<=aVenir7jISO).sort((a,b)=>a.date_sortie_prevue.localeCompare(b.date_sortie_prevue)),[badges,today,aVenir7jISO]);
+  // ── Badges à récupérer en retard (depuis plus de 2 jours) : déclenche la banderole "bravo" / la tâche urgente ──
+  const overdueRecup=useMemo(()=>aRecuperer.filter(b=>b.date_sortie_prevue&&b.date_sortie_prevue<=(()=>{const d=new Date();d.setDate(d.getDate()-2);return d.toISOString().slice(0,10);})()),[aRecuperer]);
+  // ── Futurs collaborateurs sans badge (pas encore donné) ──
+  const futursSansBadge=useMemo(()=>badges.filter(b=>b.statut!=="Archivé"&&b.statut!=="À récupérer"&&!b.serie&&!b.badge_donne&&(b.statut==="Futur arrivant"||(b.date_entree&&b.date_entree>=today))).sort((a,b)=>(a.date_entree||"").localeCompare(b.date_entree||"")),[badges,today]);
+  // ── Suivi Workday : juste un repère discret en bas de page ──
+  const wdImportMeta=settings&&settings.wdImportMeta;
+  const wdAutoUpdateMeta=settings&&settings.wdAutoUpdateMeta;
+  const fmtDT=iso=>{if(!iso)return"—";const d=new Date(iso);return isNaN(d.getTime())?"—":d.toLocaleString("fr-FR",{day:"2-digit",month:"2-digit",year:"numeric",hour:"2-digit",minute:"2-digit"});};
   const actifsSansArch=badges.filter(b=>b.statut!=="Archivé");
   const sansMatAvecBadge=actifsSansArch.filter(b=>(!b.matricule||String(b.matricule)==="0")&&b.serie);
   const sansMatSansBadge=actifsSansArch.filter(b=>(!b.matricule||String(b.matricule)==="0")&&!b.serie);
   const avecMatSansBadge=actifsSansArch.filter(b=>b.matricule&&String(b.matricule)!=="0"&&!b.serie);
-  // FSS KPIs
-  const fssTotal=(fssData||[]).length;
+  const aCompleterCount=sansMatAvecBadge.length+sansMatSansBadge.length+avecMatSansBadge.length;
   const fssATraiter=(fssData||[]).filter(f=>f.statut==="A traiter").length;
-  const fssEnCours=(fssData||[]).filter(f=>f.statut==="En cours").length;
-  const fssCloture=(fssData||[]).filter(f=>f.cloture||f.statut==="Terminée").length;
   const addFssEntry=(entry)=>{
     if(!setFssData){console.warn("setFssData non disponible");return;}
     const row={nom:entry.nom||"",prenom:entry.prenom||"",situation:entry.situation||"",statut:entry.statut||"A traiter",lieu:entry.lieu||"",dateEvt:entry.dateEvt||"",manager:entry.manager||"",matPC:"",ritm:"",matRecu:"",idMat:"",dateRecep:"",matDonne:"",commentaires:"",cloture:false,is_new:true};
@@ -393,6 +621,10 @@ function VueAccueil({badges,casiers,setView,wdCache,setBadges,setCasiers,showToa
   };
   const[nomDep,setNomDep]=useState("");const[prenomDep,setPrenomDep]=useState("");const[dateDep,setDateDep]=useState("");const[lieuDep,setLieuDep]=useState("Levallois-Perret");
   const[nomArr,setNomArr]=useState("");const[prenomArr,setPrenomArr]=useState("");const[dateArr,setDateArr]=useState("");const[lieuArr,setLieuArr]=useState("Levallois-Perret");const[foundArr,setFoundArr]=useState(null);const[foundDep,setFoundDep]=useState(null);const[managerArr,setManagerArr]=useState("");
+  // ── Checklist de restitution au départ : confort visuel uniquement, non persisté en base ──
+  const[departChecks,setDepartChecks]=useState({});
+  const DEPART_STEPS=[{id:"badge",label:"Badge restitué"},{id:"acces",label:"Accès désactivés"},{id:"materiel",label:"Matériel récupéré"}];
+  const toggleDC=id=>setDepartChecks(p=>({...p,[id]:!p[id]}));
   const enrDep=()=>{
     if(!nomDep.trim()&&!prenomDep.trim()){showToast("⚠️ Saisissez nom ou prénom","err");return;}
     const c=badges.find(b=>(b.nom.toLowerCase().includes(nomDep.toLowerCase())||!nomDep)&&(b.prenom.toLowerCase().includes(prenomDep.toLowerCase())||!prenomDep)&&b.statut!=="Archivé");
@@ -404,156 +636,555 @@ function VueAccueil({badges,casiers,setView,wdCache,setBadges,setCasiers,showToa
     addFssEntry({nom:c.nom,prenom:c.prenom,situation:"Départ",statut:"A traiter",lieu:lieuDep||"",dateEvt:dateDep||today,manager:c.manager||"",matPC:"",ritm:"",matRecu:"",idMat:"",dateRecep:"",matDonne:"",commentaires:"",cloture:false});
     showToast("✅ Départ enregistré pour "+c.prenom+" "+c.nom+" + fiche Field Support créée");
     if(c.casier&&c.casier.trim())setTimeout(()=>showToast("⚠️ Penser à vider le casier "+c.casier.trim()+" de "+c.prenom+" "+c.nom,"err"),3600);
-    setNomDep("");setPrenomDep("");setDateDep("");setLieuDep("Levallois-Perret");setFoundDep(null);
+    setNomDep("");setPrenomDep("");setDateDep("");setLieuDep("Levallois-Perret");setFoundDep(null);setDepartChecks({});
   };
+  // ── Recherche Workday en direct pour l'arrivée (nouveau) ──
+  const[wdQuery,setWdQuery]=useState("");
+  const wdResults=useMemo(()=>{
+    const q=norm(wdQuery);
+    if(!q||!wdCache)return[];
+    const dejaMat=new Set(badges.filter(b=>b.statut!=="Archivé"&&b.matricule).map(b=>String(b.matricule)));
+    return Object.values(wdCache).filter(w=>!dejaMat.has(String(w.matricule))&&norm((w.prenom||"")+" "+(w.nom||"")).includes(q)).slice(0,6);
+  },[wdCache,wdQuery,badges]);
+  const wdPick=w=>{
+    setFoundArr(w);setWdQuery("");
+    setNomArr(w.nom||"");setPrenomArr(w.prenom||"");
+    setManagerArr(w.manager||"");setDateArr(w.hireDate||"");
+  };
+  const wdClear=()=>{setFoundArr(null);setNomArr("");setPrenomArr("");setManagerArr("");setDateArr("");setWdQuery("");};
   const enrArr=()=>{
     if(!nomArr.trim()&&!prenomArr.trim()){showToast("⚠️ Saisissez nom ou prénom","err");return;}
     const wd=wdCache?Object.values(wdCache).find(w=>(w.nom.includes(nomArr.toUpperCase())||!nomArr)&&(w.prenom.toLowerCase().includes(prenomArr.toLowerCase())||!prenomArr)):null;
     const ex=badges.find(b=>(b.nom.toLowerCase().includes(nomArr.toLowerCase())||!nomArr)&&(b.prenom.toLowerCase().includes(prenomArr.toLowerCase())||!prenomArr)&&b.statut!=="Archivé");
     if(ex){showToast("⚠️ Ce collaborateur existe déjà","err");return;}
-    const nb={id:nxId(badges),nom:wd?wd.nom:nomArr.toUpperCase(),prenom:wd?wd.prenom:prenomArr,matricule:wd?wd.matricule:"",email:wd?wd.email:"",serie:"",zeplug:"",carte_rechargement:"",casier:"",manager:managerArr||wd?.manager||"",mail_manager:wd?wd.mailMgr:"",statut:"Actif",badge_donne:true,date_entree:dateArr||wd?.hireDate||"",date_sortie_prevue:"",date_archive:"",commentaire:"",date_ajout:todayISO(),etiquette_imprimee:false,from_accueil:true};
+    const nb={id:nxId(badges),nom:wd?wd.nom:nomArr.toUpperCase(),prenom:wd?wd.prenom:prenomArr,matricule:wd?wd.matricule:"",email:wd?wd.email:"",serie:"",zeplug:"",carte_rechargement:"",casier:"",manager:managerArr||wd?.manager||"",mail_manager:wd?.mailMgr||"",statut:"Actif",badge_donne:true,date_entree:dateArr||wd?.hireDate||"",date_sortie_prevue:"",date_archive:"",commentaire:"",date_ajout:todayISO(),etiquette_imprimee:false,from_accueil:true};
     setBadges(p=>[...p,nb]);
     if(sb){const{id,...row}=nb;sb.from("lp24_badges").insert(row);}
     addLog("Arrivée",(wd?"Workday":"Manuel")+" : "+nb.prenom+" "+nb.nom);
     addFssEntry({nom:nb.nom,prenom:nb.prenom,situation:"Arrivée",statut:"A traiter",lieu:lieuArr||"",dateEvt:dateArr||today,manager:nb.manager||"",matPC:"",ritm:"",matRecu:"",idMat:"",dateRecep:"",matDonne:"",commentaires:"",cloture:false});
     showToast("✅ "+(wd?"Arrivée Workday":"Arrivée enregistrée")+" — "+nb.prenom+" "+nb.nom+" + fiche Field Support créée");
-    setNomArr("");setPrenomArr("");setDateArr("");setManagerArr("");setLieuArr("Levallois-Perret");setFoundArr(null);
+    setNomArr("");setPrenomArr("");setDateArr("");setManagerArr("");setLieuArr("Levallois-Perret");setFoundArr(null);setWdQuery("");
   };
 
-  const mailIT=(b,type)=>{
-    const itEmail=settings&&settings.itEmail?settings.itEmail:"";
-    if(!itEmail){showToast("⚠️ Email IT non configuré dans les paramètres","err");return;}
-    const subj=type==="arrivee"?encodeURIComponent("Arrivée collaborateur — "+b.prenom+" "+b.nom):encodeURIComponent("Départ collaborateur — "+b.prenom+" "+b.nom);
-    const body=type==="arrivee"?encodeURIComponent("Bonjour,\n\nNous vous informons de l'arrivée d'un nouveau collaborateur :\n\nNom : "+b.nom+"\nPrénom : "+b.prenom+"\nMatricule : "+(b.matricule||"NC")+"\nEmail : "+(b.email||"NC")+"\nDate d'entrée : "+(b.date_entree||"NC")+"\nManager : "+(b.manager||"NC")+" ("+(b.mail_manager||"NC")+")\n\nMerci de créer les accès nécessaires.\n\nCordialement"):encodeURIComponent("Bonjour,\n\nNous vous informons du départ du collaborateur suivant :\n\nNom : "+b.nom+"\nPrénom : "+b.prenom+"\nMatricule : "+(b.matricule||"NC")+"\nN° badge : "+(b.serie||"NC")+"\nDate de sortie : "+(b.date_sortie_prevue||"NC")+"\n\nMerci de supprimer les accès.\n\nCordialement");
-    window.open("mailto:"+encodeURIComponent(itEmail)+"?subject="+subj+"&body="+body);
+  // ── Données pour le style "nouveautés / KPI" (mix maquette + design existant) ──
+  const serieCount=useMemo(()=>{const m={};badges.filter(b=>b.serie&&b.statut!=="Archivé").forEach(b=>{m[b.serie]=(m[b.serie]||0)+1;});return m;},[badges]);
+  const doublonsBadges=useMemo(()=>badges.filter(b=>b.serie&&b.statut!=="Archivé"&&serieCount[b.serie]>1),[badges,serieCount]);
+  const todayFR=new Date().toLocaleDateString("fr-FR");
+  const histoToday=useMemo(()=>(histo||[]).filter(h=>h.ts&&h.ts.startsWith(todayFR)),[histo,todayFR]);
+  // ── Activité récente limitée au Field Support (tickets créés/modifiés par les mouvements et le module FS) ──
+  const histoFS=useMemo(()=>(histo||[]).filter(h=>h.action&&/FSS|Field Support|Départ|Arrivée/i.test(h.action)),[histo]);
+  const[modal,setModal]=useState(null); // "saisies" | "workday" | "completer" | "recup" | "sansBadge" | "doublons" | "actifs" | "arrSemaine" | "depSemaine" | "fss" | null
+  const closeModal=()=>setModal(null);
+  // ── Ligne compacte pour une fiche dans une modale (clic → ouvre direct la fiche, comme partout ailleurs) ──
+  const ModalRow=({b,right,tag})=>React.createElement("div",{key:"mr"+b.id,onClick:()=>{closeModal();openCollab(b);},title:isIT?undefined:"Ouvrir la fiche de "+b.prenom+" "+b.nom,style:{display:"flex",alignItems:"center",gap:8,padding:"8px 4px",borderBottom:"1px solid var(--border)",cursor:isIT?"default":"pointer"}},
+    React.createElement("span",{style:{flex:1,fontSize:13,fontWeight:600,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}},b.prenom+" "+b.nom),
+    tag&&React.createElement("span",{style:{fontSize:9,fontWeight:700,color:C.purple,background:C.purpleBg,borderRadius:999,padding:"1px 6px"}},tag),
+    right&&React.createElement("span",{style:{fontSize:11,color:"var(--text3)",whiteSpace:"nowrap"}},right)
+  );
+
+  // ══════════════ Horloge / salutation (ajout n°1) ══════════════
+  const[now,setNow]=useState(()=>new Date());
+  useEffect(()=>{const t=setInterval(()=>setNow(new Date()),30000);return()=>clearInterval(t);},[]);
+  const greeting=now.getHours()<12?"Bonjour":now.getHours()<18?"Bon après-midi":"Bonsoir";
+  const clockStr=now.toLocaleTimeString("fr-FR",{hour:"2-digit",minute:"2-digit"});
+  const dateLongStr=now.toLocaleDateString("fr-FR",{weekday:"long",day:"numeric",month:"long"});
+
+  // ══════════════ Thème clair/sombre (ajout) ══════════════
+  const[dark,setDark]=useState(()=>{try{return document.body.classList.contains("dark");}catch(e){return false;}});
+  const toggleTheme=()=>{try{document.body.classList.toggle("dark");setDark(document.body.classList.contains("dark"));}catch(e){}};
+
+  // ══════════════ Recherche d'en-tête : collaborateur ou n° de badge (ajout) ══════════════
+  const[searchMode,setSearchMode]=useState("collab"); // "collab" | "badge"
+  const[searchQuery,setSearchQuery]=useState("");
+  const searchResults=useMemo(()=>{
+    const q=norm(searchQuery);
+    if(!q)return[];
+    const pool=badges.filter(b=>b.statut!=="Archivé");
+    if(searchMode==="badge")return pool.filter(b=>b.serie&&norm(b.serie).includes(q)).slice(0,6);
+    return pool.filter(b=>norm(b.nom+" "+b.prenom).includes(q)).slice(0,6);
+  },[badges,searchQuery,searchMode]);
+
+  // ══════════════ Anniversaire d'arrivée (ajout) ══════════════
+  const anniversaire=useMemo(()=>{
+    const d=new Date();
+    return badges.filter(b=>{
+      if(b.statut==="Archivé"||!b.date_entree)return false;
+      const e=new Date(b.date_entree+"T00:00:00");
+      if(isNaN(e.getTime())||e.getFullYear()>=d.getFullYear())return false;
+      return e.getMonth()===d.getMonth()&&e.getDate()===d.getDate();
+    });
+  },[badges]);
+
+  // ══════════════ Astuce du jour, change chaque jour (ajout) ══════════════
+  const TIPS=["Un badge « À récupérer » depuis plus de 2 jours apparaît automatiquement dans les tâches du jour.","La recherche de l'accueil fonctionne aussi par numéro de badge (onglet « Badge »).","Le rapport hebdomadaire se prépare chaque vendredi — pensez à vérifier les mouvements en cours.","Les fiches Field Support se créent automatiquement à chaque arrivée ou départ enregistré ici.","Pensez à vérifier régulièrement les doublons de badge depuis l'onglet Collaborateurs."];
+  const tipIdx=useMemo(()=>{const d=new Date();const doy=Math.floor((d-new Date(d.getFullYear(),0,0))/864e5);return((doy%TIPS.length)+TIPS.length)%TIPS.length;},[]);
+
+  // ══════════════ Répartition par zone (proxy : zone du casier assigné) (ajout) ══════════════
+  const zonesStats=useMemo(()=>{
+    const m={};
+    badges.filter(b=>b.statut!=="Archivé"&&b.casier).forEach(b=>{
+      const z=b.casier.substring(0,2);
+      if(ZONES.includes(z))m[z]=(m[z]||0)+1;
+    });
+    return m;
+  },[badges]);
+  const zonesTotal=Object.values(zonesStats).reduce((a,c)=>a+c,0);
+  const DONUT_CIRC=2*Math.PI*30;
+  const donutSegs=useMemo(()=>{
+    let acc=0;
+    return ZONES.filter(z=>zonesStats[z]>0).map(z=>{
+      const len=(zonesStats[z]/Math.max(1,zonesTotal))*DONUT_CIRC;
+      const seg={zone:z,color:ZONES_COLORS[z],len,offset:acc};
+      acc+=len;
+      return seg;
+    });
+  },[zonesStats,zonesTotal]);
+
+  // ══════════════ Tendance effectifs sur 7 jours (approximation via date_ajout/date_archive) (ajout) ══════════════
+  const trend=useMemo(()=>{
+    const pts=[];
+    for(let i=6;i>=0;i--){
+      const d=new Date();d.setDate(d.getDate()-i);
+      const iso=d.toISOString().slice(0,10);
+      pts.push(badges.filter(b=>b.date_ajout&&b.date_ajout<=iso&&(!b.date_archive||b.date_archive>iso)).length);
+    }
+    return pts;
+  },[badges]);
+  const trendDelta=trend.length?trend[trend.length-1]-trend[0]:0;
+  const sparkPts=useMemo(()=>{
+    const mn=Math.min(...trend),mx=Math.max(...trend),rg=Math.max(1,mx-mn);
+    return trend.map((v,i)=>{
+      const x=4+i*((120-8)/6);
+      const y=32-((v-mn)/rg)*28;
+      return x.toFixed(1)+","+y.toFixed(1);
+    }).join(" ");
+  },[trend]);
+
+  // ══════════════ Suivi SLA Field Support — âge des tickets ouverts (ajout, honnête sur ce que ça mesure) ══════════════
+  const ageDays=iso=>{if(!iso)return 0;const d=new Date(iso+"T00:00:00");if(isNaN(d.getTime()))return 0;return Math.max(0,Math.round((Date.now()-d.getTime())/864e5));};
+  const fssOpen=useMemo(()=>(fssData||[]).filter(f=>f.statut==="A traiter"||f.statut==="En cours"),[fssData]);
+  const slaAvg=fssOpen.length?Math.round(fssOpen.reduce((a,f)=>a+ageDays(f.dateEvt),0)/fssOpen.length):0;
+  const slaOldest=useMemo(()=>fssOpen.reduce((m,f)=>{const a=ageDays(f.dateEvt);return a>m.age?{age:a,f}:m;},{age:-1,f:null}),[fssOpen]);
+  const slaLate=fssOpen.filter(f=>ageDays(f.dateEvt)>3).length;
+
+  // ══════════════ Calendrier de la semaine (Lun→Dim, dates réelles) (ajout) ══════════════
+  const weekDays=useMemo(()=>{
+    const d=new Date();
+    const dow=d.getDay();
+    const mon=new Date(d);mon.setDate(d.getDate()+(dow===0?-6:1-dow));
+    const names=["Lun","Mar","Mer","Jeu","Ven","Sam","Dim"];
+    const days=[];
+    for(let i=0;i<7;i++){
+      const dd=new Date(mon);dd.setDate(mon.getDate()+i);
+      const iso=dd.toISOString().slice(0,10);
+      days.push({
+        iso,dname:names[i],dnum:dd.getDate(),isToday:iso===today,isWeekend:i>=5,
+        arrivals:badges.filter(b=>b.statut!=="Archivé"&&b.date_entree===iso),
+        departures:badges.filter(b=>b.statut!=="Archivé"&&b.date_sortie_prevue===iso)
+      });
+    }
+    return days;
+  },[badges,today]);
+  const weekNumber=useMemo(()=>{
+    const d=new Date();
+    const dt=new Date(Date.UTC(d.getFullYear(),d.getMonth(),d.getDate()));
+    const dayNum=dt.getUTCDay()||7;
+    dt.setUTCDate(dt.getUTCDate()+4-dayNum);
+    const yearStart=new Date(Date.UTC(dt.getUTCFullYear(),0,1));
+    return Math.ceil((((dt-yearStart)/864e5)+1)/7);
+  },[]);
+  const weekTotal=weekDays.reduce((a,d)=>a+d.arrivals.length+d.departures.length,0);
+
+  // ══════════════ Anneau de compte à rebours jusqu'au rapport (prochain vendredi) (ajout) ══════════════
+  const daysToFriday=useMemo(()=>{const day=new Date().getDay();return day<=5?5-day:6;},[]);
+  const ringFrac=Math.max(0,Math.min(1,(5-daysToFriday)/5));
+  const RING_CIRC=2*Math.PI*18;
+
+  // ══════════════ Tâches du jour (checklist, confort visuel non persisté) (ajout) ══════════════
+  const[todoDone,setTodoDone]=useState({});
+  const toggleTodo=id=>setTodoDone(p=>({...p,[id]:!p[id]}));
+  const todos=useMemo(()=>{
+    const items=[];
+    if(overdueRecup.length>0)items.push({id:"recup",tag:"urgent",color:C.red,bg:C.redBg,txt:overdueRecup.length+" badge(s) à récupérer, en retard de plus de 2 jours",action:()=>setModal("recup")});
+    if(aCompleterCount>0)items.push({id:"completer",tag:"à faire",color:"#CA8A04",bg:C.yellowBg,txt:aCompleterCount+" fiche(s) à compléter (matricule ou badge manquant)",action:()=>setModal("completer")});
+    if(fssATraiter>0)items.push({id:"fss",tag:"à faire",color:C.cyan,bg:C.cyanBg,txt:fssATraiter+" ticket(s) Field Support à traiter",action:()=>setView("field_support")});
+    if(doublonsBadges.length>0)items.push({id:"doublons",tag:"à vérifier",color:C.orange,bg:C.orangeBg,txt:doublonsBadges.length+" doublon(s) de badge à vérifier",action:()=>setModal("doublons")});
+    return items;
+  },[overdueRecup,aCompleterCount,fssATraiter,doublonsBadges]);
+  const todosDoneCount=todos.filter(t=>todoDone[t.id]).length;
+
+  // ══════════════ Export rapide des mouvements du jour (ajout) ══════════════
+  const exportMouvementsJour=()=>{
+    const arrToday=badges.filter(b=>b.date_entree===today&&b.statut!=="Archivé");
+    const depToday=badges.filter(b=>b.date_sortie_prevue===today&&b.statut!=="Archivé");
+    if(!arrToday.length&&!depToday.length){showToast("Aucun mouvement aujourd'hui");return;}
+    const rows=[
+      ...arrToday.map(b=>({Type:"Arrivée",Nom:b.nom,Prenom:b.prenom,Matricule:b.matricule||"",Date:fmt(b.date_entree),Manager:b.manager||""})),
+      ...depToday.map(b=>({Type:"Départ",Nom:b.nom,Prenom:b.prenom,Matricule:b.matricule||"",Date:fmt(b.date_sortie_prevue),Manager:b.manager||""}))
+    ];
+    const wb=XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb,XLSX.utils.json_to_sheet(rows),"Mouvements");
+    XLSX.writeFile(wb,"Mouvements_du_jour_"+todayISO()+".xlsx");
+    addLog("Export","Mouvements du jour ("+rows.length+")");
+    showToast("✅ Export réalisé — "+rows.length+" mouvement(s)");
   };
+
+  const initials=b=>((b.prenom||"?").charAt(0)+(b.nom||"?").charAt(0)).toUpperCase();
+
   return React.createElement("div",null,
 
-    badges.filter(b=>b.statut==="À récupérer"&&b.date_sortie_prevue&&b.date_sortie_prevue<=(()=>{const d=new Date();d.setDate(d.getDate()-2);return d.toISOString().slice(0,10);})()).length>0&&React.createElement("div",{className:"notif-bar no-print",style:{background:"#FEF3C7",border:"2px solid #F59E0B",borderRadius:10,padding:"10px 16px",marginBottom:16,display:"flex",alignItems:"center",gap:10}},
-      React.createElement("span",{style:{fontSize:20}},"🔔"),
-      React.createElement("div",{style:{flex:1}},
-        React.createElement("div",{style:{fontWeight:700,color:"#92400E",fontSize:14}},badges.filter(b=>b.statut==="À récupérer"&&b.date_sortie_prevue&&b.date_sortie_prevue<=(()=>{const d=new Date();d.setDate(d.getDate()-2);return d.toISOString().slice(0,10);})()).length+" badge(s) non récupéré(s) depuis 2+ jours"),
-        React.createElement("div",{style:{fontSize:12,color:"#78350F"}},badges.filter(b=>b.statut==="À récupérer"&&b.date_sortie_prevue&&b.date_sortie_prevue<=(()=>{const d=new Date();d.setDate(d.getDate()-2);return d.toISOString().slice(0,10);})()).map(b=>b.prenom+" "+b.nom).join(" · "))
-      ),
-      React.createElement(Btn,{onClick:()=>setView("collaborateurs"),color:"#92400E",style:{fontSize:12}},"Voir →")
-    ),    expirantBientot.length>0&&React.createElement("div",{className:"notif-bar no-print",style:{background:"#FEF3C7",border:"2px solid #F59E0B",borderRadius:10,padding:"10px 16px",marginBottom:16,display:"flex",alignItems:"center",gap:10}},
-      React.createElement("span",{style:{fontSize:20}},"⏰"),
-      React.createElement("div",{style:{flex:1}},
-        React.createElement("div",{style:{fontWeight:700,color:"#92400E",fontSize:14}},expirantBientot.length+" badge(s) expire(nt) dans les 7 prochains jours"),
-        React.createElement("div",{style:{fontSize:12,color:"#78350F"}},expirantBientot.map(b=>b.prenom+" "+b.nom+" ("+fmt(b.date_sortie_prevue)+")").join(" · "))
-      ),
-      React.createElement(Btn,{onClick:()=>setView("collaborateurs"),color:"#92400E",style:{fontSize:12}},"Voir →")
-    ),
-    React.createElement("div",{style:{display:"flex",alignItems:"center",gap:12,marginBottom:20,padding:"14px 20px",background:"linear-gradient(135deg,#0F172A,#1B3A6B)",borderRadius:12}},
-      React.createElement("div",null,
-        React.createElement("h1",{style:{color:"#fff",fontSize:20,fontWeight:700,marginBottom:2}},"Gestion des Collaborateurs"),
-        React.createElement("p",{style:{color:"rgba(255,255,255,.65)",fontSize:12}},"Badges & Casiers — Prochain rapport : "+getNextFriday()),React.createElement("button",{onClick:()=>{
-      const it=settings&&settings.itEmail?settings.itEmail:"";
-      if(!it){showToast("⚠️ Email IT non configuré","err");return;}
-      const dem=new Date();dem.setDate(dem.getDate()+1);const dISO=dem.toISOString().slice(0,10);
-      const sorties=badges.filter(b=>b.date_sortie_prevue===dISO&&b.statut!=="Archivé");
-      const entrees=badges.filter(b=>b.date_entree===dISO&&b.statut!=="Archivé");
-      if(!sorties.length&&!entrees.length){showToast("Aucun événement demain");return;}
-      const lines=[];
-      if(entrees.length){lines.push("ARRIVÉES DEMAIN :");entrees.forEach(b=>lines.push("• "+b.prenom+" "+b.nom+" ("+b.matricule+")"));}
-      if(sorties.length){lines.push("\nDÉPARTS DEMAIN :");sorties.forEach(b=>lines.push("• "+b.prenom+" "+b.nom+" — Badge:"+(b.serie||"NC")));}
-      window.open("mailto:"+encodeURIComponent(it)+"?subject="+encodeURIComponent("Rappel J-1 — "+new Date(dISO+"T00:00:00").toLocaleDateString("fr-FR"))+"&body="+encodeURIComponent("Bonjour,\n\n"+lines.join("\n")+"\n\nCordialement"));
-      showToast("✅ Mail rappel ouvert");
-    },style:{background:"rgba(255,255,255,.15)",border:"1px solid rgba(255,255,255,.3)",color:"#fff",borderRadius:8,padding:"6px 12px",cursor:"pointer",fontSize:12,fontWeight:600}},"📬 Rappels J-1")
-      )
-    ),
-    React.createElement("div",{style:{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(120px,1fr))",gap:12,marginBottom:16}},
-      React.createElement(KPI,{label:"Actifs",value:actifs.length,color:C.green,onClick:isIT?undefined:()=>setView("collaborateurs")}),
-      React.createElement(KPI,{label:"À récupérer",value:aRecuperer.length,color:C.red,onClick:isIT?undefined:()=>setView("collaborateurs")}),
-      React.createElement(KPI,{label:"Casiers libres",value:libres.length,color:C.blue,sub:libres.length+"/"+casiers.length,onClick:isIT?undefined:()=>setView("casiers")}),
-      React.createElement(KPI,{label:"Workday chargé",value:wdCache?Object.keys(wdCache).length:0,color:C.purple}),
-      React.createElement(KPI,{label:"📅 Départs",value:badges.filter(b=>b.date_sortie_prevue && b.date_sortie_prevue !== "" && b.statut!=="Archivé").length,color:C.orange,onClick:isIT?undefined:()=>setView("rapport")}),
-      React.createElement(KPI,{label:"⚠️ Doublons",value:Object.values(badges.filter(b=>b.statut!=="Archivé").reduce((acc,b)=>{if(b.serie)acc[b.serie]=(acc[b.serie]||0)+1;return acc;},{})).filter(c=>c>1).length,color:"#F59E0B",onClick:isIT?undefined:()=>setView("collaborateurs")}),
-    ),
-    // ── KPIs Field Support ──
-    React.createElement("div",{style:{marginBottom:16}},
-      React.createElement("div",{style:{fontSize:11,fontWeight:700,color:"var(--text3)",textTransform:"uppercase",letterSpacing:".5px",marginBottom:8}},"📋 Field Support"),
-      React.createElement("div",{style:{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(120px,1fr))",gap:12}},
-        React.createElement(KPI,{label:"Total fiches",value:fssTotal,color:C.cyan,onClick:()=>setView("field_support")}),
-        React.createElement(KPI,{label:"À traiter",value:fssATraiter,color:C.red,onClick:()=>setView("field_support")}),
-        React.createElement(KPI,{label:"En cours",value:fssEnCours,color:C.orange,onClick:()=>setView("field_support")}),
-        React.createElement(KPI,{label:"Clôturées",value:fssCloture,color:C.green,onClick:()=>setView("field_support")})
-      )
-    ),
-    (sansMatAvecBadge.length>0||sansMatSansBadge.length>0||avecMatSansBadge.length>0)&&React.createElement("div",{style:{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(130px,1fr))",gap:10,marginBottom:16}},
-      sansMatAvecBadge.length>0&&React.createElement(KPI,{label:"Badge sans matricule",value:sansMatAvecBadge.length,color:"#E74C3C",icon:"🔴",sub:"Ont un badge",onClick:()=>setView("collaborateurs"),style:{background:"#FEF2F2"}}),
-      sansMatSansBadge.length>0&&React.createElement(KPI,{label:"Ni matricule ni badge",value:sansMatSansBadge.length,color:"#F97316",icon:"⚠️",sub:"À compléter",onClick:()=>setView("collaborateurs"),style:{background:"#FFF7ED"}}),
-      avecMatSansBadge.length>0&&React.createElement(KPI,{label:"Matricule sans badge",value:avecMatSansBadge.length,color:"#EAB308",icon:"🟡",sub:"Badge non attribué",onClick:()=>setView("collaborateurs"),style:{background:"#FEFCE8"}})
-    ),
-    React.createElement("div",{style:{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12,marginBottom:20}},
-      // ── Bloc Départ ──
-      React.createElement("div",{style:{background:"var(--surface)",border:"1px solid var(--border)",borderRadius:"var(--radius-lg)",overflow:"hidden"}},
-        React.createElement("div",{style:{padding:"12px 16px",borderBottom:"1px solid var(--border)",display:"flex",alignItems:"center",gap:8}},
-          React.createElement("div",{style:{width:8,height:8,borderRadius:"50%",background:"var(--red)",flexShrink:0}}),
-          React.createElement("span",{style:{fontWeight:700,fontSize:13,color:"var(--text)"}},"Départ"),
-          React.createElement("span",{style:{fontSize:11,color:"var(--text3)",marginLeft:"auto"}},"Enregistre + crée fiche FS")
+    // ══════════════ HEADER — salutation, horloge, recherche (collaborateur/badge), thème ══════════════
+    React.createElement("div",{className:"hero",style:{marginBottom:12}},
+      React.createElement("div",{className:"hero-top"},
+        React.createElement("div",null,
+          React.createElement("h1",null,greeting+" 👋"),
+          React.createElement("p",{className:"greet"},dateLongStr+" · "+clockStr+" — Prochain rapport : "+getNextFriday()),
+          anniversaire.length>0&&React.createElement("p",{className:"anniv-line"},"🎂 Anniversaire d'arrivée : "+anniversaire.map(b=>b.prenom+" "+b.nom).join(", "))
         ),
-        React.createElement("div",{style:{padding:"14px 16px",display:"grid",gap:8}},
-          React.createElement("div",{style:{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8}},
-            React.createElement("div",null,React.createElement(Lbl,null,"Nom"),React.createElement(Inp,{value:nomDep,onChange:v=>{setNomDep(v);setFoundDep(null);},placeholder:"DUPONT"})),
-            React.createElement("div",null,React.createElement(Lbl,null,"Prénom"),React.createElement(Inp,{value:prenomDep,onChange:v=>{setPrenomDep(v);setFoundDep(null);},placeholder:"Jean"}))
-          ),
-          React.createElement("div",null,React.createElement(Lbl,null,"Date de sortie"),React.createElement(Inp,{type:"date",value:dateDep,onChange:setDateDep})),
-          React.createElement("div",null,React.createElement(Lbl,null,"Localisation"),React.createElement(Sel,{value:lieuDep,onChange:setLieuDep,options:[{v:"Levallois-Perret",l:"🟣 Levallois-Perret"},{v:"Hexagone",l:"🔵 Hexagone"}]})),
-          React.createElement("div",{style:{display:"flex",gap:6}},
-            React.createElement("button",{onClick:enrDep,className:"btn btn-danger",style:{flex:1,justifyContent:"center"}},"Enregistrer"),
-            React.createElement("button",{title:"Mail IT départ",onClick:()=>{const it=(settings&&settings.itEmail)||"";if(!it){showToast("⚠️ Email IT non configuré","err");return;}const b=badges.find(x=>(x.nom.toLowerCase().includes(nomDep.toLowerCase())||!nomDep)&&(x.prenom.toLowerCase().includes(prenomDep.toLowerCase())||!prenomDep)&&x.statut!=="Archivé");const data=b?{...b,date_sortie_prevue:dateDep||b.date_sortie_prevue||"NC"}:{nom:nomDep.toUpperCase(),prenom:prenomDep,matricule:"NC",serie:"NC",date_sortie_prevue:dateDep||"NC",manager:"NC",mail_manager:"NC"};const cc=encodeURIComponent((settings&&settings.ccEmails)||"");window.open("mailto:"+encodeURIComponent(it)+(cc?"?cc="+cc:"")+"?subject="+encodeURIComponent("Départ — "+data.prenom+" "+data.nom)+"&body="+encodeURIComponent(buildBody(settings.bodyDepartIT||"Départ de {prenom} {nom} — Date : {date_sortie_prevue}",data)));},className:"btn btn-outline",style:{padding:"7px 10px"}},"✉️ IT"),
-            React.createElement("button",{title:"Mail Restaurant départ",onClick:()=>{const to=encodeURIComponent((settings&&settings.restaurantEmail)||"");const b=badges.find(x=>(x.nom.toLowerCase().includes(nomDep.toLowerCase())||!nomDep)&&(x.prenom.toLowerCase().includes(prenomDep.toLowerCase())||!prenomDep)&&x.statut!=="Archivé");if(!b){showToast("⚠️ Collaborateur introuvable","err");return;}window.open("mailto:"+to+"?subject="+encodeURIComponent("Départ — "+b.prenom+" "+b.nom)+"&body="+encodeURIComponent(buildBody(settings.bodyDepartResto||"Départ de {prenom} {nom}",b)));},className:"btn btn-outline",style:{padding:"7px 10px"}},"🍽️")
-          )
+        React.createElement("div",{className:"hero-actions"},
+          React.createElement("button",{onClick:toggleTheme,title:"Changer de thème",style:{background:"rgba(255,255,255,.15)",border:"1px solid rgba(255,255,255,.3)",color:"#fff",borderRadius:8,padding:"6px 12px",cursor:"pointer",fontSize:12,fontWeight:600}},dark?"☀️ Clair":"🌙 Sombre"),
+          React.createElement("button",{onClick:()=>{
+            const it=settings&&settings.itEmail?settings.itEmail:"";
+            if(!it){showToast("⚠️ Email IT non configuré","err");return;}
+            const dem=new Date();dem.setDate(dem.getDate()+1);const dISO=dem.toISOString().slice(0,10);
+            const sorties=badges.filter(b=>b.date_sortie_prevue===dISO&&b.statut!=="Archivé");
+            const entrees=badges.filter(b=>b.date_entree===dISO&&b.statut!=="Archivé");
+            if(!sorties.length&&!entrees.length){showToast("Aucun événement demain");return;}
+            const lines=[];
+            if(entrees.length){lines.push("ARRIVÉES DEMAIN :");entrees.forEach(b=>lines.push("• "+b.prenom+" "+b.nom+" ("+b.matricule+")"));}
+            if(sorties.length){lines.push("\nDÉPARTS DEMAIN :");sorties.forEach(b=>lines.push("• "+b.prenom+" "+b.nom+" — Badge:"+(b.serie||"NC")));}
+            window.open("mailto:"+encodeURIComponent(it)+"?subject="+encodeURIComponent("Rappel J-1 — "+new Date(dISO+"T00:00:00").toLocaleDateString("fr-FR"))+"&body="+encodeURIComponent("Bonjour,\n\n"+lines.join("\n")+"\n\nCordialement"));
+            showToast("✅ Mail rappel ouvert");
+          },style:{background:"rgba(255,255,255,.15)",border:"1px solid rgba(255,255,255,.3)",color:"#fff",borderRadius:8,padding:"6px 12px",cursor:"pointer",fontSize:12,fontWeight:600}},"📬 Rappels J-1")
         )
       ),
-      // ── Bloc Arrivée ──
-      React.createElement("div",{style:{background:"var(--surface)",border:"1px solid var(--border)",borderRadius:"var(--radius-lg)",overflow:"hidden"}},
-        React.createElement("div",{style:{padding:"12px 16px",borderBottom:"1px solid var(--border)",display:"flex",alignItems:"center",gap:8}},
-          React.createElement("div",{style:{width:8,height:8,borderRadius:"50%",background:"var(--green)",flexShrink:0}}),
-          React.createElement("span",{style:{fontWeight:700,fontSize:13,color:"var(--text)"}},"Arrivée"),
-          React.createElement("span",{style:{fontSize:11,color:"var(--text3)",marginLeft:"auto"}},"Workday auto • crée fiche FS")
-        ),
-        React.createElement("div",{style:{padding:"14px 16px",display:"grid",gap:8}},
-          React.createElement("div",{style:{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8}},
-            React.createElement("div",null,React.createElement(Lbl,null,"Nom"),React.createElement(Inp,{value:nomArr,onChange:v=>{setNomArr(v);setFoundArr(null);},placeholder:"MARTIN"})),
-            React.createElement("div",null,React.createElement(Lbl,null,"Prénom"),React.createElement(Inp,{value:prenomArr,onChange:v=>{setPrenomArr(v);setFoundArr(null);},placeholder:"Sophie"}))
-          ),
-          React.createElement("div",{style:{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8}},
-            React.createElement("div",null,React.createElement(Lbl,null,"Date d'entrée"),React.createElement(Inp,{type:"date",value:dateArr,onChange:setDateArr})),
-            React.createElement("div",null,React.createElement(Lbl,null,"Manager"),React.createElement(Inp,{value:managerArr,onChange:setManagerArr,placeholder:"si absent Workday"}))
-          ),
-          React.createElement("div",null,React.createElement(Lbl,null,"Localisation"),React.createElement(Sel,{value:lieuArr,onChange:setLieuArr,options:[{v:"Levallois-Perret",l:"🟣 Levallois-Perret"},{v:"Hexagone",l:"🔵 Hexagone"}]})),
-          React.createElement("div",{style:{display:"flex",gap:6}},
-            React.createElement("button",{onClick:enrArr,className:"btn btn-success",style:{flex:1,justifyContent:"center"}},"Enregistrer"),
-            React.createElement("button",{title:"Mail IT arrivée",onClick:()=>{const it=(settings&&settings.itEmail)||"";if(!it){showToast("⚠️ Email IT non configuré","err");return;}const wd=wdCache?Object.values(wdCache).find(w=>(norm(w.nom).includes(norm(nomArr))||!nomArr)&&(norm(w.prenom).includes(norm(prenomArr))||!prenomArr)):null;const data={nom:wd?wd.nom:nomArr.toUpperCase()||"NC",prenom:wd?wd.prenom:prenomArr||"NC",matricule:wd?wd.matricule:"NC",email:wd?wd.email:"NC",date_entree:dateArr||wd?.hireDate||"NC",manager:managerArr||wd?.manager||"NC",mail_manager:wd?.mailMgr||"NC"};const cc=encodeURIComponent((settings&&settings.ccEmails)||"");window.open("mailto:"+encodeURIComponent(it)+(cc?"?cc="+cc:"")+"?subject="+encodeURIComponent("Arrivée — "+data.prenom+" "+data.nom)+"&body="+encodeURIComponent(buildBody(settings.bodyArriveeIT||"Arrivée de {prenom} {nom} — Date : {date_entree}",data)));},className:"btn btn-outline",style:{padding:"7px 10px"}},"✉️ IT"),
-            React.createElement("button",{title:"Mail Restaurant arrivée",onClick:()=>{const to=encodeURIComponent((settings&&settings.restaurantEmail)||"");const wd=wdCache?Object.values(wdCache).find(w=>(norm(w.nom).includes(norm(nomArr))||!nomArr)&&(norm(w.prenom).includes(norm(prenomArr))||!prenomArr)):null;const data={nom:wd?wd.nom:nomArr.toUpperCase()||"NC",prenom:wd?wd.prenom:prenomArr||"NC",matricule:wd?wd.matricule:"NC",email:wd?wd.email:"NC",date_entree:dateArr||wd?.hireDate||"NC",manager:managerArr||wd?.manager||"NC",mail_manager:wd?.mailMgr||"NC"};window.open("mailto:"+to+"?subject="+encodeURIComponent("Arrivée — "+data.prenom+" "+data.nom)+"&body="+encodeURIComponent(buildBody(settings.bodyArriveeResto||"Arrivée de {prenom} {nom}",data)));},className:"btn btn-outline",style:{padding:"7px 10px"}},"🍽️")
-          )
+      React.createElement("div",{className:"search-tabs"},
+        React.createElement("button",{className:"search-tab"+(searchMode==="collab"?" active":""),onClick:()=>{setSearchMode("collab");setSearchQuery("");}},"👤 Collaborateur"),
+        React.createElement("button",{className:"search-tab"+(searchMode==="badge"?" active":""),onClick:()=>{setSearchMode("badge");setSearchQuery("");}},"🪪 N° de badge")
+      ),
+      React.createElement("div",{className:"hero-search-wrap"},
+        React.createElement("span",{className:"ic"},"🔍"),
+        React.createElement("input",{value:searchQuery,onChange:e=>setSearchQuery(e.target.value),placeholder:searchMode==="badge"?"Rechercher par n° de badge…":"Rechercher un collaborateur…"}),
+        searchQuery&&React.createElement("div",{className:"hero-search-dd"},
+          searchResults.length===0
+            ?React.createElement("div",{style:{padding:"10px 12px",fontSize:12,color:"var(--text3)"}},"Aucun résultat")
+            :searchResults.map(b=>React.createElement("div",{key:"sr"+b.id,className:"r",onClick:()=>{setSearchQuery("");openCollab(b);}},
+                React.createElement("div",{className:"av"},initials(b)),
+                React.createElement("div",{className:"nm"},b.prenom+" "+b.nom),
+                React.createElement("div",{className:"st"},searchMode==="badge"?(b.serie||"—"):b.statut)
+              ))
         )
       )
     ),
-    aRecuperer.length>0&&React.createElement(Card,{style:{padding:0,overflow:"hidden",marginBottom:16}},
-      React.createElement("div",{style:{display:"flex",alignItems:"center",gap:12,padding:"12px 18px",background:C.red}},
-        React.createElement("span",{style:{fontSize:20}},"⚠️"),
-        React.createElement("div",null,React.createElement("div",{style:{fontWeight:700,color:"#fff",fontSize:14}},"Badges à récupérer — "+aRecuperer.length+" en attente"),React.createElement("div",{style:{color:"rgba(255,255,255,.8)",fontSize:12}},"Ces personnes ont quitté le site"))
+
+    // ══════════════ 1) NOUVEAUTÉS — ce qui a été saisi / importé / à compléter, en un coup d'œil ══════════════
+    React.createElement("div",{className:"news-grid",style:{marginBottom:10}},
+      React.createElement(NewsCard,{icon:"📝",count:histoToday.length,title:"Saisies aujourd'hui",sub:histoToday.length?"actions enregistrées":"Aucune saisie pour l'instant",color:C.blue,onClick:()=>setModal("saisies")}),
+      React.createElement(NewsCard,{icon:"📡",count:wdAutoUpdateMeta?wdAutoUpdateMeta.count:0,title:"Nouveautés Workday",sub:wdAutoUpdateMeta&&wdAutoUpdateMeta.count>0?"fiche(s) complétée(s) automatiquement":"Aucune nouveauté pour l'instant",when:wdImportMeta?("Dernier import : "+fmtDT(wdImportMeta.date)):null,color:C.cyan,onClick:()=>setModal("workday")}),
+      React.createElement(NewsCard,{icon:"⚠️",count:aCompleterCount,title:"Fiches à compléter",sub:"matricule ou badge manquant",color:"#CA8A04",onClick:()=>setModal("completer")}),
+      React.createElement(NewsCard,{icon:"🎒",count:futursSansBadge.length,title:"Futurs sans badge",sub:"pas encore reçu son badge",color:C.orange,onClick:()=>setModal("sansBadge")})
+    ),
+
+    // ══════════════ Bannières : bravo / astuce du jour (l'anniversaire est affiché dans l'en-tête bleu) ══════════════
+    React.createElement("div",{className:"banners-row",style:{marginBottom:10}},
+      overdueRecup.length===0&&React.createElement("div",{className:"banner bravo"},
+        React.createElement("span",{className:"ico"},"🎉"),
+        React.createElement("div",null,React.createElement("div",{className:"txt"},"Bravo, aucun badge en retard de récupération !"),React.createElement("div",{className:"sub"},"Tous les badges « à récupérer » sont dans les temps"))
       ),
-      React.createElement("table",{style:{width:"100%",borderCollapse:"collapse",fontSize:13}},
-        React.createElement("thead",null,React.createElement("tr",{style:{background:"#FDDCDC"}},["Matricule","Nom","Prénom","N° Badge","Casier","Manager"].map(h=>React.createElement("th",{key:h,style:{padding:"7px 12px",textAlign:"left",fontWeight:600,color:C.red,fontSize:12}},h)))),
-        React.createElement("tbody",null,aRecuperer.map((b,i)=>React.createElement("tr",{key:b.id,style:{background:i%2===0?"#fff":"#FFF5F5",borderBottom:"1px solid #FDDCDC"}},
-          React.createElement("td",{style:{padding:"8px 12px",fontWeight:700,color:C.red}},b.matricule&&String(b.matricule)!=="0"?b.matricule:React.createElement("span",{style:{color:"#E74C3C",fontWeight:700,fontSize:11}},"NC")),
-          React.createElement("td",{style:{padding:"8px 12px",fontWeight:700}},b.nom),
-          React.createElement("td",{style:{padding:"8px 12px"}},b.prenom),
-          React.createElement("td",{style:{padding:"8px 12px"}},b.serie?React.createElement("code",{style:{background:"#F3F4F6",padding:"2px 6px",borderRadius:4,fontSize:11}},b.serie):"—"),
-          React.createElement("td",{style:{padding:"8px 12px"}},b.casier||"—"),
-          React.createElement("td",{style:{padding:"8px 12px",fontSize:12,color:"#6B7280"}},b.manager||"—")
-        )))
+      React.createElement("div",{className:"banner tip"},
+        React.createElement("span",{className:"ico"},"💡"),
+        React.createElement("div",null,React.createElement("div",{className:"txt"},"Astuce du jour"),React.createElement("div",{className:"sub"},TIPS[tipIdx]))
       )
     ),
-    React.createElement(Card,{style:{marginBottom:16}},
-      React.createElement("h3",{style:{fontWeight:600,fontSize:14,color:C.dark,marginBottom:12}},"📦 Casiers par zone"),
-      React.createElement("div",{style:{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:10}},
-        ZONES.map(z=>{const zc=casiers.filter(c=>c.zone===z);const zl=zc.filter(c=>c.statut==="Libre");const pct=zc.length?Math.round((zc.length-zl.length)/zc.length*100):0;const col=ZONES_COLORS[z];return React.createElement("div",{key:z,style:{background:col+"12",border:"2px solid "+col+"33",borderRadius:10,padding:"10px",textAlign:"center",cursor:"pointer"},onClick:()=>setView("casiers")},React.createElement("div",{style:{fontWeight:700,fontSize:13,color:col}},ZONES_LABELS[z]),React.createElement("div",{style:{fontSize:11,color:"#6B7280",margin:"2px 0"}},zc.length+" casiers"),React.createElement("div",{style:{fontSize:12,color:C.green,fontWeight:700}},zl.length+" libres"),React.createElement("div",{style:{background:"#E5E7EB",borderRadius:999,height:5,marginTop:6}},React.createElement("div",{style:{background:col,borderRadius:999,height:5,width:pct+"%"}})));})
+
+    // ══════════════ Tâches du jour (checklist) ══════════════
+    React.createElement(Card,{className:"todo-card",style:{padding:0,marginBottom:10}},
+      React.createElement("div",{style:{padding:"14px 18px"}},
+        React.createElement("div",{className:"todo-top"},
+          React.createElement("span",{style:{fontSize:16}},"✅"),
+          React.createElement("h3",null,"Tâches du jour"),
+          React.createElement("span",{className:"cnt"},todos.length?todosDoneCount+"/"+todos.length:"")
+        ),
+        todos.length===0
+          ?React.createElement("div",{style:{padding:"8px 4px",color:"var(--text3)",fontSize:12.5}},"Tout est à jour, aucune tâche en attente 🎉")
+          :todos.map(t=>React.createElement("div",{key:t.id,className:"todo-item"+(todoDone[t.id]?" done":"")},
+              React.createElement("div",{className:"todo-check",onClick:()=>toggleTodo(t.id)},todoDone[t.id]?"✓":""),
+              React.createElement("div",{className:"todo-txt",onClick:t.action},t.txt),
+              React.createElement("span",{className:"todo-tag",style:{color:t.color,background:t.bg}},t.tag)
+            ))
       )
+    ),
+
+    // ══════════════ 2) ENREGISTRER UN MOUVEMENT — deux icônes, chacune ouvre sa fenêtre ══════════════
+    React.createElement("div",{className:"mvt-icon-row",style:{marginBottom:10}},
+      React.createElement("div",{className:"mvt-icon arr",onClick:()=>setModal("arrivee")},
+        React.createElement("div",{className:"ico"},"🟢"),
+        React.createElement("div",null,
+          React.createElement("div",{className:"ttl"},"Arrivée"),
+          React.createElement("div",{className:"sub"},"Recherche Workday en direct")
+        ),
+        foundArr&&React.createElement("span",{className:"tag"},"📡 "+foundArr.prenom)
+      ),
+      React.createElement("div",{className:"mvt-icon dep",onClick:()=>setModal("depart")},
+        React.createElement("div",{className:"ico"},"🔴"),
+        React.createElement("div",null,
+          React.createElement("div",{className:"ttl"},"Départ"),
+          React.createElement("div",{className:"sub"},"Checklist de restitution")
+        )
+      )
+    ),
+
+    // ══════════════ 3) KPI — l'essentiel, cliquable pour aller plus loin ══════════════
+    React.createElement("div",{className:"kpi-grid",style:{marginBottom:10}},
+      React.createElement(KPI,{label:"Actifs",value:actifs.length,color:C.blue,onClick:()=>setModal("actifs")}),
+      React.createElement(KPI,{label:"À récupérer",value:aRecuperer.length,color:C.red,onClick:()=>setModal("recup")}),
+      React.createElement(KPI,{label:"Arrivées",sub:"cette semaine",value:arrSemaine.length,color:C.green,onClick:()=>setModal("arrSemaine")}),
+      React.createElement(KPI,{label:"Départs",sub:"cette semaine",value:depSemaine.length,color:C.red,onClick:()=>setModal("depSemaine")}),
+      React.createElement(KPI,{label:"Field Support",value:fssATraiter,sub:"à traiter",color:C.cyan,onClick:()=>setModal("fss")}),
+      React.createElement(KPI,{label:"Doublons badge",value:doublonsBadges.length,color:C.orange,onClick:()=>setModal("doublons")})
+    ),
+
+    // ══════════════ Graphiques : répartition par zone + tendance effectifs + SLA Field Support ══════════════
+    React.createElement("div",{className:"charts-row",style:{marginBottom:10,gridTemplateColumns:"1fr 1fr 1fr"}},
+      React.createElement(Card,{className:"chart-card"},
+        zonesTotal===0
+          ?React.createElement("div",{style:{fontSize:12,color:"var(--text3)"}},"Aucun badge affecté à un casier pour l'instant.")
+          :React.createElement(React.Fragment,null,
+              React.createElement("div",{className:"donut-wrap"},
+                React.createElement("svg",{width:76,height:76,viewBox:"0 0 76 76"},
+                  React.createElement("circle",{cx:38,cy:38,r:30,fill:"none",stroke:"var(--surface3)",strokeWidth:8}),
+                  donutSegs.map(s=>React.createElement("circle",{key:s.zone,cx:38,cy:38,r:30,fill:"none",stroke:s.color,strokeWidth:8,strokeDasharray:s.len+" "+DONUT_CIRC,strokeDashoffset:-s.offset,strokeLinecap:"round"}))
+                ),
+                React.createElement("div",{className:"donut-center"},React.createElement("div",{className:"n"},zonesTotal))
+              ),
+              React.createElement("div",null,
+                React.createElement("h4",null,"Répartition par zone"),
+                React.createElement("div",{className:"chart-sub"},"selon le casier assigné"),
+                React.createElement("div",{className:"legend-mini",style:{marginTop:8}},
+                  ZONES.filter(z=>zonesStats[z]>0).map(z=>React.createElement("div",{key:z,className:"li"},
+                    React.createElement("span",{className:"dot",style:{background:ZONES_COLORS[z]}}),
+                    ZONES_LABELS[z]+" — "+zonesStats[z]
+                  ))
+                )
+              )
+            )
+      ),
+      React.createElement(Card,{className:"chart-card"},
+        React.createElement("div",{className:"spark-wrap"},
+          React.createElement("h4",null,"Effectifs — 7 derniers jours"),
+          React.createElement("div",{className:"spark-val"},
+            React.createElement("span",{className:"n"},trend[trend.length-1]),
+            React.createElement("span",{className:"delta",style:{color:trendDelta>=0?C.green:C.red,background:trendDelta>=0?C.greenBg:C.redBg}},(trendDelta>=0?"+":"")+trendDelta)
+          ),
+          React.createElement("svg",{width:120,height:36,viewBox:"0 0 120 36"},
+            React.createElement("polyline",{points:sparkPts,fill:"none",stroke:"var(--accent)",strokeWidth:2,strokeLinecap:"round",strokeLinejoin:"round"})
+          ),
+          React.createElement("div",{className:"chart-sub",style:{marginTop:4}},"Estimation d'après dates d'ajout / archivage")
+        )
+      ),
+      React.createElement(Card,{className:"chart-card",style:{flexWrap:"wrap",gap:10}},
+        React.createElement("div",{className:"sla-stat"},React.createElement("div",{className:"n"},fssOpen.length),React.createElement("div",{className:"l"},"Tickets ouverts")),
+        React.createElement("div",{className:"sla-divider"}),
+        React.createElement("div",{className:"sla-stat"},React.createElement("div",{className:"n"},fssOpen.length?slaAvg+"j":"—"),React.createElement("div",{className:"l"},"Âge moyen")),
+        slaLate>0&&React.createElement("div",{className:"sla-alert",style:{marginLeft:0,fontSize:10.5,padding:"5px 10px"},onClick:()=>setView("field_support")},"⚠️ "+slaLate+" +3j")
+      )
+    ),
+
+    // ══════════════ 4) CETTE SEMAINE — calendrier Lun→Dim avec vraies dates ══════════════
+    React.createElement(Card,{className:"semaine-card",style:{marginBottom:10,padding:"14px 18px"}},
+      React.createElement("div",{className:"semaine-top"},
+        React.createElement("span",{style:{fontSize:15}},"📅"),
+        React.createElement("h3",null,"Cette semaine"),
+        React.createElement("span",{className:"week-no"},"Semaine "+weekNumber),
+        React.createElement("span",{className:"cnt"},weekTotal)
+      ),
+      React.createElement("div",{className:"days-row"},
+        weekDays.map(d=>React.createElement("div",{key:d.iso,className:"day-col"},
+          React.createElement("div",{className:"day-head"+(d.isToday?" today":"")+(d.isWeekend?" weekend":"")},
+            React.createElement("span",{className:"dname"},d.dname),
+            React.createElement("span",{className:"dnum"},d.dnum)
+          ),
+          d.arrivals.length===0&&d.departures.length===0
+            ?React.createElement("div",{className:"day-empty"},"·")
+            :React.createElement("div",null,
+                d.arrivals.map(b=>React.createElement("div",{key:"da"+b.id,className:"person-chip arr",title:b.prenom+" "+b.nom,onClick:()=>openCollab(b)},React.createElement("span",{className:"dot"},"A"),React.createElement("span",{className:"nm"},b.prenom+" "+b.nom))),
+                d.departures.map(b=>React.createElement("div",{key:"dd"+b.id,className:"person-chip dep",title:b.prenom+" "+b.nom,onClick:()=>openCollab(b)},React.createElement("span",{className:"dot"},"D"),React.createElement("span",{className:"nm"},b.prenom+" "+b.nom)))
+              )
+        ))
+      ),
+      React.createElement("div",{className:"countdown-row"},
+        React.createElement("div",{className:"countdown-txt"},
+          React.createElement("div",{className:"t1"},daysToFriday===0?"Rapport aujourd'hui !":"Prochain rapport dans "+daysToFriday+" jour(s)"),
+          React.createElement("div",{className:"t2"},getNextFriday())
+        ),
+        React.createElement("div",{className:"acc-ring"},
+          React.createElement("svg",{width:46,height:46,viewBox:"0 0 46 46"},
+            React.createElement("circle",{cx:23,cy:23,r:18,fill:"none",stroke:"var(--border)",strokeWidth:4}),
+            React.createElement("circle",{cx:23,cy:23,r:18,fill:"none",stroke:"var(--accent)",strokeWidth:4,strokeDasharray:RING_CIRC,strokeDashoffset:RING_CIRC*(1-ringFrac),strokeLinecap:"round"})
+          ),
+          React.createElement("div",{className:"center"},daysToFriday===0?"J0":"J-"+daysToFriday)
+        )
+      )
+    ),
+
+    // ══════════════ Raccourcis rapides + export du jour ══════════════
+    React.createElement("div",{className:"shortcuts-row",style:{marginBottom:10}},
+      React.createElement("div",{className:"shortcut",onClick:()=>setView("rapport")},React.createElement("span",{className:"ico"},"📊"),"Rapport"),
+      React.createElement("div",{className:"shortcut",onClick:()=>setView("impression")},React.createElement("span",{className:"ico"},"🏷️"),"Étiquettes"),
+      React.createElement("div",{className:"shortcut",onClick:()=>setView("badges_pret")},React.createElement("span",{className:"ico"},"🔑"),"Badges Prêt"),
+      !isIT&&React.createElement("div",{className:"shortcut",onClick:goCollab},React.createElement("span",{className:"ico"},"👥"),"Collaborateurs"),
+      React.createElement("div",{className:"shortcut",onClick:exportMouvementsJour},React.createElement("span",{className:"ico"},"⬇️"),"Export du jour")
+    ),
+
+    // ══════════════ 5) ACTIVITÉ RÉCENTE — uniquement Field Support, en timeline ══════════════
+    React.createElement(Card,{className:"activity-card",style:{marginBottom:4,padding:"14px 18px"}},
+      React.createElement("div",{className:"activity-top",style:{marginBottom:8}},
+        React.createElement("span",{style:{fontSize:15}},"🎫"),
+        React.createElement("h3",null,"Activité récente — Field Support")
+      ),
+      histoFS.length===0
+        ?React.createElement("div",{style:{padding:"6px 2px",textAlign:"center",color:"var(--text3)",fontSize:12}},"Aucune activité Field Support récente")
+        :React.createElement("div",{className:"tl"},histoFS.slice(0,4).map(h=>React.createElement("div",{key:h.id,className:"tl-item "+(/Arrivée/i.test(h.action)?"created":"modified"),style:{paddingBottom:10}},
+            React.createElement("div",{className:"tl-dot"},/Arrivée/i.test(h.action)?"🟢":"🎫"),
+            React.createElement("div",{className:"tl-row"},
+              React.createElement("span",{className:"tl-action"},h.action),
+              React.createElement("span",{className:"tl-who"},h.detail),
+              React.createElement("span",{className:"tl-time"},h.ts)
+            )
+          ))),
+      React.createElement("div",{className:"tl-foot",onClick:()=>setView("field_support")},"Aller à Field Support →")
+    ),
+
+    // ══════════════ MODALES — l'info utile uniquement, au clic, puis proposition d'aller à l'onglet ══════════════
+    modal==="arrivee"&&React.createElement(AccueilModal,{title:"Nouvelle arrivée",icon:"🟢",onClose:closeModal,maxWidth:460},
+      foundArr
+        ?React.createElement("div",{className:"wd-badge"},"📡 Workday — "+foundArr.prenom+" "+foundArr.nom,React.createElement("button",{onClick:wdClear},"✕"))
+        :React.createElement("div",{className:"wd-search"},
+            React.createElement("label",null,"Rechercher dans Workday"),
+            React.createElement("div",{className:"wd-search-input"},
+              React.createElement("input",{value:wdQuery,onChange:e=>setWdQuery(e.target.value),placeholder:"Nom ou prénom…"}),
+              React.createElement("span",{className:"ic"},"🔍")
+            ),
+            wdQuery&&wdResults.length>0&&React.createElement("div",{className:"wd-dropdown"},
+              wdResults.map((w,i)=>React.createElement("div",{key:"wdr"+i,className:"wd-row",onClick:()=>wdPick(w)},
+                React.createElement("div",{className:"wd-av"},((w.prenom||"?").charAt(0)+(w.nom||"?").charAt(0)).toUpperCase()),
+                React.createElement("div",{className:"nm"},w.prenom+" "+w.nom),
+                React.createElement("div",{className:"meta"},(w.hireDate?fmt(w.hireDate):"")+(w.manager?" · "+w.manager:""))
+              ))
+            ),
+            wdQuery&&wdResults.length===0&&React.createElement("div",{style:{fontSize:11.5,color:"var(--text3)",marginTop:6}},"Aucun résultat Workday — saisie manuelle possible ci-dessous")
+          ),
+      React.createElement("div",{className:"mvt-fields"},
+        React.createElement("div",{className:"fld"},React.createElement(Lbl,null,"Nom"),React.createElement(Inp,{value:nomArr,onChange:v=>{setNomArr(v);setFoundArr(null);},placeholder:"MARTIN"})),
+        React.createElement("div",{className:"fld"},React.createElement(Lbl,null,"Prénom"),React.createElement(Inp,{value:prenomArr,onChange:v=>{setPrenomArr(v);setFoundArr(null);},placeholder:"Sophie"})),
+        React.createElement("div",{className:"fld"},React.createElement(Lbl,null,"Date d'entrée"),React.createElement(Inp,{type:"date",value:dateArr,onChange:setDateArr})),
+        React.createElement("div",{className:"fld"},React.createElement(Lbl,null,"Manager"),React.createElement(Inp,{value:managerArr,onChange:setManagerArr,placeholder:"si absent Workday"})),
+        React.createElement("div",{className:"fld full"},React.createElement(Lbl,null,"Localisation"),React.createElement(Sel,{value:lieuArr,onChange:setLieuArr,options:[{v:"Levallois-Perret",l:"🟣 Levallois-Perret"},{v:"Hexagone",l:"🔵 Hexagone"}]}))
+      ),
+      React.createElement("div",{className:"mvt-actions"},
+        React.createElement("button",{className:"btn-main",onClick:enrArr},"Enregistrer"),
+        React.createElement("button",{className:"btn-ghost",title:"Mail IT arrivée",onClick:()=>{const it=(settings&&settings.itEmail)||"";if(!it){showToast("⚠️ Email IT non configuré","err");return;}const wd=wdCache?Object.values(wdCache).find(w=>(norm(w.nom).includes(norm(nomArr))||!nomArr)&&(norm(w.prenom).includes(norm(prenomArr))||!prenomArr)):null;const data={nom:wd?wd.nom:nomArr.toUpperCase()||"NC",prenom:wd?wd.prenom:prenomArr||"NC",matricule:wd?wd.matricule:"NC",email:wd?wd.email:"NC",date_entree:dateArr||wd?.hireDate||"NC",manager:managerArr||wd?.manager||"NC",mail_manager:wd?.mailMgr||"NC"};const cc=encodeURIComponent((settings&&settings.ccEmails)||"");window.open("mailto:"+encodeURIComponent(it)+(cc?"?cc="+cc:"")+"?subject="+encodeURIComponent("Arrivée — "+data.prenom+" "+data.nom)+"&body="+encodeURIComponent(buildBody(settings.bodyArriveeIT||"Arrivée de {prenom} {nom} — Date : {date_entree}",data)));}},"✉️ IT"),
+        React.createElement("button",{className:"btn-ghost",title:"Mail Restaurant arrivée",onClick:()=>{const to=encodeURIComponent((settings&&settings.restaurantEmail)||"");const wd=wdCache?Object.values(wdCache).find(w=>(norm(w.nom).includes(norm(nomArr))||!nomArr)&&(norm(w.prenom).includes(norm(prenomArr))||!prenomArr)):null;const data={nom:wd?wd.nom:nomArr.toUpperCase()||"NC",prenom:wd?wd.prenom:prenomArr||"NC",matricule:wd?wd.matricule:"NC",email:wd?wd.email:"NC",date_entree:dateArr||wd?.hireDate||"NC",manager:managerArr||wd?.manager||"NC",mail_manager:wd?.mailMgr||"NC"};window.open("mailto:"+to+"?subject="+encodeURIComponent("Arrivée — "+data.prenom+" "+data.nom)+"&body="+encodeURIComponent(buildBody(settings.bodyArriveeResto||"Arrivée de {prenom} {nom}",data)));}},"🍽️")
+      )
+    ),
+
+    modal==="depart"&&React.createElement(AccueilModal,{title:"Départ",icon:"🔴",onClose:closeModal,maxWidth:460},
+      React.createElement("div",{className:"mvt-fields"},
+        React.createElement("div",{className:"fld"},React.createElement(Lbl,null,"Nom"),React.createElement(Inp,{value:nomDep,onChange:v=>{setNomDep(v);setFoundDep(null);},placeholder:"DUPONT"})),
+        React.createElement("div",{className:"fld"},React.createElement(Lbl,null,"Prénom"),React.createElement(Inp,{value:prenomDep,onChange:v=>{setPrenomDep(v);setFoundDep(null);},placeholder:"Jean"})),
+        React.createElement("div",{className:"fld"},React.createElement(Lbl,null,"Date de sortie"),React.createElement(Inp,{type:"date",value:dateDep,onChange:setDateDep})),
+        React.createElement("div",{className:"fld"},React.createElement(Lbl,null,"Localisation"),React.createElement(Sel,{value:lieuDep,onChange:setLieuDep,options:[{v:"Levallois-Perret",l:"🟣 Levallois-Perret"},{v:"Hexagone",l:"🔵 Hexagone"}]}))
+      ),
+      React.createElement("div",{className:"depart-checklist"},
+        React.createElement("div",{className:"dc-title"},"Checklist (visuelle, non enregistrée)"),
+        DEPART_STEPS.map(s=>React.createElement("div",{key:s.id,className:"dc-item"+(departChecks[s.id]?" checked":""),onClick:()=>toggleDC(s.id)},
+          React.createElement("div",{className:"dc-box"},departChecks[s.id]?"✓":""),
+          React.createElement("div",{className:"dc-txt"},s.label)
+        ))
+      ),
+      React.createElement("button",{className:"btn-depart",onClick:enrDep},"Enregistrer le départ"),
+      React.createElement("div",{className:"mvt-actions",style:{marginTop:8}},
+        React.createElement("button",{className:"btn-ghost",style:{flex:1,justifyContent:"center"},title:"Mail IT départ",onClick:()=>{const it=(settings&&settings.itEmail)||"";if(!it){showToast("⚠️ Email IT non configuré","err");return;}const b=badges.find(x=>(x.nom.toLowerCase().includes(nomDep.toLowerCase())||!nomDep)&&(x.prenom.toLowerCase().includes(prenomDep.toLowerCase())||!prenomDep)&&x.statut!=="Archivé");const data=b?{...b,date_sortie_prevue:dateDep||b.date_sortie_prevue||"NC"}:{nom:nomDep.toUpperCase(),prenom:prenomDep,matricule:"NC",serie:"NC",date_sortie_prevue:dateDep||"NC",manager:"NC",mail_manager:"NC"};const cc=encodeURIComponent((settings&&settings.ccEmails)||"");window.open("mailto:"+encodeURIComponent(it)+(cc?"?cc="+cc:"")+"?subject="+encodeURIComponent("Départ — "+data.prenom+" "+data.nom)+"&body="+encodeURIComponent(buildBody(settings.bodyDepartIT||"Départ de {prenom} {nom} — Date : {date_sortie_prevue}",data)));}},"✉️ IT"),
+        React.createElement("button",{className:"btn-ghost",style:{flex:1,justifyContent:"center"},title:"Mail Restaurant départ",onClick:()=>{const to=encodeURIComponent((settings&&settings.restaurantEmail)||"");const b=badges.find(x=>(x.nom.toLowerCase().includes(nomDep.toLowerCase())||!nomDep)&&(x.prenom.toLowerCase().includes(prenomDep.toLowerCase())||!prenomDep)&&x.statut!=="Archivé");if(!b){showToast("⚠️ Collaborateur introuvable","err");return;}window.open("mailto:"+to+"?subject="+encodeURIComponent("Départ — "+b.prenom+" "+b.nom)+"&body="+encodeURIComponent(buildBody(settings.bodyDepartResto||"Départ de {prenom} {nom}",b)));}},"🍽️")
+      )
+    ),
+
+    modal==="saisies"&&React.createElement(AccueilModal,{title:"Saisies aujourd'hui",icon:"📝",onClose:closeModal},
+      histoToday.length===0?React.createElement("div",{style:{padding:"10px 4px",color:"var(--text3)",fontSize:13}},"Aucune saisie pour l'instant aujourd'hui.")
+        :React.createElement("div",null,histoToday.map(h=>React.createElement("div",{key:h.id,style:{display:"flex",alignItems:"center",gap:8,padding:"7px 4px",borderBottom:"1px solid var(--border)"}},
+            React.createElement("span",{style:{fontSize:12.5,fontWeight:700,color:"var(--text)",flexShrink:0}},h.action),
+            React.createElement("span",{style:{flex:1,fontSize:12,color:"var(--text3)"}},h.detail),
+            React.createElement("span",{style:{fontSize:10.5,color:"var(--text3)"}},h.ts)
+          ))),
+      React.createElement("button",{onClick:()=>{closeModal();if(!isIT)openHistorique();},className:"btn btn-outline",style:{marginTop:10}},"Aller à l'historique →")
+    ),
+
+    modal==="workday"&&React.createElement(AccueilModal,{title:"Nouveautés Workday",icon:"📡",onClose:closeModal},
+      (!wdAutoUpdateMeta||!wdAutoUpdateMeta.count)?React.createElement("div",{style:{padding:"10px 4px",color:"var(--text3)",fontSize:13}},"Aucune nouveauté Workday pour l'instant."+(wdImportMeta?" (dernier import : "+fmtDT(wdImportMeta.date)+")":""))
+        :React.createElement("div",null,
+            React.createElement("div",{style:{fontSize:13,marginBottom:8,color:C.green,fontWeight:700}},"✅ "+wdAutoUpdateMeta.count+" fiche(s) complétée(s) automatiquement"+(wdAutoUpdateMeta.date?" — "+fmtDT(wdAutoUpdateMeta.date):"")),
+            (wdAutoUpdateMeta.noms||[]).map((n,i)=>React.createElement("div",{key:"wdn"+i,style:{padding:"6px 4px",borderBottom:"1px solid var(--border)",fontSize:13,fontWeight:600}},n))
+          ),
+      React.createElement("button",{onClick:()=>{closeModal();if(!isIT)openDonnees();},className:"btn btn-outline",style:{marginTop:10}},"Aller à Données / Import →")
+    ),
+
+    modal==="completer"&&React.createElement(AccueilModal,{title:"Fiches à compléter",icon:"⚠️",onClose:closeModal},
+      aCompleterCount===0?React.createElement("div",{style:{padding:"10px 4px",color:"var(--text3)",fontSize:13}},"Rien à compléter, tout est à jour.")
+        :React.createElement("div",null,
+            sansMatAvecBadge.length>0&&React.createElement("div",null,
+              React.createElement("div",{style:{padding:"6px 4px 2px",fontSize:11,fontWeight:700,color:"#CA8A04",textTransform:"uppercase",letterSpacing:".4px"}},"Badge donné, matricule manquant ("+sansMatAvecBadge.length+")"),
+              sansMatAvecBadge.map(b=>React.createElement(ModalRow,{key:"sm"+b.id,b,right:b.serie}))
+            ),
+            sansMatSansBadge.length>0&&React.createElement("div",null,
+              React.createElement("div",{style:{padding:"6px 4px 2px",fontSize:11,fontWeight:700,color:"#CA8A04",textTransform:"uppercase",letterSpacing:".4px"}},"Matricule et badge manquants ("+sansMatSansBadge.length+")"),
+              sansMatSansBadge.map(b=>React.createElement(ModalRow,{key:"ss"+b.id,b}))
+            ),
+            avecMatSansBadge.length>0&&React.createElement("div",null,
+              React.createElement("div",{style:{padding:"6px 4px 2px",fontSize:11,fontWeight:700,color:"#CA8A04",textTransform:"uppercase",letterSpacing:".4px"}},"Matricule donné, badge manquant ("+avecMatSansBadge.length+")"),
+              avecMatSansBadge.map(b=>React.createElement(ModalRow,{key:"am"+b.id,b,right:b.matricule}))
+            )
+          ),
+      React.createElement("button",{onClick:()=>{closeModal();goCollab();},className:"btn btn-outline",style:{marginTop:10}},"Aller à Collaborateurs →")
+    ),
+
+    modal==="recup"&&React.createElement(AccueilModal,{title:"Badges à récupérer",icon:"🪪",onClose:closeModal},
+      aRecuperer.length===0?React.createElement("div",{style:{padding:"10px 4px",color:"var(--text3)",fontSize:13}},"Aucun badge à récupérer.")
+        :React.createElement("div",null,aRecuperer.map(b=>React.createElement(ModalRow,{key:"ar"+b.id,b,right:b.serie||"sans badge"}))),
+      React.createElement("button",{onClick:()=>{closeModal();goCollab();},className:"btn btn-outline",style:{marginTop:10}},"Aller à Collaborateurs →")
+    ),
+
+    modal==="sansBadge"&&React.createElement(AccueilModal,{title:"Futurs collaborateurs sans badge",icon:"🎒",onClose:closeModal},
+      futursSansBadge.length===0?React.createElement("div",{style:{padding:"10px 4px",color:"var(--text3)",fontSize:13}},"Aucun cas en attente.")
+        :React.createElement("div",null,futursSansBadge.map(b=>React.createElement(ModalRow,{key:"fb"+b.id,b,right:b.date_entree?fmt(b.date_entree):b.statut}))),
+      React.createElement("button",{onClick:()=>{closeModal();goCollab();},className:"btn btn-outline",style:{marginTop:10}},"Aller à Collaborateurs →")
+    ),
+
+    modal==="doublons"&&React.createElement(AccueilModal,{title:"Doublons de badge",icon:"⚠️",onClose:closeModal},
+      doublonsBadges.length===0?React.createElement("div",{style:{padding:"10px 4px",color:"var(--text3)",fontSize:13}},"Aucun doublon détecté.")
+        :React.createElement("div",null,doublonsBadges.map(b=>React.createElement(ModalRow,{key:"db"+b.id,b,right:b.serie,tag:"doublon"}))),
+      React.createElement("button",{onClick:()=>{closeModal();goCollab();},className:"btn btn-outline",style:{marginTop:10}},"Aller à Collaborateurs →")
+    ),
+
+    modal==="actifs"&&React.createElement(AccueilModal,{title:"Collaborateurs actifs",icon:"👥",onClose:closeModal},
+      React.createElement("div",{style:{fontSize:14,padding:"4px 4px 10px"}},actifs.length+" collaborateur(s) actif(s) sur "+badges.filter(b=>b.statut!=="Archivé").length+" fiche(s) en cours."),
+      React.createElement("button",{onClick:()=>{closeModal();goCollab();},className:"btn btn-outline"},"Aller à Collaborateurs →")
+    ),
+
+    modal==="arrSemaine"&&React.createElement(AccueilModal,{title:"Arrivées cette semaine",icon:"🟢",onClose:closeModal},
+      arrSemaine.length===0?React.createElement("div",{style:{padding:"10px 4px",color:"var(--text3)",fontSize:13}},"Aucune arrivée prévue cette semaine.")
+        :React.createElement("div",null,arrSemaine.map(b=>React.createElement(ModalRow,{key:"as2"+b.id,b,right:fmt(b.date_entree)}))),
+      React.createElement("button",{onClick:()=>{closeModal();setView("rapport");},className:"btn btn-outline",style:{marginTop:10}},"Aller au Rapport →")
+    ),
+
+    modal==="depSemaine"&&React.createElement(AccueilModal,{title:"Départs cette semaine",icon:"🔴",onClose:closeModal},
+      depSemaine.length===0?React.createElement("div",{style:{padding:"10px 4px",color:"var(--text3)",fontSize:13}},"Aucun départ prévu cette semaine.")
+        :React.createElement("div",null,depSemaine.map(b=>React.createElement(ModalRow,{key:"ds2"+b.id,b,right:fmt(b.date_sortie_prevue)}))),
+      React.createElement("button",{onClick:()=>{closeModal();setView("rapport");},className:"btn btn-outline",style:{marginTop:10}},"Aller au Rapport →")
+    ),
+
+    modal==="fss"&&React.createElement(AccueilModal,{title:"Field Support à traiter",icon:"🎫",onClose:closeModal},
+      React.createElement("div",{style:{fontSize:14,padding:"4px 4px 10px"}},fssATraiter===0?"Aucune fiche à traiter, tout est à jour.":fssATraiter+" fiche(s) Field Support à traiter."),
+      React.createElement("button",{onClick:()=>{closeModal();setView("field_support");},className:"btn btn-outline"},"Aller à Field Support →")
     )
   );
 }
@@ -857,7 +1488,12 @@ function VueCasiers({casiers,badges,setCasiers,showToast,addLog,setView}){
     if(!confirm("Vider le casier "+c.numero+" ? (le collaborateur n'est plus dans la liste)"))return;
     const upd={...c,statut:"Libre",occupant:"",matricule:""};
     setCasiers(p=>p.map(x=>x.id===c.id?upd:x));
-    if(sb)sb.from("lp24_casiers").upsert(upd);
+    if(sb){
+      try{
+        const{error}=await sb.from("lp24_casiers").upsert(upd);
+        if(error){console.error("viderCasier",error);showToast("⚠️ Pas sauvegardé (réseau) — réessaie","err");return;}
+      }catch(e2){console.error("viderCasier",e2);showToast("⚠️ Pas sauvegardé (réseau) — réessaie","err");return;}
+    }
     addLog("Casier vidé","🧹 "+c.numero+" (ancien occupant : "+(c.occupant||"—")+")");
     showToast("🧹 Casier "+c.numero+" vidé");
   };
@@ -868,8 +1504,45 @@ function VueCasiers({casiers,badges,setCasiers,showToast,addLog,setView}){
     else if(fStat&&c.statut!==fStat)return false;
     const q=search.toLowerCase();return!q||(c.numero+c.occupant+c.matricule).toLowerCase().includes(q);
   }),[casiers,fZone,fStat,search,isAVider]);
-  const save=async()=>{if(!form.numero.trim())return;if(editing){setCasiers(p=>p.map(c=>c.id===editing?{...c,...form}:c));const orig=casiers.find(c=>c.id===editing);if(sb)sb.from("lp24_casiers").upsert({...orig,...form});addLog("Casier modifié",form.numero);showToast("✅ Casier mis à jour");}else{const nc={...form,id:nxId(casiers)};setCasiers(p=>[...p,nc]);if(sb){const{id,...row}=nc;sb.from("lp24_casiers").insert(row);}addLog("Casier ajouté",form.numero);showToast("✅ Casier ajouté");}setShowForm(false);setEditing(null);};
-  const del=async id=>{if(!confirm("Supprimer ce casier ?"))return;const c=casiers.find(x=>x.id===id);setCasiers(p=>p.filter(x=>x.id!==id));if(sb)sb.from("lp24_casiers").delete().eq("id",id);addLog("Casier supprimé",c?.numero||"");showToast("🗑️ Supprimé");};
+  const save=async()=>{
+    if(!form.numero.trim())return;
+    if(editing){
+      const orig=casiers.find(c=>c.id===editing);const upd={...orig,...form};
+      setCasiers(p=>p.map(c=>c.id===editing?upd:c));
+      if(sb){
+        try{
+          const{error}=await sb.from("lp24_casiers").upsert(upd);
+          if(error){console.error("save casier",error);showToast("⚠️ Pas sauvegardé (réseau) — réessaie","err");return;}
+        }catch(e){console.error("save casier",e);showToast("⚠️ Pas sauvegardé (réseau) — réessaie","err");return;}
+      }
+      addLog("Casier modifié",form.numero);showToast("✅ Casier mis à jour");
+    }else{
+      const nc={...form,id:nxId(casiers)};
+      setCasiers(p=>[...p,nc]);
+      if(sb){
+        const{id,...row}=nc;
+        try{
+          const{error}=await sb.from("lp24_casiers").insert(row);
+          if(error){console.error("save casier",error);showToast("⚠️ Pas sauvegardé (réseau) — réessaie","err");return;}
+        }catch(e){console.error("save casier",e);showToast("⚠️ Pas sauvegardé (réseau) — réessaie","err");return;}
+      }
+      addLog("Casier ajouté",form.numero);showToast("✅ Casier ajouté");
+    }
+    setShowForm(false);setEditing(null);
+  };
+  const del=async id=>{
+    if(!confirm("Supprimer ce casier ?"))return;
+    const c=casiers.find(x=>x.id===id);
+    setCasiers(p=>p.filter(x=>x.id!==id));
+    if(sb){
+      try{
+        const{error}=await sb.from("lp24_casiers").delete().eq("id",id);
+        if(error){console.error("del casier",error);showToast("⚠️ Suppression non sauvegardée (réseau) — réessaie","err");return;}
+      }catch(e){console.error("del casier",e);showToast("⚠️ Suppression non sauvegardée (réseau) — réessaie","err");return;}
+    }
+    addLog("Casier supprimé",c?.numero||"");
+    showToast("🗑️ Supprimé");
+  };
   const statC={Libre:C.green,Occupé:C.blue,Réservé:C.orange,"Hors service":C.gray};
   const libres=casiers.filter(c=>c.statut==="Libre").length;
   // ── Rendu grille (par zone) ──
@@ -995,13 +1668,22 @@ function VueRapport({badges,fssData,setBadges,setFssData,showToast,addLog,setVie
     (fssData||[]).filter(f=>f.situation==="Départ"&&f.dateEvt&&f.dateEvt>=today&&!f.cloture)
   ,[fssData,today]);
 
+  // ── Existence "toutes dates confondues" (pas seulement les dates à venir) pour détecter les vraies
+  // incohérences : une fiche FSS déjà clôturée ou une date passée ne doit PAS être signalée comme
+  // "collaborateur inexistant" — la personne existe bel et bien, son dossier n'est juste plus "à venir".
+  const allBadgeKeys=useMemo(()=>{const s=new Set();badges.forEach(b=>{if(b.statut!=="Archivé")s.add(keyOf(b.nom,b.prenom));});return s;},[badges]);
+  const allFssArriveeKeys=useMemo(()=>{const s=new Set();(fssData||[]).forEach(f=>{if(f.situation==="Arrivée")s.add(keyOf(f.nom,f.prenom));});return s;},[fssData]);
+  const allFssDepartKeys=useMemo(()=>{const s=new Set();(fssData||[]).forEach(f=>{if(f.situation==="Départ")s.add(keyOf(f.nom,f.prenom));});return s;},[fssData]);
+
   // ── Fusion Collaborateurs + Field Support par personne (nom+prénom), pour repérer les incohérences ──
-  // Une personne présente d'un seul côté (badge sans fiche FSS, ou fiche FSS sans badge) est marquée ⚠️.
-  const mergeSide=(badgeList,fssList,dateFieldBadge)=>{
+  // Une personne présente d'un seul côté (badge sans AUCUNE fiche FSS, ou fiche FSS sans AUCUN badge,
+  // en comptant toutes les dates/statuts) est marquée ⚠️. La table n'affiche que les lignes à venir,
+  // mais l'existence est vérifiée sur l'ensemble des données pour éviter les faux positifs.
+  const mergeSide=(badgeList,fssList,dateFieldBadge,fssExistKeys)=>{
     const map={};
     badgeList.forEach(b=>{
       const k=keyOf(b.nom,b.prenom);
-      map[k]={key:k,nom:b.nom,prenom:b.prenom,manager:b.manager,date:b[dateFieldBadge],statut:b.statut,hasBadge:true,hasFss:false};
+      map[k]={key:k,nom:b.nom,prenom:b.prenom,matricule:b.matricule||"",manager:b.manager,date:b[dateFieldBadge],statut:b.statut,hasBadge:true,hasFss:fssExistKeys.has(k)};
     });
     fssList.forEach(f=>{
       const k=keyOf(f.nom,f.prenom);
@@ -1010,13 +1692,13 @@ function VueRapport({badges,fssData,setBadges,setFssData,showToast,addLog,setVie
         if(!map[k].date)map[k].date=f.dateEvt;
         if(!map[k].manager)map[k].manager=f.manager;
       }else{
-        map[k]={key:k,nom:f.nom,prenom:f.prenom,manager:f.manager,date:f.dateEvt,statut:f.statut||"A traiter",hasBadge:false,hasFss:true};
+        map[k]={key:k,nom:f.nom,prenom:f.prenom,matricule:"",manager:f.manager,date:f.dateEvt,statut:f.statut||"A traiter",hasBadge:allBadgeKeys.has(k),hasFss:true};
       }
     });
     return Object.values(map).sort((a,b)=>(a.date||"").localeCompare(b.date||""));
   };
-  const arrivees=useMemo(()=>mergeSide(futuresArrivees,fssArrivees,"date_entree"),[futuresArrivees,fssArrivees]);
-  const departs=useMemo(()=>mergeSide(futursDeparts,fssDeparts,"date_sortie_prevue"),[futursDeparts,fssDeparts]);
+  const arrivees=useMemo(()=>mergeSide(futuresArrivees,fssArrivees,"date_entree",allFssArriveeKeys),[futuresArrivees,fssArrivees,allFssArriveeKeys,allBadgeKeys]);
+  const departs=useMemo(()=>mergeSide(futursDeparts,fssDeparts,"date_sortie_prevue",allFssDepartKeys),[futursDeparts,fssDeparts,allFssDepartKeys,allBadgeKeys]);
   const mismatchCount=list=>list.filter(m=>!(m.hasBadge&&m.hasFss)).length;
 
   // ── Résoudre une incohérence : créer la fiche manquante (FSS ou badge) et ouvrir directement pour compléter ──
@@ -1074,20 +1756,22 @@ function VueRapport({badges,fssData,setBadges,setFssData,showToast,addLog,setVie
   // Colonne Action dédiée pour le bouton d'incohérence : jamais tronquée par le texte de la colonne Source.
   const renderTable=(list,color,category)=>React.createElement("table",{style:tblStyle},
     React.createElement("colgroup",null,
-      React.createElement("col",{style:{width:"28%"}}),
-      React.createElement("col",{style:{width:"16%"}}),
-      React.createElement("col",{style:{width:"22%"}}),
-      React.createElement("col",{style:{width:"15%"}}),
-      React.createElement("col",{style:{width:"19%"}})
+      React.createElement("col",{style:{width:"23%"}}),
+      React.createElement("col",{style:{width:"11%"}}),
+      React.createElement("col",{style:{width:"14%"}}),
+      React.createElement("col",{style:{width:"18%"}}),
+      React.createElement("col",{style:{width:"13%"}}),
+      React.createElement("col",{style:{width:"21%"}})
     ),
     React.createElement("thead",null,React.createElement("tr",null,
-      ["Nom Prénom","Source","Manager","Date",""].map(h=>React.createElement("th",{key:h||"action",style:thS},h))
+      ["Nom Prénom","Matricule","Source","Manager","Date",""].map(h=>React.createElement("th",{key:h||"action",style:thS},h))
     )),
     React.createElement("tbody",null,list.map((m,i)=>{
       const mismatch=!(m.hasBadge&&m.hasFss);
       return React.createElement("tr",{key:m.key,style:{background:i%2===0?"transparent":"var(--surface2)",
         boxShadow:mismatch?"inset 3px 0 0 #D97706":"none"}},
         React.createElement("td",{style:{...tdS,fontWeight:700}},m.prenom+" "+m.nom),
+        React.createElement("td",{style:{...tdS,color:"var(--text2)"}},m.matricule||"—"),
         React.createElement("td",{style:{...tdS,overflow:"visible"}},
           Pill(m.hasBadge,"🪪","Badge collaborateur"+(m.hasBadge?" ✓":" — manquant")),
           Pill(m.hasFss,"🎫","Fiche Field Support"+(m.hasFss?" ✓":" — manquante"))
@@ -1979,8 +2663,8 @@ function VueFieldSupport({fssData,setFssData,showToast,addLog,badges,casiers,set
 }
 
 // ════════════════ SETTINGS MODAL ════════════════
-function SettingsModal({settings,setSettings,showToast,setShowSettings,racineRef,hrRef,hcmRef,importJsonRef,exportExcel,exportJSON,importJSON,badges,setBadges,casiers,wdCache,histo,addLog,canHistorique,canArchives,canHistoriquePret}){
-  const[tab,setTab]=useState("emails");
+function SettingsModal({settings,setSettings,showToast,setShowSettings,racineRef,hrRef,hcmRef,importJsonRef,exportExcel,exportJSON,importJSON,badges,setBadges,casiers,wdCache,histo,addLog,canHistorique,canArchives,canHistoriquePret,initialTab}){
+  const[tab,setTab]=useState(initialTab||"emails");
   const archivesCount=badges.filter(b=>b.statut==="Archivé").length;
   const histoCount=(histo||[]).length;
   const tabs=[
@@ -2438,6 +3122,8 @@ function App(){
   const[newMats,setNewMats]=useState(new Set());
   const[settings,setSettings]=useState({fssEmail:"",restaurantEmail:"placedeseine@11h59.fr",ccEmails:"a.avonde@allianceautomotive.fr,ju.poitier@allianceautomotive.fr",itEmail:"",users:[],bodyArriveeResto:"Bonjour,\n\nNous vous informons de l'arrivée d'un nouveau collaborateur :\n\nNom : {nom}\nPrénom : {prenom}\nMatricule : {matricule}\nEmail : {email}\nDate d'entrée : {date_entree}\nManager : {manager}\n\nMerci de bien vouloir l'ajouter à vos systèmes.\n\nCordialement",bodyArriveeIT:"Bonjour,\n\nNous vous informons de l'arrivée d'un nouveau collaborateur :\n\nNom : {nom}\nPrénom : {prenom}\nMatricule : {matricule}\nEmail : {email}\nDate d'entrée : {date_entree}\nManager : {manager} ({mail_manager})\n\nMerci de créer les accès nécessaires.\n\nCordialement",bodyDepartResto:"Bonjour,\n\nNous vous informons du départ du collaborateur suivant :\n\nNom : {nom}\nPrénom : {prenom}\nMatricule : {matricule}\nN° badge : {serie}\nDate de sortie : {date_sortie_prevue}\nManager : {manager}\n\nMerci de bien vouloir le retirer de vos systèmes.\n\nCordialement",bodyDepartIT:"Bonjour,\n\nNous vous informons du départ du collaborateur suivant :\n\nNom : {nom}\nPrénom : {prenom}\nMatricule : {matricule}\nN° badge : {serie}\nDate de sortie : {date_sortie_prevue}\nManager : {manager} ({mail_manager})\n\nMerci de supprimer les accès.\n\nCordialement"});
   const[showSettings,setShowSettings]=useState(false);
+  const[settingsInitialTab,setSettingsInitialTab]=useState("emails");
+  const openSettingsTab=useCallback(t=>{setSettingsInitialTab(t);setShowSettings(true);},[]);
   // ── Ouverture ciblée d'une fiche depuis le Rapport (résolution d'incohérence) ──
   const[pendingOpen,setPendingOpen]=useState(null); // {view:"collaborateurs"|"field_support", id}
   const[dbStatus,setDbStatus]=useState("loading");
@@ -2576,9 +3262,12 @@ function App(){
           if(match&&match.matricule){updated[i]={...b,matricule:match.matricule,email:b.email||match.email,manager:b.manager||match.manager,mail_manager:b.mail_manager||match.mailMgr};newIds.add(b.id);if(sb)sb.from("lp24_badges").upsert(updated[i]);}
         });
         if(newIds.size>0)setNewMats(prev2=>new Set([...prev2,...newIds]));
+        // ── Mémoriser le résultat de la synchro auto pour l'afficher sur l'accueil ──
+        setSettings(s=>({...s,wdAutoUpdateMeta:{date:new Date().toISOString(),count:newIds.size,noms:updated.filter(b=>newIds.has(b.id)).map(b=>b.prenom+" "+b.nom)}}));
         return updated;
       });
     };
+    window._onWdImportMeta=(meta)=>{setSettings(s=>({...s,wdImportMeta:meta}));addLog("Import Workday",meta.count+" ligne(s) — "+(meta.type==="hr"?"HR Data":"Future Hires")+" ("+meta.fileName+")");};
   },[badges,wdCache,addLog]);
 
 useEffect(()=>{
@@ -2650,16 +3339,18 @@ useEffect(()=>{
     XLSX.utils.book_append_sheet(wb,XLSX.utils.json_to_sheet(casiers.map(c=>({Zone:c.zone,"N° Casier":c.numero,Occupant:c.occupant||"",Statut:c.statut}))),
     "Casiers");
     XLSX.writeFile(wb,"Collaborateurs_"+todayISO()+".xlsx");
+    addLog("Export Excel",badges.length+" collaborateurs, "+casiers.length+" casiers");
     showToast("✅ Export Excel effectué");
-  },[badges,casiers]);
+  },[badges,casiers,addLog]);
 
   const exportJSON=useCallback(()=>{
     // Inclure wdCache dans la sauvegarde
     const d={version:4,date:new Date().toISOString(),badges,casiers,wdCache:wdCache||{}};
     const blob=new Blob([JSON.stringify(d,null,2)],{type:"application/json"});
     const url=URL.createObjectURL(blob);const a=document.createElement("a");a.href=url;a.download="Sauvegarde_Collaborateurs_"+todayISO()+".json";document.body.appendChild(a);a.click();document.body.removeChild(a);URL.revokeObjectURL(url);
+    addLog("Export JSON",badges.length+" collaborateurs, "+casiers.length+" casiers (sauvegarde complète)");
     showToast("✅ Sauvegarde JSON téléchargée (Workday inclus)");
-  },[badges,casiers,wdCache]);
+  },[badges,casiers,wdCache,addLog]);
 
   const importJSON=useCallback(e=>{
     const file=e.target.files[0];if(!file)return;
@@ -2761,7 +3452,7 @@ useEffect(()=>{
     if(!canAccess(view)){return React.createElement("div",{style:{textAlign:"center",padding:80}},React.createElement("div",{style:{fontSize:48,marginBottom:12}},"🔒"),React.createElement("div",{style:{fontWeight:700,fontSize:18,color:"#0F172A",marginBottom:8}},"Accès refusé"),React.createElement("div",{style:{color:"#6B7280"}},"Vous n'avez pas accès à cette section."));}
     const props={badges,casiers,setBadges,setCasiers,showToast,wdCache,addLog,setView,settings,setSettings};
     switch(view){
-      case "accueil": return React.createElement(VueAccueil,{...props,fssData,setFssData,isIT});
+      case "accueil": return React.createElement(VueAccueil,{...props,fssData,setFssData,isIT,histo,openHistorique:()=>openSettingsTab("historique"),openDonnees:()=>openSettingsTab("import"),pendingOpen,setPendingOpen});
       case "field_support": return React.createElement(VueFieldSupport,{fssData,setFssData,showToast,addLog,badges,casiers,setBadges,setCasiers,wdCache,settings,pendingOpen,setPendingOpen});
       case "collaborateurs": return React.createElement(VueCollaborateurs,{...props,newMats,setNewMats,pendingOpen,setPendingOpen});
       case "casiers": return React.createElement(VueCasiers,props);
@@ -2826,7 +3517,7 @@ useEffect(()=>{
   return React.createElement("div",{style:{minHeight:"100vh",background:"var(--bg)"}},
     loading&&React.createElement("div",{style:{position:"fixed",inset:0,background:"rgba(30,40,60,.45)",zIndex:9998,display:"flex",alignItems:"center",justifyContent:"center"}},React.createElement("div",{style:{background:"var(--surface)",border:"1px solid var(--border)",borderRadius:14,padding:"24px 36px",fontSize:15,fontWeight:700,color:"var(--text)"}},"⏳ Chargement en cours...")),
     toast&&React.createElement("div",{className:"toast-anim",style:{position:"fixed",top:20,left:"50%",transform:"translateX(-50%)",zIndex:9999,background:toast.type==="err"?"#7F1D1D":"#14532D",border:"1px solid "+(toast.type==="err"?"rgba(220,38,38,.3)":"rgba(22,163,74,.3)"),color:"#fff",padding:"12px 24px",borderRadius:12,fontSize:13,fontWeight:700,boxShadow:"0 4px 24px rgba(0,0,0,.12)",whiteSpace:"nowrap",pointerEvents:"none"}},toast.msg),
-    showSettings&&!isIT&&React.createElement(SettingsModal,{settings,setSettings,showToast,setShowSettings,racineRef,hrRef,hcmRef,importJsonRef,exportExcel,exportJSON,importJSON,badges,setBadges,casiers,wdCache,histo,addLog,canHistorique:canAccess("historique"),canArchives:canAccess("archives"),canHistoriquePret:canAccess("historique_pret")}),
+    showSettings&&!isIT&&React.createElement(SettingsModal,{settings,setSettings,showToast,setShowSettings,racineRef,hrRef,hcmRef,importJsonRef,exportExcel,exportJSON,importJSON,badges,setBadges,casiers,wdCache,histo,addLog,canHistorique:canAccess("historique"),canArchives:canAccess("archives"),canHistoriquePret:canAccess("historique_pret"),initialTab:settingsInitialTab}),
     React.createElement("nav",{className:"desktop-nav no-print",style:{background:"var(--surface)",borderBottom:"1px solid var(--border)",padding:"0 12px",display:"flex",alignItems:"center",gap:2,height:48,position:"sticky",top:0,zIndex:500,boxShadow:"0 1px 0 var(--border)",overflow:"hidden"}},
       React.createElement("div",{style:{display:"flex",alignItems:"center",gap:6,marginRight:10,paddingRight:10,borderRight:"1px solid var(--border)",flexShrink:0}},
         React.createElement("span",{style:{fontSize:16}},"👥"),
