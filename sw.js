@@ -4,10 +4,10 @@
    - Bibliothèques (React, Supabase, XLSX, polices…) : servies depuis le cache
      pour un lancement rapide, mises à jour en arrière-plan.
    - Les données (Supabase, EmailJS) ne sont jamais mises en cache. */
-const VERSION = 'v1';
+const VERSION = 'v2';
 const PAGE_CACHE = 'collab-page-' + VERSION;
 const LIB_CACHE = 'collab-libs-' + VERSION;
-const CORE = ['./', './index.html', './manifest.webmanifest', './icons/apple-touch-icon.png', './icons/icon-192.png'];
+const CORE = ['./', './index.html', './manifest.webmanifest', './apple-touch-icon.png', './icons/icon-192.png'];
 const LIB_HOSTS = ['unpkg.com', 'cdn.jsdelivr.net', 'fonts.googleapis.com', 'fonts.gstatic.com'];
 const NETWORK_TIMEOUT_MS = 4000;
 
