@@ -320,9 +320,17 @@
     /* Accueil */
     .news-grid{grid-template-columns:repeat(2,minmax(0,1fr));}
     .kpi-grid{grid-template-columns:repeat(2,minmax(0,1fr));}
-    .mvt-grid,.charts-row{grid-template-columns:minmax(0,1fr);}
+    .mvt-grid,.charts-row{grid-template-columns:minmax(0,1fr)!important;}
     .banner{min-width:0;flex-basis:100%;}
-    .days-row{gap:4px;}
+    /* Calendrier de la semaine : un jour par ligne sur téléphone */
+    .days-row{grid-template-columns:minmax(0,1fr)!important;gap:0;}
+    .day-col{display:flex;align-items:center;gap:12px;min-height:0;padding:6px 0;border-bottom:1px solid var(--border);}
+    .day-col:last-child{border-bottom:none;}
+    .day-head{flex-direction:row;gap:6px;width:72px;flex-shrink:0;margin-bottom:0;justify-content:flex-start;}
+    .day-col>:last-child{flex:1;min-width:0;}
+    .day-empty{text-align:left;padding-top:0;}
+    .person-chip{max-width:100%;}
+    .person-chip .nm{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
     .hero-search-wrap{max-width:100%;}
     /* Fenêtres : moins de marge pour tenir dans l'écran */
     .modal-overlay{padding:10px;}
