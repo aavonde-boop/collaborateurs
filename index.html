@@ -2,7 +2,7 @@
 <html lang="fr">
 <head>
   <meta charset="UTF-8"/>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover"/>
   <title>Gestion Collaborateurs</title>
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>👥</text></svg>">
   <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -307,6 +307,34 @@
   .tl-who{font-size:12px;color:var(--text2);font-weight:600;}
   .tl-time{font-size:10.5px;color:var(--text3);margin-left:auto;}
   .tl-foot{margin-top:14px;padding-top:12px;border-top:1px solid var(--border);font-size:11px;color:var(--purple);font-weight:700;cursor:pointer;}
+
+  /* ── iPhone : empêcher la page de déborder sur le côté ── */
+  @media(max-width:768px){
+    html,body{max-width:100%;overflow-x:hidden;}
+    @supports(overflow-x:clip){html,body{overflow-x:clip;}}
+    main{max-width:100vw;}
+    img,svg,video,canvas{max-width:100%;}
+    /* Grilles à 4, 5 ou 6 colonnes : 2 colonnes sur téléphone */
+    .m-grid-2{grid-template-columns:repeat(2,minmax(0,1fr))!important;}
+    .m-grid-2>*,.news-grid>*,.kpi-grid>*,.mvt-grid>*,.charts-row>*,.mvt-fields>*{min-width:0;}
+    /* Accueil */
+    .news-grid{grid-template-columns:repeat(2,minmax(0,1fr));}
+    .kpi-grid{grid-template-columns:repeat(2,minmax(0,1fr));}
+    .mvt-grid,.charts-row{grid-template-columns:minmax(0,1fr);}
+    .banner{min-width:0;flex-basis:100%;}
+    .days-row{gap:4px;}
+    .hero-search-wrap{max-width:100%;}
+    /* Fenêtres : moins de marge pour tenir dans l'écran */
+    .modal-overlay{padding:10px;}
+    .modal{padding:16px;max-width:100%;}
+    .card{padding:14px;}
+    /* Les tableaux larges défilent dans leur cadre au lieu d'élargir la page */
+    table{max-width:none;}
+    div:has(>table){max-width:100%;overflow-x:auto;-webkit-overflow-scrolling:touch;}
+  }
+  @media(max-width:380px){
+    .news-grid{grid-template-columns:minmax(0,1fr);}
+  }
 </style>
 </head>
 <body>
@@ -410,9 +438,9 @@ function LoginScreen({onUnlock,users}){
     if(_u){onUnlock({role:"user",email:_u.email,label:_u.label||_u.email,perms:_u.perms||DEFAULT_PERMS});return;}
     setErr(true);setShake(true);setPwd("");setTimeout(()=>setShake(false),500);
   };;
-  return React.createElement("div",{style:{minHeight:"100vh",background:"var(--bg)",display:"flex",alignItems:"center",justifyContent:"center",position:"relative",overflow:"hidden"}},
+  return React.createElement("div",{style:{minHeight:"100vh",background:"var(--bg)",display:"flex",alignItems:"center",justifyContent:"center",position:"relative",overflow:"hidden",padding:16}},
     React.createElement("div",{style:{position:"absolute",inset:0,background:"radial-gradient(ellipse 80% 60% at 50% -10%,rgba(59,130,246,.12),transparent)"}}),
-    React.createElement("div",{style:{position:"relative",background:"var(--surface)",border:"1px solid var(--border)",borderRadius:20,boxShadow:"0 24px 80px rgba(0,0,0,.12)",padding:"40px 48px",width:400,textAlign:"center",animation:shake?"shake .4s":"none"}},
+    React.createElement("div",{style:{position:"relative",background:"var(--surface)",border:"1px solid var(--border)",borderRadius:20,boxShadow:"0 24px 80px rgba(0,0,0,.12)",padding:"40px min(48px, 7vw)",width:"100%",maxWidth:400,textAlign:"center",animation:shake?"shake .4s":"none"}},
       React.createElement("div",{style:{width:56,height:56,background:"var(--accentBg)",border:"1px solid rgba(59,130,246,.3)",borderRadius:16,display:"flex",alignItems:"center",justifyContent:"center",fontSize:24,margin:"0 auto 16px"}},"👥"),
       React.createElement("h1",{style:{fontSize:22,fontWeight:800,color:"var(--text)",marginBottom:4}},"Gestion des Collaborateurs"),
       React.createElement("p",{style:{fontSize:13,color:"var(--text2)",marginBottom:28}},"Alliance Automotive Group"),
@@ -1286,7 +1314,7 @@ function VueCollaborateurs({badges,casiers,setBadges,setCasiers,showToast,wdCach
     React.createElement("div",{style:{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:12,flexWrap:"wrap",gap:8}},
       React.createElement("div",{style:{flex:1}},
         React.createElement("h1",{style:{fontSize:22,fontWeight:700,color:C.blue,marginBottom:10}},"👥 Collaborateurs ("+filtered.length+"/"+badges.filter(b=>b.statut!=="Archivé").length+")"),
-        React.createElement("div",{style:{display:"grid",gridTemplateColumns:"repeat(5,1fr)",gap:8,marginBottom:4}},
+        React.createElement("div",{className:"m-grid-2",style:{display:"grid",gridTemplateColumns:"repeat(5,1fr)",gap:8,marginBottom:4}},
           [
             {label:"Total",val:badges.filter(b=>b.statut!=="Archivé").length,color:"#3B82F6",id:""},
             {label:"Actifs",val:badges.filter(b=>b.statut==="Actif").length,color:C.green,id:"Actif"},
@@ -1805,7 +1833,7 @@ function VueRapport({badges,fssData,setBadges,setFssData,showToast,addLog,setVie
     ),
 
     // KPIs
-    React.createElement("div",{style:{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:12,marginBottom:24}},
+    React.createElement("div",{className:"m-grid-2",style:{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:12,marginBottom:24}},
       [{label:"Arrivées",val:arrivees.length,color:"#16A34A"},
        {label:"Départs",val:departs.length,color:"#DC2626"},
        {label:"Incohérences arrivées",val:mismatchCount(arrivees),color:"#D97706"},
@@ -2117,7 +2145,7 @@ function VueImpression({badges}){
           React.createElement("button",{onClick:()=>setShowManual(v=>!v),style:{background:"none",border:"1px solid #D1D5DB",borderRadius:6,padding:"3px 10px",fontSize:11,cursor:"pointer",color:"#374151"}},showManual?"▲ Masquer":"▼ Ajouter")
         ),
         showManual&&React.createElement("div",null,
-          React.createElement("div",{style:{display:"grid",gridTemplateColumns:"1fr 1fr 1fr auto",gap:8,marginBottom:8}},
+          React.createElement("div",{className:"m-grid-2",style:{display:"grid",gridTemplateColumns:"1fr 1fr 1fr auto",gap:8,marginBottom:8}},
             React.createElement("input",{value:manualForm.prenom,onChange:e=>setManualForm(f=>({...f,prenom:e.target.value.toUpperCase()})),placeholder:"Prénom",style:{padding:"6px 8px",borderRadius:6,border:"1px solid #D1D5DB",fontSize:12}}),
             React.createElement("input",{value:manualForm.nom,onChange:e=>setManualForm(f=>({...f,nom:e.target.value.toUpperCase()})),placeholder:"Nom",style:{padding:"6px 8px",borderRadius:6,border:"1px solid #D1D5DB",fontSize:12}}),
             React.createElement("input",{value:manualForm.matricule,onChange:e=>setManualForm(f=>({...f,matricule:e.target.value.toUpperCase()})),placeholder:"Matricule",style:{padding:"6px 8px",borderRadius:6,border:"1px solid #D1D5DB",fontSize:12}}),
@@ -2460,7 +2488,7 @@ function VueFieldSupport({fssData,setFssData,showToast,addLog,badges,casiers,set
     ),
 
     // ── KPIs ──
-    el("div",{style:{display:"grid",gridTemplateColumns:"repeat(6,1fr)",gap:8,marginBottom:16}},
+    el("div",{className:"m-grid-2",style:{display:"grid",gridTemplateColumns:"repeat(6,1fr)",gap:8,marginBottom:16}},
       kpis.map(k=>el("div",{key:k.label,
         onClick:k.id?()=>{
           if(k.id.startsWith("sit_"))setFiltSit(filtSit===k.id.slice(4)?"":k.id.slice(4));
@@ -2504,7 +2532,7 @@ function VueFieldSupport({fssData,setFssData,showToast,addLog,badges,casiers,set
     // ── Formulaire ajout manuel ──
     showAddManuel&&el("div",{style:{background:"var(--surface)",border:"1px solid rgba(59,130,246,.3)",borderRadius:"var(--radius-lg)",padding:16,marginBottom:16,borderLeft:"4px solid var(--accent)"}},
       el("h3",{style:{fontWeight:700,color:"var(--accent2)",marginBottom:12,fontSize:14}},"✏️ Ajout manuel"),
-      el("div",{style:{display:"grid",gridTemplateColumns:"1fr 1fr 1fr 1fr",gap:8,marginBottom:8}},
+      el("div",{className:"m-grid-2",style:{display:"grid",gridTemplateColumns:"1fr 1fr 1fr 1fr",gap:8,marginBottom:8}},
         el("div",null,el("div",{className:"lbl",style:{marginBottom:4}},"Nom"),el("input",{type:"text",value:manuelForm.nom,onChange:e=>setManuelForm(f=>({...f,nom:e.target.value.toUpperCase()})),placeholder:"MARTIN",className:"inp",style:{fontSize:12}})),
         el("div",null,el("div",{className:"lbl",style:{marginBottom:4}},"Prénom"),el("input",{type:"text",value:manuelForm.prenom,onChange:e=>setManuelForm(f=>({...f,prenom:e.target.value.toUpperCase()})),placeholder:"Sophie",className:"inp",style:{fontSize:12}})),
         el("div",null,el(Lbl,null,"Situation"),el(Sel,{value:manuelForm.situation,onChange:v=>setManuelForm(f=>({...f,situation:v})),options:[{v:"Arrivée",l:"🟢 Arrivée"},{v:"Départ",l:"🔴 Départ"}]})),
@@ -2889,7 +2917,7 @@ function VueBadgesPret({showToast,addLog}){
   }},S[statut]?.label||statut);
 
   // KPI cards
-  const kpis=el("div",{style:{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:12,marginBottom:24}},
+  const kpis=el("div",{className:"m-grid-2",style:{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:12,marginBottom:24}},
     [{label:"Total",val:stats.total,color:"#3B82F6",id:""},...[
       {label:"Disponibles",val:stats.disponibles,color:"#16A34A",id:"disponible"},
       {label:"Prêtées",val:stats.pretees,color:"#D97706",id:"prete"},
