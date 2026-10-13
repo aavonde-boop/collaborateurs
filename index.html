@@ -1274,8 +1274,25 @@ function VueCollaborateurs({badges,casiers,setBadges,setCasiers,showToast,wdCach
   // NB: l'ancien casier n'est plus libéré automatiquement ici : il reste "Occupé" avec le nom
   // de l'ancien occupant et apparaît comme "à vider" dans l'onglet Casiers tant qu'il n'a pas
   // été vidé manuellement (bouton 🧹) — on garde ainsi la trace du dernier occupant.
+  // Vérifie en direct dans la base (pas seulement sur cet appareil) qu'aucun autre collaborateur
+  // actif n'a déjà ce casier. Renvoie false si l'utilisateur annule.
+  const checkCasierLibre=async(newC,selfId)=>{
+    if(!newC)return true;
+    let other=null;
+    if(sb){try{const{data}=await sb.from("lp24_badges").select("id,nom,prenom,statut,casier").eq("casier",newC);other=(data||[]).find(b=>b.statut!=="Archivé"&&b.id!==selfId)||null;}catch(e){}}
+    if(!other)other=badges.find(b=>b.statut!=="Archivé"&&b.casier===newC&&b.id!==selfId)||null;
+    if(other)return confirm("⚠️ Le casier "+newC+" est déjà attribué à "+other.prenom+" "+other.nom+".\nL'attribuer quand même ?");
+    return true;
+  };
   const syncCasier=async(oldC,newC,nom,prenom,mat)=>{
-    if(newC&&newC!==oldC){setCasiers(p=>p.map(c=>c.numero===newC?{...c,statut:"Occupé",occupant:nom+" "+prenom,matricule:mat}:c));if(sb)sb.from("lp24_casiers").upsert(casiers.find(c=>c.numero===newC)?{...casiers.find(c=>c.numero===newC),statut:"Occupé",occupant:nom+" "+prenom,matricule:mat}:{});}
+    if(!newC||newC===oldC)return;
+    const upd0={statut:"Occupé",occupant:nom+" "+prenom,matricule:mat||""};
+    setCasiers(p=>p.map(c=>c.numero===newC?{...c,...upd0}:c));
+    const cur=casiers.find(c=>c.numero===newC);
+    if(sb&&cur){
+      try{const{error}=await sb.from("lp24_casiers").upsert({...cur,...upd0});if(error)throw error;}
+      catch(e){console.error("syncCasier",e);showToast("⚠️ Casier "+newC+" pas sauvegardé (réseau) — réessaie","err");}
+    }
   };
   const updateForm=(field,val)=>{
     const upd={...form,[field]:val};
@@ -1300,15 +1317,25 @@ function VueCollaborateurs({badges,casiers,setBadges,setCasiers,showToast,wdCach
   const save=async()=>{
     if(!form.nom.trim())return;
     if(form.serie){const autre=badges.find(b=>b.serie===form.serie&&b.id!==editing&&b.statut!=="Archivé");if(autre&&!confirm("⚠️ Badge N°"+form.serie+" déjà attribué à "+autre.prenom+" "+autre.nom+".\nContinuer ?"))return;}
+    {const prevC=editing?(badges.find(b=>b.id===editing)||{}).casier:"";if(form.casier&&form.casier!==prevC&&!(await checkCasierLibre(form.casier,editing)))return;}
     if(editing){
       const old=badges.find(b=>b.id===editing);const updated={...old,...form};
       setBadges(p=>p.map(b=>b.id===editing?updated:b));
-      if(sb)sb.from("lp24_badges").upsert(updated);
+      if(sb){try{const{error}=await sb.from("lp24_badges").upsert(updated);if(error)throw error;}catch(e){console.error("save badge",e);showToast("⚠️ Pas sauvegardé (réseau) — réessaie","err");return;}}
       await syncCasier(old.casier,form.casier,form.nom,form.prenom,form.matricule);
       addLog("Modification",form.prenom+" "+form.nom);showToast("✅ Collaborateur mis à jour");
     }else{
       const nb={...form,id:nxId(badges),date_ajout:form.date_ajout||todayISO()};setBadges(p=>[...p,nb]);
-      if(sb){const{id,...row}=nb;sb.from("lp24_badges").insert(row);}
+      if(sb){
+        const{id,...row}=nb;
+        try{
+          const{data,error}=await sb.from("lp24_badges").insert(row).select("id").single();
+          if(error)throw error;
+          // On reprend l'identifiant réel donné par la base, sinon les modifications suivantes
+          // écriraient sur une autre ligne.
+          if(data&&data.id!=null&&data.id!==nb.id)setBadges(p=>p.map(b=>b===nb||b.id===nb.id&&b.nom===nb.nom?{...b,id:data.id}:b));
+        }catch(e){console.error("insert badge",e);showToast("⚠️ Pas sauvegardé (réseau) — réessaie","err");return;}
+      }
       await syncCasier("",form.casier,form.nom,form.prenom,form.matricule);
       addLog("Ajout",form.prenom+" "+form.nom);showToast("✅ Collaborateur ajouté");
     }
@@ -1568,8 +1595,9 @@ function VueCasiers({casiers,badges,setCasiers,showToast,addLog,setView}){
       if(sb){
         const{id,...row}=nc;
         try{
-          const{error}=await sb.from("lp24_casiers").insert(row);
+          const{data,error}=await sb.from("lp24_casiers").insert(row).select("id").single();
           if(error){console.error("save casier",error);showToast("⚠️ Pas sauvegardé (réseau) — réessaie","err");return;}
+          if(data&&data.id!=null&&data.id!==nc.id)setCasiers(p=>p.map(c=>c===nc?{...c,id:data.id}:c));
         }catch(e){console.error("save casier",e);showToast("⚠️ Pas sauvegardé (réseau) — réessaie","err");return;}
       }
       addLog("Casier ajouté",form.numero);showToast("✅ Casier ajouté");
@@ -3173,6 +3201,19 @@ function App(){
   // ── Ouverture ciblée d'une fiche depuis le Rapport (résolution d'incohérence) ──
   const[pendingOpen,setPendingOpen]=useState(null); // {view:"collaborateurs"|"field_support", id}
   const[dbStatus,setDbStatus]=useState("loading");
+  // ── Casiers : la fiche collaborateur fait foi. Si un collaborateur actif a le casier X,
+  // X est affiché "Occupé" à son nom, même si la ligne casier en base dit encore "Libre". ──
+  const casiersEff=useMemo(()=>{
+    const m={};badges.forEach(b=>{if(b.statut!=="Archivé"&&b.casier)m[String(b.casier).trim().toUpperCase()]=b;});
+    return casiers.map(c=>{
+      const b=m[String(c.numero||"").trim().toUpperCase()];if(!b)return c;
+      const occ=(b.nom||"")+" "+(b.prenom||"");
+      const mat=String(b.matricule||c.matricule||"");
+      if(c.statut==="Occupé"&&String(c.occupant||"").toUpperCase()===occ.toUpperCase()&&String(c.matricule||"")===mat)return c;
+      return{...c,statut:"Occupé",occupant:occ,matricule:mat};
+    });
+  },[badges,casiers]);
+  const repairRef=useRef(new Set());
   const[loading,setLoading]=useState(false);
   const[toast,setToast]=useState(null);
   const toastTimer=useRef(null);
@@ -3275,6 +3316,44 @@ function App(){
       return changed?upd:prev;
     });
   },[dbStatus]);
+
+  // ── Corrige en base les casiers marqués "Libre" alors qu'un collaborateur les a ──
+  useEffect(()=>{
+    if(dbStatus!=="ok"||!sb)return;
+    const diffs=casiersEff.filter((c,i)=>c!==casiers[i]&&typeof c.id==="number"&&!repairRef.current.has(c.numero));
+    if(!diffs.length)return;
+    diffs.forEach(d=>repairRef.current.add(d.numero));
+    (async()=>{
+      try{
+        const{error}=await sb.from("lp24_casiers").upsert(diffs);
+        if(error)throw error;
+        const byId={};diffs.forEach(d=>{byId[d.id]=d;});
+        setCasiers(p=>p.map(c=>byId[c.id]?{...c,...byId[c.id]}:c));
+      }catch(e){console.error("réparation casiers",e);}
+      finally{diffs.forEach(d=>repairRef.current.delete(d.numero));}
+    })();
+  },[casiersEff,casiers,dbStatus]);
+
+  // ── Rafraîchit les données quand l'appli revient au premier plan (et toutes les 2 min),
+  // pour ne pas travailler sur une liste de casiers périmée sur téléphone. ──
+  useEffect(()=>{
+    if(!unlocked||!sb)return;
+    let last=Date.now();
+    const refresh=async()=>{
+      if(document.visibilityState!=="visible"||Date.now()-last<20000)return;
+      last=Date.now();
+      try{
+        const[bRes,cRes]=await Promise.all([sb.from("lp24_badges").select("*").order("id"),sb.from("lp24_casiers").select("*").order("id")]);
+        if(bRes.error||cRes.error)return;
+        setBadges(bRes.data||[]);
+        const m={};(cRes.data||[]).forEach(c=>{if(c.numero)m[c.numero]=c;});
+        setCasiers(Object.values(m));
+      }catch(e){}
+    };
+    document.addEventListener("visibilitychange",refresh);window.addEventListener("focus",refresh);
+    const t=setInterval(refresh,120000);
+    return()=>{document.removeEventListener("visibilitychange",refresh);window.removeEventListener("focus",refresh);clearInterval(t);};
+  },[unlocked]);
 
   // ── Auto-save settings (users, emails) dans Supabase ──
   const settingsTimer=useRef(null);
@@ -3496,10 +3575,10 @@ useEffect(()=>{
 
   const renderView=()=>{
     if(!canAccess(view)){return React.createElement("div",{style:{textAlign:"center",padding:80}},React.createElement("div",{style:{fontSize:48,marginBottom:12}},"🔒"),React.createElement("div",{style:{fontWeight:700,fontSize:18,color:"#0F172A",marginBottom:8}},"Accès refusé"),React.createElement("div",{style:{color:"#6B7280"}},"Vous n'avez pas accès à cette section."));}
-    const props={badges,casiers,setBadges,setCasiers,showToast,wdCache,addLog,setView,settings,setSettings};
+    const props={badges,casiers:casiersEff,setBadges,setCasiers,showToast,wdCache,addLog,setView,settings,setSettings};
     switch(view){
       case "accueil": return React.createElement(VueAccueil,{...props,fssData,setFssData,isIT,histo,openHistorique:()=>openSettingsTab("historique"),openDonnees:()=>openSettingsTab("import"),pendingOpen,setPendingOpen});
-      case "field_support": return React.createElement(VueFieldSupport,{fssData,setFssData,showToast,addLog,badges,casiers,setBadges,setCasiers,wdCache,settings,pendingOpen,setPendingOpen});
+      case "field_support": return React.createElement(VueFieldSupport,{fssData,setFssData,showToast,addLog,badges,casiers:casiersEff,setBadges,setCasiers,wdCache,settings,pendingOpen,setPendingOpen});
       case "collaborateurs": return React.createElement(VueCollaborateurs,{...props,newMats,setNewMats,pendingOpen,setPendingOpen});
       case "casiers": return React.createElement(VueCasiers,props);
       case "rapport": return React.createElement(VueRapport,{badges,fssData,setBadges,setFssData,showToast,addLog,setView,setPendingOpen});
