@@ -1542,7 +1542,8 @@ function VueCollaborateurs({badges,casiers,setBadges,setCasiers,showToast,wdCach
 // ════════════════ VUE CASIERS ════════════════
 function VueCasiers({casiers,badges,setCasiers,showToast,addLog,setView}){
   const[fZone,setFZone]=useState("");const[fStat,setFStat]=useState("");const[search,setSearch]=useState("");
-  const[showForm,setShowForm]=useState(false);const[editing,setEditing]=useState(null);const[viewMode,setViewMode]=useState("grille");
+  const[showForm,setShowForm]=useState(false);const[editing,setEditing]=useState(null);const[viewMode,setViewMode0]=useState(()=>{try{return localStorage.getItem("casiersView")||"liste";}catch(e){return "liste";}});
+  const setViewMode=f=>setViewMode0(v=>{const n=typeof f==="function"?f(v):f;try{localStorage.setItem("casiersView",n);}catch(e){}return n;});
   const empty={numero:"",zone:"DE",occupant:"",matricule:"",statut:"Libre"};const[form,setForm]=useState(empty);
 
   // ── Lien casier ↔ collaborateur : la seule source de vérité est le champ "casier" de la fiche
@@ -1674,13 +1675,36 @@ function VueCasiers({casiers,badges,setCasiers,showToast,addLog,setView}){
     );
   });
   if(filtered.length===0)listRows.push(React.createElement("tr",{key:"empty"},React.createElement("td",{colSpan:7,style:{padding:32,textAlign:"center",color:"#9CA3AF"}},"Aucun résultat.")));
-  const listView=React.createElement(Card,{style:{padding:0,overflow:"auto"}},
+  // ── Liste sur téléphone : une ligne par casier, numéro à gauche, occupant au centre, statut à droite ──
+  const mobileRows=filtered.map(c=>{
+    const col=ZONES_COLORS[c.zone]||C.gray;const linked=findLinked(c);const aVider=isAVider(c);
+    const who=aVider?(c.occupant||"—"):linked?(linked.prenom+" "+linked.nom):(c.occupant||"");
+    const sub=aVider?"🧹 plus dans la liste":linked?(linked.statut+(c.matricule?" · "+c.matricule:"")):(ZONES_LABELS[c.zone]||c.zone);
+    return React.createElement("div",{key:c.id,style:{display:"flex",alignItems:"center",gap:12,padding:"11px 14px",borderBottom:"1px solid var(--border)",background:aVider?C.redBg:"transparent"}},
+      React.createElement("div",{style:{minWidth:64,fontWeight:800,fontSize:15,color:col,fontFamily:"'JetBrains Mono',monospace"}},c.numero),
+      React.createElement("div",{style:{flex:1,minWidth:0}},
+        React.createElement("div",{onClick:linked&&setView?()=>setView("collaborateurs"):undefined,style:{fontWeight:700,fontSize:14,color:who?"var(--text)":"var(--text3)",whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}},who||"Libre"),
+        React.createElement("div",{style:{fontSize:12,color:aVider?C.red:linked?statCLinked(linked.statut):"var(--text3)",fontWeight:600,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}},sub)
+      ),
+      React.createElement(Bdg,{color:"#fff",bg:statC[c.statut]||C.gray},c.statut),
+      React.createElement("div",{style:{display:"flex",gap:2,minWidth:34,justifyContent:"flex-end"}},
+        aVider&&React.createElement("button",{onClick:()=>viderCasier(c),title:"Vider ce casier",style:{background:"none",border:"none",cursor:"pointer",fontSize:17,padding:4}},"🧹"),
+        !isOccupied(c)&&React.createElement("button",{onClick:()=>{setForm({...c});setEditing(c.id);setShowForm(true);window.scrollTo({top:0,behavior:"smooth"});},title:"Modifier",style:{background:"none",border:"none",cursor:"pointer",fontSize:17,padding:4}},"✏️")
+      )
+    );
+  });
+  const listView=React.createElement("div",null,
+   React.createElement(Card,{className:"cards-mobile",style:{padding:0,overflow:"hidden"}},
+    mobileRows.length?mobileRows:React.createElement("div",{style:{padding:32,textAlign:"center",color:"#9CA3AF"}},"Aucun résultat.")
+   ),
+   React.createElement(Card,{className:"tbl-desktop",style:{padding:0,overflow:"auto"}},
     React.createElement("table",{style:{width:"100%",borderCollapse:"collapse",fontSize:13}},
       React.createElement("thead",null,React.createElement("tr",{style:{background:C.purple,color:"#fff"}},
         ["N° Casier","Zone","Occupant","Matricule","Collaborateur lié","Statut","Actions"].map(h=>React.createElement("th",{key:h,style:{padding:"9px 12px",textAlign:"left",fontWeight:600,whiteSpace:"nowrap"}},h))
       )),
       React.createElement("tbody",null,listRows)
     )
+   )
   );
 
   return React.createElement("div",null,
