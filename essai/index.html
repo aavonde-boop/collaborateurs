@@ -495,12 +495,81 @@
     main{padding:8px 16px!important;padding-bottom:calc(92px + env(safe-area-inset-bottom))!important;}
     .day-col{border-bottom:.5px solid var(--sep)!important;}
   }
+
+  /* ══════════════ STYLE iPHONE — tous les écrans ══════════════ */
+  /* Tableaux façon liste iOS */
+  main table{border-collapse:separate!important;border-spacing:0!important;background:var(--surface);}
+  main thead tr,main thead tr th{background:var(--surface)!important;color:var(--text3)!important;}
+  main thead th{font-weight:600!important;font-size:12px!important;text-transform:uppercase;letter-spacing:.02em;border-bottom:.5px solid var(--sep)!important;padding-top:10px!important;padding-bottom:8px!important;}
+  main tbody tr{border-bottom:none!important;}
+  main tbody td{border-bottom:.5px solid var(--sep);}
+  main tbody tr:last-child td{border-bottom:none;}
+  main tbody tr[style*="rgb(249, 250, 251)"],main tbody tr[style*="rgb(255, 255, 255)"],main tbody tr[style*="rgb(248, 250, 252)"]{background:var(--surface)!important;}
+  /* Cartes mobiles (Collaborateurs…) façon cellules iOS */
+  .mob-card{background:var(--surface)!important;border-left:none!important;border-radius:12px!important;padding:6px 16px!important;margin-bottom:10px!important;}
+  .mob-row{border-bottom:.5px solid var(--sep)!important;padding:9px 0!important;font-size:15px!important;}
+  .mob-row:last-child{border-bottom:none!important;}
+  .mob-lbl{text-transform:none!important;font-size:15px!important;font-weight:400!important;letter-spacing:0!important;color:var(--text3)!important;}
+  /* Messages (toasts) */
+  .toast-anim{border-radius:14px!important;border:none!important;box-shadow:0 10px 30px rgba(0,0,0,.25)!important;font-weight:600;-webkit-backdrop-filter:blur(20px);backdrop-filter:blur(20px);}
+  /* Fenêtres : feuille iOS sur téléphone, fenêtre centrée sur ordinateur */
+  .ios-overlay{background:rgba(0,0,0,.4)!important;-webkit-backdrop-filter:none!important;backdrop-filter:none!important;}
+  .ios-modal{background:var(--surface)!important;border:none!important;border-top:none!important;border-radius:14px!important;box-shadow:0 20px 60px rgba(0,0,0,.25)!important;color:var(--text);}
+  @media(max-width:768px){
+    .ios-overlay,.modal-overlay{align-items:flex-end!important;padding:0!important;}
+    .ios-modal,.modal{border-radius:14px 14px 0 0!important;max-width:100%!important;width:100%!important;max-height:94vh!important;padding-top:22px!important;position:relative;animation:iosUp .3s cubic-bezier(.2,.9,.3,1);padding-bottom:calc(16px + env(safe-area-inset-bottom))!important;}
+    .ios-modal::before,.modal::before{content:"";position:absolute;top:7px;left:50%;transform:translateX(-50%);width:36px;height:5px;border-radius:3px;background:rgba(60,60,67,.3);}
+  }
+  /* Onglets des réglages = sélecteur iOS */
+  .settings-tab{border:none!important;border-radius:8px!important;background:transparent!important;color:var(--text2)!important;font-weight:600!important;font-size:13px!important;padding:6px 12px!important;white-space:nowrap;}
+  .settings-tab.active{background:var(--fill)!important;color:var(--accent)!important;}
+  /* Barre du haut du rôle « Badges de prêt » */
+  .ios-topbar{background:var(--tabbar)!important;-webkit-backdrop-filter:saturate(180%) blur(20px);backdrop-filter:saturate(180%) blur(20px);border-bottom:none!important;box-shadow:0 .5px 0 rgba(0,0,0,.25);}
+  /* Connexion */
+  .ios-login{background:transparent!important;border:none!important;box-shadow:none!important;}
+  .ios-login .inp{min-height:44px!important;font-size:17px!important;}
+  .ios-login .btn{min-height:50px;font-size:17px!important;border-radius:12px!important;}
+  .ios-login h1{font-size:28px!important;}
+  .ios-login-icon{width:76px;height:76px;border-radius:17px;margin:0 auto 18px;display:block;box-shadow:0 4px 14px rgba(0,0,0,.12);}
+  @media(max-width:768px){main th,main td{white-space:nowrap;}.hide-m{display:none!important;}main table[style*="table-layout: fixed"]{min-width:680px;}}
+  /* Petites cases chiffres de Collaborateurs */
+  .ios-kpi{border:none!important;border-radius:12px!important;}
+  /* Mode sombre : blancs et gris clairs écrits en dur dans certaines pages */
+  body.dark [style*="background: rgb(255, 255, 255)"],body.dark [style*="background: white"]{background:var(--surface)!important;}
+  body.dark [style*="background: rgb(249, 250, 251)"],body.dark [style*="background: rgb(248, 250, 252)"],body.dark [style*="background: rgb(243, 244, 246)"],body.dark [style*="background: rgb(245, 243, 255)"]{background:var(--surface3)!important;}
+  body.dark [style*="color: rgb(15, 23, 42)"],body.dark [style*="color: rgb(17, 24, 39)"],body.dark [style*="color: rgb(55, 65, 81)"],body.dark [style*="color: rgb(31, 41, 55)"]{color:var(--text)!important;}
+  body.dark [style*="border: 1px solid rgb(229, 231, 235)"],body.dark [style*="border: 1px solid rgb(209, 213, 219)"]{border-color:var(--border)!important;}
+  body.dark input[style*="background: rgb(255, 255, 255)"],body.dark select[style*="background: rgb(255, 255, 255)"]{background:var(--fill)!important;color:var(--text)!important;}
 </style>
 </head>
 <body>
 <div style="position:fixed;top:0;left:0;right:0;z-index:99999;background:#34C759;color:#fff;font:600 11px -apple-system,system-ui;text-align:center;padding:2px 0;padding-top:calc(2px + env(safe-area-inset-top));pointer-events:none">VERSION D'ESSAI — style iPhone</div>
 <div id="root"></div>
 <script>
+// ── Style iPhone : nettoyage automatique des titres et boutons ──
+// Retire l'émoji placé devant le texte des boutons et des titres (style iOS), et remplace
+// les boutons « émoji seul » (✏️ 🗑️ 🧹 ⚙️ …) par des icônes au trait.
+(function(){
+  const _ce=React.createElement;
+  const LEAD=/^(?:[\u{1F000}-\u{1FAFF}←-⇿⌀-⏿①-➿⤀-⥿⬀-⯿〰〽㊗㊙©®][️‍⃣]?)+\s*/u;
+  const ONLY={"✏️":"edit","✏":"edit","🗑️":"trash","🗑":"trash","🧹":"vider","⚙️":"settings","⚙":"settings","🔄":"refresh","✕":"close","×":"close","✖️":"close","📧":"mail","✉️":"mail","🖨️":"print","🖨":"print","👁️":"eye","👁":"eye","📋":"copy","🔍":"search","➕":"plus"};
+  const TAGS={button:1,h1:1,h2:1,h3:1,label:1};
+  React.createElement=function(type,props,...kids){
+    if(type==="input"&&props&&typeof props.placeholder==="string"){const t=props.placeholder.replace(LEAD,"");if(t!==props.placeholder&&/[\p{L}\p{N}]/u.test(t))props={...props,placeholder:t};}
+    if(type==="button"&&kids.length>1&&typeof kids[0]==="string"&&ONLY[kids[0].trim()]&&typeof IosIcon==="function"){kids=[_ce(IosIcon,{id:ONLY[kids[0].trim()],size:20}),...kids.slice(1)];}
+    if(typeof type==="string"&&TAGS[type]&&kids.length){
+      const strs=kids.filter(k=>typeof k==="string");
+      if(type==="button"&&kids.length===1&&typeof kids[0]==="string"&&ONLY[kids[0].trim()]&&typeof IosIcon==="function"){
+        kids=[_ce(IosIcon,{id:ONLY[kids[0].trim()],size:20})];
+        props={...(props||{}),"aria-label":(props&&props.title)||kids[0]};
+      }else if(strs.length){
+        let first=true;
+        kids=kids.map(k=>{if(typeof k!=="string"||!first)return k;first=false;const t=k.replace(LEAD,"");return /[\p{L}\p{N}]/u.test(t)?t:k;});
+      }
+    }
+    return _ce.call(this,type,props,...kids);
+  };
+})();
 const{useState,useMemo,useCallback,useEffect,useRef}=React;
 const C={blue:"#007AFF",blueBg:"rgba(0,122,255,.12)",purple:"#007AFF",purpleBg:"rgba(0,122,255,.12)",green:"#34C759",greenBg:"rgba(52,199,89,.15)",red:"#FF3B30",redBg:"rgba(255,59,48,.12)",orange:"#FF9500",orangeBg:"rgba(255,149,0,.15)",gray:"#8E8E93",grayBg:"rgba(118,118,128,.12)",dark:"#1C1C1E",cyan:"#32ADE6"};
 const ZONES=["DE","PA","SE","LV"];
@@ -547,6 +616,17 @@ const IOS_ICONS={
   settings:[ '<circle cx="12" cy="12" r="3.2"/><path d="M12 2.8v2.4M12 18.8v2.4M2.8 12h2.4M18.8 12h2.4M5.5 5.5l1.7 1.7M16.8 16.8l1.7 1.7M5.5 18.5l1.7-1.7M16.8 7.2l1.7-1.7"/>', false ],
   logout:[ '<path d="M14 4h4a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2h-4"/><path d="M10 16l-4-4 4-4M6 12h10"/>', false ],
   download:[ '<path d="M12 4v11M7 10.5l5 5 5-5M5 20h14"/>', false ],
+  edit:[ '<path d="M4 20h4L19 9a2.1 2.1 0 0 0-3-3L5 17z"/><path d="m14.5 7.5 3 3"/>', false ],
+  trash:[ '<path d="M4 7h16M9 7V4.5h6V7M6.5 7l1 13h9l1-13M10 11v6M14 11v6"/>', false ],
+  vider:[ '<path d="M15 3 10.5 11"/><path d="M6.5 11h9l1.5 9.5H5z"/><path d="M9 15v3M12.5 15v3"/>', false ],
+  refresh:[ '<path d="M20 11a8 8 0 0 0-14.3-4.3L4 9M4 4v5h5M4 13a8 8 0 0 0 14.3 4.3L20 15M20 20v-5h-5"/>', false ],
+  close:[ '<path d="M6 6l12 12M18 6 6 18"/>', false ],
+  mail:[ '<rect x="3" y="5" width="18" height="14" rx="2.5"/><path d="m4 7 8 6 8-6"/>', false ],
+  print:[ '<path d="M7 9V3.5h10V9"/><rect x="3.5" y="9" width="17" height="8" rx="2"/><path d="M7 14h10v6.5H7z"/>', false ],
+  eye:[ '<path d="M2.5 12S6 5.5 12 5.5 21.5 12 21.5 12 18 18.5 12 18.5 2.5 12 2.5 12z"/><circle cx="12" cy="12" r="3"/>', false ],
+  copy:[ '<rect x="8" y="8" width="12" height="12" rx="2.5"/><path d="M16 8V5.5A1.5 1.5 0 0 0 14.5 4h-9A1.5 1.5 0 0 0 4 5.5v9A1.5 1.5 0 0 0 5.5 16H8"/>', false ],
+  search:[ '<circle cx="10.5" cy="10.5" r="6.5"/><path d="m15.5 15.5 5 5"/>', false ],
+  plus:[ '<path d="M12 5v14M5 12h14"/>', false ],
 };
 // Icône : contour quand inactive, pleine quand active (comme les onglets iOS)
 function IosIcon({id,size=26,filled=false,color}){
@@ -656,10 +736,10 @@ function LoginScreen({onUnlock,users}){
     setErr(true);setShake(true);setPwd("");setTimeout(()=>setShake(false),500);
   };;
   return React.createElement("div",{style:{minHeight:"100vh",background:"var(--bg)",display:"flex",alignItems:"center",justifyContent:"center",position:"relative",overflow:"hidden",padding:16}},
-    React.createElement("div",{style:{position:"absolute",inset:0,background:"radial-gradient(ellipse 80% 60% at 50% -10%,rgba(59,130,246,.12),transparent)"}}),
-    React.createElement("div",{style:{position:"relative",background:"var(--surface)",border:"1px solid var(--border)",borderRadius:20,boxShadow:"0 24px 80px rgba(0,0,0,.12)",padding:"40px min(48px, 7vw)",width:"100%",maxWidth:400,textAlign:"center",animation:shake?"shake .4s":"none"}},
-      React.createElement("div",{style:{width:56,height:56,background:"var(--accentBg)",border:"1px solid rgba(59,130,246,.3)",borderRadius:16,display:"flex",alignItems:"center",justifyContent:"center",fontSize:24,margin:"0 auto 16px"}},"👥"),
-      React.createElement("h1",{style:{fontSize:22,fontWeight:800,color:"var(--text)",marginBottom:4}},"Gestion des Collaborateurs"),
+    
+    React.createElement("div",{className:"ios-login",style:{position:"relative",background:"var(--surface)",border:"1px solid var(--border)",borderRadius:20,boxShadow:"0 24px 80px rgba(0,0,0,.12)",padding:"40px min(48px, 7vw)",width:"100%",maxWidth:400,textAlign:"center",animation:shake?"shake .4s":"none"}},
+      React.createElement("img",{className:"ios-login-icon",src:"https://aavonde-boop.github.io/collaborateurs/apple-touch-icon.png?v=2",alt:""}),
+      React.createElement("h1",{className:"ios-large",style:{fontSize:22,fontWeight:800,color:"var(--text)",marginBottom:4}},"Gestion des Collaborateurs"),
       React.createElement("p",{style:{fontSize:13,color:"var(--text2)",marginBottom:28}},"Alliance Automotive Group"),
       React.createElement("div",{style:{marginBottom:16}},React.createElement("input",{type:"password",value:pwd,onChange:e=>setPwd(e.target.value),onKeyDown:e=>e.key==="Enter"&&check(),placeholder:"Mot de passe",className:"inp",autoFocus:true,style:{border:err?"1px solid var(--red)":"",marginBottom:0}})),
       err&&React.createElement("p",{style:{color:"var(--red)",fontSize:12,marginBottom:12}},"Mot de passe incorrect."),
@@ -1545,7 +1625,8 @@ function VueCollaborateurs({badges,casiers,setBadges,setCasiers,showToast,wdCach
   return React.createElement("div",null,
     React.createElement("div",{style:{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:12,flexWrap:"wrap",gap:8}},
       React.createElement("div",{style:{flex:1}},
-        React.createElement("h1",{style:{fontSize:22,fontWeight:700,color:C.blue,marginBottom:10}},"👥 Collaborateurs ("+filtered.length+"/"+badges.filter(b=>b.statut!=="Archivé").length+")"),
+        React.createElement("h1",{className:"ios-large"},"Collaborateurs"),
+        React.createElement("p",{className:"ios-sub"},filtered.length+" affiché"+(filtered.length>1?"s":"")+" sur "+badges.filter(b=>b.statut!=="Archivé").length),
         React.createElement("div",{className:"m-grid-2",style:{display:"grid",gridTemplateColumns:"repeat(5,1fr)",gap:8,marginBottom:4}},
           [
             {label:"Total",val:badges.filter(b=>b.statut!=="Archivé").length,color:"#3B82F6",id:""},
@@ -1555,8 +1636,7 @@ function VueCollaborateurs({badges,casiers,setBadges,setCasiers,showToast,wdCach
             {label:"Nouveaux",val:badges.filter(b=>b.from_accueil&&!b.serie).length,color:"#EA580C",id:"nouveau_mat"},
           ].map(k=>React.createElement("div",{key:k.label,
             onClick:k.id?()=>setFStat(fStat===k.id?"":k.id):undefined,
-            style:{background:"var(--surface)",border:"1px solid "+(fStat===k.id?k.color:"var(--border)"),
-              borderTop:"2px solid "+k.color,borderRadius:"var(--radius-lg)",padding:"8px 10px",
+            className:"ios-kpi",style:{background:"var(--surface)",boxShadow:fStat===k.id?"inset 0 0 0 2px "+k.color:"none",borderRadius:"var(--radius-lg)",padding:"8px 10px",
               cursor:k.id?"pointer":"default",textAlign:"center",transition:"all .15s",
               boxShadow:fStat===k.id?"0 0 0 2px "+k.color+"33":"none"}},
             React.createElement("div",{style:{fontSize:20,fontWeight:800,color:k.color,lineHeight:1}},k.val),
@@ -1567,8 +1647,8 @@ function VueCollaborateurs({badges,casiers,setBadges,setCasiers,showToast,wdCach
       React.createElement(Btn,{onClick:()=>{setForm(empty);setEditing(null);setShowForm(!showForm);},color:C.blue},"+ Nouveau collaborateur")
     ),
     // Modal formulaire
-    showForm&&React.createElement("div",{style:{position:"fixed",inset:0,background:"rgba(0,0,0,.5)",zIndex:1000,display:"flex",alignItems:"center",justifyContent:"center",padding:16},onClick:e=>{if(e.target===e.currentTarget){setShowForm(false);setEditing(null);}}},
-      React.createElement("div",{style:{background:"#fff",borderRadius:14,boxShadow:"0 8px 40px rgba(0,0,0,.25)",padding:24,width:"100%",maxWidth:820,maxHeight:"90vh",overflowY:"auto",borderTop:"4px solid "+C.blue}},
+    showForm&&React.createElement("div",{className:"ios-overlay",style:{position:"fixed",inset:0,background:"rgba(0,0,0,.5)",zIndex:1000,display:"flex",alignItems:"center",justifyContent:"center",padding:16},onClick:e=>{if(e.target===e.currentTarget){setShowForm(false);setEditing(null);}}},
+      React.createElement("div",{className:"ios-modal",style:{background:"#fff",borderRadius:14,boxShadow:"0 8px 40px rgba(0,0,0,.25)",padding:24,width:"100%",maxWidth:820,maxHeight:"90vh",overflowY:"auto",borderTop:"4px solid "+C.blue}},
         React.createElement("div",{style:{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:12}},
           React.createElement("h3",{style:{fontWeight:700,color:C.blue,fontSize:16}},editing?"✏️ Modifier le collaborateur":"+ Nouveau collaborateur"),
           React.createElement("button",{onClick:()=>{setShowForm(false);setEditing(null);},style:{background:"none",border:"none",fontSize:22,cursor:"pointer",color:"#9CA3AF"}},"×")
@@ -1836,7 +1916,7 @@ function VueCasiers({casiers,badges,setCasiers,showToast,addLog,setView}){
       React.createElement("span",{style:{background:col+"22",color:col,borderRadius:999,fontSize:12,padding:"2px 8px"}},zc.length+" total")
     );
     const grid=React.createElement("div",{style:{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(105px,1fr))",gap:8}},cells);
-    return React.createElement(Card,{key:z,style:{marginBottom:16,borderTop:"4px solid "+col}},header,grid);
+    return React.createElement(Card,{key:z,style:{marginBottom:16}},header,grid);
   });
 
   // ── Rendu liste ──
@@ -1933,7 +2013,8 @@ function VueCasiers({casiers,badges,setCasiers,showToast,addLog,setView}){
       React.createElement(IosSearch,{value:search,onChange:setSearch,placeholder:"Rechercher un casier ou un nom"}),
       React.createElement("div",{className:"ios-filters"},
         React.createElement(IosSegmented,{options:[["","Tous"],["Libre","Libres"],["Occupé","Occupés"],["a_vider","À vider"]],value:["","Libre","Occupé","a_vider"].includes(fStat)?fStat:"",onChange:setFStat}),
-        React.createElement(Sel,{value:fZone,onChange:setFZone,options:ZONES.map(z=>({v:z,l:ZONES_LABELS[z]})),placeholder:"Toutes zones"})
+        React.createElement(Sel,{value:fZone,onChange:setFZone,options:ZONES.map(z=>({v:z,l:ZONES_LABELS[z]})),placeholder:"Toutes zones"}),
+        React.createElement(Sel,{value:["Réservé","Hors service"].includes(fStat)?fStat:"",onChange:v=>setFStat(v),options:["Réservé","Hors service"],placeholder:"Autres statuts"})
       )
     ),
     showForm&&React.createElement(Card,{style:{marginBottom:16,borderLeft:"4px solid "+C.purple,background:"#F5F3FF"}},
@@ -2040,7 +2121,7 @@ function VueRapport({badges,fssData,setBadges,setFssData,showToast,addLog,setVie
   };
 
   const Panel=({title,color,count,children})=>React.createElement("div",{style:{background:"var(--surface)",border:"1px solid var(--border)",borderRadius:"var(--radius-lg)",overflow:"hidden"}},
-    React.createElement("div",{style:{display:"flex",alignItems:"center",gap:10,padding:"12px 14px",borderBottom:"2px solid "+color}},
+    React.createElement("div",{style:{display:"flex",alignItems:"center",gap:10,padding:"12px 14px",borderBottom:".5px solid var(--sep)"}},
       React.createElement("h2",{style:{fontSize:15,fontWeight:800,margin:0,color}},title),
       React.createElement("span",{style:{background:color+"22",color,borderRadius:999,fontSize:11,fontWeight:700,padding:"2px 10px"}},count+" entrée"+(count>1?"s":""))
     ),
@@ -2102,9 +2183,9 @@ function VueRapport({badges,fssData,setBadges,setFssData,showToast,addLog,setVie
     // Header
     React.createElement("div",{style:{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:24,flexWrap:"wrap",gap:8}},
       React.createElement("div",null,
-        React.createElement("h1",{style:{fontSize:22,fontWeight:800,margin:0}},"📊 Rapport — Événements à venir"),
-        React.createElement("p",{style:{fontSize:12,color:"var(--text2)",marginTop:4}},
-          "À partir d'aujourd'hui : "+fmtD(today)+" — Collaborateurs et Field Support fusionnés, ⚠️ = présent d'un seul côté (clique dessus pour créer la fiche manquante)")
+        React.createElement("h1",{className:"ios-large",style:{fontSize:22,fontWeight:800,margin:0}},"Rapport"),
+        React.createElement("p",{className:"ios-sub",style:{maxWidth:640}},
+          "Événements à venir · à partir d'aujourd'hui : "+fmtD(today)+" — Collaborateurs et Field Support fusionnés, ⚠️ = présent d'un seul côté (clique dessus pour créer la fiche manquante)")
       ),
       React.createElement("button",{onClick:()=>window.print(),
         style:{background:"var(--accentBg)",border:"1px solid var(--accent)",color:"var(--accent2)",
@@ -2118,8 +2199,7 @@ function VueRapport({badges,fssData,setBadges,setFssData,showToast,addLog,setVie
        {label:"Départs",val:departs.length,color:"#DC2626"},
        {label:"Incohérences arrivées",val:mismatchCount(arrivees),color:"#D97706"},
        {label:"Incohérences départs",val:mismatchCount(departs),color:"#D97706"},
-      ].map(k=>React.createElement("div",{key:k.label,style:{background:"var(--surface)",border:"1px solid var(--border)",
-        borderTop:"3px solid "+k.color,borderRadius:"var(--radius-lg)",padding:"14px 18px",textAlign:"center"}},
+      ].map(k=>React.createElement("div",{key:k.label,style:{background:"var(--surface)",border:"none",borderRadius:"var(--radius-lg)",padding:"14px 18px",textAlign:"center"}},
         React.createElement("div",{style:{fontSize:28,fontWeight:800,color:k.color,lineHeight:1}},k.val),
         React.createElement("div",{style:{fontSize:11,fontWeight:600,color:"var(--text2)",marginTop:5,textTransform:"uppercase",letterSpacing:".4px"}},k.label)
       ))
@@ -2200,7 +2280,7 @@ function VueMSLists({badges,setBadges,showToast,addLog,wdCache}){
   const departs=rows.filter(r=>r["Situation collaborateur"]==="Départ");
   return React.createElement("div",null,
     React.createElement("div",{style:{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:16,gap:8,flexWrap:"wrap"}},
-      React.createElement("div",null,React.createElement("h1",{style:{fontSize:22,fontWeight:700,color:"#0369a1"}},"📋 Microsoft Lists — Arrivées & Départs"),React.createElement("p",{style:{fontSize:12,color:"#6B7280",marginTop:2}},"Importez l'extraction CSV depuis SharePoint / Microsoft Lists")),
+      React.createElement("div",null,React.createElement("h1",{className:"ios-large",style:{fontSize:22,fontWeight:700,color:"#0369a1"}},"Microsoft Lists"),React.createElement("p",{style:{fontSize:12,color:"#6B7280",marginTop:2}},"Importez l'extraction CSV depuis SharePoint / Microsoft Lists")),
       React.createElement("label",{style:{display:"inline-flex",alignItems:"center",gap:8,background:"#0369a1",color:"#fff",borderRadius:8,padding:"8px 16px",cursor:"pointer",fontWeight:600,fontSize:13}},"📁 Importer CSV",React.createElement("input",{type:"file",accept:".csv",style:{display:"none"},onChange:e=>{if(e.target.files[0])loadCSV(e.target.files[0]);e.target.value="";}})
       )
     ),
@@ -2398,7 +2478,7 @@ function VueImpression({badges}){
     `),
     React.createElement("div",{className:"no-print"},
       React.createElement("div",{style:{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:16,flexWrap:"wrap",gap:8}},
-        React.createElement("h1",{style:{fontSize:22,fontWeight:700,color:"#0F172A"}},"🏷️ Impression étiquettes"),
+        React.createElement("h1",{className:"ios-large",style:{fontSize:22,fontWeight:700,color:"#0F172A"}},"Étiquettes"),
         React.createElement(Btn,{onClick:()=>doPrintEtiquettes(toPrint,startPos,IMG_BG,IMG_LOGO,BLUE),color:"#002E8A",style:{fontSize:13}},"🖨️ Imprimer "+(toPrint.length)+" étiquette(s)")
       ),
       React.createElement(Card,{style:{marginBottom:12,padding:12}},
@@ -2476,7 +2556,7 @@ function VueHistorique({histo}){
   const actionColor={Import:C.blue,Ajout:C.green,Modification:C.orange,Archivage:C.gray,"Date sortie":C.purple,Départ:C.red,Arrivée:C.green,"Casier modifié":C.purple,"Casier ajouté":C.green,"Casier supprimé":C.red,"Arrivée (MS Lists)":C.green,"Départ (MS Lists)":C.red,"Import JSON":C.blue,"Sync Workday":"#0369a1","Suppression définitive":C.red,"Restauration":C.green};
   return React.createElement("div",null,
     React.createElement("div",{style:{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:16,gap:8,flexWrap:"wrap"}},
-      React.createElement("h1",{style:{fontSize:22,fontWeight:700,color:"#0F172A"}},"🕐 Historique des modifications"),
+      React.createElement("h1",{className:"ios-large",style:{fontSize:22,fontWeight:700,color:"#0F172A"}},"Historique"),
       React.createElement(Inp,{value:search,onChange:setSearch,placeholder:"🔍 Rechercher...",style:{maxWidth:260}})
     ),
     histo.length===0?React.createElement(Card,{style:{textAlign:"center",padding:48}},React.createElement("div",{style:{fontSize:36,marginBottom:8}},"🕐"),React.createElement("div",{style:{fontWeight:600,color:"#9CA3AF"}},"Aucune action enregistrée dans cette session")):
@@ -2508,7 +2588,7 @@ function VueArchives({badges,setBadges,showToast,addLog}){
   const supprimer=async id=>{if(!confirm("Supprimer définitivement ?"))return;const b=badges.find(x=>x.id===id);setBadges(p=>p.filter(x=>x.id!==id));if(sb)sb.from("lp24_badges").delete().eq("id",id);addLog("Suppression définitive",b.prenom+" "+b.nom);showToast("🗑️ Supprimé");};
   return React.createElement("div",null,
     React.createElement("div",{style:{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:16}},
-      React.createElement("h1",{style:{fontSize:22,fontWeight:700,color:C.gray}},"🗃️ Archives ("+archives.length+")"),
+      React.createElement("div",null,React.createElement("h1",{className:"ios-large"},"Archives"),React.createElement("p",{className:"ios-sub",style:{marginBottom:0}},archives.length+" collaborateur"+(archives.length>1?"s":"")+" archivé"+(archives.length>1?"s":""))),
       React.createElement(Inp,{value:search,onChange:setSearch,placeholder:"🔍 Rechercher...",style:{maxWidth:250}})
     ),
     archives.length===0?React.createElement(Card,{style:{textAlign:"center",padding:48}},React.createElement("div",{style:{fontSize:36,marginBottom:8}},"🗃️"),React.createElement("div",{style:{fontWeight:600}},"Aucun collaborateur archivé")):
@@ -2741,8 +2821,8 @@ function VueFieldSupport({fssData,setFssData,showToast,addLog,badges,casiers,set
     // ── Header ──
     el("div",{style:{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:16,flexWrap:"wrap",gap:10}},
       el("div",null,
-        el("h1",{style:{fontSize:22,fontWeight:800,color:"var(--text)",marginBottom:4,display:"flex",alignItems:"center",gap:10}},
-          el("span",null,"📋"),"Field Support",
+        el("h1",{className:"ios-large",style:{fontSize:22,fontWeight:800,color:"var(--text)",marginBottom:4,display:"flex",alignItems:"center",gap:10}},
+          "Field Support",
           el("span",{style:{background:"var(--accentBg)",color:"var(--accent2)",borderRadius:20,padding:"2px 10px",fontSize:13,fontWeight:600}},(fssData||[]).length+" fiches"),
           fssSyncStatus==="saving"&&el("span",{style:{fontSize:11,fontWeight:600,color:"#CA8A04",background:"rgba(202,138,4,.1)",border:"1px solid rgba(202,138,4,.25)",borderRadius:20,padding:"2px 10px"}},"💾 Sauvegarde..."),
           fssSyncStatus==="ok"&&el("span",{style:{fontSize:11,fontWeight:600,color:"var(--green)",background:"var(--greenBg)",border:"1px solid rgba(22,163,74,.25)",borderRadius:20,padding:"2px 10px"}},"✓ Sauvegardé"),
@@ -2774,8 +2854,7 @@ function VueFieldSupport({fssData,setFssData,showToast,addLog,badges,casiers,set
           if(k.id.startsWith("sit_"))setFiltSit(filtSit===k.id.slice(4)?"":k.id.slice(4));
           else setFiltStat(filtStat===k.id?"":k.id);
         }:undefined,
-        style:{background:"var(--surface)",border:"1px solid "+(filtStat===k.id||filtSit===k.id.slice(4)?k.color:"var(--border)"),
-          borderTop:"2px solid "+k.color,borderRadius:"var(--radius-lg)",padding:"10px 12px",
+        style:{background:"var(--surface)",border:"none",boxShadow:(filtStat===k.id||filtSit===k.id.slice(4))?"inset 0 0 0 2px "+k.color:"none",borderRadius:"var(--radius-lg)",padding:"10px 12px",
           cursor:k.id?"pointer":"default",textAlign:"center",transition:"all .15s"}},
         el("div",{style:{fontSize:22,fontWeight:800,color:k.color,lineHeight:1}},k.val),
         el("div",{style:{fontSize:10,fontWeight:600,color:"var(--text2)",marginTop:4,textTransform:"uppercase",letterSpacing:".4px"}},k.label)
@@ -2990,13 +3069,13 @@ function SettingsModal({settings,setSettings,showToast,setShowSettings,racineRef
     if(hrRef.current)hrRef.current.onchange=e=>{if(e.target.files[0]){window._handleHR&&window._handleHR(e.target.files[0],"hr");}e.target.value="";};
     if(hcmRef.current)hcmRef.current.onchange=e=>{if(e.target.files[0]){window._handleHR&&window._handleHR(e.target.files[0],"fh");}e.target.value="";};
   });
-  return React.createElement("div",{style:{position:"fixed",inset:0,background:"rgba(30,40,60,.45)",zIndex:2000,display:"flex",alignItems:"center",justifyContent:"center",padding:16,backdropFilter:"blur(4px)"},onClick:e=>{if(e.target===e.currentTarget)setShowSettings(false);}},
-    React.createElement("div",{style:{background:"var(--surface)",border:"1px solid var(--border)",borderRadius:20,width:"100%",maxWidth:wide?1100:620,boxShadow:"0 32px 80px rgba(0,0,0,.2)",maxHeight:"90vh",display:"flex",flexDirection:"column",overflow:"hidden",transition:"max-width .15s"}},
+  return React.createElement("div",{className:"ios-overlay",style:{position:"fixed",inset:0,background:"rgba(30,40,60,.45)",zIndex:2000,display:"flex",alignItems:"center",justifyContent:"center",padding:16,backdropFilter:"blur(4px)"},onClick:e=>{if(e.target===e.currentTarget)setShowSettings(false);}},
+    React.createElement("div",{className:"ios-modal",style:{background:"var(--surface)",border:"1px solid var(--border)",borderRadius:20,width:"100%",maxWidth:wide?1100:620,boxShadow:"0 32px 80px rgba(0,0,0,.2)",maxHeight:"90vh",display:"flex",flexDirection:"column",overflow:"hidden",transition:"max-width .15s"}},
       // Header
       React.createElement("div",{style:{padding:"20px 24px 0",borderBottom:"1px solid var(--border)"}},
         React.createElement("div",{style:{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:16}},
           React.createElement("div",null,
-            React.createElement("h2",{style:{fontWeight:800,fontSize:18,color:"var(--text)"}},"⚙️ Paramètres"),
+            React.createElement("h2",{style:{fontWeight:700,fontSize:22,color:"var(--text)"}},"Réglages"),
             React.createElement("p",{style:{fontSize:12,color:"var(--text3)",marginTop:2}},"Configuration de l'application")
           ),
           React.createElement("button",{onClick:()=>setShowSettings(false),style:{background:"var(--surface2)",border:"1px solid var(--border)",borderRadius:8,width:32,height:32,cursor:"pointer",fontSize:16,color:"var(--text2)",display:"flex",alignItems:"center",justifyContent:"center"}},"×")
@@ -3203,8 +3282,7 @@ function VueBadgesPret({showToast,addLog}){
       {label:"Prêtées",val:stats.pretees,color:"#D97706",id:"prete"},
       {label:"Empruntées",val:stats.empruntees,color:"#DC2626",id:"empruntee"},
     ]].map(k=>el("div",{key:k.label,onClick:k.id?()=>setFiltreStatut(filtreStatut===k.id?"":k.id):undefined,
-      style:{background:"var(--surface)",border:"1px solid "+(filtreStatut===k.id?k.color:"var(--border)"),
-        borderTop:"3px solid "+k.color,borderRadius:"var(--radius-lg)",padding:"16px 20px",
+      style:{background:"var(--surface)",border:"none",boxShadow:filtreStatut===k.id?"inset 0 0 0 2px "+k.color:"none",borderRadius:"var(--radius-lg)",padding:"16px 20px",
         cursor:k.id?"pointer":"default",transition:"all .15s",textAlign:"center",
         boxShadow:filtreStatut===k.id?"0 0 0 2px "+k.color+"33":"none"}},
       el("div",{style:{fontSize:30,fontWeight:800,color:k.color,lineHeight:1}},k.val),
@@ -3285,11 +3363,11 @@ function VueBadgesPret({showToast,addLog}){
   );
 
   // Modale
-  const modal=selected&&el("div",{
+  const modal=selected&&el("div",{className:"ios-overlay",
     style:{position:"fixed",inset:0,background:"rgba(0,0,0,.45)",zIndex:1000,display:"flex",
       alignItems:"center",justifyContent:"center",padding:16,backdropFilter:"blur(4px)"},
     onClick:e=>{if(e.target===e.currentTarget)setSelected(null);}},
-    el("div",{style:{background:"var(--surface)",border:"1px solid var(--border)",borderRadius:"var(--radius-lg)",
+    el("div",{className:"ios-modal",style:{background:"var(--surface)",border:"1px solid var(--border)",borderRadius:"var(--radius-lg)",
       padding:28,width:"100%",maxWidth:440,boxShadow:"0 24px 60px rgba(0,0,0,.2)"}},
       el("div",{style:{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:20}},
         el("div",null,
@@ -3338,6 +3416,7 @@ function VueBadgesPret({showToast,addLog}){
     saving&&el("div",{style:{position:"fixed",bottom:20,right:20,background:"var(--surface)",
       border:"1px solid var(--border)",borderRadius:8,padding:"6px 14px",fontSize:12,
       color:"var(--text2)",zIndex:999,boxShadow:"0 2px 12px rgba(0,0,0,.1)"}},"💾 Sauvegarde..."),
+    el("div",{className:"ios-head"},el("h1",{className:"ios-large"},"Badges de prêt"),el("p",{className:"ios-sub"},"Badges prêtés aux visiteurs et collaborateurs")),
     kpis,
     searchBar,
     table,
@@ -3373,8 +3452,8 @@ function VueHistoriquePret(){
 
   return el("div",{className:"anim-in"},
     el("div",{style:{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:20}},
-      el("h1",{style:{fontSize:22,fontWeight:800,color:"var(--text)",display:"flex",alignItems:"center",gap:10}},
-        el("span",null,"🕐"),"Historique des Prêts",
+      el("h1",{className:"ios-large",style:{fontSize:22,fontWeight:800,color:"var(--text)",display:"flex",alignItems:"center",gap:10}},
+        "Historique des prêts",
         el("span",{style:{background:"var(--accentBg)",color:"var(--accent2)",borderRadius:20,padding:"2px 10px",fontSize:13,fontWeight:600}},histo.length+" entrées")
       ),
       el("button",{onClick:load,className:"btn",style:{gap:6,fontSize:12}},loading?"⏳":"🔄"," Actualiser")
@@ -3850,11 +3929,10 @@ useEffect(()=>{
     const badgeView=view==="historique_pret"?"historique_pret":"badges_pret";
     return React.createElement("div",{style:{minHeight:"100vh",background:"var(--bg)"}},
       toast&&React.createElement("div",{className:"toast-anim",style:{position:"fixed",top:20,left:"50%",transform:"translateX(-50%)",zIndex:9999,background:toast.type==="err"?"#7F1D1D":"#14532D",border:"1px solid "+(toast.type==="err"?"rgba(220,38,38,.3)":"rgba(22,163,74,.3)"),color:"#fff",padding:"12px 24px",borderRadius:12,fontSize:13,fontWeight:700,boxShadow:"0 4px 24px rgba(0,0,0,.12)",whiteSpace:"nowrap",pointerEvents:"none"}},toast.msg),
-      React.createElement("nav",{style:{background:"var(--surface)",borderBottom:"1px solid var(--border)",padding:"0 20px",display:"flex",alignItems:"center",justifyContent:"space-between",height:48,position:"sticky",top:0,zIndex:500}},
+      React.createElement("nav",{className:"ios-topbar",style:{background:"var(--surface)",borderBottom:"1px solid var(--border)",padding:"0 16px",display:"flex",alignItems:"center",justifyContent:"space-between",height:48,position:"sticky",top:0,zIndex:500}},
         React.createElement("div",{style:{display:"flex",alignItems:"center",gap:16}},
           React.createElement("div",{style:{display:"flex",alignItems:"center",gap:8}},
-            React.createElement("span",{style:{fontSize:18}},"🪪"),
-            React.createElement("span",{style:{fontWeight:700,fontSize:14}},"Badges de Prêt")
+            React.createElement("span",{style:{fontWeight:700,fontSize:15}},"Badges de prêt")
           ),
           React.createElement("div",{style:{display:"flex",gap:4}},
             React.createElement("button",{onClick:()=>setView("badges_pret"),className:"nav-item"+(badgeView==="badges_pret"?" active":""),style:{fontSize:12,padding:"5px 10px"}},"🪪 Badges"),
@@ -3862,7 +3940,7 @@ useEffect(()=>{
           )
         ),
         React.createElement("div",{style:{display:"flex",alignItems:"center",gap:8}},
-          React.createElement("span",{style:{fontSize:11,color:"var(--text2)"}},"Gestionnaire Badges"),
+          React.createElement("span",{className:"hide-m",style:{fontSize:11,color:"var(--text2)"}},"Gestionnaire Badges"),
           React.createElement("button",{onClick:()=>{setUnlocked(false);setSession(null);},style:{background:"var(--redBg)",border:"1px solid rgba(220,38,38,.2)",color:"var(--red)",borderRadius:6,padding:"3px 8px",fontSize:11,cursor:"pointer"}},"⏻ Déco")
         )
       ),
@@ -3952,7 +4030,7 @@ function VueRechercheGlobale({badges,casiers,q,setView}){
   },[badges,casiers,q]);
   const tot=res.badges.length+res.casiers.length;
   return React.createElement("div",null,
-    React.createElement("h1",{style:{fontSize:22,fontWeight:700,marginBottom:16}},"🔍 Résultats pour ",q),
+    React.createElement("h1",{className:"ios-large",style:{fontSize:22,fontWeight:700,marginBottom:16}},"Résultats pour « "+q+" »"),
     q.length<2?React.createElement("p",{style:{color:"#9CA3AF",textAlign:"center",padding:32}},"Saisissez au moins 2 caractères"):
     tot===0?React.createElement("p",{style:{color:"#9CA3AF",textAlign:"center",padding:32}},"Aucun résultat"):
     React.createElement("div",null,
