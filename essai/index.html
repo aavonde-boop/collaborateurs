@@ -3792,6 +3792,11 @@ function App(){
   
   // ── Auto-save ──
   const saveTimer=useRef(null);
+  // Dernier état connu de chaque fiche côté base (id → contenu). La sauvegarde automatique
+  // n'envoie que les fiches qui diffèrent de cet état : elle n'écrase plus les modifications
+  // faites entre-temps par quelqu'un d'autre sur les fiches qu'on n'a pas touchées.
+  const serverSnap=useRef({});const pendingSave=useRef(false);
+  const snapBadges=list=>{const m={};(list||[]).forEach(b=>{if(b&&typeof b.id==="number")m[b.id]=JSON.stringify(b);});serverSnap.current=m;};
   const[saving,setSaving]=useState(false);
 
   // ── Auto-save badges — uniquement les badges avec un vrai ID Supabase (number) ──
@@ -3799,11 +3804,17 @@ function App(){
     if(!unlocked||!sb||!badges.length)return;
     if(saveTimer.current)clearTimeout(saveTimer.current);
     saveTimer.current=setTimeout(()=>{
+      saveTimer.current=null;
       // FIX: ne jamais upsert les badges avec ID temporaire (string "tmp_...") ou ID local hors Supabase
-      const rows=badges.filter(b=>b.id&&typeof b.id==="number");
+      const rows=badges.filter(b=>b.id&&typeof b.id==="number"&&serverSnap.current[b.id]!==JSON.stringify(b));
       if(!rows.length)return;
-      setSaving(true);
-      (async()=>{try{await Promise.all(rows.map(b=>sb.from("lp24_badges").upsert(b,{onConflict:"id"})));setTimeout(()=>setSaving(false),800);}catch(e){setSaving(false);}})();
+      setSaving(true);pendingSave.current=true;
+      (async()=>{try{
+        const rs=await Promise.all(rows.map(b=>sb.from("lp24_badges").upsert(b,{onConflict:"id"})));
+        rows.forEach((b,i)=>{if(!(rs[i]&&rs[i].error))serverSnap.current[b.id]=JSON.stringify(b);});
+        if(rs.some(r=>r&&r.error))showToast("⚠️ Pas sauvegardé (collaborateur) — vérifie le réseau et réessaie","err");
+        setTimeout(()=>setSaving(false),800);
+      }catch(e){setSaving(false);}finally{pendingSave.current=false;}})();
     },2000);
   },[badges,unlocked]);
 
@@ -3911,12 +3922,12 @@ function App(){
     if(!unlocked||!sb)return;
     let last=Date.now();
     const refresh=async()=>{
-      if(document.visibilityState!=="visible"||Date.now()-last<20000)return;
+      if(document.visibilityState!=="visible"||Date.now()-last<20000||pendingSave.current||saveTimer.current)return;
       last=Date.now();
       try{
         const[bRes,cRes]=await Promise.all([sb.from("lp24_badges").select("*").order("id"),sb.from("lp24_casiers").select("*").order("id")]);
         if(bRes.error||cRes.error)return;
-        setBadges(bRes.data||[]);
+        {const d=bRes.data||[];snapBadges(d);setBadges(d);}
         const m={};(cRes.data||[]).forEach(c=>{if(c.numero)m[c.numero]=c;});
         setCasiers(Object.values(m));
       }catch(e){}
@@ -3974,7 +3985,7 @@ useEffect(()=>{
       try{
         const[bRes,cRes]=await Promise.all([sb.from("lp24_badges").select("*").order("id"),sb.from("lp24_casiers").select("*").order("id")]);
         if(bRes.error)throw bRes.error;
-        setBadges(bRes.data||[]);
+        {const d=bRes.data||[];snapBadges(d);setBadges(d);}
         // Dédupliquer les casiers par numéro (protection contre les doublons Supabase)
         const rawCasiers=cRes.data||[];
         const casiersMap={};rawCasiers.forEach(c=>{if(c.numero)casiersMap[c.numero]=c;});
@@ -4100,7 +4111,7 @@ useEffect(()=>{
             sb.from("lp24_badges").select("*").order("id"),
             sb.from("lp24_casiers").select("*").order("id")
           ]);
-          setBadges(bRes.data||[]);
+          {const d=bRes.data||[];snapBadges(d);setBadges(d);}
           const rawC=cRes.data||[];const cMap2={};rawC.forEach(x=>{if(x.numero)cMap2[x.numero]=x;});
           setCasiers(Object.values(cMap2));
           setLoading(false);
