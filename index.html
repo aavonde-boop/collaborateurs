@@ -621,6 +621,24 @@
   .hm-tile.off .n{color:var(--text3);}
   .hm-tile.vider{box-shadow:inset 0 0 0 2px #FF9500;}
   @media(max-width:768px){.hm-tiles{grid-template-columns:1fr 1fr;}}
+
+  /* ══ Listes iOS : Rapport, Badges de prêt, Field Support ══ */
+  .il-row{display:flex;align-items:center;gap:12px;padding:9px 16px;position:relative;cursor:pointer;-webkit-tap-highlight-color:transparent;background:var(--surface);}
+  .il-row:active{background:var(--surface3);}
+  .il-row+.il-row::before{content:"";position:absolute;top:0;left:68px;right:0;height:.5px;background:var(--sep);}
+  .il-row .t{flex:1;min-width:0;}
+  .il-row .t1{font-size:17px;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+  .il-row .t1 b{font-weight:600;}
+  .il-row .t2{font-size:13px;color:var(--text3);margin-top:1px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+  .il-ico{width:40px;height:40px;border-radius:10px;display:flex;align-items:center;justify-content:center;flex-shrink:0;}
+  .il-btn{border:none;border-radius:999px;padding:5px 12px;font-size:13px!important;font-weight:600;cursor:pointer;white-space:nowrap;}
+  .il-src{display:flex;gap:4px;}
+  .il-src span{width:24px;height:24px;border-radius:7px;display:flex;align-items:center;justify-content:center;}
+  .rp-panel{background:transparent!important;border:none!important;overflow:visible!important;}
+  .rp-panel>div:first-child{background:transparent!important;border:none!important;padding:6px 4px 8px!important;}
+  .rp-panel h2{font-size:22px!important;font-weight:700!important;}
+  .ios-tbl-toggle{margin-left:auto;}
+  @media print{.il-screen{display:none!important}}
 </style>
 </head>
 <body>
@@ -778,6 +796,14 @@ function IosSwipeRow({actions,onTap,children,className}){
     W>0&&React.createElement("div",{className:"ios-swipe-acts",style:{width:W,visibility:dx<0?"visible":"hidden"}},acts.map((a,i)=>React.createElement("button",{key:i,type:"button",style:{background:a.color},onClick:()=>{setDx(0);a.onClick();}},a.label))),
     React.createElement("div",{className:"ios-cell ios-swipe-front",style:{transform:"translateX("+dx+"px)",transition:st.current?"none":"transform .25s ease"},onTouchStart:onStart,onTouchMove:onMove,onTouchEnd:onEnd,onClick:tap},children));
 }
+// ── Listes iOS partagées : regroupement par première lettre (prénom) ──
+function iosLetter(t){const c=String(t||"").normalize("NFD").replace(/[̀-ͯ]/g,"").toUpperCase().charAt(0);return c>="A"&&c<="Z"?c:"#";}
+function iosCap(t){return String(t||"").toLowerCase().replace(/(^|[\s-])(\S)/g,(m,a,c)=>a+c.toUpperCase());}
+function iosByFirstName(list,getP,getN){
+  const s=[...list].sort((a,b)=>String(getP(a)||"").localeCompare(String(getP(b)||""),"fr",{sensitivity:"base"})||String(getN(a)||"").localeCompare(String(getN(b)||""),"fr",{sensitivity:"base"}));
+  const g=[];s.forEach(x=>{const k=iosLetter(getP(x));const last=g[g.length-1];if(last&&last.k===k)last.items.push(x);else g.push({k,items:[x]});});return g;
+}
+function IosAv({txt,bg}){return React.createElement("div",{className:"ct-av",style:bg?{background:bg}:null},txt);}
 const DEFAULT_PERMS={accueil:PERM_WRITE,collaborateurs:PERM_WRITE,casiers:PERM_WRITE,rapport:PERM_WRITE,impression:PERM_WRITE,historique:PERM_WRITE,archives:PERM_WRITE,field_support:PERM_WRITE};
 const IT_PERMS={accueil:PERM_READ,collaborateurs:PERM_NONE,casiers:PERM_NONE,rapport:PERM_NONE,impression:PERM_NONE,historique:PERM_NONE,archives:PERM_NONE,field_support:PERM_WRITE};
 const norm=s=>String(s||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toUpperCase().trim();
@@ -1739,8 +1765,8 @@ function VueCollaborateurs({badges,casiers,setBadges,setCasiers,showToast,wdCach
   const ctKey=t=>{const c=String(t||"").normalize("NFD").replace(/[\u0300-\u036f]/g,"").toUpperCase().charAt(0);return c>="A"&&c<="Z"?c:"#";};
   const ctInit=b=>(String(b.prenom||"").charAt(0)+String(b.nom||"").charAt(0)).toUpperCase()||"?";
   const ctCap=t=>String(t||"").toLowerCase().replace(/(^|[\s-])(\S)/g,(m,a,c)=>a+c.toUpperCase());
-  const ctSorted=[...filtered].sort((a,b2)=>String(a.nom||"").localeCompare(String(b2.nom||""),"fr",{sensitivity:"base"})||String(a.prenom||"").localeCompare(String(b2.prenom||""),"fr",{sensitivity:"base"}));
-  const ctGroups=[];ctSorted.forEach(b=>{const k=ctKey(b.nom);const g=ctGroups[ctGroups.length-1];if(g&&g.k===k)g.items.push(b);else ctGroups.push({k,items:[b]});});
+  const ctGroups=iosByFirstName(filtered,b=>b.prenom,b=>b.nom);
+  const ctSorted=[].concat(...ctGroups.map(g=>g.items));
   const ctSelB=ctSorted.find(b=>b.id===ctSel)||ctSorted[0]||null;
   const fmtLong=d=>d?new Date(d+"T00:00:00").toLocaleDateString("fr-FR",{day:"numeric",month:"long",year:"numeric"}):"—";
   const ContactCard=({b,mobile})=>{
@@ -2297,14 +2323,14 @@ function VueRapport({badges,fssData,setBadges,setFssData,showToast,addLog,setVie
     }
   };
 
-  const Panel=({title,color,count,children})=>React.createElement("div",{style:{background:"var(--surface)",border:"1px solid var(--border)",borderRadius:"var(--radius-lg)",overflow:"hidden"}},
+  const Panel=({title,color,count,children})=>React.createElement("div",{className:"rp-panel",style:{background:"var(--surface)",border:"1px solid var(--border)",borderRadius:"var(--radius-lg)",overflow:"hidden"}},
     React.createElement("div",{style:{display:"flex",alignItems:"center",gap:10,padding:"12px 14px",borderBottom:".5px solid var(--sep)"}},
       React.createElement("h2",{style:{fontSize:15,fontWeight:800,margin:0,color}},title),
       React.createElement("span",{style:{background:color+"22",color,borderRadius:999,fontSize:11,fontWeight:700,padding:"2px 10px"}},count+" entrée"+(count>1?"s":""))
     ),
     count===0
       ?React.createElement("div",{style:{textAlign:"center",padding:"24px 0",color:"var(--text3)",fontSize:13}},"Aucune entrée à venir")
-      :React.createElement("div",{style:{overflowX:"auto"}},children)
+      :children
   );
 
   // ── Toutes les cellules ont la même hauteur fixe et ne passent jamais à la ligne ──
@@ -2319,6 +2345,18 @@ function VueRapport({badges,fssData,setBadges,setFssData,showToast,addLog,setVie
     justifyContent:"center",width:22,height:18,borderRadius:6,fontSize:11,fontWeight:700,marginRight:4,
     background:ok?"rgba(22,163,74,.15)":"rgba(220,38,38,.12)",filter:ok?"none":"grayscale(1) opacity(.55)"}},icon);
 
+  // ── Liste iOS (écran) : mêmes informations et même bouton « Créer » que le tableau ──
+  const renderList=(list,color,category)=>React.createElement("div",{className:"ios-group il-screen"},list.map(m=>{
+    const mismatch=!(m.hasBadge&&m.hasFss);
+    const src=(ok,id,label)=>React.createElement("span",{title:label+(ok?" ✓":" — manquant"),style:{background:ok?"rgba(52,199,89,.15)":"rgba(142,142,147,.14)",color:ok?"#248A3D":"#AEAEB2"}},React.createElement(IosIcon,{id,size:15,filled:true}));
+    return React.createElement("div",{key:m.key,className:"il-row",style:{cursor:"default"}},
+      React.createElement(IosAv,{txt:(String(m.prenom||"").charAt(0)+String(m.nom||"").charAt(0)).toUpperCase(),bg:mismatch?"linear-gradient(180deg,#FFB340,#FF9500)":null}),
+      React.createElement("div",{className:"t"},
+        React.createElement("div",{className:"t1"},iosCap(m.prenom)+" ",React.createElement("b",null,String(m.nom||"").toUpperCase())),
+        React.createElement("div",{className:"t2"},React.createElement("span",{style:{color,fontWeight:600}},fmtD(m.date)),(m.manager?" · "+m.manager:"")+(m.matricule?" · "+m.matricule:""))),
+      React.createElement("div",{className:"il-src"},src(m.hasBadge,"badges_pret","Badge collaborateur"),src(m.hasFss,"field_support","Fiche Field Support")),
+      mismatch&&React.createElement("button",{type:"button",className:"il-btn",onClick:()=>resolveMismatch(m,category),title:(m.hasBadge?"Créer la fiche Field Support manquante":"Créer le badge collaborateur manquant"),style:{background:"rgba(255,149,0,.16)",color:"#C93400"}},"Créer"));
+  }));
   // Colonne Action dédiée pour le bouton d'incohérence : jamais tronquée par le texte de la colonne Source.
   const renderTable=(list,color,category)=>React.createElement("table",{style:tblStyle},
     React.createElement("colgroup",null,
@@ -2385,10 +2423,10 @@ function VueRapport({badges,fssData,setBadges,setFssData,showToast,addLog,setVie
     // ── Deux tableaux côte à côte : Arrivées | Départs ──
     React.createElement("div",{className:"rapport-cols",style:{display:"grid",gridTemplateColumns:"1fr 1fr",gap:20}},
       React.createElement(Panel,{title:"🟢 Arrivées",color:"#16A34A",count:arrivees.length},
-        renderTable(arrivees,"#16A34A","arrivee")
+        React.createElement(React.Fragment,null,renderList(arrivees,"#16A34A","arrivee"),React.createElement("div",{className:"print-only",style:{overflowX:"auto"}},renderTable(arrivees,"#16A34A","arrivee")))
       ),
       React.createElement(Panel,{title:"🔴 Départs",color:"#DC2626",count:departs.length},
-        renderTable(departs,"#DC2626","depart")
+        React.createElement(React.Fragment,null,renderList(departs,"#DC2626","depart"),React.createElement("div",{className:"print-only",style:{overflowX:"auto"}},renderTable(departs,"#DC2626","depart")))
       )
     )
   );
@@ -2994,6 +3032,9 @@ function VueFieldSupport({fssData,setFssData,showToast,addLog,badges,casiers,set
     {label:"Départs",val:(fssData||[]).filter(f=>f.situation==="Départ"&&!f.cloture).length,color:"#D97706",id:"sit_Départ"},
   ];
 
+  const[fsTable,setFsTable0]=useState(()=>{try{return localStorage.getItem("fsTable")==="1";}catch(e){return false;}});
+  const setFsTable=v=>{setFsTable0(v);try{localStorage.setItem("fsTable",v?"1":"0");}catch(e){}};
+  const fsGroups=iosByFirstName(filtered,f=>f.prenom,f=>f.nom);
   return el("div",{className:"anim-in"},
     // ── Header ──
     el("div",{style:{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:16,flexWrap:"wrap",gap:10}},
@@ -3085,8 +3126,23 @@ function VueFieldSupport({fssData,setFssData,showToast,addLog,badges,casiers,set
       )
     ),
 
-    // ── Tableau ──
-    el("div",{style:{background:"var(--surface)",border:"1px solid var(--border)",borderRadius:"var(--radius-lg)",overflow:"auto"}},
+    // ── Liste iOS triée par prénom (toucher = même fiche qu'avant) ──
+    el("div",{style:{display:"flex",justifyContent:"flex-end",margin:"0 2px 8px"}},el("button",{type:"button",className:"ios-link hide-m",onClick:()=>setFsTable(!fsTable)},fsTable?"Liste":"Tableau")),
+    el("div",{className:fsTable?"ct-mobile-only":"",style:{display:"block"}},
+      fsGroups.length===0?el("div",{className:"ios-group"},el("div",{className:"il-row",style:{cursor:"default",color:"var(--text3)"}},"Aucune fiche trouvée"))
+      :fsGroups.map(g=>el(React.Fragment,{key:g.k},el("div",{className:"ct-sec"},g.k),el("div",{className:"ios-group"},g.items.map(f=>{
+        const arr=f.situation==="Arrivée";const isNew=f.is_new&&f.statut==="A traiter";
+        return el("div",{key:f.id,className:"il-row",onClick:()=>{setSelectedCard(f);setEditMode(false);setEditForm({...f});}},
+          el(IosAv,{txt:(String(f.prenom||"").charAt(0)+String(f.nom||"").charAt(0)).toUpperCase()||"?",bg:arr?"linear-gradient(180deg,#5EE07A,#34C759)":"linear-gradient(180deg,#FF6961,#FF3B30)"}),
+          el("div",{className:"t"},
+            el("div",{className:"t1"},iosCap(f.prenom)+" ",el("b",null,String(f.nom||"").toUpperCase()),isNew&&el("span",{className:"ct-pill",style:{background:"rgba(255,149,0,.16)",color:"#C93400"}},"nouveau")),
+            el("div",{className:"t2"},el("span",{style:{color:arr?"#248A3D":"#D70015",fontWeight:600}},f.situation||"—"),(f.lieu?" · "+f.lieu:"")+(f.dateEvt?" · "+fmtD(f.dateEvt):"")+(f.manager?" · "+f.manager:""))),
+          el(StatBadge,{s:f.statut}),
+          f.cloture&&el(IosIcon,{id:"check",size:20,filled:true,color:"#34C759"}),
+          el("span",{className:"ios-chev"},"›"));
+      }))))),
+    // ── Tableau (ordinateur, sur demande) ──
+    fsTable&&el("div",{className:"hide-m",style:{background:"var(--surface)",border:"1px solid var(--border)",borderRadius:"var(--radius-lg)",overflow:"auto"}},
       el("table",{style:{minWidth:750,width:"100%",borderCollapse:"collapse"}},
         el("thead",null,
           el("tr",{style:{background:"var(--surface2)",borderBottom:"2px solid var(--border)"}},
@@ -3380,6 +3436,8 @@ function VueBadgesPret({showToast,addLog}){
   const[selected,setSelected]=useState(null);
   const[loading,setLoading]=useState(true);
   const[saving,setSaving]=useState(false);
+  const[bpTable,setBpTable0]=useState(()=>{try{return localStorage.getItem("bpTable")==="1";}catch(e){return false;}});
+  const setBpTable=v=>{setBpTable0(v);try{localStorage.setItem("bpTable",v?"1":"0");}catch(e){}};
 
   // Chargement Supabase
   useEffect(()=>{
@@ -3589,6 +3647,19 @@ function VueBadgesPret({showToast,addLog}){
     )
   );
 
+  const bpCol={disponible:["#34C759","rgba(52,199,89,.15)"],prete:["#FF9500","rgba(255,149,0,.16)"],empruntee:["#FF3B30","rgba(255,59,48,.12)"]};
+  const bpList=el("div",{className:"ios-group"},
+    filtered.length===0?el("div",{className:"il-row",style:{cursor:"default",color:"var(--text3)"}},"Aucun badge trouvé")
+    :filtered.map(badge=>{const late=badge.date_retour_prevu&&badge.date_retour_prevu<todayISO();const c=bpCol[badge.statut]||["#8E8E93","rgba(142,142,147,.15)"];const lent=badge.statut==="prete"||badge.statut==="empruntee";
+      return el("div",{key:badge.id,className:"il-row",onClick:()=>setSelected(badge)},
+        el("div",{className:"il-ico",style:{background:c[1],color:c[0]}},el(IosIcon,{id:"badges_pret",size:22,filled:true})),
+        el("div",{className:"t"},
+          el("div",{className:"t1"},el("b",null,badge.code),"  ",el("span",{style:{color:"var(--text3)"}},badge.nom)),
+          el("div",{className:"t2"},lent?[badge.emprunteur||"—"," · retour ",el("span",{key:"r",style:late?{color:"var(--red)",fontWeight:600}:null},fmtDate(badge.date_retour_prevu)),badge.commentaire?" · "+badge.commentaire:""]:(badge.commentaire||"Disponible"))),
+        el(Pill,{statut:badge.statut}),
+        lent&&el("button",{type:"button",className:"il-btn",style:{background:"rgba(52,199,89,.15)",color:"#248A3D"},onClick:e=>{e.stopPropagation();doAction(badge.id,"disponible","","");}},"Retour"),
+        el("span",{className:"ios-chev"},"›"));
+    }));
   return el("div",null,
     saving&&el("div",{style:{position:"fixed",bottom:20,right:20,background:"var(--surface)",
       border:"1px solid var(--border)",borderRadius:8,padding:"6px 14px",fontSize:12,
@@ -3596,7 +3667,8 @@ function VueBadgesPret({showToast,addLog}){
     el("div",{className:"ios-head"},el("h1",{className:"ios-large"},"Badges de prêt"),el("p",{className:"ios-sub"},"Badges prêtés aux visiteurs et collaborateurs")),
     kpis,
     searchBar,
-    table,
+    el("div",{style:{display:"flex",justifyContent:"flex-end",margin:"-4px 2px 8px"}},el("button",{type:"button",className:"ios-link hide-m",onClick:()=>setBpTable(!bpTable)},bpTable?"Liste":"Tableau")),
+    bpTable?el("div",null,el("div",{className:"hide-m"},table),el("div",{className:"ct-mobile-only",style:{display:"block"}},bpList)):bpList,
     modal
   );
 }
