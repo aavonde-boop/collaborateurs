@@ -640,6 +640,14 @@
   .rp-panel h2{font-size:22px!important;font-weight:700!important;}
   .ios-tbl-toggle{margin-left:auto;}
   @media print{.il-screen{display:none!important}}
+
+  /* Index A–Z au doigt */
+  .ios-idx{position:fixed;right:0;top:50%;transform:translateY(-50%);width:30px;height:min(62vh,440px);display:flex;flex-direction:column;align-items:center;justify-content:space-between;padding:6px 0;z-index:40;touch-action:none;-webkit-user-select:none;user-select:none;cursor:pointer;}
+  .ios-idx span{font-size:11px;font-weight:600;color:var(--accent);line-height:1;pointer-events:none;}
+  .ios-idx span.off{color:var(--text3);opacity:.5;}
+  .ios-idx-bubble{position:fixed;left:50%;top:45%;transform:translate(-50%,-50%);width:84px;height:84px;border-radius:20px;background:rgba(60,60,67,.82);color:#fff;font-size:44px;font-weight:700;display:flex;align-items:center;justify-content:center;z-index:41;pointer-events:none;-webkit-backdrop-filter:blur(10px);backdrop-filter:blur(10px);}
+  .ct-row{padding-right:34px!important;}
+  @media(min-width:769px){.ios-idx{display:none;}}
 </style>
 </head>
 <body>
@@ -4233,6 +4241,32 @@ function iosByFirstName(list,getP,getN){
   const g=[];s.forEach(x=>{const k=iosLetter(getP(x));const last=g[g.length-1];if(last&&last.k===k)last.items.push(x);else g.push({k,items:[x]});});return g;
 }
 function IosAv({txt,bg}){return React.createElement("div",{className:"ct-av",style:bg?{background:bg}:null},txt);}
+// ── Index A–Z façon Contacts : toucher une lettre OU glisser le doigt le long de l'alphabet ──
+function IosIndex({letters,prefix}){
+  const ref=React.useRef(null);const[cur,setCur]=React.useState(null);const last=React.useRef(null);
+  const ALL="ABCDEFGHIJKLMNOPQRSTUVWXYZ#".split("");
+  const jump=L=>{
+    if(!L||L===last.current)return;last.current=L;
+    // lettre sans personne → la suivante qui existe (sinon la précédente)
+    let i=ALL.indexOf(L),t=null;
+    for(let k=i;k<ALL.length&&!t;k++)if(letters.has(ALL[k]))t=ALL[k];
+    for(let k=i;k>=0&&!t;k--)if(letters.has(ALL[k]))t=ALL[k];
+    setCur(L);
+    const el=t&&document.getElementById(prefix+t);
+    if(el){const y=el.getBoundingClientRect().top+window.scrollY-8;window.scrollTo(0,Math.max(0,y));}
+    try{navigator.vibrate&&navigator.vibrate(5);}catch(e){}
+  };
+  const atY=y=>{const box=ref.current;if(!box)return null;const r=box.getBoundingClientRect();const k=Math.floor((y-r.top)/r.height*ALL.length);return ALL[Math.max(0,Math.min(ALL.length-1,k))];};
+  const end=()=>{last.current=null;setTimeout(()=>setCur(null),350);};
+  return React.createElement(React.Fragment,null,
+    React.createElement("div",{ref,className:"ios-idx",
+      onTouchStart:e=>{e.preventDefault();jump(atY(e.touches[0].clientY));},
+      onTouchMove:e=>{e.preventDefault();jump(atY(e.touches[0].clientY));},
+      onTouchEnd:end,onTouchCancel:end,
+      onMouseDown:e=>{jump(atY(e.clientY));const mv=ev=>jump(atY(ev.clientY));const up=()=>{window.removeEventListener("mousemove",mv);window.removeEventListener("mouseup",up);end();};window.addEventListener("mousemove",mv);window.addEventListener("mouseup",up);}},
+      ALL.map(L=>React.createElement("span",{key:L,className:letters.has(L)?"":"off"},L))),
+    cur&&React.createElement("div",{className:"ios-idx-bubble"},cur));
+}
 const DEFAULT_PERMS={accueil:PERM_WRITE,collaborateurs:PERM_WRITE,casiers:PERM_WRITE,rapport:PERM_WRITE,impression:PERM_WRITE,historique:PERM_WRITE,archives:PERM_WRITE,field_support:PERM_WRITE};
 const IT_PERMS={accueil:PERM_READ,collaborateurs:PERM_NONE,casiers:PERM_NONE,rapport:PERM_NONE,impression:PERM_NONE,historique:PERM_NONE,archives:PERM_NONE,field_support:PERM_WRITE};
 const norm=s=>String(s||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toUpperCase().trim();
@@ -5261,7 +5295,7 @@ function VueCollaborateurs({badges,casiers,setBadges,setCasiers,showToast,wdCach
       :ctGroups.map(g=>React.createElement(React.Fragment,{key:g.k},
         React.createElement("div",{className:"ct-sec",id:"ct-sec-"+g.k},g.k),
         React.createElement("div",{className:"ct-group"},g.items.map(ctRow)))),
-      React.createElement("div",{className:"ct-idx"},"ABCDEFGHIJKLMNOPQRSTUVWXYZ#".split("").map(L=>React.createElement("span",{key:L,className:ctLetters.has(L)?"":"off",onClick:()=>{const el=document.getElementById("ct-sec-"+L);if(el)el.scrollIntoView({behavior:"smooth",block:"start"});}},L)))),
+      React.createElement(IosIndex,{letters:ctLetters,prefix:"ct-sec-"})),
     React.createElement("div",{className:"ct-card-pane"},ctSelB&&React.createElement(ContactCard,{b:ctSelB})));
   const ctMobileB=ctMobile&&badges.find(b=>b.id===ctMobile);
   return React.createElement("div",null,
@@ -6559,7 +6593,7 @@ function VueFieldSupport({fssData,setFssData,showToast,addLog,badges,casiers,set
     el("div",{style:{display:"flex",justifyContent:"flex-end",margin:"0 2px 8px"}},el("button",{type:"button",className:"ios-link hide-m",onClick:()=>setFsTable(!fsTable)},fsTable?"Liste":"Tableau")),
     el("div",{className:fsTable?"ct-mobile-only":"",style:{display:"block"}},
       fsGroups.length===0?el("div",{className:"ios-group"},el("div",{className:"il-row",style:{cursor:"default",color:"var(--text3)"}},"Aucune fiche trouvée"))
-      :fsGroups.map(g=>el(React.Fragment,{key:g.k},el("div",{className:"ct-sec"},g.k),el("div",{className:"ios-group"},g.items.map(f=>{
+      :fsGroups.map(g=>el(React.Fragment,{key:g.k},el("div",{className:"ct-sec",id:"fs-sec-"+g.k},g.k),el("div",{className:"ios-group"},g.items.map(f=>{
         const arr=f.situation==="Arrivée";const isNew=f.is_new&&f.statut==="A traiter";
         return el("div",{key:f.id,className:"il-row",onClick:()=>{setSelectedCard(f);setEditMode(false);setEditForm({...f});}},
           el(IosAv,{txt:(String(f.prenom||"").charAt(0)+String(f.nom||"").charAt(0)).toUpperCase()||"?",bg:arr?"linear-gradient(180deg,#5EE07A,#34C759)":"linear-gradient(180deg,#FF6961,#FF3B30)"}),
@@ -6570,6 +6604,7 @@ function VueFieldSupport({fssData,setFssData,showToast,addLog,badges,casiers,set
           f.cloture&&el(IosIcon,{id:"check",size:20,filled:true,color:"#34C759"}),
           el("span",{className:"ios-chev"},"›"));
       }))))),
+    fsGroups.length>0&&el(IosIndex,{letters:new Set(fsGroups.map(g=>g.k)),prefix:"fs-sec-"}),
     // ── Tableau (ordinateur, sur demande) ──
     fsTable&&el("div",{className:"hide-m",style:{background:"var(--surface)",border:"1px solid var(--border)",borderRadius:"var(--radius-lg)",overflow:"auto"}},
       el("table",{style:{minWidth:750,width:"100%",borderCollapse:"collapse"}},
