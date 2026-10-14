@@ -697,6 +697,14 @@
   };
 })();
 const{useState,useMemo,useCallback,useEffect,useRef}=React;
+// ── Envoi garanti des écritures Supabase ──
+// Avec Supabase, une requête n'est envoyée que lorsqu'on attend sa réponse (await / .then).
+// sbFire l'envoie, et prévient l'utilisateur si l'enregistrement échoue.
+function sbFire(q,label){
+  return Promise.resolve(q).then(r=>{if(r&&r.error)throw r.error;return r;})
+    .catch(e=>{console.error("Enregistrement échoué ("+label+")",e);try{window.__sbErr&&window.__sbErr(label);}catch(_){}return null;});
+}
+
 const C={blue:"#007AFF",blueBg:"rgba(0,122,255,.12)",purple:"#007AFF",purpleBg:"rgba(0,122,255,.12)",green:"#34C759",greenBg:"rgba(52,199,89,.15)",red:"#FF3B30",redBg:"rgba(255,59,48,.12)",orange:"#FF9500",orangeBg:"rgba(255,149,0,.15)",gray:"#8E8E93",grayBg:"rgba(118,118,128,.12)",dark:"#1C1C1E",cyan:"#32ADE6"};
 const ZONES=["DE","PA","SE","LV"];
 const ZONES_LABELS={DE:"Défense",PA:"Paris",SE:"Seine",LV:"Levallois"};
@@ -1118,7 +1126,7 @@ function VueAccueil({badges,casiers,setView,wdCache,setBadges,setCasiers,showToa
     if(ex){showToast("⚠️ Ce collaborateur existe déjà","err");return;}
     const nb={id:nxId(badges),nom:wd?wd.nom:nomArr.toUpperCase(),prenom:wd?wd.prenom:prenomArr,matricule:wd?wd.matricule:"",email:wd?wd.email:"",serie:"",zeplug:"",carte_rechargement:"",casier:"",manager:managerArr||wd?.manager||"",mail_manager:wd?.mailMgr||"",statut:"Actif",badge_donne:true,date_entree:dateArr||wd?.hireDate||"",date_sortie_prevue:"",date_archive:"",commentaire:"",date_ajout:todayISO(),etiquette_imprimee:false,from_accueil:true};
     setBadges(p=>[...p,nb]);
-    if(sb){const{id,...row}=nb;sb.from("lp24_badges").insert(row);}
+    if(sb){const{id,...row}=nb;sbFire(sb.from("lp24_badges").insert(row).select("id").single(),"collaborateur").then(r=>{if(r&&r.data&&r.data.id!=null&&r.data.id!==nb.id)setBadges(p=>p.map(x=>x===nb||(x.id===nb.id&&x.nom===nb.nom)?{...x,id:r.data.id}:x));});}
     addLog("Arrivée",(wd?"Workday":"Manuel")+" : "+nb.prenom+" "+nb.nom);
     addFssEntry({nom:nb.nom,prenom:nb.prenom,situation:"Arrivée",statut:"A traiter",lieu:lieuArr||"",dateEvt:dateArr||today,manager:nb.manager||"",matPC:"",ritm:"",matRecu:"",idMat:"",dateRecep:"",matDonne:"",commentaires:"",cloture:false});
     showToast("✅ "+(wd?"Arrivée Workday":"Arrivée enregistrée")+" — "+nb.prenom+" "+nb.nom+" + fiche Field Support créée");
@@ -1749,7 +1757,7 @@ function VueCollaborateurs({badges,casiers,setBadges,setCasiers,showToast,wdCach
     // Casiers (avec le nom de b conservé) jusqu'à ce qu'il soit vidé manuellement.
     const updated={...b,statut:"Archivé",date_archive:todayISO()};
     setBadges(p=>p.map(x=>x.id===id?updated:x));
-    if(sb)sb.from("lp24_badges").upsert(updated);
+    if(sb)sbFire(sb.from("lp24_badges").upsert(updated),"collaborateur");
     addLog("Archivage",b.prenom+" "+b.nom);showToast("🗃️ Archivé");
   };
   const casLibres=casiers.filter(c=>c.statut==="Libre"||(editing&&c.numero===form.casier));
@@ -1965,9 +1973,9 @@ function VueCollaborateurs({badges,casiers,setBadges,setCasiers,showToast,wdCach
               React.createElement("td",{style:{padding:"3px 3px"},onClick:e=>e.stopPropagation()},
                 b.statut!=="Archivé"?(
                   b.date_sortie_prevue
-                  ?React.createElement("input",{type:"date",value:b.date_sortie_prevue,onClick:e=>e.stopPropagation(),onChange:async e=>{e.stopPropagation();const val=e.target.value;const upd={...b,date_sortie_prevue:val};setBadges(p=>p.map(x=>x.id===b.id?upd:x));if(sb)sb.from("lp24_badges").upsert(upd);addLog("Date sortie",b.prenom+" "+b.nom+" → "+val);showToast("✅ Date mise à jour");},style:{fontSize:9,padding:"1px 3px",borderRadius:4,border:"1px solid "+(sortieProche?C.orange:"#86efac"),background:sortieProche?"#FFFBEB":"#f0fdf4",width:96,colorScheme:"light"}})
+                  ?React.createElement("input",{type:"date",value:b.date_sortie_prevue,onClick:e=>e.stopPropagation(),onChange:async e=>{e.stopPropagation();const val=e.target.value;const upd={...b,date_sortie_prevue:val};setBadges(p=>p.map(x=>x.id===b.id?upd:x));if(sb)sbFire(sb.from("lp24_badges").upsert(upd),"collaborateur");addLog("Date sortie",b.prenom+" "+b.nom+" → "+val);showToast("✅ Date mise à jour");},style:{fontSize:9,padding:"1px 3px",borderRadius:4,border:"1px solid "+(sortieProche?C.orange:"#86efac"),background:sortieProche?"#FFFBEB":"#f0fdf4",width:96,colorScheme:"light"}})
                   :React.createElement("label",{style:{cursor:"pointer",fontSize:11,color:"#9CA3AF",padding:"1px 5px",borderRadius:4,border:"1px dashed #D1D5DB",background:"#F9FAFB",userSelect:"none",display:"inline-block",position:"relative"},title:"Cliquer pour saisir une date de sortie"},"—",
-                    React.createElement("input",{type:"date",style:{position:"absolute",opacity:0,width:"100%",height:"100%",left:0,top:0,cursor:"pointer"},onChange:async e=>{e.stopPropagation();const val=e.target.value;if(!val)return;const upd={...b,date_sortie_prevue:val};setBadges(p=>p.map(x=>x.id===b.id?upd:x));if(sb)sb.from("lp24_badges").upsert(upd);addLog("Date sortie",b.prenom+" "+b.nom+" → "+val);showToast("✅ Date de sortie : "+val);},onClick:e=>e.stopPropagation()})
+                    React.createElement("input",{type:"date",style:{position:"absolute",opacity:0,width:"100%",height:"100%",left:0,top:0,cursor:"pointer"},onChange:async e=>{e.stopPropagation();const val=e.target.value;if(!val)return;const upd={...b,date_sortie_prevue:val};setBadges(p=>p.map(x=>x.id===b.id?upd:x));if(sb)sbFire(sb.from("lp24_badges").upsert(upd),"collaborateur");addLog("Date sortie",b.prenom+" "+b.nom+" → "+val);showToast("✅ Date de sortie : "+val);},onClick:e=>e.stopPropagation()})
                   )
                 ):React.createElement("span",{style:{fontSize:9,color:"#9CA3AF"}},fmt(b.date_sortie_prevue))
               ),
@@ -2315,7 +2323,7 @@ function VueRapport({badges,fssData,setBadges,setFssData,showToast,addLog,setVie
         date_entree:category==="arrivee"?(m.date||today):"",date_sortie_prevue:category==="depart"?(m.date||today):"",
         date_archive:"",commentaire:"",date_ajout:todayISO(),etiquette_imprimee:false};
       setBadges(p=>[...p,nb]);
-      if(sb){const{id,...row}=nb;sb.from("lp24_badges").insert(row);}
+      if(sb){const{id,...row}=nb;sbFire(sb.from("lp24_badges").insert(row).select("id").single(),"collaborateur").then(r=>{if(r&&r.data&&r.data.id!=null&&r.data.id!==nb.id)setBadges(p=>p.map(x=>x===nb||(x.id===nb.id&&x.nom===nb.nom)?{...x,id:r.data.id}:x));});}
       if(addLog)addLog("Badge créé (Rapport)",m.prenom+" "+m.nom);
       if(showToast)showToast("✅ Badge collaborateur créé — "+m.prenom+" "+m.nom+", à compléter");
       if(setView)setView("collaborateurs");
@@ -2799,8 +2807,8 @@ function VueArchives({badges,setBadges,showToast,addLog}){
   const[search,setSearch]=useState("");
   const archives=badges.filter(b=>b.statut==="Archivé");
   const filtered=!search?archives:archives.filter(b=>(b.nom+" "+b.prenom+" "+(b.matricule||"")).toLowerCase().includes(search.toLowerCase()));
-  const restaurer=async id=>{if(!confirm("Restaurer ?"))return;const b=badges.find(x=>x.id===id);const u={...b,statut:"Actif",date_archive:""};setBadges(p=>p.map(x=>x.id===id?u:x));if(sb)sb.from("lp24_badges").upsert(u);addLog("Restauration",b.prenom+" "+b.nom);showToast("✅ Restauré");};
-  const supprimer=async id=>{if(!confirm("Supprimer définitivement ?"))return;const b=badges.find(x=>x.id===id);setBadges(p=>p.filter(x=>x.id!==id));if(sb)sb.from("lp24_badges").delete().eq("id",id);addLog("Suppression définitive",b.prenom+" "+b.nom);showToast("🗑️ Supprimé");};
+  const restaurer=async id=>{if(!confirm("Restaurer ?"))return;const b=badges.find(x=>x.id===id);const u={...b,statut:"Actif",date_archive:""};setBadges(p=>p.map(x=>x.id===id?u:x));if(sb)sbFire(sb.from("lp24_badges").upsert(u),"collaborateur");addLog("Restauration",b.prenom+" "+b.nom);showToast("✅ Restauré");};
+  const supprimer=async id=>{if(!confirm("Supprimer définitivement ?"))return;const b=badges.find(x=>x.id===id);setBadges(p=>p.filter(x=>x.id!==id));if(sb)sbFire(sb.from("lp24_badges").delete().eq("id",id),"collaborateur");addLog("Suppression définitive",b.prenom+" "+b.nom);showToast("🗑️ Supprimé");};
   return React.createElement("div",null,
     React.createElement("div",{style:{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:16}},
       React.createElement("div",null,React.createElement("h1",{className:"ios-large"},"Archives"),React.createElement("p",{className:"ios-sub",style:{marginBottom:0}},archives.length+" collaborateur"+(archives.length>1?"s":"")+" archivé"+(archives.length>1?"s":""))),
@@ -3818,11 +3826,11 @@ function App(){
       return b;
     }));
     versARecuperer.forEach(b=>{
-      if(sb&&typeof b.id==="number")sb.from("lp24_badges").upsert({...b,statut:"À récupérer"});
+      if(sb&&typeof b.id==="number")sbFire(sb.from("lp24_badges").upsert({...b,statut:"À récupérer"}),"collaborateur");
       addLog("Statut auto","À récupérer (sortie le "+fmt(b.date_sortie_prevue)+") — "+b.prenom+" "+b.nom);
     });
     versActif.forEach(b=>{
-      if(sb&&typeof b.id==="number")sb.from("lp24_badges").upsert({...b,statut:"Actif"});
+      if(sb&&typeof b.id==="number")sbFire(sb.from("lp24_badges").upsert({...b,statut:"Actif"}),"collaborateur");
       addLog("Statut auto","Actif (sortie repoussée au "+fmt(b.date_sortie_prevue)+") — "+b.prenom+" "+b.nom);
     });
     if(versARecuperer.length)showToast("🔴 "+versARecuperer.length+" badge(s) passé(s) en « À récupérer » (sortie ≤ 7 jours)");
@@ -3852,7 +3860,7 @@ function App(){
       const upd=prev.map(b=>{
         let nb=null;
         FIELDS_B.forEach(f=>{const v=b[f];if(typeof v==="string"&&v&&v!==v.toUpperCase()){if(!nb)nb={...b};nb[f]=v.toUpperCase();}});
-        if(nb){changed=true;if(sb&&typeof b.id==="number")sb.from("lp24_badges").upsert(nb);return nb;}
+        if(nb){changed=true;if(sb&&typeof b.id==="number")sbFire(sb.from("lp24_badges").upsert(nb),"collaborateur");return nb;}
         return b;
       });
       return changed?upd:prev;
@@ -3862,7 +3870,7 @@ function App(){
       const upd=prev.map(c=>{
         let nc=null;
         FIELDS_C.forEach(f=>{const v=c[f];if(typeof v==="string"&&v&&v!==v.toUpperCase()){if(!nc)nc={...c};nc[f]=v.toUpperCase();}});
-        if(nc){changed=true;if(sb&&typeof c.id==="number")sb.from("lp24_casiers").upsert(nc);return nc;}
+        if(nc){changed=true;if(sb&&typeof c.id==="number")sbFire(sb.from("lp24_casiers").upsert(nc),"casier");return nc;}
         return c;
       });
       return changed?upd:prev;
@@ -3872,7 +3880,7 @@ function App(){
       const upd=(prev||[]).map(f=>{
         let nf=null;
         FIELDS_FSS.forEach(k=>{const v=f[k];if(typeof v==="string"&&v&&v!==v.toUpperCase()){if(!nf)nf={...f};nf[k]=v.toUpperCase();}});
-        if(nf){changed=true;if(sb&&typeof f.id==="number")sb.from("lp24_fss").upsert(nf,{onConflict:"id"});return nf;}
+        if(nf){changed=true;if(sb&&typeof f.id==="number")sbFire(sb.from("lp24_fss").upsert(nf,{onConflict:"id"}),"fiche Field Support");return nf;}
         return f;
       });
       return changed?upd:prev;
@@ -3928,6 +3936,7 @@ function App(){
   },[settings,unlocked]);
 
   const showToast=(msg,type="ok")=>{if(toastTimer.current)clearTimeout(toastTimer.current);setToast({msg,type});toastTimer.current=setTimeout(()=>setToast(null),3500);};
+  window.__sbErr=label=>showToast("⚠️ Pas sauvegardé ("+label+") — vérifie le réseau et réessaie","err");
   const addLog=useCallback((action,detail)=>{
   const entry={id:Date.now(),ts:TS(),action,detail,user:session?session.label:"admin"};
   setHisto(prev=>[entry,...prev].slice(0,300));
@@ -3946,7 +3955,7 @@ function App(){
           if(b.matricule&&String(b.matricule)!=="0")return;
           const n=b.nom.toUpperCase();const p=(b.prenom||"").toLowerCase();
           const match=parsed.find(w=>(w.nom.toUpperCase().includes(n)||n.includes(w.nom.toUpperCase()))&&(w.prenom.toLowerCase().includes(p)||p.includes(w.prenom.toLowerCase())));
-          if(match&&match.matricule){updated[i]={...b,matricule:match.matricule,email:b.email||match.email,manager:b.manager||match.manager,mail_manager:b.mail_manager||match.mailMgr};newIds.add(b.id);if(sb)sb.from("lp24_badges").upsert(updated[i]);}
+          if(match&&match.matricule){updated[i]={...b,matricule:match.matricule,email:b.email||match.email,manager:b.manager||match.manager,mail_manager:b.mail_manager||match.mailMgr};newIds.add(b.id);if(sb)sbFire(sb.from("lp24_badges").upsert(updated[i]),"collaborateur");}
         });
         if(newIds.size>0)setNewMats(prev2=>new Set([...prev2,...newIds]));
         // ── Mémoriser le résultat de la synchro auto pour l'afficher sur l'accueil ──
