@@ -689,6 +689,18 @@ async function sendFssEmail(toEmail,fiche){
       lieu:fiche.lieu||"",
       manager:fiche.manager||"",
       statut:fiche.statut||"A traiter",
+      // Modèle EmailJS commun à tous les mails : objet {{sujet}}, contenu {{{message}}}
+      sujet:"Field Support — "+(fiche.prenom||"")+" "+String(fiche.nom||"").toUpperCase(),
+      message:(function(){const fr=d=>{const m=String(d||"").match(/^(\d{4})-(\d{2})-(\d{2})/);return m?m[3]+"/"+m[2]+"/"+m[1]:(d||"");};
+        return "Bonjour,\n\nUne nouvelle demande Field Support a été enregistrée :\n\n"
+          +"Nom : "+String(fiche.nom||"").toUpperCase()+"\n"
+          +"Prénom : "+(fiche.prenom||"")+"\n"
+          +"Situation : "+(fiche.situation||"")+"\n"
+          +"Date : "+fr(fiche.dateEvt)+"\n"
+          +"Lieu : "+(fiche.lieu||"")+"\n"
+          +"Manager : "+(fiche.manager||"Non renseigné")+"\n"
+          +"Statut : "+(fiche.statut||"A traiter")+"\n\n"
+          +"Cordialement,\nLe responsable de site";})(),
     });
     console.log("Email envoyé à",toEmail);
   }catch(e){console.error("EmailJS error:",e);}
@@ -4185,6 +4197,18 @@ async function sendFssEmail(toEmail,fiche){
       lieu:fiche.lieu||"",
       manager:fiche.manager||"",
       statut:fiche.statut||"A traiter",
+      // Modèle EmailJS commun à tous les mails : objet {{sujet}}, contenu {{{message}}}
+      sujet:"Field Support — "+(fiche.prenom||"")+" "+String(fiche.nom||"").toUpperCase(),
+      message:(function(){const fr=d=>{const m=String(d||"").match(/^(\d{4})-(\d{2})-(\d{2})/);return m?m[3]+"/"+m[2]+"/"+m[1]:(d||"");};
+        return "Bonjour,\n\nUne nouvelle demande Field Support a été enregistrée :\n\n"
+          +"Nom : "+String(fiche.nom||"").toUpperCase()+"\n"
+          +"Prénom : "+(fiche.prenom||"")+"\n"
+          +"Situation : "+(fiche.situation||"")+"\n"
+          +"Date : "+fr(fiche.dateEvt)+"\n"
+          +"Lieu : "+(fiche.lieu||"")+"\n"
+          +"Manager : "+(fiche.manager||"Non renseigné")+"\n"
+          +"Statut : "+(fiche.statut||"A traiter")+"\n\n"
+          +"Cordialement,\nLe responsable de site";})(),
     });
     console.log("Email envoyé à",toEmail);
   }catch(e){console.error("EmailJS error:",e);}
