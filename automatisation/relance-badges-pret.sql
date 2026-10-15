@@ -65,7 +65,7 @@ begin
   delete from public.lp24_relances_pret m using net._http_response r
    where r.id = m.requete and coalesce(r.status_code, 0) <> 200;      -- refusé par EmailJS : retenté
   select (data::text)::jsonb into st from public.lp24_settings where id = 1;
-  cc := coalesce(st->>'ccEmails', '');
+  cc := regexp_replace(coalesce(st->>'ccEmails', ''), '\s*;\s*', ',', 'g');
   for b in
     select * from public.badges_pret x
      where x.statut in ('prete','empruntee')

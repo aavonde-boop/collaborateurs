@@ -34,7 +34,7 @@ alter table public.lp24_mail_config add column if not exists jours_avant_resto i
 alter table public.lp24_mail_config enable row level security;   -- clé privée invisible depuis l'appli
 
 insert into public.lp24_mail_config(id, emailjs_service, emailjs_public_key, emailjs_private_key, emailjs_template)
-values (1, 'service_i09ljga', 'n04JbAxmU3mf9UuXz', '<<CLE_PRIVEE_EMAILJS>>', 'template_4sqmjiw')
+values (1, 'service_gv8it64', 'n04JbAxmU3mf9UuXz', '<<CLE_PRIVEE_EMAILJS>>', 'template_4sqmjiw')
 on conflict (id) do update set
   emailjs_service = excluded.emailjs_service, emailjs_public_key = excluded.emailjs_public_key,
   emailjs_private_key = excluded.emailjs_private_key,
@@ -66,7 +66,7 @@ begin
    where r.id = m.requete and coalesce(r.status_code, 0) <> 200;
 
   select (data::text)::jsonb into st from public.lp24_settings where id = 1;
-  cc := coalesce(st->>'ccEmails', '');
+  cc := regexp_replace(coalesce(st->>'ccEmails', ''), '\s*;\s*', ',', 'g');
 
   for t in select * from (values
       ('it_arrivee',    'it',    true,  cfg.jours_avant_it),
@@ -76,6 +76,7 @@ begin
   loop
     dest := nullif(trim(coalesce(st->>(case when t.cible = 'it' then 'itEmail' else 'restaurantEmail' end), '')), '');
     continue when dest is null;
+    dest := regexp_replace(dest, '\s*;\s*', ',', 'g');
     for b in
       select x.*, left((case when t.arr then x.date_entree else x.date_sortie_prevue end)::text, 10) as dtxt
         from public.lp24_badges x

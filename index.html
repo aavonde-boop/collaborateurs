@@ -675,7 +675,7 @@ var sb=null;
 try{if(window.supabase)sb=window.supabase.createClient(SUPABASE_URL,SUPABASE_ANON_KEY);}catch(e){}
 
 // ── EmailJS config ──
-var EMAILJS_SERVICE="service_i09ljga";
+var EMAILJS_SERVICE="service_gv8it64";
 var EMAILJS_TEMPLATE="template_4sqmjiw";
 var EMAILJS_KEY="n04JbAxmU3mf9UuXz";
 try{if(window.emailjs)window.emailjs.init({publicKey:EMAILJS_KEY});}catch(e){}
@@ -684,7 +684,7 @@ async function sendFssEmail(toEmail,fiche){
   if(!window.emailjs||!toEmail)return;
   try{
     await window.emailjs.send(EMAILJS_SERVICE,EMAILJS_TEMPLATE,{
-      to_email:toEmail,
+      to_email:String(toEmail).replace(/\s*;\s*/g,","),
       nom:fiche.nom||"",
       prenom:fiche.prenom||"",
       situation:fiche.situation||"",
@@ -4227,7 +4227,7 @@ var sb=null;
 try{if(window.supabase)sb=window.supabase.createClient(SUPABASE_URL,SUPABASE_ANON_KEY);}catch(e){}
 
 // ── EmailJS config ──
-var EMAILJS_SERVICE="service_i09ljga";
+var EMAILJS_SERVICE="service_gv8it64";
 var EMAILJS_TEMPLATE="template_4sqmjiw";
 var EMAILJS_KEY="n04JbAxmU3mf9UuXz";
 try{if(window.emailjs)window.emailjs.init({publicKey:EMAILJS_KEY});}catch(e){}
@@ -4236,7 +4236,7 @@ async function sendFssEmail(toEmail,fiche){
   if(!window.emailjs||!toEmail)return;
   try{
     await window.emailjs.send(EMAILJS_SERVICE,EMAILJS_TEMPLATE,{
-      to_email:toEmail,
+      to_email:String(toEmail).replace(/\s*;\s*/g,","),
       nom:fiche.nom||"",
       prenom:fiche.prenom||"",
       situation:fiche.situation||"",
