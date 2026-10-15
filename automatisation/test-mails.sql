@@ -20,7 +20,7 @@ begin
     ('[TEST] Départ — Jean DUPONT — 15/10/2026  (mail restaurant, le jour même)',
      E'Bonjour,\n\nNous vous informons du départ du collaborateur suivant :\n\nNom : DUPONT\nPrénom : Jean\nDate de départ : 15/10/2026\nNuméro de badge : 60FF1BC5\n\nMerci de bien vouloir le retirer de vos systèmes.' || sig),
     ('[TEST] Field Support — Jean DUPONT  (notification envoyée par l''appli)',
-     E'Bonjour,\n\nUne nouvelle demande Field Support a été enregistrée :\n\nNom : DUPONT\nPrénom : Jean\nSituation : Arrivée\nDate : 20/10/2026\nLieu : Paris\nManager : LEROY THOMAS\nStatut : A traiter' || sig)
+     E'Bonjour,\n\nUne nouvelle demande Field Support a été enregistrée :\n\nNom : DUPONT\nPrénom : Jean\nSituation : Arrivée\nDate : 20/10/2026\nManager : LEROY THOMAS' || sig)
   ) as v(sujet, message)
   loop
     perform net.http_post(

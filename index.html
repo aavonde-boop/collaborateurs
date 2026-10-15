@@ -697,9 +697,7 @@ async function sendFssEmail(toEmail,fiche){
           +"Prénom : "+(fiche.prenom||"")+"\n"
           +"Situation : "+(fiche.situation||"")+"\n"
           +"Date : "+fr(fiche.dateEvt)+"\n"
-          +"Lieu : "+(fiche.lieu||"")+"\n"
-          +"Manager : "+(fiche.manager||"Non renseigné")+"\n"
-          +"Statut : "+(fiche.statut||"A traiter")+"\n\n"
+          +"Manager : "+(fiche.manager||"Non renseigné")+"\n\n"
           +"Cordialement,\nLe responsable de site";})(),
     });
     console.log("Email envoyé à",toEmail);
@@ -4205,9 +4203,7 @@ async function sendFssEmail(toEmail,fiche){
           +"Prénom : "+(fiche.prenom||"")+"\n"
           +"Situation : "+(fiche.situation||"")+"\n"
           +"Date : "+fr(fiche.dateEvt)+"\n"
-          +"Lieu : "+(fiche.lieu||"")+"\n"
-          +"Manager : "+(fiche.manager||"Non renseigné")+"\n"
-          +"Statut : "+(fiche.statut||"A traiter")+"\n\n"
+          +"Manager : "+(fiche.manager||"Non renseigné")+"\n\n"
           +"Cordialement,\nLe responsable de site";})(),
     });
     console.log("Email envoyé à",toEmail);
