@@ -3398,7 +3398,7 @@ function VueBadgesPret({showToast,addLog}){
     el("table",{style:{width:"100%",borderCollapse:"collapse"}},
       el("thead",null,
         el("tr",{style:{background:"var(--surface2)",borderBottom:"1px solid var(--border)"}},
-          ["Code","Nom","Statut","Emprunteur","Date emprunt","Retour prévu","Commentaire","Actions"].map(h=>
+          ["Code","Nom","Statut","Emprunteur","E-mail","Date emprunt","Retour prévu","Commentaire","Actions"].map(h=>
             el("th",{key:h,style:{padding:"10px 14px",fontSize:11,fontWeight:700,color:"var(--text2)",
               textAlign:"left",textTransform:"uppercase",letterSpacing:".4px",whiteSpace:"nowrap"}},h)
           )
@@ -3406,7 +3406,7 @@ function VueBadgesPret({showToast,addLog}){
       ),
       el("tbody",null,
         filtered.length===0
-          ?el("tr",null,el("td",{colSpan:8,style:{textAlign:"center",padding:48,color:"var(--text3)",fontSize:13}},
+          ?el("tr",null,el("td",{colSpan:9,style:{textAlign:"center",padding:48,color:"var(--text3)",fontSize:13}},
               el("div",{style:{fontSize:32,marginBottom:8}},"🪪"),"Aucun badge trouvé"))
           :filtered.map((badge,i)=>el("tr",{key:badge.id,style:{
               borderBottom:"1px solid var(--border)",
@@ -3418,6 +3418,7 @@ function VueBadgesPret({showToast,addLog}){
             el("td",{style:{padding:"10px 14px",fontSize:13,color:"var(--text)"}},badge.nom),
             el("td",{style:{padding:"10px 14px"}},el(Pill,{statut:badge.statut})),
             el("td",{style:{padding:"10px 14px",fontSize:12,color:"var(--text2)"}},badge.emprunteur||el("span",{style:{color:"var(--text3)"}},"—")),
+            el("td",{style:{padding:"10px 14px",fontSize:11,color:"var(--text2)",maxWidth:220,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"},title:badge.email_emprunteur||""},badge.email_emprunteur||el("span",{style:{color:"var(--text3)"}},"—")),
             el("td",{style:{padding:"10px 14px",fontSize:11,color:"var(--text3)"}},fmtDate(badge.date_emprunt)),
             el("td",{style:{padding:"10px 14px",fontSize:11,color:badge.date_retour_prevu&&badge.date_retour_prevu<todayISO()?"var(--red)":"var(--text3)"}},
               badge.date_retour_prevu&&badge.date_retour_prevu<todayISO()?"⚠️ ":""
@@ -7159,7 +7160,7 @@ function VueBadgesPret({showToast,addLog}){
     el("table",{style:{width:"100%",borderCollapse:"collapse"}},
       el("thead",null,
         el("tr",{style:{background:"var(--surface2)",borderBottom:"1px solid var(--border)"}},
-          ["Code","Nom","Statut","Emprunteur","Date emprunt","Retour prévu","Commentaire","Actions"].map(h=>
+          ["Code","Nom","Statut","Emprunteur","E-mail","Date emprunt","Retour prévu","Commentaire","Actions"].map(h=>
             el("th",{key:h,style:{padding:"10px 14px",fontSize:11,fontWeight:700,color:"var(--text2)",
               textAlign:"left",textTransform:"uppercase",letterSpacing:".4px",whiteSpace:"nowrap"}},h)
           )
@@ -7167,7 +7168,7 @@ function VueBadgesPret({showToast,addLog}){
       ),
       el("tbody",null,
         filtered.length===0
-          ?el("tr",null,el("td",{colSpan:8,style:{textAlign:"center",padding:48,color:"var(--text3)",fontSize:13}},
+          ?el("tr",null,el("td",{colSpan:9,style:{textAlign:"center",padding:48,color:"var(--text3)",fontSize:13}},
               el("div",{style:{fontSize:32,marginBottom:8}},"🪪"),"Aucun badge trouvé"))
           :filtered.map((badge,i)=>el("tr",{key:badge.id,style:{
               borderBottom:"1px solid var(--border)",
@@ -7179,6 +7180,7 @@ function VueBadgesPret({showToast,addLog}){
             el("td",{style:{padding:"10px 14px",fontSize:13,color:"var(--text)"}},badge.nom),
             el("td",{style:{padding:"10px 14px"}},el(Pill,{statut:badge.statut})),
             el("td",{style:{padding:"10px 14px",fontSize:12,color:"var(--text2)"}},badge.emprunteur||el("span",{style:{color:"var(--text3)"}},"—")),
+            el("td",{style:{padding:"10px 14px",fontSize:11,color:"var(--text2)",maxWidth:220,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"},title:badge.email_emprunteur||""},badge.email_emprunteur||el("span",{style:{color:"var(--text3)"}},"—")),
             el("td",{style:{padding:"10px 14px",fontSize:11,color:"var(--text3)"}},fmtDate(badge.date_emprunt)),
             el("td",{style:{padding:"10px 14px",fontSize:11,color:badge.date_retour_prevu&&badge.date_retour_prevu<todayISO()?"var(--red)":"var(--text3)"}},
               badge.date_retour_prevu&&badge.date_retour_prevu<todayISO()?"⚠️ ":""
@@ -7281,7 +7283,7 @@ function VueBadgesPret({showToast,addLog}){
         el("div",{className:"il-ico",style:{background:c[1],color:c[0]}},el(IosIcon,{id:"badges_pret",size:22,filled:true})),
         el("div",{className:"t"},
           el("div",{className:"t1"},el("b",null,badge.code),"  ",el("span",{style:{color:"var(--text3)"}},badge.nom)),
-          el("div",{className:"t2"},lent?[badge.emprunteur||"—"," · retour ",el("span",{key:"r",style:late?{color:"var(--red)",fontWeight:600}:null},fmtDate(badge.date_retour_prevu)),badge.commentaire?" · "+badge.commentaire:""]:(badge.commentaire||"Disponible"))),
+          el("div",{className:"t2"},lent?[badge.emprunteur||"—"," · retour ",el("span",{key:"r",style:late?{color:"var(--red)",fontWeight:600}:null},fmtDate(badge.date_retour_prevu)),badge.commentaire?" · "+badge.commentaire:""]:(badge.commentaire||"Disponible")),lent&&badge.email_emprunteur&&el("div",{className:"t2",style:{color:"var(--accent)",whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}},badge.email_emprunteur)),
         el(Pill,{statut:badge.statut}),
         lent&&el("button",{type:"button",className:"il-btn",style:{background:"rgba(52,199,89,.15)",color:"#248A3D"},onClick:e=>{e.stopPropagation();doAction(badge.id,"disponible","","");}},"Retour"),
         el("span",{className:"ios-chev"},"›")));
