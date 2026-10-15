@@ -1862,6 +1862,10 @@ function VueCasiers({casiers,badges,setCasiers,showToast,addLog,setView}){
   const badgeByCasier=useMemo(()=>{const m={};badges.forEach(b=>{if(b.statut!=="Archivé"&&b.casier)m[casierKey(b.casier)]=b;});return m;},[badges]);
   // fiches actives SANS numéro de casier, par nom : si l'occupant d'un casier y correspond, ce n'est pas « à vider »
   const badgeNoCasierByName=useMemo(()=>{const m={};badges.forEach(b=>{if(b.statut!=="Archivé"&&!String(b.casier||"").trim())m[personKey((b.nom||"")+" "+(b.prenom||""))]=b;});return m;},[badges]);
+  const badgeByName=useMemo(()=>{const m={};badges.forEach(b=>{if(b.statut!=="Archivé")m[personKey((b.nom||"")+" "+(b.prenom||""))]=b;});return m;},[badges]);
+  // casier « à vider » dont l'ancien occupant est toujours là, avec un autre casier sur sa fiche
+  const movedTo=c=>{if(!c.occupant)return null;const b=badgeByName[personKey(c.occupant)];return b&&String(b.casier||"").trim()&&casierKey(b.casier)!==casierKey(c.numero)?b:null;};
+  const aViderWhy=c=>{const m=movedTo(c);return m?("a maintenant le casier "+m.casier):"plus dans la liste";};
   const findLinked=useCallback(c=>{const b=badgeByCasier[casierKey(c.numero)];if(b)return b;const n=c.occupant&&badgeNoCasierByName[personKey(c.occupant)];return n?{...n,_sansCasier:true}:null;},[badgeByCasier,badgeNoCasierByName]);
   const isOccupied=c=>c.statut==="Occupé"||!!c.occupant;
   const isAVider=useCallback(c=>isOccupied(c)&&!findLinked(c),[findLinked]);
@@ -1870,7 +1874,7 @@ function VueCasiers({casiers,badges,setCasiers,showToast,addLog,setView}){
 
   const viderCasier=async(c,e)=>{
     if(e)e.stopPropagation();
-    if(!confirm("Vider le casier "+c.numero+" ? (le collaborateur n'est plus dans la liste)"))return;
+    if(!confirm("Vider le casier "+c.numero+" ? ("+(c.occupant||"l'ancien occupant")+" "+aViderWhy(c)+")"))return;
     const upd={...c,statut:"Libre",occupant:"",matricule:""};
     setCasiers(p=>p.map(x=>x.id===c.id?upd:x));
     if(sb){
@@ -1950,7 +1954,7 @@ function VueCasiers({casiers,badges,setCasiers,showToast,addLog,setView}){
         React.createElement("div",{key:"s",style:{fontSize:aVider?9:libre?10:9,color:aVider?C.red:libre?C.green:"#6B7280",marginTop:3,fontWeight:aVider||libre?700:400,lineHeight:1.3}},
           aVider?"🧹 À vider":libre?"✅ Libre":(c.occupant?(c.occupant.length>16?c.occupant.substring(0,16)+"…":c.occupant):"Occupé")
         ),
-        aVider&&c.occupant&&React.createElement("div",{key:"on",style:{fontSize:9,color:"#7C2D12",marginTop:2,lineHeight:1.3,fontStyle:"italic",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}},"Ancien : "+c.occupant),
+        aVider&&c.occupant&&React.createElement("div",{key:"on",style:{fontSize:9,color:"#7C2D12",marginTop:2,lineHeight:1.3,fontStyle:"italic",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}},"Ancien : "+c.occupant+(movedTo(c)?" → "+movedTo(c).casier:"")),
         linked&&!aVider&&React.createElement("div",{key:"l",style:{fontSize:8,color:statCLinked(linked.statut),marginTop:2,fontWeight:700}},"● "+linked.statut)
       );
     });
@@ -1973,7 +1977,7 @@ function VueCasiers({casiers,badges,setCasiers,showToast,addLog,setView}){
       React.createElement("td",{style:{padding:"8px 12px",fontWeight:600}},c.occupant||React.createElement("span",{style:{color:"#9CA3AF"}},"—")),
       React.createElement("td",{style:{padding:"8px 12px",color:"#6B7280",fontSize:12}},c.matricule||"—"),
       React.createElement("td",{style:{padding:"8px 12px",fontSize:11}},
-        aVider?React.createElement("span",{style:{color:C.red,fontWeight:700}},"🧹 "+(c.occupant?c.occupant+" — ":"")+"plus dans la liste")
+        aVider?React.createElement("span",{style:{color:C.red,fontWeight:700}},"🧹 "+(c.occupant?c.occupant+" — ":"")+aViderWhy(c))
         :linked?React.createElement("span",{onClick:()=>setView&&setView("collaborateurs"),title:"Voir dans Collaborateurs",style:{color:statCLinked(linked.statut),fontWeight:700,cursor:setView?"pointer":"default"}},"👤 "+linked.prenom+" "+linked.nom+" · "+linked.statut+(linked._sansCasier?" — casier absent de la fiche":""))
         :React.createElement("span",{style:{color:"#9CA3AF"}},"—")
       ),
@@ -1990,7 +1994,7 @@ function VueCasiers({casiers,badges,setCasiers,showToast,addLog,setView}){
   const mobileRows=filtered.map(c=>{
     const col=ZONES_COLORS[c.zone]||C.gray;const linked=findLinked(c);const aVider=isAVider(c);
     const who=aVider?(c.occupant||"—"):linked?(linked.prenom+" "+linked.nom):(c.occupant||"");
-    const sub=aVider?"🧹 plus dans la liste":linked?(linked.statut+(c.matricule?" · "+c.matricule:"")):(ZONES_LABELS[c.zone]||c.zone);
+    const sub=aVider?"🧹 "+aViderWhy(c):linked?(linked.statut+(c.matricule?" · "+c.matricule:"")):(ZONES_LABELS[c.zone]||c.zone);
     return React.createElement("div",{key:c.id,style:{display:"flex",alignItems:"center",gap:12,padding:"11px 14px",borderBottom:"1px solid var(--border)",background:aVider?C.redBg:"transparent"}},
       React.createElement("div",{style:{minWidth:64,fontWeight:800,fontSize:15,color:col,fontFamily:"'JetBrains Mono',monospace"}},c.numero),
       React.createElement("div",{style:{flex:1,minWidth:0}},
@@ -5490,6 +5494,10 @@ function VueCasiers({casiers,badges,setCasiers,showToast,addLog,setView}){
   const badgeByCasier=useMemo(()=>{const m={};badges.forEach(b=>{if(b.statut!=="Archivé"&&b.casier)m[casierKey(b.casier)]=b;});return m;},[badges]);
   // fiches actives SANS numéro de casier, par nom : si l'occupant d'un casier y correspond, ce n'est pas « à vider »
   const badgeNoCasierByName=useMemo(()=>{const m={};badges.forEach(b=>{if(b.statut!=="Archivé"&&!String(b.casier||"").trim())m[personKey((b.nom||"")+" "+(b.prenom||""))]=b;});return m;},[badges]);
+  const badgeByName=useMemo(()=>{const m={};badges.forEach(b=>{if(b.statut!=="Archivé")m[personKey((b.nom||"")+" "+(b.prenom||""))]=b;});return m;},[badges]);
+  // casier « à vider » dont l'ancien occupant est toujours là, avec un autre casier sur sa fiche
+  const movedTo=c=>{if(!c.occupant)return null;const b=badgeByName[personKey(c.occupant)];return b&&String(b.casier||"").trim()&&casierKey(b.casier)!==casierKey(c.numero)?b:null;};
+  const aViderWhy=c=>{const m=movedTo(c);return m?("a maintenant le casier "+m.casier):"plus dans la liste";};
   const findLinked=useCallback(c=>{const b=badgeByCasier[casierKey(c.numero)];if(b)return b;const n=c.occupant&&badgeNoCasierByName[personKey(c.occupant)];return n?{...n,_sansCasier:true}:null;},[badgeByCasier,badgeNoCasierByName]);
   const isOccupied=c=>c.statut==="Occupé"||!!c.occupant;
   const isAVider=useCallback(c=>isOccupied(c)&&!findLinked(c),[findLinked]);
@@ -5498,7 +5506,7 @@ function VueCasiers({casiers,badges,setCasiers,showToast,addLog,setView}){
 
   const viderCasier=async(c,e)=>{
     if(e)e.stopPropagation();
-    if(!confirm("Vider le casier "+c.numero+" ? (le collaborateur n'est plus dans la liste)"))return;
+    if(!confirm("Vider le casier "+c.numero+" ? ("+(c.occupant||"l'ancien occupant")+" "+aViderWhy(c)+")"))return;
     const upd={...c,statut:"Libre",occupant:"",matricule:""};
     setCasiers(p=>p.map(x=>x.id===c.id?upd:x));
     if(sb){
@@ -5578,7 +5586,7 @@ function VueCasiers({casiers,badges,setCasiers,showToast,addLog,setView}){
         React.createElement("div",{key:"s",style:{fontSize:aVider?9:libre?10:9,color:aVider?C.red:libre?C.green:"#6B7280",marginTop:3,fontWeight:aVider||libre?700:400,lineHeight:1.3}},
           aVider?"🧹 À vider":libre?"✅ Libre":(c.occupant?(c.occupant.length>16?c.occupant.substring(0,16)+"…":c.occupant):"Occupé")
         ),
-        aVider&&c.occupant&&React.createElement("div",{key:"on",style:{fontSize:9,color:"#7C2D12",marginTop:2,lineHeight:1.3,fontStyle:"italic",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}},"Ancien : "+c.occupant),
+        aVider&&c.occupant&&React.createElement("div",{key:"on",style:{fontSize:9,color:"#7C2D12",marginTop:2,lineHeight:1.3,fontStyle:"italic",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}},"Ancien : "+c.occupant+(movedTo(c)?" → "+movedTo(c).casier:"")),
         linked&&!aVider&&React.createElement("div",{key:"l",style:{fontSize:8,color:statCLinked(linked.statut),marginTop:2,fontWeight:700}},"● "+linked.statut)
       );
     });
@@ -5601,7 +5609,7 @@ function VueCasiers({casiers,badges,setCasiers,showToast,addLog,setView}){
       React.createElement("td",{style:{padding:"8px 12px",fontWeight:600}},c.occupant||React.createElement("span",{style:{color:"#9CA3AF"}},"—")),
       React.createElement("td",{style:{padding:"8px 12px",color:"#6B7280",fontSize:12}},c.matricule||"—"),
       React.createElement("td",{style:{padding:"8px 12px",fontSize:11}},
-        aVider?React.createElement("span",{style:{color:C.red,fontWeight:700}},"🧹 "+(c.occupant?c.occupant+" — ":"")+"plus dans la liste")
+        aVider?React.createElement("span",{style:{color:C.red,fontWeight:700}},"🧹 "+(c.occupant?c.occupant+" — ":"")+aViderWhy(c))
         :linked?React.createElement("span",{onClick:()=>setView&&setView("collaborateurs"),title:"Voir dans Collaborateurs",style:{color:statCLinked(linked.statut),fontWeight:700,cursor:setView?"pointer":"default"}},"👤 "+linked.prenom+" "+linked.nom+" · "+linked.statut+(linked._sansCasier?" — casier absent de la fiche":""))
         :React.createElement("span",{style:{color:"#9CA3AF"}},"—")
       ),
@@ -5618,7 +5626,7 @@ function VueCasiers({casiers,badges,setCasiers,showToast,addLog,setView}){
   const mobileRows=filtered.map(c=>{
     const col=ZONES_COLORS[c.zone]||C.gray;const linked=findLinked(c);const aVider=isAVider(c);
     const who=aVider?(c.occupant||"—"):linked?(linked.prenom+" "+linked.nom):(c.occupant||"");
-    const sub=aVider?"🧹 plus dans la liste":linked?(linked.statut+(c.matricule?" · "+c.matricule:"")):(ZONES_LABELS[c.zone]||c.zone);
+    const sub=aVider?"🧹 "+aViderWhy(c):linked?(linked.statut+(c.matricule?" · "+c.matricule:"")):(ZONES_LABELS[c.zone]||c.zone);
     return React.createElement("div",{key:c.id,style:{display:"flex",alignItems:"center",gap:12,padding:"11px 14px",borderBottom:"1px solid var(--border)",background:aVider?C.redBg:"transparent"}},
       React.createElement("div",{style:{minWidth:64,fontWeight:800,fontSize:15,color:col,fontFamily:"'JetBrains Mono',monospace"}},c.numero),
       React.createElement("div",{style:{flex:1,minWidth:0}},
@@ -5661,7 +5669,8 @@ function VueCasiers({casiers,badges,setCasiers,showToast,addLog,setView}){
       React.createElement("div",{className:"hm-tiles"},list.map(c=>{
         const{linked,swipe}=actionsOf(c);const aV=isAVider(c);const t=tileOf(c);
         const who=aV?(c.occupant||"—"):linked?(linked.prenom+" "+linked.nom):(c.occupant||"");
-        const sub=aV?(ctCapC(who)+" · à vider"):c.statut==="Libre"?"Libre":(who?ctCapC(who)+(linked&&linked._sansCasier?" · casier absent de la fiche":""):c.statut);
+        const mv=aV&&movedTo(c);
+        const sub=aV?(ctCapC(who)+(mv?" · a maintenant "+mv.casier:" · à vider")):c.statut==="Libre"?"Libre":(who?ctCapC(who)+(linked&&linked._sansCasier?" · casier absent de la fiche":""):c.statut);
         const menu=[linked&&setView&&{label:"Voir "+linked.prenom+" "+linked.nom,onClick:()=>setView("collaborateurs")},...swipe.filter(Boolean).map(a=>({label:a.label,danger:a.label==="Supprimer",onClick:a.onClick}))];
         return React.createElement("button",{key:c.id,type:"button",className:"hm-tile "+t.cls,onClick:()=>setSheet({title:"Casier "+c.numero+(who?" — "+who:""),items:menu,onClose:()=>setSheet(null)})},
           React.createElement("span",{className:"ico",style:{background:t.bg}},React.createElement(IosIcon,{id:t.ic,size:18,filled:true,color:t.fg})),
