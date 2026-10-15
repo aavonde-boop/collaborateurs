@@ -7,7 +7,7 @@ do $test$
 declare
   adresse text := 'a.avonde@allianceautomotive.fr';
   cfg record; m record; n int := 0;
-  sig text := E'\n\nCordialement,\nLe responsable de site';
+  sig text := E'\n\nCordialement,\nArnaud AVONDE\n07.85.42.37.24\nResponsable de site';
 begin
   select * into cfg from public.lp24_mail_config where id = 1;
   for m in select * from (values

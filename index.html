@@ -698,7 +698,7 @@ async function sendFssEmail(toEmail,fiche){
           +"Situation : "+(fiche.situation||"")+"\n"
           +"Date : "+fr(fiche.dateEvt)+"\n"
           +"Manager : "+(fiche.manager||"Non renseigné")+"\n\n"
-          +"Cordialement,\nLe responsable de site";})(),
+          +"Cordialement,\nArnaud AVONDE\n07.85.42.37.24\nResponsable de site";})(),
     });
     console.log("Email envoyé à",toEmail);
   }catch(e){console.error("EmailJS error:",e);}
@@ -710,16 +710,18 @@ function casierKey(v){const s=String(v||"").toUpperCase().replace(/[^A-Z0-9]/g,"
 // Nom sans accents, sans casse, dans n'importe quel ordre (« DUPONT JEAN » = « Jean Dupont »).
 function personKey(t){return String(t||"").normalize("NFD").replace(/[\u0300-\u036f]/g,"").toUpperCase().replace(/[^A-Z ]/g," ").split(/\s+/).filter(Boolean).sort().join(" ");}
 // ── Texte du mail de départ au restaurant (identique à l'envoi automatique de la base) ──
+// Signature de tous les mails (identique aux envois automatiques de la base)
+var SIGNATURE_MAIL="Arnaud AVONDE\n07.85.42.37.24\nResponsable de site";
 function texteDepartResto(modele,b){
   const fr=d=>{const m=String(d||"").match(/^(\d{4})-(\d{2})-(\d{2})/);return m?m[3]+"/"+m[2]+"/"+m[1]:"";};
   const dfr=fr(b.date_sortie_prevue)||"non renseignée";
-  let t=String(modele||"Bonjour,\n\nNous vous informons du départ du collaborateur suivant :\n\nNom : {nom}\nPrénom : {prenom}\nMatricule : {matricule}\nN° badge : {serie}\nDate de départ : {date_sortie_prevue}\nManager : {manager}\n\nMerci de bien vouloir le retirer de vos systèmes.\n\nCordialement,\nLe responsable de site");
+  let t=String(modele||"Bonjour,\n\nNous vous informons du départ du collaborateur suivant :\n\nNom : {nom}\nPrénom : {prenom}\nMatricule : {matricule}\nN° badge : {serie}\nDate de départ : {date_sortie_prevue}\nManager : {manager}\n\nMerci de bien vouloir le retirer de vos systèmes.\n\nCordialement,\nArnaud AVONDE\n07.85.42.37.24\nResponsable de site");
   t=t.split("{nom}").join(b.nom||"").split("{prenom}").join(b.prenom||"").split("{matricule}").join(b.matricule||"NC")
      .split("{serie}").join(b.serie||"Non attribué").split("{manager}").join(b.manager||"—").split("{date_sortie_prevue}").join(dfr);
   t=t.split("Date de sortie").join("Date de départ");
   if(t.indexOf("Date de départ")<0){t=t.indexOf("\n\nMerci")>=0?t.replace("\n\nMerci","\nDate de départ : "+dfr+"\n\nMerci"):t+"\n\nDate de départ : "+dfr;}
-  t=t.split("Service RH").join("Le responsable de site");
-  if(t.toLowerCase().indexOf("responsable de site")<0)t=t.replace(/\s+$/,"").replace(/Cordialement\.?$/,"Cordialement,")+"\nLe responsable de site";
+  t=t.split("Service RH").join(SIGNATURE_MAIL).split("Le responsable de site").join(SIGNATURE_MAIL);
+  if(t.indexOf("07.85.42.37.24")<0)t=t.replace(/\s+$/,"").replace(/Cordialement\.?$/,"Cordialement,")+"\n"+SIGNATURE_MAIL;
   return t;
 }
 const DEFAULT_PERMS={accueil:PERM_WRITE,collaborateurs:PERM_WRITE,casiers:PERM_WRITE,rapport:PERM_WRITE,impression:PERM_WRITE,historique:PERM_WRITE,archives:PERM_WRITE,field_support:PERM_WRITE};
@@ -3555,7 +3557,7 @@ function App(){
   const[histo,setHisto]=useState([]);
   const[fssData,setFssData]=useState([]);
   const[newMats,setNewMats]=useState(new Set());
-  const[settings,setSettings]=useState({fssEmail:"",restaurantEmail:"placedeseine@11h59.fr",ccEmails:"a.avonde@allianceautomotive.fr,ju.poitier@allianceautomotive.fr",itEmail:"",users:[],bodyArriveeResto:"Bonjour,\n\nNous vous informons de l'arrivée d'un nouveau collaborateur :\n\nNom : {nom}\nPrénom : {prenom}\nMatricule : {matricule}\nEmail : {email}\nDate d'entrée : {date_entree}\nManager : {manager}\n\nMerci de bien vouloir l'ajouter à vos systèmes.\n\nCordialement",bodyArriveeIT:"Bonjour,\n\nNous vous informons de l'arrivée d'un nouveau collaborateur :\n\nNom : {nom}\nPrénom : {prenom}\nMatricule : {matricule}\nEmail : {email}\nDate d'entrée : {date_entree}\nManager : {manager} ({mail_manager})\n\nMerci de créer les accès nécessaires.\n\nCordialement",bodyDepartResto:"Bonjour,\n\nNous vous informons du départ du collaborateur suivant :\n\nNom : {nom}\nPrénom : {prenom}\nMatricule : {matricule}\nN° badge : {serie}\nDate de départ : {date_sortie_prevue}\nManager : {manager}\n\nMerci de bien vouloir le retirer de vos systèmes.\n\nCordialement,\nLe responsable de site",bodyDepartIT:"Bonjour,\n\nNous vous informons du départ du collaborateur suivant :\n\nNom : {nom}\nPrénom : {prenom}\nMatricule : {matricule}\nN° badge : {serie}\nDate de sortie : {date_sortie_prevue}\nManager : {manager} ({mail_manager})\n\nMerci de supprimer les accès.\n\nCordialement"});
+  const[settings,setSettings]=useState({fssEmail:"",restaurantEmail:"placedeseine@11h59.fr",ccEmails:"a.avonde@allianceautomotive.fr,ju.poitier@allianceautomotive.fr",itEmail:"",users:[],bodyArriveeResto:"Bonjour,\n\nNous vous informons de l'arrivée d'un nouveau collaborateur :\n\nNom : {nom}\nPrénom : {prenom}\nMatricule : {matricule}\nEmail : {email}\nDate d'entrée : {date_entree}\nManager : {manager}\n\nMerci de bien vouloir l'ajouter à vos systèmes.\n\nCordialement",bodyArriveeIT:"Bonjour,\n\nNous vous informons de l'arrivée d'un nouveau collaborateur :\n\nNom : {nom}\nPrénom : {prenom}\nMatricule : {matricule}\nEmail : {email}\nDate d'entrée : {date_entree}\nManager : {manager} ({mail_manager})\n\nMerci de créer les accès nécessaires.\n\nCordialement",bodyDepartResto:"Bonjour,\n\nNous vous informons du départ du collaborateur suivant :\n\nNom : {nom}\nPrénom : {prenom}\nMatricule : {matricule}\nN° badge : {serie}\nDate de départ : {date_sortie_prevue}\nManager : {manager}\n\nMerci de bien vouloir le retirer de vos systèmes.\n\nCordialement,\nArnaud AVONDE\n07.85.42.37.24\nResponsable de site",bodyDepartIT:"Bonjour,\n\nNous vous informons du départ du collaborateur suivant :\n\nNom : {nom}\nPrénom : {prenom}\nMatricule : {matricule}\nN° badge : {serie}\nDate de sortie : {date_sortie_prevue}\nManager : {manager} ({mail_manager})\n\nMerci de supprimer les accès.\n\nCordialement"});
   const[showSettings,setShowSettings]=useState(false);
   const[settingsInitialTab,setSettingsInitialTab]=useState("emails");
   const openSettingsTab=useCallback(t=>{setSettingsInitialTab(t);setShowSettings(true);},[]);
@@ -4204,7 +4206,7 @@ async function sendFssEmail(toEmail,fiche){
           +"Situation : "+(fiche.situation||"")+"\n"
           +"Date : "+fr(fiche.dateEvt)+"\n"
           +"Manager : "+(fiche.manager||"Non renseigné")+"\n\n"
-          +"Cordialement,\nLe responsable de site";})(),
+          +"Cordialement,\nArnaud AVONDE\n07.85.42.37.24\nResponsable de site";})(),
     });
     console.log("Email envoyé à",toEmail);
   }catch(e){console.error("EmailJS error:",e);}
@@ -4216,16 +4218,18 @@ function casierKey(v){const s=String(v||"").toUpperCase().replace(/[^A-Z0-9]/g,"
 // Nom sans accents, sans casse, dans n'importe quel ordre (« DUPONT JEAN » = « Jean Dupont »).
 function personKey(t){return String(t||"").normalize("NFD").replace(/[\u0300-\u036f]/g,"").toUpperCase().replace(/[^A-Z ]/g," ").split(/\s+/).filter(Boolean).sort().join(" ");}
 // ── Texte du mail de départ au restaurant (identique à l'envoi automatique de la base) ──
+// Signature de tous les mails (identique aux envois automatiques de la base)
+var SIGNATURE_MAIL="Arnaud AVONDE\n07.85.42.37.24\nResponsable de site";
 function texteDepartResto(modele,b){
   const fr=d=>{const m=String(d||"").match(/^(\d{4})-(\d{2})-(\d{2})/);return m?m[3]+"/"+m[2]+"/"+m[1]:"";};
   const dfr=fr(b.date_sortie_prevue)||"non renseignée";
-  let t=String(modele||"Bonjour,\n\nNous vous informons du départ du collaborateur suivant :\n\nNom : {nom}\nPrénom : {prenom}\nMatricule : {matricule}\nN° badge : {serie}\nDate de départ : {date_sortie_prevue}\nManager : {manager}\n\nMerci de bien vouloir le retirer de vos systèmes.\n\nCordialement,\nLe responsable de site");
+  let t=String(modele||"Bonjour,\n\nNous vous informons du départ du collaborateur suivant :\n\nNom : {nom}\nPrénom : {prenom}\nMatricule : {matricule}\nN° badge : {serie}\nDate de départ : {date_sortie_prevue}\nManager : {manager}\n\nMerci de bien vouloir le retirer de vos systèmes.\n\nCordialement,\nArnaud AVONDE\n07.85.42.37.24\nResponsable de site");
   t=t.split("{nom}").join(b.nom||"").split("{prenom}").join(b.prenom||"").split("{matricule}").join(b.matricule||"NC")
      .split("{serie}").join(b.serie||"Non attribué").split("{manager}").join(b.manager||"—").split("{date_sortie_prevue}").join(dfr);
   t=t.split("Date de sortie").join("Date de départ");
   if(t.indexOf("Date de départ")<0){t=t.indexOf("\n\nMerci")>=0?t.replace("\n\nMerci","\nDate de départ : "+dfr+"\n\nMerci"):t+"\n\nDate de départ : "+dfr;}
-  t=t.split("Service RH").join("Le responsable de site");
-  if(t.toLowerCase().indexOf("responsable de site")<0)t=t.replace(/\s+$/,"").replace(/Cordialement\.?$/,"Cordialement,")+"\nLe responsable de site";
+  t=t.split("Service RH").join(SIGNATURE_MAIL).split("Le responsable de site").join(SIGNATURE_MAIL);
+  if(t.indexOf("07.85.42.37.24")<0)t=t.replace(/\s+$/,"").replace(/Cordialement\.?$/,"Cordialement,")+"\n"+SIGNATURE_MAIL;
   return t;
 }
 // ════════════════ STYLE iPHONE — composants ════════════════
@@ -7289,7 +7293,7 @@ function App(){
   const[histo,setHisto]=useState([]);
   const[fssData,setFssData]=useState([]);
   const[newMats,setNewMats]=useState(new Set());
-  const[settings,setSettings]=useState({fssEmail:"",restaurantEmail:"placedeseine@11h59.fr",ccEmails:"a.avonde@allianceautomotive.fr,ju.poitier@allianceautomotive.fr",itEmail:"",users:[],bodyArriveeResto:"Bonjour,\n\nNous vous informons de l'arrivée d'un nouveau collaborateur :\n\nNom : {nom}\nPrénom : {prenom}\nMatricule : {matricule}\nEmail : {email}\nDate d'entrée : {date_entree}\nManager : {manager}\n\nMerci de bien vouloir l'ajouter à vos systèmes.\n\nCordialement",bodyArriveeIT:"Bonjour,\n\nNous vous informons de l'arrivée d'un nouveau collaborateur :\n\nNom : {nom}\nPrénom : {prenom}\nMatricule : {matricule}\nEmail : {email}\nDate d'entrée : {date_entree}\nManager : {manager} ({mail_manager})\n\nMerci de créer les accès nécessaires.\n\nCordialement",bodyDepartResto:"Bonjour,\n\nNous vous informons du départ du collaborateur suivant :\n\nNom : {nom}\nPrénom : {prenom}\nMatricule : {matricule}\nN° badge : {serie}\nDate de départ : {date_sortie_prevue}\nManager : {manager}\n\nMerci de bien vouloir le retirer de vos systèmes.\n\nCordialement,\nLe responsable de site",bodyDepartIT:"Bonjour,\n\nNous vous informons du départ du collaborateur suivant :\n\nNom : {nom}\nPrénom : {prenom}\nMatricule : {matricule}\nN° badge : {serie}\nDate de sortie : {date_sortie_prevue}\nManager : {manager} ({mail_manager})\n\nMerci de supprimer les accès.\n\nCordialement"});
+  const[settings,setSettings]=useState({fssEmail:"",restaurantEmail:"placedeseine@11h59.fr",ccEmails:"a.avonde@allianceautomotive.fr,ju.poitier@allianceautomotive.fr",itEmail:"",users:[],bodyArriveeResto:"Bonjour,\n\nNous vous informons de l'arrivée d'un nouveau collaborateur :\n\nNom : {nom}\nPrénom : {prenom}\nMatricule : {matricule}\nEmail : {email}\nDate d'entrée : {date_entree}\nManager : {manager}\n\nMerci de bien vouloir l'ajouter à vos systèmes.\n\nCordialement",bodyArriveeIT:"Bonjour,\n\nNous vous informons de l'arrivée d'un nouveau collaborateur :\n\nNom : {nom}\nPrénom : {prenom}\nMatricule : {matricule}\nEmail : {email}\nDate d'entrée : {date_entree}\nManager : {manager} ({mail_manager})\n\nMerci de créer les accès nécessaires.\n\nCordialement",bodyDepartResto:"Bonjour,\n\nNous vous informons du départ du collaborateur suivant :\n\nNom : {nom}\nPrénom : {prenom}\nMatricule : {matricule}\nN° badge : {serie}\nDate de départ : {date_sortie_prevue}\nManager : {manager}\n\nMerci de bien vouloir le retirer de vos systèmes.\n\nCordialement,\nArnaud AVONDE\n07.85.42.37.24\nResponsable de site",bodyDepartIT:"Bonjour,\n\nNous vous informons du départ du collaborateur suivant :\n\nNom : {nom}\nPrénom : {prenom}\nMatricule : {matricule}\nN° badge : {serie}\nDate de sortie : {date_sortie_prevue}\nManager : {manager} ({mail_manager})\n\nMerci de supprimer les accès.\n\nCordialement"});
   const[showSettings,setShowSettings]=useState(false);
   const[settingsInitialTab,setSettingsInitialTab]=useState("emails");
   const openSettingsTab=useCallback(t=>{setSettingsInitialTab(t);setShowSettings(true);},[]);

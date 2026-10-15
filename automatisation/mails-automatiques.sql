@@ -103,7 +103,7 @@ begin
                 when t.cible = 'it'    and not arrivee then 'Merci de supprimer les accès.'
                 when t.cible = 'resto' and arrivee     then 'Merci de bien vouloir l''ajouter à vos systèmes.'
                 else                                        'Merci de bien vouloir le retirer de vos systèmes.' end) || E'\n\n'
-          || 'Cordialement,' || E'\n' || 'Le responsable de site';
+          || E'Cordialement,\nArnaud AVONDE\n07.85.42.37.24\nResponsable de site';
       params := jsonb_build_object('to_email', dest, 'cc_email', cc, 'sujet', sujet, 'message', msg);
       rid := net.http_post(
         url     := 'https://api.emailjs.com/api/v1.0/email/send',
