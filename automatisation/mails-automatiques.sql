@@ -34,7 +34,7 @@ alter table public.lp24_mail_config add column if not exists jours_avant_resto i
 alter table public.lp24_mail_config enable row level security;   -- clé privée invisible depuis l'appli
 
 insert into public.lp24_mail_config(id, emailjs_service, emailjs_public_key, emailjs_private_key, emailjs_template)
-values (1, 'service_i09ljga', 'n04JbAxmU3mf9UuXz', '<<CLE_PRIVEE_EMAILJS>>', '<<ID_DU_MODELE>>')
+values (1, 'service_i09ljga', 'n04JbAxmU3mf9UuXz', '<<CLE_PRIVEE_EMAILJS>>', 'template_4sqmjiw')
 on conflict (id) do update set
   emailjs_service = excluded.emailjs_service, emailjs_public_key = excluded.emailjs_public_key,
   emailjs_private_key = excluded.emailjs_private_key,
