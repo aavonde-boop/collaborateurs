@@ -626,6 +626,9 @@
   /* ══ Listes iOS : Rapport, Badges de prêt, Field Support ══ */
   .il-row{display:flex;align-items:center;gap:12px;padding:9px 16px;position:relative;cursor:pointer;-webkit-tap-highlight-color:transparent;background:var(--surface);}
   .il-row:active{background:var(--surface3);}
+  .bp-swipe{--inset:68px;}
+  .bp-swipe>.ios-swipe-front{padding:0;display:block;min-height:0;}
+  .bp-swipe>.ios-swipe-front::before{z-index:1;}
   .il-row+.il-row::before{content:"";position:absolute;top:0;left:68px;right:0;height:.5px;background:var(--sep);}
   .il-row .t{flex:1;min-width:0;}
   .il-row .t1{font-size:17px;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
@@ -723,6 +726,42 @@ function texteDepartResto(modele,b){
   t=t.split("Service RH").join(SIGNATURE_MAIL).split("Le responsable de site").join(SIGNATURE_MAIL);
   if(t.indexOf("07.85.42.37.24")<0)t=t.replace(/\s+$/,"").replace(/Cordialement\.?$/,"Cordialement,")+"\n"+SIGNATURE_MAIL;
   return t;
+}
+// ── Réglages : envoi des mails types sur une adresse de test (même modèle EmailJS que les envois automatiques) ──
+function mailsDeTest(){
+  const sig="\n\nCordialement,\n"+SIGNATURE_MAIL;
+  const d=n=>{const x=new Date();x.setDate(x.getDate()+n);return x.toLocaleDateString("fr-FR");};
+  return [
+    ["[TEST] Arrivée — Jean DUPONT — "+d(1)+"  (IT, la veille)","Bonjour,\n\nNous vous informons de l'arrivée d'un nouveau collaborateur :\n\nNom : DUPONT\nPrénom : Jean\nDate d'arrivée : "+d(1)+"\nManager : LEROY THOMAS\n\nMerci de créer les accès nécessaires."+sig],
+    ["[TEST] Départ — Jean DUPONT — "+d(1)+"  (IT, la veille)","Bonjour,\n\nNous vous informons du départ du collaborateur suivant :\n\nNom : DUPONT\nPrénom : Jean\nDate de départ : "+d(1)+"\nManager : LEROY THOMAS\n\nMerci de supprimer les accès."+sig],
+    ["[TEST] Arrivée — Jean DUPONT — "+d(0)+"  (restaurant, le jour même)","Bonjour,\n\nNous vous informons de l'arrivée d'un nouveau collaborateur :\n\nNom : DUPONT\nPrénom : Jean\nDate d'arrivée : "+d(0)+"\nNuméro de badge : 12345\n\nMerci de bien vouloir l'ajouter à vos systèmes."+sig],
+    ["[TEST] Départ — Jean DUPONT — "+d(0)+"  (restaurant, le jour même)","Bonjour,\n\nNous vous informons du départ du collaborateur suivant :\n\nNom : DUPONT\nPrénom : Jean\nDate de départ : "+d(0)+"\nNuméro de badge : 12345\n\nMerci de bien vouloir le retirer de vos systèmes."+sig],
+    ["[TEST] Field Support — Jean DUPONT","Bonjour,\n\nUne nouvelle demande Field Support a été enregistrée :\n\nNom : DUPONT\nPrénom : Jean\nSituation : Arrivée\nDate : "+d(5)+"\nManager : LEROY THOMAS"+sig],
+    ["[TEST] Rappel — badge de prêt P002 à restituer","Bonjour Dupont Jean,\n\nLe badge de prêt P002 (Badge Prêt 2) vous a été remis le "+d(-1)+" à 09h30 et n'a pas encore été restitué.\n\nMerci de bien vouloir le rapporter à l'accueil dès que possible.\nSi vous l'avez déjà rendu, merci de ne pas tenir compte de ce message."+sig],
+  ];
+}
+function TestMailsBox({showToast}){
+  const[adr,setAdr]=React.useState("a.avonde@allianceautomotive.fr");
+  const[etat,setEtat]=React.useState("");
+  const envoyer=async()=>{
+    const to=String(adr||"").trim();
+    if(!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(to)){showToast("⚠️ Adresse e-mail invalide","err");return;}
+    if(!window.emailjs){showToast("⚠️ Service d'envoi indisponible","err");return;}
+    const liste=mailsDeTest();let ok=0;setEtat("Envoi en cours…");
+    for(const [sujet,message] of liste){
+      try{await window.emailjs.send(EMAILJS_SERVICE,EMAILJS_TEMPLATE,{to_email:to,cc_email:"",sujet,message});ok++;}catch(e){console.error("Test mail",e);}
+      setEtat("Envoi en cours… "+ok+"/"+liste.length);
+    }
+    setEtat(ok===liste.length?"✅ "+ok+" mails de test envoyés à "+to:"⚠️ "+ok+"/"+liste.length+" envoyés — vérifiez le modèle EmailJS");
+    showToast(ok===liste.length?"✅ Mails de test envoyés":"⚠️ Certains mails de test n'ont pas pu partir",ok===liste.length?undefined:"err");
+  };
+  return React.createElement("div",{style:{background:"var(--surface2)",border:"1px solid var(--border)",borderRadius:8,padding:"12px 14px",display:"grid",gap:8}},
+    React.createElement("div",{style:{fontWeight:700,fontSize:13,color:"var(--text)"}},"📨 Tester les e-mails"),
+    React.createElement("div",{style:{fontSize:11,color:"var(--text3)"}},"Envoie les 6 mails types (IT, restaurant, Field Support, rappel badge de prêt) avec un collaborateur fictif, uniquement à l'adresse ci-dessous. Les envois automatiques partent chaque matin : IT la veille, restaurant le jour même, rappel badge de prêt après 24 h."),
+    React.createElement("div",{style:{display:"flex",gap:8,flexWrap:"wrap"}},
+      React.createElement("input",{type:"email",value:adr,onChange:e=>setAdr(e.target.value),className:"inp",style:{flex:"1 1 220px"},autoCapitalize:"none"}),
+      React.createElement("button",{type:"button",className:"btn btn-primary",onClick:envoyer,disabled:etat.indexOf("cours")>0},"Envoyer les tests")),
+    etat&&React.createElement("div",{style:{fontSize:12,color:"var(--text2)"}},etat));
 }
 const DEFAULT_PERMS={accueil:PERM_WRITE,collaborateurs:PERM_WRITE,casiers:PERM_WRITE,rapport:PERM_WRITE,impression:PERM_WRITE,historique:PERM_WRITE,archives:PERM_WRITE,field_support:PERM_WRITE};
 const IT_PERMS={accueil:PERM_READ,collaborateurs:PERM_NONE,casiers:PERM_NONE,rapport:PERM_NONE,impression:PERM_NONE,historique:PERM_NONE,archives:PERM_NONE,field_support:PERM_WRITE};
@@ -1784,7 +1823,6 @@ function VueCollaborateurs({badges,casiers,setBadges,setCasiers,showToast,wdCach
             React.createElement(SortTh,{col:"manager",label:"Manager",st:{padding:"7px 5px",color:"#fff"}}),
             React.createElement(SortTh,{col:"statut",label:"Statut",st:{padding:"7px 5px",color:"#fff"}}),
             React.createElement(SortTh,{col:"date_ajout",label:"Ajouté",st:{padding:"7px 5px",color:"#fff"}}),
-            React.createElement("th",{style:{padding:"7px 5px",textAlign:"left"}},"✉️"),
             React.createElement("th",{style:{padding:"7px 5px",textAlign:"left"}},"…")
           )
         ),
@@ -1825,13 +1863,6 @@ function VueCollaborateurs({badges,casiers,setBadges,setCasiers,showToast,wdCach
               React.createElement("td",{style:{padding:"5px 5px",fontSize:9,maxWidth:100,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}},b.manager||"—"),
               React.createElement("td",{style:{padding:"5px 5px"}},React.createElement(Bdg,{color:"#fff",bg:statC[b.statut]||C.gray},b.statut)),
               React.createElement("td",{style:{padding:"5px 5px",fontSize:9,color:"#9CA3AF",whiteSpace:"nowrap"}},b.date_ajout?new Date(b.date_ajout+"T00:00:00").toLocaleDateString("fr-FR"):"—"),
-              // Boutons mail
-              React.createElement("td",{style:{padding:"3px 4px",whiteSpace:"nowrap"},onClick:e=>e.stopPropagation()},
-                b.statut!=="Archivé"?React.createElement("div",{style:{display:"flex",gap:2}},
-                  React.createElement("button",{title:"Arrivée → Restaurant",style:{background:"#EBF5FB",border:"1px solid #AED6F1",borderRadius:4,cursor:"pointer",fontSize:11,padding:"1px 4px"},onClick:e=>{e.stopPropagation();mailArrivee(b);}},"🍽️"),React.createElement("button",{title:"Mail IT arrivée",style:{background:"#E6F9EE",border:"1px solid #86efac",borderRadius:4,cursor:"pointer",fontSize:11,padding:"1px 4px"},onClick:e=>{e.stopPropagation();const itEmail=settings&&settings.itEmail?settings.itEmail:"";if(!itEmail){showToast("⚠️ Email IT non configuré","err");return;}const subj=encodeURIComponent("Arrivée — "+b.prenom+" "+b.nom);const body=encodeURIComponent("Bonjour,\n\nNous vous informons de l'arrivée :\n\nNom : "+b.nom+"\nPrénom : "+b.prenom+"\nMatricule : "+(b.matricule||"NC")+"\nEmail : "+(b.email||"NC")+"\nDate d'entrée : "+(b.date_entree||"NC")+"\nManager : "+(b.manager||"NC")+" ("+(b.mail_manager||"NC")+")\n\nMerci de créer les accès.\n\nCordialement");window.open("mailto:"+encodeURIComponent(itEmail)+"?subject="+subj+"&body="+body);}},"✉️"),
-                  React.createElement("button",{title:"Départ → Restaurant",style:{background:"#FDEDEC",border:"1px solid #F1948A",borderRadius:4,cursor:"pointer",fontSize:11,padding:"1px 4px"},onClick:e=>{e.stopPropagation();mailDepart(b);}},"🚪")
-                ):null
-              ),
               // Actions
               React.createElement("td",{style:{padding:"3px 4px"},onClick:e=>e.stopPropagation()},
                 b.statut!=="Archivé"?React.createElement("div",{style:{display:"flex",gap:3}},
@@ -1841,7 +1872,7 @@ function VueCollaborateurs({badges,casiers,setBadges,setCasiers,showToast,wdCach
               )
             );
           }),
-          filtered.length===0&&React.createElement("tr",null,React.createElement("td",{colSpan:15,style:{padding:32,textAlign:"center",color:"#9CA3AF"}},"Aucun collaborateur."))
+          filtered.length===0&&React.createElement("tr",null,React.createElement("td",{colSpan:14,style:{padding:32,textAlign:"center",color:"#9CA3AF"}},"Aucun collaborateur."))
         )
       )
     )),
@@ -3137,6 +3168,7 @@ function SettingsModal({settings,setSettings,showToast,setShowSettings,racineRef
       // Body
       React.createElement("div",{style:{flex:1,overflowY:"auto",padding:24}},
         tab==="emails"&&React.createElement("div",{style:{display:"grid",gap:14}},
+          React.createElement(TestMailsBox,{showToast}),
           React.createElement("div",null,
             React.createElement(Lbl,null,"Email restaurant"),
             React.createElement("input",{type:"email",value:settings.restaurantEmail||"",onChange:e=>setSettings(s=>({...s,restaurantEmail:e.target.value.toUpperCase()})),className:"inp",placeholder:"restaurant@exemple.fr"})
@@ -3250,6 +3282,7 @@ function VueBadgesPret({showToast,addLog}){
   const[badges,setBadges]=useState(INITIAL_BADGES);
   const[search,setSearch]=useState("");
   const[filtreStatut,setFiltreStatut]=useState("");
+  const[annuaire,setAnnuaire]=useState([]);
   const[selected,setSelected]=useState(null);
   const[loading,setLoading]=useState(true);
   const[saving,setSaving]=useState(false);
@@ -3261,6 +3294,8 @@ function VueBadgesPret({showToast,addLog}){
       try{
         const r=await sb.from("badges_pret").select("*").order("id");
         if(!r.error&&r.data&&r.data.length>0)setBadges(r.data);
+        const c=await sb.from("lp24_badges").select("nom,prenom,email,statut");
+        if(!c.error&&c.data)setAnnuaire(c.data.filter(x=>x.statut!=="Archivé"&&(x.nom||x.prenom)));
       }catch(e){}
       setLoading(false);
     })();
@@ -3287,14 +3322,15 @@ function VueBadgesPret({showToast,addLog}){
     return r;
   },[badges,search,filtreStatut]);
 
-  const doAction=(badgeId,newStatut,emprunteur,dateRetour)=>{
+  const doAction=(badgeId,newStatut,emprunteur,dateRetour,emailEmp)=>{
     const old=badges.find(b=>b.id===badgeId);
     const now=todayISO();
     const updated=badges.map(b=>{
       if(b.id!==badgeId)return b;
       return{...b,statut:newStatut,
         emprunteur:newStatut==="disponible"?"":(emprunteur||b.emprunteur),
-        date_emprunt:newStatut==="empruntee"?now:(newStatut==="disponible"?"":b.date_emprunt),
+        date_emprunt:newStatut==="disponible"?"":((b.statut==="disponible"||!b.date_emprunt)?now:b.date_emprunt),
+        email_emprunteur:newStatut==="disponible"?"":String(emailEmp!=null?emailEmp:(b.email_emprunteur||"")).trim(),
         date_retour_prevu:newStatut==="disponible"?"":(dateRetour||b.date_retour_prevu),
       };
     });
@@ -3435,9 +3471,18 @@ function VueBadgesPret({showToast,addLog}){
       el("div",{style:{display:"flex",flexDirection:"column",gap:14,marginBottom:20}},
         el("div",null,
           el("div",{style:{fontSize:11,fontWeight:600,color:"var(--text2)",marginBottom:6,textTransform:"uppercase",letterSpacing:".4px"}},"👤 Emprunteur"),
-          el("input",{type:"text",value:selected.emprunteur||"",className:"inp",
-            onChange:e=>setSelected({...selected,emprunteur:e.target.value.toUpperCase()}),
-            placeholder:"Nom et prénom..."})
+          el("input",{type:"text",value:selected.emprunteur||"",className:"inp",list:"bp-annuaire",
+            onChange:e=>{const v=e.target.value.toUpperCase();const k=personKey(v);const m=k&&annuaire.find(x=>personKey((x.nom||"")+" "+(x.prenom||""))===k);
+              setSelected(s=>({...s,emprunteur:v,email_emprunteur:(m&&m.email)?String(m.email).trim().toLowerCase():s.email_emprunteur}));},
+            placeholder:"Nom et prénom..."}),
+          el("datalist",{id:"bp-annuaire"},annuaire.map((x,i)=>el("option",{key:i,value:(String(x.nom||"").toUpperCase()+" "+String(x.prenom||"").toUpperCase()).trim()})))
+        ),
+        el("div",null,
+          el("div",{style:{fontSize:11,fontWeight:600,color:"var(--text2)",marginBottom:6,textTransform:"uppercase",letterSpacing:".4px"}},"✉️ E-mail de l'emprunteur"),
+          el("input",{type:"email",value:selected.email_emprunteur||"",className:"inp",inputMode:"email",autoCapitalize:"none",
+            onChange:e=>setSelected({...selected,email_emprunteur:e.target.value.toLowerCase()}),
+            placeholder:"Rempli automatiquement si la personne est dans la base"}),
+          el("div",{style:{fontSize:11,color:"var(--text3)",marginTop:5}},"Un rappel part chaque matin si le badge n'est pas rendu après 24 h.")
         ),
         el("div",null,
           el("div",{style:{fontSize:11,fontWeight:600,color:"var(--text2)",marginBottom:6,textTransform:"uppercase",letterSpacing:".4px"}},"📅 Date de retour prévue"),
@@ -3452,7 +3497,7 @@ function VueBadgesPret({showToast,addLog}){
         )
       ),
       el("div",{style:{marginBottom:10}},
-        el("button",{onClick:()=>doAction(selected.id,"prete",selected.emprunteur,selected.date_retour_prevu),
+        el("button",{onClick:()=>doAction(selected.id,"prete",selected.emprunteur,selected.date_retour_prevu,selected.email_emprunteur||""),
           className:"btn btn-primary",style:{justifyContent:"center",fontWeight:700,width:"100%"}},
           "🔑 Marquer Prêtée")
       ),
@@ -4332,6 +4377,42 @@ function IosIndex({letters,prefix}){
       onMouseDown:e=>{jump(atY(e.clientY));const mv=ev=>jump(atY(ev.clientY));const up=()=>{window.removeEventListener("mousemove",mv);window.removeEventListener("mouseup",up);end();};window.addEventListener("mousemove",mv);window.addEventListener("mouseup",up);}},
       ALL.map(L=>React.createElement("span",{key:L,className:letters.has(L)?"":"off"},L))),
     cur&&React.createElement("div",{className:"ios-idx-bubble"},cur));
+}
+// ── Réglages : envoi des mails types sur une adresse de test (même modèle EmailJS que les envois automatiques) ──
+function mailsDeTest(){
+  const sig="\n\nCordialement,\n"+SIGNATURE_MAIL;
+  const d=n=>{const x=new Date();x.setDate(x.getDate()+n);return x.toLocaleDateString("fr-FR");};
+  return [
+    ["[TEST] Arrivée — Jean DUPONT — "+d(1)+"  (IT, la veille)","Bonjour,\n\nNous vous informons de l'arrivée d'un nouveau collaborateur :\n\nNom : DUPONT\nPrénom : Jean\nDate d'arrivée : "+d(1)+"\nManager : LEROY THOMAS\n\nMerci de créer les accès nécessaires."+sig],
+    ["[TEST] Départ — Jean DUPONT — "+d(1)+"  (IT, la veille)","Bonjour,\n\nNous vous informons du départ du collaborateur suivant :\n\nNom : DUPONT\nPrénom : Jean\nDate de départ : "+d(1)+"\nManager : LEROY THOMAS\n\nMerci de supprimer les accès."+sig],
+    ["[TEST] Arrivée — Jean DUPONT — "+d(0)+"  (restaurant, le jour même)","Bonjour,\n\nNous vous informons de l'arrivée d'un nouveau collaborateur :\n\nNom : DUPONT\nPrénom : Jean\nDate d'arrivée : "+d(0)+"\nNuméro de badge : 12345\n\nMerci de bien vouloir l'ajouter à vos systèmes."+sig],
+    ["[TEST] Départ — Jean DUPONT — "+d(0)+"  (restaurant, le jour même)","Bonjour,\n\nNous vous informons du départ du collaborateur suivant :\n\nNom : DUPONT\nPrénom : Jean\nDate de départ : "+d(0)+"\nNuméro de badge : 12345\n\nMerci de bien vouloir le retirer de vos systèmes."+sig],
+    ["[TEST] Field Support — Jean DUPONT","Bonjour,\n\nUne nouvelle demande Field Support a été enregistrée :\n\nNom : DUPONT\nPrénom : Jean\nSituation : Arrivée\nDate : "+d(5)+"\nManager : LEROY THOMAS"+sig],
+    ["[TEST] Rappel — badge de prêt P002 à restituer","Bonjour Dupont Jean,\n\nLe badge de prêt P002 (Badge Prêt 2) vous a été remis le "+d(-1)+" à 09h30 et n'a pas encore été restitué.\n\nMerci de bien vouloir le rapporter à l'accueil dès que possible.\nSi vous l'avez déjà rendu, merci de ne pas tenir compte de ce message."+sig],
+  ];
+}
+function TestMailsBox({showToast}){
+  const[adr,setAdr]=React.useState("a.avonde@allianceautomotive.fr");
+  const[etat,setEtat]=React.useState("");
+  const envoyer=async()=>{
+    const to=String(adr||"").trim();
+    if(!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(to)){showToast("⚠️ Adresse e-mail invalide","err");return;}
+    if(!window.emailjs){showToast("⚠️ Service d'envoi indisponible","err");return;}
+    const liste=mailsDeTest();let ok=0;setEtat("Envoi en cours…");
+    for(const [sujet,message] of liste){
+      try{await window.emailjs.send(EMAILJS_SERVICE,EMAILJS_TEMPLATE,{to_email:to,cc_email:"",sujet,message});ok++;}catch(e){console.error("Test mail",e);}
+      setEtat("Envoi en cours… "+ok+"/"+liste.length);
+    }
+    setEtat(ok===liste.length?"✅ "+ok+" mails de test envoyés à "+to:"⚠️ "+ok+"/"+liste.length+" envoyés — vérifiez le modèle EmailJS");
+    showToast(ok===liste.length?"✅ Mails de test envoyés":"⚠️ Certains mails de test n'ont pas pu partir",ok===liste.length?undefined:"err");
+  };
+  return React.createElement("div",{style:{background:"var(--surface2)",border:"1px solid var(--border)",borderRadius:8,padding:"12px 14px",display:"grid",gap:8}},
+    React.createElement("div",{style:{fontWeight:700,fontSize:13,color:"var(--text)"}},"📨 Tester les e-mails"),
+    React.createElement("div",{style:{fontSize:11,color:"var(--text3)"}},"Envoie les 6 mails types (IT, restaurant, Field Support, rappel badge de prêt) avec un collaborateur fictif, uniquement à l'adresse ci-dessous. Les envois automatiques partent chaque matin : IT la veille, restaurant le jour même, rappel badge de prêt après 24 h."),
+    React.createElement("div",{style:{display:"flex",gap:8,flexWrap:"wrap"}},
+      React.createElement("input",{type:"email",value:adr,onChange:e=>setAdr(e.target.value),className:"inp",style:{flex:"1 1 220px"},autoCapitalize:"none"}),
+      React.createElement("button",{type:"button",className:"btn btn-primary",onClick:envoyer,disabled:etat.indexOf("cours")>0},"Envoyer les tests")),
+    etat&&React.createElement("div",{style:{fontSize:12,color:"var(--text2)"}},etat));
 }
 const DEFAULT_PERMS={accueil:PERM_WRITE,collaborateurs:PERM_WRITE,casiers:PERM_WRITE,rapport:PERM_WRITE,impression:PERM_WRITE,historique:PERM_WRITE,archives:PERM_WRITE,field_support:PERM_WRITE};
 const IT_PERMS={accueil:PERM_READ,collaborateurs:PERM_NONE,casiers:PERM_NONE,rapport:PERM_NONE,impression:PERM_NONE,historique:PERM_NONE,archives:PERM_NONE,field_support:PERM_WRITE};
@@ -5337,10 +5418,6 @@ function VueCollaborateurs({badges,casiers,setBadges,setCasiers,showToast,wdCach
       b.commentaire&&React.createElement("div",{className:"cc-grp"},F("commentaire",b.commentaire)),
       !arch&&React.createElement("div",{className:"cc-cols",style:{marginTop:0}},
         React.createElement("div",{className:"cc-grp"},
-          React.createElement("button",{type:"button",className:"cc-lnk",onClick:()=>mailArrivee(b)},"Mail d'arrivée au restaurant"),
-          React.createElement("button",{type:"button",className:"cc-lnk",onClick:()=>mailITArrivee(b)},"Mail d'arrivée à l'IT"),
-          React.createElement("button",{type:"button",className:"cc-lnk",onClick:()=>mailDepart(b)},"Mail de départ au restaurant")),
-        React.createElement("div",{className:"cc-grp"},
           React.createElement("button",{type:"button",className:"cc-lnk red",onClick:()=>{close();archiver(b.id);}},"Archiver le collaborateur"))));
   };
   const ctRow=b=>{
@@ -5462,7 +5539,6 @@ function VueCollaborateurs({badges,casiers,setBadges,setCasiers,showToast,wdCach
             React.createElement(SortTh,{col:"manager",label:"Manager",st:{padding:"7px 5px",color:"#fff"}}),
             React.createElement(SortTh,{col:"statut",label:"Statut",st:{padding:"7px 5px",color:"#fff"}}),
             React.createElement(SortTh,{col:"date_ajout",label:"Ajouté",st:{padding:"7px 5px",color:"#fff"}}),
-            React.createElement("th",{style:{padding:"7px 5px",textAlign:"left"}},"✉️"),
             React.createElement("th",{style:{padding:"7px 5px",textAlign:"left"}},"…")
           )
         ),
@@ -5503,13 +5579,6 @@ function VueCollaborateurs({badges,casiers,setBadges,setCasiers,showToast,wdCach
               React.createElement("td",{style:{padding:"5px 5px",fontSize:9,maxWidth:100,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}},b.manager||"—"),
               React.createElement("td",{style:{padding:"5px 5px"}},React.createElement(Bdg,{color:"#fff",bg:statC[b.statut]||C.gray},b.statut)),
               React.createElement("td",{style:{padding:"5px 5px",fontSize:9,color:"#9CA3AF",whiteSpace:"nowrap"}},b.date_ajout?new Date(b.date_ajout+"T00:00:00").toLocaleDateString("fr-FR"):"—"),
-              // Boutons mail
-              React.createElement("td",{style:{padding:"3px 4px",whiteSpace:"nowrap"},onClick:e=>e.stopPropagation()},
-                b.statut!=="Archivé"?React.createElement("div",{style:{display:"flex",gap:2}},
-                  React.createElement("button",{title:"Arrivée → Restaurant",style:{background:"#EBF5FB",border:"1px solid #AED6F1",borderRadius:4,cursor:"pointer",fontSize:11,padding:"1px 4px"},onClick:e=>{e.stopPropagation();mailArrivee(b);}},"🍽️"),React.createElement("button",{title:"Mail IT arrivée",style:{background:"#E6F9EE",border:"1px solid #86efac",borderRadius:4,cursor:"pointer",fontSize:11,padding:"1px 4px"},onClick:e=>{e.stopPropagation();const itEmail=settings&&settings.itEmail?settings.itEmail:"";if(!itEmail){showToast("⚠️ Email IT non configuré","err");return;}const subj=encodeURIComponent("Arrivée — "+b.prenom+" "+b.nom);const body=encodeURIComponent("Bonjour,\n\nNous vous informons de l'arrivée :\n\nNom : "+b.nom+"\nPrénom : "+b.prenom+"\nMatricule : "+(b.matricule||"NC")+"\nEmail : "+(b.email||"NC")+"\nDate d'entrée : "+(b.date_entree||"NC")+"\nManager : "+(b.manager||"NC")+" ("+(b.mail_manager||"NC")+")\n\nMerci de créer les accès.\n\nCordialement");window.open("mailto:"+encodeURIComponent(itEmail)+"?subject="+subj+"&body="+body);}},"✉️"),
-                  React.createElement("button",{title:"Départ → Restaurant",style:{background:"#FDEDEC",border:"1px solid #F1948A",borderRadius:4,cursor:"pointer",fontSize:11,padding:"1px 4px"},onClick:e=>{e.stopPropagation();mailDepart(b);}},"🚪")
-                ):null
-              ),
               // Actions
               React.createElement("td",{style:{padding:"3px 4px"},onClick:e=>e.stopPropagation()},
                 b.statut!=="Archivé"?React.createElement("div",{style:{display:"flex",gap:3}},
@@ -5519,7 +5588,7 @@ function VueCollaborateurs({badges,casiers,setBadges,setCasiers,showToast,wdCach
               )
             );
           }),
-          filtered.length===0&&React.createElement("tr",null,React.createElement("td",{colSpan:15,style:{padding:32,textAlign:"center",color:"#9CA3AF"}},"Aucun collaborateur."))
+          filtered.length===0&&React.createElement("tr",null,React.createElement("td",{colSpan:14,style:{padding:32,textAlign:"center",color:"#9CA3AF"}},"Aucun collaborateur."))
         )
       )
     )),
@@ -6857,6 +6926,7 @@ function SettingsModal({settings,setSettings,showToast,setShowSettings,racineRef
       // Body
       React.createElement("div",{style:{flex:1,overflowY:"auto",padding:24}},
         tab==="emails"&&React.createElement("div",{style:{display:"grid",gap:14}},
+          React.createElement(TestMailsBox,{showToast}),
           React.createElement("div",null,
             React.createElement(Lbl,null,"Email restaurant"),
             React.createElement("input",{type:"email",value:settings.restaurantEmail||"",onChange:e=>setSettings(s=>({...s,restaurantEmail:e.target.value.toUpperCase()})),className:"inp",placeholder:"restaurant@exemple.fr"})
@@ -6970,6 +7040,7 @@ function VueBadgesPret({showToast,addLog}){
   const[badges,setBadges]=useState(INITIAL_BADGES);
   const[search,setSearch]=useState("");
   const[filtreStatut,setFiltreStatut]=useState("");
+  const[annuaire,setAnnuaire]=useState([]);
   const[selected,setSelected]=useState(null);
   const[loading,setLoading]=useState(true);
   const[saving,setSaving]=useState(false);
@@ -6983,6 +7054,8 @@ function VueBadgesPret({showToast,addLog}){
       try{
         const r=await sb.from("badges_pret").select("*").order("id");
         if(!r.error&&r.data&&r.data.length>0)setBadges(r.data);
+        const c=await sb.from("lp24_badges").select("nom,prenom,email,statut");
+        if(!c.error&&c.data)setAnnuaire(c.data.filter(x=>x.statut!=="Archivé"&&(x.nom||x.prenom)));
       }catch(e){}
       setLoading(false);
     })();
@@ -7009,14 +7082,15 @@ function VueBadgesPret({showToast,addLog}){
     return r;
   },[badges,search,filtreStatut]);
 
-  const doAction=(badgeId,newStatut,emprunteur,dateRetour)=>{
+  const doAction=(badgeId,newStatut,emprunteur,dateRetour,emailEmp)=>{
     const old=badges.find(b=>b.id===badgeId);
     const now=todayISO();
     const updated=badges.map(b=>{
       if(b.id!==badgeId)return b;
       return{...b,statut:newStatut,
         emprunteur:newStatut==="disponible"?"":(emprunteur||b.emprunteur),
-        date_emprunt:newStatut==="empruntee"?now:(newStatut==="disponible"?"":b.date_emprunt),
+        date_emprunt:newStatut==="disponible"?"":((b.statut==="disponible"||!b.date_emprunt)?now:b.date_emprunt),
+        email_emprunteur:newStatut==="disponible"?"":String(emailEmp!=null?emailEmp:(b.email_emprunteur||"")).trim(),
         date_retour_prevu:newStatut==="disponible"?"":(dateRetour||b.date_retour_prevu),
       };
     });
@@ -7156,9 +7230,18 @@ function VueBadgesPret({showToast,addLog}){
       el("div",{style:{display:"flex",flexDirection:"column",gap:14,marginBottom:20}},
         el("div",null,
           el("div",{style:{fontSize:11,fontWeight:600,color:"var(--text2)",marginBottom:6,textTransform:"uppercase",letterSpacing:".4px"}},"👤 Emprunteur"),
-          el("input",{type:"text",value:selected.emprunteur||"",className:"inp",
-            onChange:e=>setSelected({...selected,emprunteur:e.target.value.toUpperCase()}),
-            placeholder:"Nom et prénom..."})
+          el("input",{type:"text",value:selected.emprunteur||"",className:"inp",list:"bp-annuaire",
+            onChange:e=>{const v=e.target.value.toUpperCase();const k=personKey(v);const m=k&&annuaire.find(x=>personKey((x.nom||"")+" "+(x.prenom||""))===k);
+              setSelected(s=>({...s,emprunteur:v,email_emprunteur:(m&&m.email)?String(m.email).trim().toLowerCase():s.email_emprunteur}));},
+            placeholder:"Nom et prénom..."}),
+          el("datalist",{id:"bp-annuaire"},annuaire.map((x,i)=>el("option",{key:i,value:(String(x.nom||"").toUpperCase()+" "+String(x.prenom||"").toUpperCase()).trim()})))
+        ),
+        el("div",null,
+          el("div",{style:{fontSize:11,fontWeight:600,color:"var(--text2)",marginBottom:6,textTransform:"uppercase",letterSpacing:".4px"}},"✉️ E-mail de l'emprunteur"),
+          el("input",{type:"email",value:selected.email_emprunteur||"",className:"inp",inputMode:"email",autoCapitalize:"none",
+            onChange:e=>setSelected({...selected,email_emprunteur:e.target.value.toLowerCase()}),
+            placeholder:"Rempli automatiquement si la personne est dans la base"}),
+          el("div",{style:{fontSize:11,color:"var(--text3)",marginTop:5}},"Un rappel part chaque matin si le badge n'est pas rendu après 24 h.")
         ),
         el("div",null,
           el("div",{style:{fontSize:11,fontWeight:600,color:"var(--text2)",marginBottom:6,textTransform:"uppercase",letterSpacing:".4px"}},"📅 Date de retour prévue"),
@@ -7173,7 +7256,7 @@ function VueBadgesPret({showToast,addLog}){
         )
       ),
       el("div",{style:{marginBottom:10}},
-        el("button",{onClick:()=>doAction(selected.id,"prete",selected.emprunteur,selected.date_retour_prevu),
+        el("button",{onClick:()=>doAction(selected.id,"prete",selected.emprunteur,selected.date_retour_prevu,selected.email_emprunteur||""),
           className:"btn btn-primary",style:{justifyContent:"center",fontWeight:700,width:"100%"}},
           "🔑 Marquer Prêtée")
       ),
@@ -7188,14 +7271,16 @@ function VueBadgesPret({showToast,addLog}){
   const bpList=el("div",{className:"ios-group"},
     filtered.length===0?el("div",{className:"il-row",style:{cursor:"default",color:"var(--text3)"}},"Aucun badge trouvé")
     :filtered.map(badge=>{const late=badge.date_retour_prevu&&badge.date_retour_prevu<todayISO();const c=bpCol[badge.statut]||["#8E8E93","rgba(142,142,147,.15)"];const lent=badge.statut==="prete"||badge.statut==="empruntee";
-      return el("div",{key:badge.id,className:"il-row",onClick:()=>setSelected(badge)},
+      return el(IosSwipeRow,{key:badge.id,className:"bp-swipe",onTap:()=>setSelected(badge),
+          actions:lent?[{label:"Rendu",color:"#34C759",onClick:()=>doAction(badge.id,"disponible","","")}]:[]},
+        el("div",{className:"il-row"},
         el("div",{className:"il-ico",style:{background:c[1],color:c[0]}},el(IosIcon,{id:"badges_pret",size:22,filled:true})),
         el("div",{className:"t"},
           el("div",{className:"t1"},el("b",null,badge.code),"  ",el("span",{style:{color:"var(--text3)"}},badge.nom)),
           el("div",{className:"t2"},lent?[badge.emprunteur||"—"," · retour ",el("span",{key:"r",style:late?{color:"var(--red)",fontWeight:600}:null},fmtDate(badge.date_retour_prevu)),badge.commentaire?" · "+badge.commentaire:""]:(badge.commentaire||"Disponible"))),
         el(Pill,{statut:badge.statut}),
         lent&&el("button",{type:"button",className:"il-btn",style:{background:"rgba(52,199,89,.15)",color:"#248A3D"},onClick:e=>{e.stopPropagation();doAction(badge.id,"disponible","","");}},"Retour"),
-        el("span",{className:"ios-chev"},"›"));
+        el("span",{className:"ios-chev"},"›")));
     }));
   return el("div",null,
     saving&&el("div",{style:{position:"fixed",bottom:20,right:20,background:"var(--surface)",
