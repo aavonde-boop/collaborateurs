@@ -747,12 +747,14 @@ function TestMailsBox({showToast}){
     const to=String(adr||"").trim();
     if(!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(to)){showToast("⚠️ Adresse e-mail invalide","err");return;}
     if(!window.emailjs){showToast("⚠️ Service d'envoi indisponible","err");return;}
-    const liste=mailsDeTest();let ok=0;setEtat("Envoi en cours…");
-    for(const [sujet,message] of liste){
-      try{await window.emailjs.send(EMAILJS_SERVICE,EMAILJS_TEMPLATE,{to_email:to,cc_email:"",sujet,message});ok++;}catch(e){console.error("Test mail",e);}
+    const liste=mailsDeTest();let ok=0,err="";setEtat("Envoi en cours…");
+    for(let i=0;i<liste.length;i++){const [sujet,message]=liste[i];
+      if(i>0)await new Promise(r=>setTimeout(r,1500));   // EmailJS refuse plus d'un envoi par seconde
+      try{await window.emailjs.send(EMAILJS_SERVICE,EMAILJS_TEMPLATE,{to_email:to,cc_email:"",sujet,message},{publicKey:EMAILJS_KEY});ok++;}
+      catch(e){console.error("Test mail",e);err=(e&&(e.status||""))+" "+(e&&(e.text||e.message)||String(e));}
       setEtat("Envoi en cours… "+ok+"/"+liste.length);
     }
-    setEtat(ok===liste.length?"✅ "+ok+" mails de test envoyés à "+to:"⚠️ "+ok+"/"+liste.length+" envoyés — vérifiez le modèle EmailJS");
+    setEtat(ok===liste.length?"✅ "+ok+" mails de test envoyés à "+to:"⚠️ "+ok+"/"+liste.length+" envoyés. Réponse d'EmailJS : "+err.trim());
     showToast(ok===liste.length?"✅ Mails de test envoyés":"⚠️ Certains mails de test n'ont pas pu partir",ok===liste.length?undefined:"err");
   };
   return React.createElement("div",{style:{background:"var(--surface2)",border:"1px solid var(--border)",borderRadius:8,padding:"12px 14px",display:"grid",gap:8}},
@@ -4398,12 +4400,14 @@ function TestMailsBox({showToast}){
     const to=String(adr||"").trim();
     if(!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(to)){showToast("⚠️ Adresse e-mail invalide","err");return;}
     if(!window.emailjs){showToast("⚠️ Service d'envoi indisponible","err");return;}
-    const liste=mailsDeTest();let ok=0;setEtat("Envoi en cours…");
-    for(const [sujet,message] of liste){
-      try{await window.emailjs.send(EMAILJS_SERVICE,EMAILJS_TEMPLATE,{to_email:to,cc_email:"",sujet,message});ok++;}catch(e){console.error("Test mail",e);}
+    const liste=mailsDeTest();let ok=0,err="";setEtat("Envoi en cours…");
+    for(let i=0;i<liste.length;i++){const [sujet,message]=liste[i];
+      if(i>0)await new Promise(r=>setTimeout(r,1500));   // EmailJS refuse plus d'un envoi par seconde
+      try{await window.emailjs.send(EMAILJS_SERVICE,EMAILJS_TEMPLATE,{to_email:to,cc_email:"",sujet,message},{publicKey:EMAILJS_KEY});ok++;}
+      catch(e){console.error("Test mail",e);err=(e&&(e.status||""))+" "+(e&&(e.text||e.message)||String(e));}
       setEtat("Envoi en cours… "+ok+"/"+liste.length);
     }
-    setEtat(ok===liste.length?"✅ "+ok+" mails de test envoyés à "+to:"⚠️ "+ok+"/"+liste.length+" envoyés — vérifiez le modèle EmailJS");
+    setEtat(ok===liste.length?"✅ "+ok+" mails de test envoyés à "+to:"⚠️ "+ok+"/"+liste.length+" envoyés. Réponse d'EmailJS : "+err.trim());
     showToast(ok===liste.length?"✅ Mails de test envoyés":"⚠️ Certains mails de test n'ont pas pu partir",ok===liste.length?undefined:"err");
   };
   return React.createElement("div",{style:{background:"var(--surface2)",border:"1px solid var(--border)",borderRadius:8,padding:"12px 14px",display:"grid",gap:8}},
