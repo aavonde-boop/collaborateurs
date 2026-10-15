@@ -1,6 +1,7 @@
 -- ════════════════════════════════════════════════════════════════════
 --  E-MAILS AUTOMATIQUES (IT + RESTAURANT, ARRIVÉES + DÉPARTS) — Gestion Collaborateurs
 --  À lancer UNE FOIS dans Supabase → SQL Editor (après avoir rempli l'étape 2).
+--  Un seul modèle EmailJS sert aux 4 mails (le texte est écrit par le script).
 --  Remplace l'ancien script « mail-depart-restaurant.sql » (inutile de lancer les deux).
 --
 --  Chaque matin (vers 7 h), la base envoie via EmailJS :
@@ -15,31 +16,29 @@
 create extension if not exists pg_cron;
 create extension if not exists pg_net;
 
--- ── Étape 2 : réglages EmailJS — À REMPLIR : les trois valeurs entre << >> ──
+-- ── Étape 2 : réglages EmailJS — À REMPLIR : les deux valeurs entre << >> ──
 create table if not exists public.lp24_mail_config(
   id int primary key default 1 check (id = 1),
   emailjs_service     text not null,
   emailjs_public_key  text not null,
   emailjs_private_key text not null,
-  template_it         text not null,
-  template_resto      text not null,
+  emailjs_template    text not null,                -- un seul modèle « passe-partout » pour les 4 mails
   jours_avant_it      int  not null default 1,   -- 1 = la veille
   jours_avant_resto   int  not null default 0,   -- 0 = le jour même
   actif   boolean not null default true,
   depuis  date    not null default current_date  -- rien pour les mouvements antérieurs à l'installation
 );
-alter table public.lp24_mail_config add column if not exists template_it text;
-alter table public.lp24_mail_config add column if not exists template_resto text;
+alter table public.lp24_mail_config add column if not exists emailjs_template text;
 alter table public.lp24_mail_config add column if not exists jours_avant_it int not null default 1;
 alter table public.lp24_mail_config add column if not exists jours_avant_resto int not null default 0;
 alter table public.lp24_mail_config enable row level security;   -- clé privée invisible depuis l'appli
 
-insert into public.lp24_mail_config(id, emailjs_service, emailjs_public_key, emailjs_private_key, template_it, template_resto)
-values (1, 'service_i09ljga', 'n04JbAxmU3mf9UuXz', '<<CLE_PRIVEE_EMAILJS>>', '<<ID_MODELE_IT>>', '<<ID_MODELE_RESTAURANT>>')
+insert into public.lp24_mail_config(id, emailjs_service, emailjs_public_key, emailjs_private_key, emailjs_template)
+values (1, 'service_i09ljga', 'n04JbAxmU3mf9UuXz', '<<CLE_PRIVEE_EMAILJS>>', '<<ID_DU_MODELE>>')
 on conflict (id) do update set
   emailjs_service = excluded.emailjs_service, emailjs_public_key = excluded.emailjs_public_key,
   emailjs_private_key = excluded.emailjs_private_key,
-  template_it = excluded.template_it, template_resto = excluded.template_resto;
+  emailjs_template = excluded.emailjs_template;
 
 -- ── Étape 3 : journal (un e-mail par personne et par type) ──
 create table if not exists public.lp24_mails_auto(
@@ -57,7 +56,7 @@ language plpgsql security definer set search_path = public, extensions as $fn$
 declare
   cfg record; st jsonb; b record; t record;
   dest text; cc text; d date; dfr text; rid bigint; n integer := 0;
-  arrivee boolean; params jsonb;
+  arrivee boolean; params jsonb; sujet text; msg text;
 begin
   select * into cfg from public.lp24_mail_config where id = 1;
   if cfg is null or not cfg.actif or cfg.emailjs_private_key like '<<%' then return 0; end if;
@@ -90,26 +89,26 @@ begin
       continue when t.arr and d < current_date;              -- arrivée déjà passée : inutile
       dfr := to_char(d, 'DD/MM/YYYY');
       arrivee := t.arr;
-      params := jsonb_build_object(
-        'to_email',  dest,
-        'cc_email',  cc,
-        'sujet',     (case when arrivee then 'Arrivée' else 'Départ' end) || ' — ' || initcap(coalesce(b.prenom,'')) || ' ' || upper(coalesce(b.nom,'')) || ' — ' || dfr,
-        'phrase_intro', case when arrivee then 'de l''arrivée d''un nouveau collaborateur' else 'du départ du collaborateur suivant' end,
-        'nom',       upper(coalesce(b.nom, '')),
-        'prenom',    initcap(coalesce(b.prenom, '')),
-        'type_date', case when arrivee then 'd''arrivée' else 'de départ' end,
-        'date',      dfr,
-        'manager',   coalesce(nullif(b.manager::text, ''), 'Non renseigné'),
-        'badge',     coalesce(nullif(b.serie::text, ''), 'Non attribué'),
-        'action',    case
-                       when t.cible = 'it'    and arrivee     then 'Merci de créer les accès nécessaires.'
-                       when t.cible = 'it'    and not arrivee then 'Merci de supprimer les accès.'
-                       when t.cible = 'resto' and arrivee     then 'Merci de bien vouloir l''ajouter à vos systèmes.'
-                       else                                        'Merci de bien vouloir le retirer de vos systèmes.' end);
+      sujet := (case when arrivee then 'Arrivée' else 'Départ' end) || ' — ' || initcap(coalesce(b.prenom,'')) || ' ' || upper(coalesce(b.nom,'')) || ' — ' || dfr;
+      msg := 'Bonjour,' || E'\n\n'
+          || 'Nous vous informons ' || (case when arrivee then 'de l''arrivée d''un nouveau collaborateur' else 'du départ du collaborateur suivant' end) || ' :' || E'\n\n'
+          || 'Nom : '    || upper(coalesce(b.nom, ''))      || E'\n'
+          || 'Prénom : ' || initcap(coalesce(b.prenom, '')) || E'\n'
+          || 'Date '     || (case when arrivee then 'd''arrivée' else 'de départ' end) || ' : ' || dfr || E'\n'
+          || (case when t.cible = 'it'
+                   then 'Manager : '         || coalesce(nullif(b.manager::text, ''), 'Non renseigné')
+                   else 'Numéro de badge : ' || coalesce(nullif(b.serie::text, ''), 'Non attribué') end) || E'\n\n'
+          || (case
+                when t.cible = 'it'    and arrivee     then 'Merci de créer les accès nécessaires.'
+                when t.cible = 'it'    and not arrivee then 'Merci de supprimer les accès.'
+                when t.cible = 'resto' and arrivee     then 'Merci de bien vouloir l''ajouter à vos systèmes.'
+                else                                        'Merci de bien vouloir le retirer de vos systèmes.' end) || E'\n\n'
+          || 'Cordialement,' || E'\n' || 'Le responsable de site';
+      params := jsonb_build_object('to_email', dest, 'cc_email', cc, 'sujet', sujet, 'message', msg);
       rid := net.http_post(
         url     := 'https://api.emailjs.com/api/v1.0/email/send',
         body    := jsonb_build_object('service_id', cfg.emailjs_service,
-                     'template_id', case when t.cible = 'it' then cfg.template_it else cfg.template_resto end,
+                     'template_id', cfg.emailjs_template,
                      'user_id', cfg.emailjs_public_key, 'accessToken', cfg.emailjs_private_key,
                      'template_params', params),
         headers := '{"Content-Type": "application/json"}'::jsonb);
