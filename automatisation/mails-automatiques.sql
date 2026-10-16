@@ -51,6 +51,19 @@ create table if not exists public.lp24_mails_auto(
 );
 
 -- ── Étape 4 : la fonction d'envoi ──
+create or replace function public.lp24_reglages() returns jsonb
+language plpgsql stable security definer set search_path = public as $h$
+declare v jsonb;
+begin
+  select to_jsonb(data) into v from public.lp24_settings where id = 1;
+  -- la colonne peut contenir du texte JSON, du jsonb, ou du jsonb « chaîne » contenant du JSON
+  while v is not null and jsonb_typeof(v) = 'string' loop
+    begin v := (v #>> '{}')::jsonb; exception when others then return '{}'::jsonb; end;
+  end loop;
+  return coalesce(v, '{}'::jsonb);
+end
+$h$;
+
 create or replace function public.envoyer_mails_auto() returns integer
 language plpgsql security definer set search_path = public, extensions as $fn$
 declare
@@ -65,7 +78,7 @@ begin
   delete from public.lp24_mails_auto m using net._http_response r
    where r.id = m.requete and coalesce(r.status_code, 0) <> 200;
 
-  select (data::text)::jsonb into st from public.lp24_settings where id = 1;
+  st := public.lp24_reglages();
   cc := regexp_replace(coalesce(st->>'ccEmails', ''), '\s*;\s*', ',', 'g');
 
   for t in select * from (values
