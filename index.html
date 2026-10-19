@@ -701,7 +701,7 @@ async function sendFssEmail(toEmail,fiche){
           +"Situation : "+(fiche.situation||"")+"\n"
           +"Date : "+fr(fiche.dateEvt)+"\n"
           +"Manager : "+(fiche.manager||"Non renseigné")+"\n\n"
-          +"Cordialement,\nArnaud AVONDE\n07.85.42.37.24\nResponsable de site";})(),
+          +"Cordialement,\n"+(window._mailSignature||SIGNATURE_MAIL);})(),
     });
     console.log("Email envoyé à",toEmail);
   }catch(e){console.error("EmailJS error:",e);}
@@ -727,27 +727,71 @@ function texteDepartResto(modele,b){
   if(t.indexOf("07.85.42.37.24")<0)t=t.replace(/\s+$/,"").replace(/Cordialement\.?$/,"Cordialement,")+"\n"+SIGNATURE_MAIL;
   return t;
 }
+// ── Réglages → Modèles : textes des mails automatiques (lus par la base au moment de l'envoi) ──
+function EditeurTextesMails({settings,setSettings,showToast}){
+  const champs=[
+    ["autoSignature","Signature","{signature} dans les textes ci-dessous",3],
+    ["autoHoraires","Horaires de l'accueil","{horaires} dans les mails de prêt",4],
+    ["autoITArrivee","IT — arrivée (la veille)","{nom} {prenom} {date} {manager} {signature}",8],
+    ["autoITDepart","IT — départ (la veille)","{nom} {prenom} {date} {manager} {signature}",8],
+    ["autoRestoArrivee","Restaurant — arrivée (le jour même)","{nom} {prenom} {date} {badge} {signature}",8],
+    ["autoRestoDepart","Restaurant — départ (le jour même)","{nom} {prenom} {date} {badge} {signature}",8],
+    ["autoPret","Badge de prêt — au moment du prêt","{emprunteur} {code} {badge_nom} {date_pret} {ligne_retour} {horaires} {signature}",10],
+    ["autoRappel","Badge de prêt — rappel après 24 h","{emprunteur} {code} {badge_nom} {date_pret} {horaires} {signature}",9],
+  ];
+  return React.createElement("div",{style:{display:"grid",gap:14}},
+    React.createElement("div",{style:{background:"var(--accentBg)",border:"1px solid var(--border)",borderRadius:8,padding:"10px 14px",fontSize:12,color:"var(--text2)"}},
+      "Textes des mails envoyés automatiquement. Modifiez-les ici : le prochain mail part avec le nouveau texte (enregistrement automatique). Les mots entre accolades, comme {nom}, sont remplacés au moment de l'envoi. Vérifiez le rendu avec « Envoyer les tests » dans l'onglet Emails."),
+    champs.map(([cle,titre,vars,rows])=>{
+      const val=texteMail(settings,cle), modifie=val!==TEXTES_MAIL_DEFAUT[cle];
+      return React.createElement("div",{key:cle},
+        React.createElement("div",{style:{display:"flex",alignItems:"center",justifyContent:"space-between",gap:8,marginBottom:4}},
+          React.createElement(Lbl,null,titre+(modifie?" · modifié":"")),
+          modifie&&React.createElement("button",{type:"button",className:"btn",style:{fontSize:11,padding:"3px 8px"},
+            onClick:()=>{setSettings(s=>{const n={...s};delete n[cle];return n;});showToast("Texte d'origine rétabli");}},"Rétablir l'origine")),
+        React.createElement("textarea",{value:val,rows,className:"inp",onChange:e=>{const v=e.target.value;setSettings(s=>({...s,[cle]:v}));},
+          style:{resize:"vertical",fontSize:13,lineHeight:1.45,fontFamily:"inherit",whiteSpace:"pre-wrap"}}),
+        React.createElement("div",{style:{fontSize:11,color:"var(--text3)",marginTop:3}},"Variables : "+vars));
+    }));
+}
 // ── Réglages : envoi des mails types sur une adresse de test (même modèle EmailJS que les envois automatiques) ──
-function mailsDeTest(){
-  const sig="\n\nCordialement,\n"+SIGNATURE_MAIL;
+// ── Textes des mails automatiques (modifiables dans Réglages → Modèles ; identiques aux textes d'origine de la base) ──
+var TEXTES_MAIL_DEFAUT={
+  autoSignature:"Arnaud AVONDE\n07.85.42.37.24\nResponsable de site",
+  autoHoraires:"Horaires de l'accueil :\n• Du lundi au jeudi : de 8h00 à 12h00 et de 13h30 à 17h00\n• Le vendredi : de 8h00 à 13h00\nAccueil joignable au 07.77.64.82.06 pendant les horaires d'ouverture.",
+  autoITArrivee:"Bonjour,\n\nNous vous informons de l'arrivée d'un nouveau collaborateur :\n\nNom : {nom}\nPrénom : {prenom}\nDate d'arrivée : {date}\nManager : {manager}\n\nMerci de créer les accès nécessaires.\n\nCordialement,\n{signature}",
+  autoITDepart:"Bonjour,\n\nNous vous informons du départ du collaborateur suivant :\n\nNom : {nom}\nPrénom : {prenom}\nDate de départ : {date}\nManager : {manager}\n\nMerci de supprimer les accès.\n\nCordialement,\n{signature}",
+  autoRestoArrivee:"Bonjour,\n\nNous vous informons de l'arrivée d'un nouveau collaborateur :\n\nNom : {nom}\nPrénom : {prenom}\nDate d'arrivée : {date}\nNuméro de badge : {badge}\n\nMerci de bien vouloir l'ajouter à vos systèmes.\n\nCordialement,\n{signature}",
+  autoRestoDepart:"Bonjour,\n\nNous vous informons du départ du collaborateur suivant :\n\nNom : {nom}\nPrénom : {prenom}\nDate de départ : {date}\nNuméro de badge : {badge}\n\nMerci de bien vouloir le retirer de vos systèmes.\n\nCordialement,\n{signature}",
+  autoPret:"Bonjour {emprunteur},\n\nLe badge de prêt {code} ({badge_nom}) vous a été remis le {date_pret}.\n{ligne_retour}\n\nMerci de le rapporter à l'accueil.\n\n{horaires}\n\nÀ défaut de retour de votre part, des rappels vous seront envoyés jusqu'à confirmation de la restitution du badge.\n\nCordialement,\n{signature}",
+  autoRappel:"Bonjour {emprunteur},\n\nLe badge de prêt {code} ({badge_nom}) vous a été remis le {date_pret} et n'a pas encore été restitué.\n\nMerci de bien vouloir le rapporter à l'accueil dès que possible.\nSi vous l'avez déjà rendu, merci de ne pas tenir compte de ce message.\n\n{horaires}\n\nCordialement,\n{signature}"
+};
+function texteMail(settings,cle){const v=settings&&settings[cle];return (v!=null&&String(v).trim()!=="")?String(v):TEXTES_MAIL_DEFAUT[cle];}
+function remplirModele(modele,vars){let t=String(modele||"");Object.keys(vars).forEach(k=>{t=t.split("{"+k+"}").join(vars[k]==null?"":String(vars[k]));});
+  return t.replace(/\r/g,"").replace(/ +\(\)/g,"").replace(/Bonjour +,/g,"Bonjour,").replace(/\n[ \t]*\n([ \t]*\n)+/g,"\n\n");}
+function mailsDeTest(settings){
+  const T=k=>texteMail(settings,k), sig=T("autoSignature"), hor=T("autoHoraires");
   const d=n=>{const x=new Date();x.setDate(x.getDate()+n);return x.toLocaleDateString("fr-FR");};
+  const p={nom:"DUPONT",prenom:"Jean",manager:"LEROY THOMAS",badge:"12345",signature:sig};
+  const finFss="\n\nCordialement,\n"+sig;
   return [
-    ["[TEST] Arrivée — Jean DUPONT — "+d(1)+"  (IT, la veille)","Bonjour,\n\nNous vous informons de l'arrivée d'un nouveau collaborateur :\n\nNom : DUPONT\nPrénom : Jean\nDate d'arrivée : "+d(1)+"\nManager : LEROY THOMAS\n\nMerci de créer les accès nécessaires."+sig],
-    ["[TEST] Départ — Jean DUPONT — "+d(1)+"  (IT, la veille)","Bonjour,\n\nNous vous informons du départ du collaborateur suivant :\n\nNom : DUPONT\nPrénom : Jean\nDate de départ : "+d(1)+"\nManager : LEROY THOMAS\n\nMerci de supprimer les accès."+sig],
-    ["[TEST] Arrivée — Jean DUPONT — "+d(0)+"  (restaurant, le jour même)","Bonjour,\n\nNous vous informons de l'arrivée d'un nouveau collaborateur :\n\nNom : DUPONT\nPrénom : Jean\nDate d'arrivée : "+d(0)+"\nNuméro de badge : 12345\n\nMerci de bien vouloir l'ajouter à vos systèmes."+sig],
-    ["[TEST] Départ — Jean DUPONT — "+d(0)+"  (restaurant, le jour même)","Bonjour,\n\nNous vous informons du départ du collaborateur suivant :\n\nNom : DUPONT\nPrénom : Jean\nDate de départ : "+d(0)+"\nNuméro de badge : 12345\n\nMerci de bien vouloir le retirer de vos systèmes."+sig],
-    ["[TEST] Field Support — Jean DUPONT","Bonjour,\n\nUne nouvelle demande Field Support a été enregistrée :\n\nNom : DUPONT\nPrénom : Jean\nSituation : Arrivée\nDate : "+d(5)+"\nManager : LEROY THOMAS"+sig],
-    ["[TEST] Rappel — badge de prêt P002 à restituer","Bonjour Dupont Jean,\n\nLe badge de prêt P002 (Badge Prêt 2) vous a été remis le "+d(-1)+" à 09h30 et n'a pas encore été restitué.\n\nMerci de bien vouloir le rapporter à l'accueil dès que possible.\nSi vous l'avez déjà rendu, merci de ne pas tenir compte de ce message."+sig],
+    ["[TEST] Arrivée — Jean DUPONT — "+d(1)+"  (IT, la veille)",remplirModele(T("autoITArrivee"),{...p,date:d(1)})],
+    ["[TEST] Départ — Jean DUPONT — "+d(1)+"  (IT, la veille)",remplirModele(T("autoITDepart"),{...p,date:d(1)})],
+    ["[TEST] Arrivée — Jean DUPONT — "+d(0)+"  (restaurant, le jour même)",remplirModele(T("autoRestoArrivee"),{...p,date:d(0)})],
+    ["[TEST] Départ — Jean DUPONT — "+d(0)+"  (restaurant, le jour même)",remplirModele(T("autoRestoDepart"),{...p,date:d(0)})],
+    ["[TEST] Field Support — Jean DUPONT","Bonjour,\n\nUne nouvelle demande Field Support a été enregistrée :\n\nNom : DUPONT\nPrénom : Jean\nSituation : Arrivée\nDate : "+d(5)+"\nManager : LEROY THOMAS"+finFss],
+    ["[TEST] Badge de prêt P002 — horaires de l'accueil",remplirModele(T("autoPret"),{emprunteur:"Dupont Jean",code:"P002",badge_nom:"Badge Prêt 2",date_pret:d(0)+" à 09h30",ligne_retour:"Retour prévu : "+d(2),horaires:hor,signature:sig})],
+    ["[TEST] Rappel — badge de prêt P002 à restituer",remplirModele(T("autoRappel"),{emprunteur:"Dupont Jean",code:"P002",badge_nom:"Badge Prêt 2",date_pret:d(-1)+" à 09h30",horaires:hor,signature:sig})],
   ];
 }
-function TestMailsBox({showToast}){
+function TestMailsBox({showToast,settings}){
   const[adr,setAdr]=React.useState("a.avonde@allianceautomotive.fr");
   const[etat,setEtat]=React.useState("");
   const envoyer=async()=>{
     const to=String(adr||"").trim();
     if(!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(to)){showToast("⚠️ Adresse e-mail invalide","err");return;}
     if(!window.emailjs){showToast("⚠️ Service d'envoi indisponible","err");return;}
-    const liste=mailsDeTest();let ok=0,err="";setEtat("Envoi en cours…");
+    const liste=mailsDeTest(settings);let ok=0,err="";setEtat("Envoi en cours…");
     for(let i=0;i<liste.length;i++){const [sujet,message]=liste[i];
       if(i>0)await new Promise(r=>setTimeout(r,1500));   // EmailJS refuse plus d'un envoi par seconde
       try{await window.emailjs.send(EMAILJS_SERVICE,EMAILJS_TEMPLATE,{to_email:to,cc_email:"",sujet,message},{publicKey:EMAILJS_KEY});ok++;}
@@ -759,7 +803,7 @@ function TestMailsBox({showToast}){
   };
   return React.createElement("div",{style:{background:"var(--surface2)",border:"1px solid var(--border)",borderRadius:8,padding:"12px 14px",display:"grid",gap:8}},
     React.createElement("div",{style:{fontWeight:700,fontSize:13,color:"var(--text)"}},"📨 Tester les e-mails"),
-    React.createElement("div",{style:{fontSize:11,color:"var(--text3)"}},"Envoie les 6 mails types (IT, restaurant, Field Support, rappel badge de prêt) avec un collaborateur fictif, uniquement à l'adresse ci-dessous. Les envois automatiques partent chaque matin : IT la veille, restaurant le jour même, rappel badge de prêt après 24 h."),
+    React.createElement("div",{style:{fontSize:11,color:"var(--text3)"}},"Envoie les 7 mails types (IT, restaurant, Field Support, prêt de badge, rappel) avec un collaborateur fictif, uniquement à l'adresse ci-dessous. Les envois automatiques partent chaque matin : IT la veille, restaurant le jour même, rappel badge de prêt après 24 h."),
     React.createElement("div",{style:{display:"flex",gap:8,flexWrap:"wrap"}},
       React.createElement("input",{type:"email",value:adr,onChange:e=>setAdr(e.target.value),className:"inp",style:{flex:"1 1 220px"},autoCapitalize:"none"}),
       React.createElement("button",{type:"button",className:"btn btn-primary",onClick:envoyer,disabled:etat.indexOf("cours")>0},"Envoyer les tests")),
@@ -3170,7 +3214,7 @@ function SettingsModal({settings,setSettings,showToast,setShowSettings,racineRef
       // Body
       React.createElement("div",{style:{flex:1,overflowY:"auto",padding:24}},
         tab==="emails"&&React.createElement("div",{style:{display:"grid",gap:14}},
-          React.createElement(TestMailsBox,{showToast}),
+          React.createElement(TestMailsBox,{showToast,settings}),
           React.createElement("div",null,
             React.createElement(Lbl,null,"Email restaurant"),
             React.createElement("input",{type:"email",value:settings.restaurantEmail||"",onChange:e=>setSettings(s=>({...s,restaurantEmail:e.target.value.toUpperCase()})),className:"inp",placeholder:"restaurant@exemple.fr"})
@@ -3235,11 +3279,16 @@ function SettingsModal({settings,setSettings,showToast,setShowSettings,racineRef
           React.createElement(AddUserForm,{settings,setSettings,showToast})
         ),
         tab==="templates"&&React.createElement("div",{style:{display:"grid",gap:14}},
+          React.createElement(EditeurTextesMails,{settings,setSettings,showToast}),
+          React.createElement("details",{style:{border:"1px solid var(--border)",borderRadius:8,padding:"10px 14px"}},
+            React.createElement("summary",{style:{cursor:"pointer",fontWeight:600,fontSize:13,color:"var(--text2)"}},"Mails manuels (boutons de l'Accueil)"),
+            React.createElement("div",{style:{display:"grid",gap:14,marginTop:12}},
           React.createElement("div",{style:{background:"var(--surface2)",border:"1px solid var(--border)",borderRadius:8,padding:"10px 14px",fontSize:11,color:"var(--text3)",marginBottom:4}},"Variables disponibles : {nom} {prenom} {matricule} {email} {date_entree} {date_sortie_prevue} {serie} {manager} {mail_manager}"),
           React.createElement("div",null,React.createElement(Lbl,null,"Arrivée → Restaurant"),React.createElement("textarea",{value:settings.bodyArriveeResto||"",onChange:e=>setSettings(s=>({...s,bodyArriveeResto:e.target.value})),rows:4,className:"inp",style:{resize:"vertical",fontFamily:"'JetBrains Mono',monospace",fontSize:11}})),
           React.createElement("div",null,React.createElement(Lbl,null,"Arrivée → IT"),React.createElement("textarea",{value:settings.bodyArriveeIT||"",onChange:e=>setSettings(s=>({...s,bodyArriveeIT:e.target.value})),rows:4,className:"inp",style:{resize:"vertical",fontFamily:"'JetBrains Mono',monospace",fontSize:11}})),
           React.createElement("div",null,React.createElement(Lbl,null,"Départ → Restaurant"),React.createElement("textarea",{value:settings.bodyDepartResto||"",onChange:e=>setSettings(s=>({...s,bodyDepartResto:e.target.value})),rows:4,className:"inp",style:{resize:"vertical",fontFamily:"'JetBrains Mono',monospace",fontSize:11}})),
           React.createElement("div",null,React.createElement(Lbl,null,"Départ → IT"),React.createElement("textarea",{value:settings.bodyDepartIT||"",onChange:e=>setSettings(s=>({...s,bodyDepartIT:e.target.value})),rows:4,className:"inp",style:{resize:"vertical",fontFamily:"'JetBrains Mono',monospace",fontSize:11}}))
+            ))
         ),
         tab==="historique"&&React.createElement(VueHistorique,{histo:histo||[]}),
         tab==="archives"&&React.createElement(VueArchives,{badges,setBadges,showToast,addLog}),
@@ -3694,6 +3743,7 @@ function App(){
 
   // ── Exposer fssEmail pour EmailJS ──
   useEffect(()=>{window._fssNotifEmail=settings.fssEmail||"";},[settings.fssEmail]);
+  useEffect(()=>{window._mailSignature=texteMail(settings,"autoSignature");},[settings.autoSignature]);
 
   // ── Migration ponctuelle : mettre en MAJUSCULES les champs texte déjà enregistrés ──
   // Ne touche jamais : statut, zone, dates, id, booléens (utilisés en comparaisons strictes).
@@ -4254,7 +4304,7 @@ async function sendFssEmail(toEmail,fiche){
           +"Situation : "+(fiche.situation||"")+"\n"
           +"Date : "+fr(fiche.dateEvt)+"\n"
           +"Manager : "+(fiche.manager||"Non renseigné")+"\n\n"
-          +"Cordialement,\nArnaud AVONDE\n07.85.42.37.24\nResponsable de site";})(),
+          +"Cordialement,\n"+(window._mailSignature||SIGNATURE_MAIL);})(),
     });
     console.log("Email envoyé à",toEmail);
   }catch(e){console.error("EmailJS error:",e);}
@@ -4381,27 +4431,71 @@ function IosIndex({letters,prefix}){
       ALL.map(L=>React.createElement("span",{key:L,className:letters.has(L)?"":"off"},L))),
     cur&&React.createElement("div",{className:"ios-idx-bubble"},cur));
 }
+// ── Réglages → Modèles : textes des mails automatiques (lus par la base au moment de l'envoi) ──
+function EditeurTextesMails({settings,setSettings,showToast}){
+  const champs=[
+    ["autoSignature","Signature","{signature} dans les textes ci-dessous",3],
+    ["autoHoraires","Horaires de l'accueil","{horaires} dans les mails de prêt",4],
+    ["autoITArrivee","IT — arrivée (la veille)","{nom} {prenom} {date} {manager} {signature}",8],
+    ["autoITDepart","IT — départ (la veille)","{nom} {prenom} {date} {manager} {signature}",8],
+    ["autoRestoArrivee","Restaurant — arrivée (le jour même)","{nom} {prenom} {date} {badge} {signature}",8],
+    ["autoRestoDepart","Restaurant — départ (le jour même)","{nom} {prenom} {date} {badge} {signature}",8],
+    ["autoPret","Badge de prêt — au moment du prêt","{emprunteur} {code} {badge_nom} {date_pret} {ligne_retour} {horaires} {signature}",10],
+    ["autoRappel","Badge de prêt — rappel après 24 h","{emprunteur} {code} {badge_nom} {date_pret} {horaires} {signature}",9],
+  ];
+  return React.createElement("div",{style:{display:"grid",gap:14}},
+    React.createElement("div",{style:{background:"var(--accentBg)",border:"1px solid var(--border)",borderRadius:8,padding:"10px 14px",fontSize:12,color:"var(--text2)"}},
+      "Textes des mails envoyés automatiquement. Modifiez-les ici : le prochain mail part avec le nouveau texte (enregistrement automatique). Les mots entre accolades, comme {nom}, sont remplacés au moment de l'envoi. Vérifiez le rendu avec « Envoyer les tests » dans l'onglet Emails."),
+    champs.map(([cle,titre,vars,rows])=>{
+      const val=texteMail(settings,cle), modifie=val!==TEXTES_MAIL_DEFAUT[cle];
+      return React.createElement("div",{key:cle},
+        React.createElement("div",{style:{display:"flex",alignItems:"center",justifyContent:"space-between",gap:8,marginBottom:4}},
+          React.createElement(Lbl,null,titre+(modifie?" · modifié":"")),
+          modifie&&React.createElement("button",{type:"button",className:"btn",style:{fontSize:11,padding:"3px 8px"},
+            onClick:()=>{setSettings(s=>{const n={...s};delete n[cle];return n;});showToast("Texte d'origine rétabli");}},"Rétablir l'origine")),
+        React.createElement("textarea",{value:val,rows,className:"inp",onChange:e=>{const v=e.target.value;setSettings(s=>({...s,[cle]:v}));},
+          style:{resize:"vertical",fontSize:13,lineHeight:1.45,fontFamily:"inherit",whiteSpace:"pre-wrap"}}),
+        React.createElement("div",{style:{fontSize:11,color:"var(--text3)",marginTop:3}},"Variables : "+vars));
+    }));
+}
 // ── Réglages : envoi des mails types sur une adresse de test (même modèle EmailJS que les envois automatiques) ──
-function mailsDeTest(){
-  const sig="\n\nCordialement,\n"+SIGNATURE_MAIL;
+// ── Textes des mails automatiques (modifiables dans Réglages → Modèles ; identiques aux textes d'origine de la base) ──
+var TEXTES_MAIL_DEFAUT={
+  autoSignature:"Arnaud AVONDE\n07.85.42.37.24\nResponsable de site",
+  autoHoraires:"Horaires de l'accueil :\n• Du lundi au jeudi : de 8h00 à 12h00 et de 13h30 à 17h00\n• Le vendredi : de 8h00 à 13h00\nAccueil joignable au 07.77.64.82.06 pendant les horaires d'ouverture.",
+  autoITArrivee:"Bonjour,\n\nNous vous informons de l'arrivée d'un nouveau collaborateur :\n\nNom : {nom}\nPrénom : {prenom}\nDate d'arrivée : {date}\nManager : {manager}\n\nMerci de créer les accès nécessaires.\n\nCordialement,\n{signature}",
+  autoITDepart:"Bonjour,\n\nNous vous informons du départ du collaborateur suivant :\n\nNom : {nom}\nPrénom : {prenom}\nDate de départ : {date}\nManager : {manager}\n\nMerci de supprimer les accès.\n\nCordialement,\n{signature}",
+  autoRestoArrivee:"Bonjour,\n\nNous vous informons de l'arrivée d'un nouveau collaborateur :\n\nNom : {nom}\nPrénom : {prenom}\nDate d'arrivée : {date}\nNuméro de badge : {badge}\n\nMerci de bien vouloir l'ajouter à vos systèmes.\n\nCordialement,\n{signature}",
+  autoRestoDepart:"Bonjour,\n\nNous vous informons du départ du collaborateur suivant :\n\nNom : {nom}\nPrénom : {prenom}\nDate de départ : {date}\nNuméro de badge : {badge}\n\nMerci de bien vouloir le retirer de vos systèmes.\n\nCordialement,\n{signature}",
+  autoPret:"Bonjour {emprunteur},\n\nLe badge de prêt {code} ({badge_nom}) vous a été remis le {date_pret}.\n{ligne_retour}\n\nMerci de le rapporter à l'accueil.\n\n{horaires}\n\nÀ défaut de retour de votre part, des rappels vous seront envoyés jusqu'à confirmation de la restitution du badge.\n\nCordialement,\n{signature}",
+  autoRappel:"Bonjour {emprunteur},\n\nLe badge de prêt {code} ({badge_nom}) vous a été remis le {date_pret} et n'a pas encore été restitué.\n\nMerci de bien vouloir le rapporter à l'accueil dès que possible.\nSi vous l'avez déjà rendu, merci de ne pas tenir compte de ce message.\n\n{horaires}\n\nCordialement,\n{signature}"
+};
+function texteMail(settings,cle){const v=settings&&settings[cle];return (v!=null&&String(v).trim()!=="")?String(v):TEXTES_MAIL_DEFAUT[cle];}
+function remplirModele(modele,vars){let t=String(modele||"");Object.keys(vars).forEach(k=>{t=t.split("{"+k+"}").join(vars[k]==null?"":String(vars[k]));});
+  return t.replace(/\r/g,"").replace(/ +\(\)/g,"").replace(/Bonjour +,/g,"Bonjour,").replace(/\n[ \t]*\n([ \t]*\n)+/g,"\n\n");}
+function mailsDeTest(settings){
+  const T=k=>texteMail(settings,k), sig=T("autoSignature"), hor=T("autoHoraires");
   const d=n=>{const x=new Date();x.setDate(x.getDate()+n);return x.toLocaleDateString("fr-FR");};
+  const p={nom:"DUPONT",prenom:"Jean",manager:"LEROY THOMAS",badge:"12345",signature:sig};
+  const finFss="\n\nCordialement,\n"+sig;
   return [
-    ["[TEST] Arrivée — Jean DUPONT — "+d(1)+"  (IT, la veille)","Bonjour,\n\nNous vous informons de l'arrivée d'un nouveau collaborateur :\n\nNom : DUPONT\nPrénom : Jean\nDate d'arrivée : "+d(1)+"\nManager : LEROY THOMAS\n\nMerci de créer les accès nécessaires."+sig],
-    ["[TEST] Départ — Jean DUPONT — "+d(1)+"  (IT, la veille)","Bonjour,\n\nNous vous informons du départ du collaborateur suivant :\n\nNom : DUPONT\nPrénom : Jean\nDate de départ : "+d(1)+"\nManager : LEROY THOMAS\n\nMerci de supprimer les accès."+sig],
-    ["[TEST] Arrivée — Jean DUPONT — "+d(0)+"  (restaurant, le jour même)","Bonjour,\n\nNous vous informons de l'arrivée d'un nouveau collaborateur :\n\nNom : DUPONT\nPrénom : Jean\nDate d'arrivée : "+d(0)+"\nNuméro de badge : 12345\n\nMerci de bien vouloir l'ajouter à vos systèmes."+sig],
-    ["[TEST] Départ — Jean DUPONT — "+d(0)+"  (restaurant, le jour même)","Bonjour,\n\nNous vous informons du départ du collaborateur suivant :\n\nNom : DUPONT\nPrénom : Jean\nDate de départ : "+d(0)+"\nNuméro de badge : 12345\n\nMerci de bien vouloir le retirer de vos systèmes."+sig],
-    ["[TEST] Field Support — Jean DUPONT","Bonjour,\n\nUne nouvelle demande Field Support a été enregistrée :\n\nNom : DUPONT\nPrénom : Jean\nSituation : Arrivée\nDate : "+d(5)+"\nManager : LEROY THOMAS"+sig],
-    ["[TEST] Rappel — badge de prêt P002 à restituer","Bonjour Dupont Jean,\n\nLe badge de prêt P002 (Badge Prêt 2) vous a été remis le "+d(-1)+" à 09h30 et n'a pas encore été restitué.\n\nMerci de bien vouloir le rapporter à l'accueil dès que possible.\nSi vous l'avez déjà rendu, merci de ne pas tenir compte de ce message."+sig],
+    ["[TEST] Arrivée — Jean DUPONT — "+d(1)+"  (IT, la veille)",remplirModele(T("autoITArrivee"),{...p,date:d(1)})],
+    ["[TEST] Départ — Jean DUPONT — "+d(1)+"  (IT, la veille)",remplirModele(T("autoITDepart"),{...p,date:d(1)})],
+    ["[TEST] Arrivée — Jean DUPONT — "+d(0)+"  (restaurant, le jour même)",remplirModele(T("autoRestoArrivee"),{...p,date:d(0)})],
+    ["[TEST] Départ — Jean DUPONT — "+d(0)+"  (restaurant, le jour même)",remplirModele(T("autoRestoDepart"),{...p,date:d(0)})],
+    ["[TEST] Field Support — Jean DUPONT","Bonjour,\n\nUne nouvelle demande Field Support a été enregistrée :\n\nNom : DUPONT\nPrénom : Jean\nSituation : Arrivée\nDate : "+d(5)+"\nManager : LEROY THOMAS"+finFss],
+    ["[TEST] Badge de prêt P002 — horaires de l'accueil",remplirModele(T("autoPret"),{emprunteur:"Dupont Jean",code:"P002",badge_nom:"Badge Prêt 2",date_pret:d(0)+" à 09h30",ligne_retour:"Retour prévu : "+d(2),horaires:hor,signature:sig})],
+    ["[TEST] Rappel — badge de prêt P002 à restituer",remplirModele(T("autoRappel"),{emprunteur:"Dupont Jean",code:"P002",badge_nom:"Badge Prêt 2",date_pret:d(-1)+" à 09h30",horaires:hor,signature:sig})],
   ];
 }
-function TestMailsBox({showToast}){
+function TestMailsBox({showToast,settings}){
   const[adr,setAdr]=React.useState("a.avonde@allianceautomotive.fr");
   const[etat,setEtat]=React.useState("");
   const envoyer=async()=>{
     const to=String(adr||"").trim();
     if(!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(to)){showToast("⚠️ Adresse e-mail invalide","err");return;}
     if(!window.emailjs){showToast("⚠️ Service d'envoi indisponible","err");return;}
-    const liste=mailsDeTest();let ok=0,err="";setEtat("Envoi en cours…");
+    const liste=mailsDeTest(settings);let ok=0,err="";setEtat("Envoi en cours…");
     for(let i=0;i<liste.length;i++){const [sujet,message]=liste[i];
       if(i>0)await new Promise(r=>setTimeout(r,1500));   // EmailJS refuse plus d'un envoi par seconde
       try{await window.emailjs.send(EMAILJS_SERVICE,EMAILJS_TEMPLATE,{to_email:to,cc_email:"",sujet,message},{publicKey:EMAILJS_KEY});ok++;}
@@ -4413,7 +4507,7 @@ function TestMailsBox({showToast}){
   };
   return React.createElement("div",{style:{background:"var(--surface2)",border:"1px solid var(--border)",borderRadius:8,padding:"12px 14px",display:"grid",gap:8}},
     React.createElement("div",{style:{fontWeight:700,fontSize:13,color:"var(--text)"}},"📨 Tester les e-mails"),
-    React.createElement("div",{style:{fontSize:11,color:"var(--text3)"}},"Envoie les 6 mails types (IT, restaurant, Field Support, rappel badge de prêt) avec un collaborateur fictif, uniquement à l'adresse ci-dessous. Les envois automatiques partent chaque matin : IT la veille, restaurant le jour même, rappel badge de prêt après 24 h."),
+    React.createElement("div",{style:{fontSize:11,color:"var(--text3)"}},"Envoie les 7 mails types (IT, restaurant, Field Support, prêt de badge, rappel) avec un collaborateur fictif, uniquement à l'adresse ci-dessous. Les envois automatiques partent chaque matin : IT la veille, restaurant le jour même, rappel badge de prêt après 24 h."),
     React.createElement("div",{style:{display:"flex",gap:8,flexWrap:"wrap"}},
       React.createElement("input",{type:"email",value:adr,onChange:e=>setAdr(e.target.value),className:"inp",style:{flex:"1 1 220px"},autoCapitalize:"none"}),
       React.createElement("button",{type:"button",className:"btn btn-primary",onClick:envoyer,disabled:etat.indexOf("cours")>0},"Envoyer les tests")),
@@ -6931,7 +7025,7 @@ function SettingsModal({settings,setSettings,showToast,setShowSettings,racineRef
       // Body
       React.createElement("div",{style:{flex:1,overflowY:"auto",padding:24}},
         tab==="emails"&&React.createElement("div",{style:{display:"grid",gap:14}},
-          React.createElement(TestMailsBox,{showToast}),
+          React.createElement(TestMailsBox,{showToast,settings}),
           React.createElement("div",null,
             React.createElement(Lbl,null,"Email restaurant"),
             React.createElement("input",{type:"email",value:settings.restaurantEmail||"",onChange:e=>setSettings(s=>({...s,restaurantEmail:e.target.value.toUpperCase()})),className:"inp",placeholder:"restaurant@exemple.fr"})
@@ -6996,11 +7090,16 @@ function SettingsModal({settings,setSettings,showToast,setShowSettings,racineRef
           React.createElement(AddUserForm,{settings,setSettings,showToast})
         ),
         tab==="templates"&&React.createElement("div",{style:{display:"grid",gap:14}},
+          React.createElement(EditeurTextesMails,{settings,setSettings,showToast}),
+          React.createElement("details",{style:{border:"1px solid var(--border)",borderRadius:8,padding:"10px 14px"}},
+            React.createElement("summary",{style:{cursor:"pointer",fontWeight:600,fontSize:13,color:"var(--text2)"}},"Mails manuels (boutons de l'Accueil)"),
+            React.createElement("div",{style:{display:"grid",gap:14,marginTop:12}},
           React.createElement("div",{style:{background:"var(--surface2)",border:"1px solid var(--border)",borderRadius:8,padding:"10px 14px",fontSize:11,color:"var(--text3)",marginBottom:4}},"Variables disponibles : {nom} {prenom} {matricule} {email} {date_entree} {date_sortie_prevue} {serie} {manager} {mail_manager}"),
           React.createElement("div",null,React.createElement(Lbl,null,"Arrivée → Restaurant"),React.createElement("textarea",{value:settings.bodyArriveeResto||"",onChange:e=>setSettings(s=>({...s,bodyArriveeResto:e.target.value})),rows:4,className:"inp",style:{resize:"vertical",fontFamily:"'JetBrains Mono',monospace",fontSize:11}})),
           React.createElement("div",null,React.createElement(Lbl,null,"Arrivée → IT"),React.createElement("textarea",{value:settings.bodyArriveeIT||"",onChange:e=>setSettings(s=>({...s,bodyArriveeIT:e.target.value})),rows:4,className:"inp",style:{resize:"vertical",fontFamily:"'JetBrains Mono',monospace",fontSize:11}})),
           React.createElement("div",null,React.createElement(Lbl,null,"Départ → Restaurant"),React.createElement("textarea",{value:settings.bodyDepartResto||"",onChange:e=>setSettings(s=>({...s,bodyDepartResto:e.target.value})),rows:4,className:"inp",style:{resize:"vertical",fontFamily:"'JetBrains Mono',monospace",fontSize:11}})),
           React.createElement("div",null,React.createElement(Lbl,null,"Départ → IT"),React.createElement("textarea",{value:settings.bodyDepartIT||"",onChange:e=>setSettings(s=>({...s,bodyDepartIT:e.target.value})),rows:4,className:"inp",style:{resize:"vertical",fontFamily:"'JetBrains Mono',monospace",fontSize:11}}))
+            ))
         ),
         tab==="historique"&&React.createElement(VueHistorique,{histo:histo||[]}),
         tab==="archives"&&React.createElement(VueArchives,{badges,setBadges,showToast,addLog}),
@@ -7473,6 +7572,7 @@ function App(){
 
   // ── Exposer fssEmail pour EmailJS ──
   useEffect(()=>{window._fssNotifEmail=settings.fssEmail||"";},[settings.fssEmail]);
+  useEffect(()=>{window._mailSignature=texteMail(settings,"autoSignature");},[settings.autoSignature]);
 
   // ── Migration ponctuelle : mettre en MAJUSCULES les champs texte déjà enregistrés ──
   // Ne touche jamais : statut, zone, dates, id, booléens (utilisés en comparaisons strictes).
