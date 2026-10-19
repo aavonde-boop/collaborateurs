@@ -40,7 +40,7 @@ begin
       || coalesce('Retour prévu : ' || to_char(left(nullif(new.date_retour_prevu::text, ''), 10)::date, 'DD/MM/YYYY') || E'\n', '')
       || E'\nMerci de le rapporter à l''accueil.\n\n'
       || public.lp24_horaires_accueil() || E'\n\n'
-      || 'Sans retour sous 24 h, un rappel vous sera envoyé chaque matin.' || E'\n\n'
+      || 'À défaut de retour de votre part, des rappels vous seront envoyés jusqu''à confirmation de la restitution du badge.' || E'\n\n'
       || E'Cordialement,\nArnaud AVONDE\n07.85.42.37.24\nResponsable de site';
 
   rid := net.http_post(
