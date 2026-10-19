@@ -680,11 +680,12 @@ var EMAILJS_TEMPLATE="template_4sqmjiw";
 var EMAILJS_KEY="n04JbAxmU3mf9UuXz";
 try{if(window.emailjs)window.emailjs.init({publicKey:EMAILJS_KEY});}catch(e){}
 
-async function sendFssEmail(toEmail,fiche){
+async function sendFssEmail(toEmail,fiche,ccEmail){
   if(!window.emailjs||!toEmail)return;
   try{
     await window.emailjs.send(EMAILJS_SERVICE,EMAILJS_TEMPLATE,{
       to_email:String(toEmail).replace(/\s*;\s*/g,","),
+      cc_email:String(ccEmail||"").replace(/\s*;\s*/g,","),
       nom:fiche.nom||"",
       prenom:fiche.prenom||"",
       situation:fiche.situation||"",
@@ -701,6 +702,7 @@ async function sendFssEmail(toEmail,fiche){
           +"Situation : "+(fiche.situation||"")+"\n"
           +"Date : "+fr(fiche.dateEvt)+"\n"
           +"Manager : "+(fiche.manager||"Non renseigné")+"\n\n"
+          +blocLienAppli(fiche.id)+"\n"
           +"Cordialement,\n"+(window._mailSignature||SIGNATURE_MAIL);})(),
     });
     console.log("Email envoyé à",toEmail);
@@ -756,6 +758,20 @@ function EditeurTextesMails({settings,setSettings,showToast}){
 }
 // ── Réglages : envoi des mails types sur une adresse de test (même modèle EmailJS que les envois automatiques) ──
 // ── Textes des mails automatiques (modifiables dans Réglages → Modèles ; identiques aux textes d'origine de la base) ──
+// ── Lien vers l'appli dans les mails IT (logo + bouton) ──
+var URL_APPLI=(function(){try{if(/github\.io$/.test(location.hostname))return location.origin+location.pathname.replace(/[^/]*$/,"");}catch(e){}return "https://aavonde-boop.github.io/collaborateurs/";})();
+function blocLienAppli(id){
+  const url=URL_APPLI+(id!=null?"?fiche="+encodeURIComponent(id):"");
+  return '<table role="presentation" cellpadding="0" cellspacing="0" border="0" style="margin:6px 0 2px;border-collapse:collapse"><tr>'
+    +'<td style="padding:0 14px 0 0;vertical-align:middle"><a href="'+url+'" style="text-decoration:none"><img src="'+URL_APPLI+'icons/icon-192.png" width="52" height="52" alt="Gestion Collaborateurs" style="display:block;border:0;border-radius:12px"></a></td>'
+    +'<td style="vertical-align:middle;font-family:Calibri,Arial,sans-serif">'
+    +'<div style="font-size:11pt;color:#1f2937;margin:0 0 6px">Pour consulter le détail de cette demande, accédez à la fiche dans l\'application :</div>'
+    +'<a href="'+url+'" style="display:inline-block;background:#0A63C9;color:#ffffff;text-decoration:none;font-weight:bold;font-size:11pt;padding:9px 18px;border-radius:6px">Consulter la fiche</a>'
+    +'<div style="font-size:9pt;color:#6b7280;margin-top:5px">Gestion Collaborateurs — accès réservé aux utilisateurs habilités</div>'
+    +'</td></tr></table>';
+}
+// Ouverture directe d'une fiche Field Support depuis le lien d'un mail (?fiche=ID)
+var LIEN_FICHE=(function(){try{var m=location.search.match(/[?&]fiche=(\d+)/);return m?Number(m[1]):null;}catch(e){return null;}})();
 var TEXTES_MAIL_DEFAUT={
   autoSignature:"Arnaud AVONDE\n07.85.42.37.24\nResponsable de site",
   autoHoraires:"Horaires de l'accueil :\n• Du lundi au jeudi : de 8h00 à 12h00 et de 13h30 à 17h00\n• Le vendredi : de 8h00 à 13h00\nAccueil joignable au 07.77.64.82.06 pendant les horaires d'ouverture.",
@@ -779,7 +795,7 @@ function mailsDeTest(settings){
     ["[TEST] Départ — Jean DUPONT — "+d(1)+"  (IT, la veille)",remplirModele(T("autoITDepart"),{...p,date:d(1)})],
     ["[TEST] Arrivée — Jean DUPONT — "+d(0)+"  (restaurant, le jour même)",remplirModele(T("autoRestoArrivee"),{...p,date:d(0)})],
     ["[TEST] Départ — Jean DUPONT — "+d(0)+"  (restaurant, le jour même)",remplirModele(T("autoRestoDepart"),{...p,date:d(0)})],
-    ["[TEST] Field Support — Jean DUPONT","Bonjour,\n\nUne nouvelle demande Field Support a été enregistrée :\n\nNom : DUPONT\nPrénom : Jean\nSituation : Arrivée\nDate : "+d(5)+"\nManager : LEROY THOMAS"+finFss],
+    ["[TEST] Field Support — Jean DUPONT","Bonjour,\n\nUne nouvelle demande Field Support a été enregistrée :\n\nNom : DUPONT\nPrénom : Jean\nSituation : Arrivée\nDate : "+d(5)+"\nManager : LEROY THOMAS\n\n"+blocLienAppli(null)+finFss.replace(/^\n/,"")],
     ["[TEST] Badge de prêt P002 — horaires de l'accueil",remplirModele(T("autoPret"),{emprunteur:"Dupont Jean",code:"P002",badge_nom:"Badge Prêt 2",date_pret:d(0)+" à 09h30",ligne_retour:"Retour prévu : "+d(2),horaires:hor,signature:sig})],
     ["[TEST] Rappel — badge de prêt P002 à restituer",remplirModele(T("autoRappel"),{emprunteur:"Dupont Jean",code:"P002",badge_nom:"Badge Prêt 2",date_pret:d(-1)+" à 09h30",horaires:hor,signature:sig})],
   ];
@@ -1074,8 +1090,10 @@ function VueAccueil({badges,casiers,setView,wdCache,setBadges,setCasiers,showToa
           if(!error&&data&&data[0]){
             setFssData(p=>(p||[]).map(f=>f.id===tempId?data[0]:f));
             // ── Envoyer email notification ──
-            const mail=window._fssNotifEmail;
-            if(mail)sendFssEmail(mail,row);
+            // Destinataires : l'IT (Réglages → Email IT), le champ « notifications Field Support » en copie
+            const it=String(window._mailIT||"").trim(), fssM=String(window._fssNotifEmail||"").trim();
+            const to=it||fssM;
+            if(to)sendFssEmail(to,{...row,id:data[0].id},(it&&fssM&&fssM.toLowerCase()!==it.toLowerCase())?fssM:"");
           }else if(error){
             console.error("FSS addEntry error",error);
             showToast("⚠️ Erreur Supabase FSS : "+error.message,"err");
@@ -3744,6 +3762,7 @@ function App(){
   // ── Exposer fssEmail pour EmailJS ──
   useEffect(()=>{window._fssNotifEmail=settings.fssEmail||"";},[settings.fssEmail]);
   useEffect(()=>{window._mailSignature=texteMail(settings,"autoSignature");},[settings.autoSignature]);
+  useEffect(()=>{window._mailIT=settings.itEmail||"";},[settings.itEmail]);
 
   // ── Migration ponctuelle : mettre en MAJUSCULES les champs texte déjà enregistrés ──
   // Ne touche jamais : statut, zone, dates, id, booléens (utilisés en comparaisons strictes).
@@ -4045,6 +4064,12 @@ useEffect(()=>{
   const isIT=session&&session.role==="it";
   const isBadge=session&&session.role==="badge";
   const visibleNav=nav.filter(n=>canAccess(n.id));
+  // Lien « Consulter la fiche » d'un mail : ouvrir Field Support puis la fiche, une fois connecté et les fiches chargées
+  useEffect(()=>{
+    if(!unlocked||LIEN_FICHE==null||!canAccess("field_support"))return;
+    if(view!=="field_support")setView("field_support");
+    if(fssData&&fssData.some(x=>x.id===LIEN_FICHE)){setPendingOpen({view:"field_support",id:LIEN_FICHE});LIEN_FICHE=null;try{history.replaceState(null,"",location.pathname);}catch(e){}}
+  },[unlocked,fssData,view]);
 
   const renderView=()=>{
     if(!canAccess(view)){return React.createElement("div",{style:{textAlign:"center",padding:80}},React.createElement("div",{style:{fontSize:48,marginBottom:12}},"🔒"),React.createElement("div",{style:{fontWeight:700,fontSize:18,color:"#0F172A",marginBottom:8}},"Accès refusé"),React.createElement("div",{style:{color:"#6B7280"}},"Vous n'avez pas accès à cette section."));}
@@ -4283,11 +4308,12 @@ var EMAILJS_TEMPLATE="template_4sqmjiw";
 var EMAILJS_KEY="n04JbAxmU3mf9UuXz";
 try{if(window.emailjs)window.emailjs.init({publicKey:EMAILJS_KEY});}catch(e){}
 
-async function sendFssEmail(toEmail,fiche){
+async function sendFssEmail(toEmail,fiche,ccEmail){
   if(!window.emailjs||!toEmail)return;
   try{
     await window.emailjs.send(EMAILJS_SERVICE,EMAILJS_TEMPLATE,{
       to_email:String(toEmail).replace(/\s*;\s*/g,","),
+      cc_email:String(ccEmail||"").replace(/\s*;\s*/g,","),
       nom:fiche.nom||"",
       prenom:fiche.prenom||"",
       situation:fiche.situation||"",
@@ -4304,6 +4330,7 @@ async function sendFssEmail(toEmail,fiche){
           +"Situation : "+(fiche.situation||"")+"\n"
           +"Date : "+fr(fiche.dateEvt)+"\n"
           +"Manager : "+(fiche.manager||"Non renseigné")+"\n\n"
+          +blocLienAppli(fiche.id)+"\n"
           +"Cordialement,\n"+(window._mailSignature||SIGNATURE_MAIL);})(),
     });
     console.log("Email envoyé à",toEmail);
@@ -4460,6 +4487,20 @@ function EditeurTextesMails({settings,setSettings,showToast}){
 }
 // ── Réglages : envoi des mails types sur une adresse de test (même modèle EmailJS que les envois automatiques) ──
 // ── Textes des mails automatiques (modifiables dans Réglages → Modèles ; identiques aux textes d'origine de la base) ──
+// ── Lien vers l'appli dans les mails IT (logo + bouton) ──
+var URL_APPLI=(function(){try{if(/github\.io$/.test(location.hostname))return location.origin+location.pathname.replace(/[^/]*$/,"");}catch(e){}return "https://aavonde-boop.github.io/collaborateurs/";})();
+function blocLienAppli(id){
+  const url=URL_APPLI+(id!=null?"?fiche="+encodeURIComponent(id):"");
+  return '<table role="presentation" cellpadding="0" cellspacing="0" border="0" style="margin:6px 0 2px;border-collapse:collapse"><tr>'
+    +'<td style="padding:0 14px 0 0;vertical-align:middle"><a href="'+url+'" style="text-decoration:none"><img src="'+URL_APPLI+'icons/icon-192.png" width="52" height="52" alt="Gestion Collaborateurs" style="display:block;border:0;border-radius:12px"></a></td>'
+    +'<td style="vertical-align:middle;font-family:Calibri,Arial,sans-serif">'
+    +'<div style="font-size:11pt;color:#1f2937;margin:0 0 6px">Pour consulter le détail de cette demande, accédez à la fiche dans l\'application :</div>'
+    +'<a href="'+url+'" style="display:inline-block;background:#0A63C9;color:#ffffff;text-decoration:none;font-weight:bold;font-size:11pt;padding:9px 18px;border-radius:6px">Consulter la fiche</a>'
+    +'<div style="font-size:9pt;color:#6b7280;margin-top:5px">Gestion Collaborateurs — accès réservé aux utilisateurs habilités</div>'
+    +'</td></tr></table>';
+}
+// Ouverture directe d'une fiche Field Support depuis le lien d'un mail (?fiche=ID)
+var LIEN_FICHE=(function(){try{var m=location.search.match(/[?&]fiche=(\d+)/);return m?Number(m[1]):null;}catch(e){return null;}})();
 var TEXTES_MAIL_DEFAUT={
   autoSignature:"Arnaud AVONDE\n07.85.42.37.24\nResponsable de site",
   autoHoraires:"Horaires de l'accueil :\n• Du lundi au jeudi : de 8h00 à 12h00 et de 13h30 à 17h00\n• Le vendredi : de 8h00 à 13h00\nAccueil joignable au 07.77.64.82.06 pendant les horaires d'ouverture.",
@@ -4483,7 +4524,7 @@ function mailsDeTest(settings){
     ["[TEST] Départ — Jean DUPONT — "+d(1)+"  (IT, la veille)",remplirModele(T("autoITDepart"),{...p,date:d(1)})],
     ["[TEST] Arrivée — Jean DUPONT — "+d(0)+"  (restaurant, le jour même)",remplirModele(T("autoRestoArrivee"),{...p,date:d(0)})],
     ["[TEST] Départ — Jean DUPONT — "+d(0)+"  (restaurant, le jour même)",remplirModele(T("autoRestoDepart"),{...p,date:d(0)})],
-    ["[TEST] Field Support — Jean DUPONT","Bonjour,\n\nUne nouvelle demande Field Support a été enregistrée :\n\nNom : DUPONT\nPrénom : Jean\nSituation : Arrivée\nDate : "+d(5)+"\nManager : LEROY THOMAS"+finFss],
+    ["[TEST] Field Support — Jean DUPONT","Bonjour,\n\nUne nouvelle demande Field Support a été enregistrée :\n\nNom : DUPONT\nPrénom : Jean\nSituation : Arrivée\nDate : "+d(5)+"\nManager : LEROY THOMAS\n\n"+blocLienAppli(null)+finFss.replace(/^\n/,"")],
     ["[TEST] Badge de prêt P002 — horaires de l'accueil",remplirModele(T("autoPret"),{emprunteur:"Dupont Jean",code:"P002",badge_nom:"Badge Prêt 2",date_pret:d(0)+" à 09h30",ligne_retour:"Retour prévu : "+d(2),horaires:hor,signature:sig})],
     ["[TEST] Rappel — badge de prêt P002 à restituer",remplirModele(T("autoRappel"),{emprunteur:"Dupont Jean",code:"P002",badge_nom:"Badge Prêt 2",date_pret:d(-1)+" à 09h30",horaires:hor,signature:sig})],
   ];
@@ -4778,8 +4819,10 @@ function VueAccueil({badges,casiers,setView,wdCache,setBadges,setCasiers,showToa
           if(!error&&data&&data[0]){
             setFssData(p=>(p||[]).map(f=>f.id===tempId?data[0]:f));
             // ── Envoyer email notification ──
-            const mail=window._fssNotifEmail;
-            if(mail)sendFssEmail(mail,row);
+            // Destinataires : l'IT (Réglages → Email IT), le champ « notifications Field Support » en copie
+            const it=String(window._mailIT||"").trim(), fssM=String(window._fssNotifEmail||"").trim();
+            const to=it||fssM;
+            if(to)sendFssEmail(to,{...row,id:data[0].id},(it&&fssM&&fssM.toLowerCase()!==it.toLowerCase())?fssM:"");
           }else if(error){
             console.error("FSS addEntry error",error);
             showToast("⚠️ Erreur Supabase FSS : "+error.message,"err");
@@ -7573,6 +7616,7 @@ function App(){
   // ── Exposer fssEmail pour EmailJS ──
   useEffect(()=>{window._fssNotifEmail=settings.fssEmail||"";},[settings.fssEmail]);
   useEffect(()=>{window._mailSignature=texteMail(settings,"autoSignature");},[settings.autoSignature]);
+  useEffect(()=>{window._mailIT=settings.itEmail||"";},[settings.itEmail]);
 
   // ── Migration ponctuelle : mettre en MAJUSCULES les champs texte déjà enregistrés ──
   // Ne touche jamais : statut, zone, dates, id, booléens (utilisés en comparaisons strictes).
@@ -7874,6 +7918,12 @@ useEffect(()=>{
   const isIT=session&&session.role==="it";
   const isBadge=session&&session.role==="badge";
   const visibleNav=nav.filter(n=>canAccess(n.id));
+  // Lien « Consulter la fiche » d'un mail : ouvrir Field Support puis la fiche, une fois connecté et les fiches chargées
+  useEffect(()=>{
+    if(!unlocked||LIEN_FICHE==null||!canAccess("field_support"))return;
+    if(view!=="field_support")setView("field_support");
+    if(fssData&&fssData.some(x=>x.id===LIEN_FICHE)){setPendingOpen({view:"field_support",id:LIEN_FICHE});LIEN_FICHE=null;try{history.replaceState(null,"",location.pathname);}catch(e){}}
+  },[unlocked,fssData,view]);
   const mainTabs=visibleNav.slice(0,4);const moreTabs=visibleNav.slice(4);
 
   const renderView=()=>{
