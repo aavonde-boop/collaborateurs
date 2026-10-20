@@ -903,7 +903,22 @@ function TestMailsBox({showToast,settings}){
     etat&&React.createElement("div",{style:{fontSize:12,color:"var(--text2)"}},etat));
 }
 const DEFAULT_PERMS={accueil:PERM_WRITE,collaborateurs:PERM_WRITE,casiers:PERM_WRITE,rapport:PERM_WRITE,impression:PERM_WRITE,historique:PERM_WRITE,archives:PERM_WRITE,field_support:PERM_WRITE};
-const IT_PERMS={accueil:PERM_READ,collaborateurs:PERM_NONE,casiers:PERM_NONE,rapport:PERM_NONE,impression:PERM_NONE,historique:PERM_NONE,archives:PERM_NONE,field_support:PERM_WRITE};
+const BADGE_PERMS={...DEFAULT_PERMS,collaborateurs:PERM_NONE,casiers:PERM_NONE,rapport:PERM_NONE,impression:PERM_NONE,archives:PERM_NONE,field_support:PERM_NONE};
+const ROLE_LABELS={admin:"Administrateur",it:"Field Support",badge:"Accueil — Badges de prêt",user:"Personnalisé"};
+// Construit la session (rôle + droits) d'un compte connecté à partir de la liste des comptes de l'appli.
+function sessionFromSettings(user,st){
+  const users=(st&&st.users)||[];const em=String(user.email||"").toLowerCase();
+  const entry=users.find(u=>String(u.email||"").toLowerCase()===em);
+  if(!entry){
+    // Tant qu'aucun administrateur n'est défini, le premier compte connecté l'est (pour pouvoir configurer).
+    if(!users.some(u=>u.role==="admin")&&em==="a.avonde@allianceautomotive.fr")return{role:"admin",email:user.email,label:"Arnaud AVONDE",perms:DEFAULT_PERMS,bootstrap:true};
+    return null;
+  }
+  const role=entry.role||"user";
+  const perms=role==="admin"?DEFAULT_PERMS:role==="it"?IT_PERMS:role==="badge"?BADGE_PERMS:(entry.perms||DEFAULT_PERMS);
+  return{role,email:user.email,label:entry.label||user.email,perms};
+}
+const IT_PERMS={accueil:PERM_READ,collaborateurs:PERM_NONE,casiers:PERM_NONE,rapport:PERM_NONE,impression:PERM_NONE,historique:PERM_NONE,archives:PERM_NONE,field_support:PERM_WRITE,colis:PERM_NONE};
 const norm=s=>String(s||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toUpperCase().trim();
 const findInWD=(wdCache,nom,prenom)=>{if(!wdCache)return null;const n=norm(nom),p=norm(prenom);return Object.values(wdCache).find(w=>{const wn=norm(w.nom),wp=norm(w.prenom);return(!n||(wn.includes(n)||n.includes(wn)))&&(!p||(wp.includes(p)||p.includes(wp)));});};
 const nxId=arr=>Math.max(0,...arr.map(x=>x.id||0))+1;
@@ -957,25 +972,33 @@ const Lbl=({children})=>React.createElement("label",{className:"lbl"},children);
 const Bdg=({children,color,bg})=>React.createElement("span",{className:"badge",style:{background:bg||"var(--surface3)",color:color||"var(--text2)"}},children);
 
 // ── Login ──
-function LoginScreen({onUnlock,users}){
-  const[_email,setEmail]=useState("");const[pwd,setPwd]=useState("");const[err,setErr]=useState(false);const[shake,setShake]=useState(false);
-  const check=()=>{
-    if(pwd==="AdminAAG"){onUnlock({role:"admin",email:"admin",label:"Administrateur",perms:DEFAULT_PERMS});return;}
-    if(pwd==="FieldAAG"){onUnlock({role:"it",email:"it",label:"Field Support",perms:IT_PERMS});return;}
-    if(pwd==="BadgeAAG"){onUnlock({role:"badge",email:"badge",label:"Badges de Prêt",perms:{...DEFAULT_PERMS,collaborateurs:"none",casiers:"none",rapport:"none",impression:"none",archives:"none",field_support:"none"}});return;}
-    const _u=(users||[]).find(u=>u.email.toLowerCase()===_email.toLowerCase()&&u.pwd===pwd);
-    if(_u){onUnlock({role:"user",email:_u.email,label:_u.label||_u.email,perms:_u.perms||DEFAULT_PERMS});return;}
-    setErr(true);setShake(true);setPwd("");setTimeout(()=>setShake(false),500);
-  };;
+function LoginScreen({onUnlock,authError}){
+  const[email,setEmail]=useState("");const[pwd,setPwd]=useState("");const[err,setErr]=useState("");const[shake,setShake]=useState(false);const[busy,setBusy]=useState(false);
+  const fail=msg=>{setErr(msg);setShake(true);setPwd("");setTimeout(()=>setShake(false),500);};
+  const check=async()=>{
+    if(busy)return;
+    if(!email.trim()||!pwd){fail("Saisis ton e-mail et ton mot de passe.");return;}
+    if(!sb){fail("Connexion à la base impossible. Vérifie ta connexion internet.");return;}
+    setBusy(true);setErr("");
+    try{
+      const{data,error}=await sb.auth.signInWithPassword({email:email.trim(),password:pwd});
+      if(error){fail(/invalid/i.test(error.message)?"E-mail ou mot de passe incorrect.":"Connexion impossible : "+error.message);return;}
+      await onUnlock(data.user);
+    }catch(e){fail("Connexion impossible. Vérifie ta connexion internet.");}
+    finally{setBusy(false);}
+  };
+  const shownErr=err||authError||"";
   return React.createElement("div",{style:{minHeight:"100vh",background:"var(--bg)",display:"flex",alignItems:"center",justifyContent:"center",position:"relative",overflow:"hidden",padding:16}},
     React.createElement("div",{style:{position:"absolute",inset:0,background:"radial-gradient(ellipse 80% 60% at 50% -10%,rgba(59,130,246,.12),transparent)"}}),
     React.createElement("div",{style:{position:"relative",background:"var(--surface)",border:"1px solid var(--border)",borderRadius:20,boxShadow:"0 24px 80px rgba(0,0,0,.12)",padding:"40px min(48px, 7vw)",width:"100%",maxWidth:400,textAlign:"center",animation:shake?"shake .4s":"none"}},
       React.createElement("div",{style:{width:56,height:56,background:"var(--accentBg)",border:"1px solid rgba(59,130,246,.3)",borderRadius:16,display:"flex",alignItems:"center",justifyContent:"center",fontSize:24,margin:"0 auto 16px"}},"👥"),
       React.createElement("h1",{style:{fontSize:22,fontWeight:800,color:"var(--text)",marginBottom:4}},"Gestion des Collaborateurs"),
       React.createElement("p",{style:{fontSize:13,color:"var(--text2)",marginBottom:28}},"Alliance Automotive Group"),
-      React.createElement("div",{style:{marginBottom:16}},React.createElement("input",{type:"password",value:pwd,onChange:e=>setPwd(e.target.value),onKeyDown:e=>e.key==="Enter"&&check(),placeholder:"Mot de passe",className:"inp",autoFocus:true,style:{border:err?"1px solid var(--red)":"",marginBottom:0}})),
-      err&&React.createElement("p",{style:{color:"var(--red)",fontSize:12,marginBottom:12}},"Mot de passe incorrect."),
-      React.createElement("button",{onClick:check,className:"btn btn-primary",style:{width:"100%",padding:"10px 0",fontSize:14,fontWeight:700,borderRadius:10,justifyContent:"center"}},"Connexion"),
+      React.createElement("div",{style:{marginBottom:10}},React.createElement("input",{type:"email",value:email,onChange:e=>setEmail(e.target.value),onKeyDown:e=>e.key==="Enter"&&check(),placeholder:"E-mail",className:"inp",autoFocus:true,autoComplete:"username",autoCapitalize:"none",style:{border:shownErr?"1px solid var(--red)":"",padding:"10px 14px",fontSize:14}})),
+      React.createElement("div",{style:{marginBottom:16}},React.createElement("input",{type:"password",value:pwd,onChange:e=>setPwd(e.target.value),onKeyDown:e=>e.key==="Enter"&&check(),placeholder:"Mot de passe",className:"inp",autoComplete:"current-password",style:{border:shownErr?"1px solid var(--red)":"",padding:"10px 14px",fontSize:14}})),
+      shownErr&&React.createElement("p",{style:{color:"var(--red)",fontSize:12,marginBottom:12}},shownErr),
+      React.createElement("button",{onClick:check,disabled:busy,className:"btn btn-primary",style:{width:"100%",padding:"10px 0",fontSize:14,fontWeight:700,borderRadius:10,justifyContent:"center"}},busy?"Connexion…":"Connexion"),
+      React.createElement("p",{style:{fontSize:11,color:"var(--text3)",marginTop:14}},"Mot de passe oublié ? Demande à l'administrateur de le réinitialiser."),
       React.createElement("style",null,"@keyframes shake{0%,100%{transform:translateX(0)}20%,60%{transform:translateX(-8px)}40%,80%{transform:translateX(8px)}}")
     )
   );
@@ -3358,11 +3381,11 @@ function SettingsModal({settings,setSettings,showToast,setShowSettings,racineRef
           )
         ),
         tab==="users"&&React.createElement("div",null,
-          React.createElement("div",{style:{background:"var(--accentBg)",border:"1px solid rgba(59,130,246,.2)",borderRadius:8,padding:"10px 14px",fontSize:12,color:"var(--accent2)",marginBottom:16}},
-            React.createElement("div",{style:{fontWeight:700,marginBottom:4}},"🔒 Comptes système (fixes, non modifiables)"),
-            React.createElement("div",null,"• Admin : mot de passe ",React.createElement("code",{style:{background:"var(--surface3)",padding:"1px 5px",borderRadius:4}},"AdminAAG")," — accès complet"),
-            React.createElement("div",null,"• Field Support IT : mot de passe ",React.createElement("code",{style:{background:"var(--surface3)",padding:"1px 5px",borderRadius:4}},"FieldAAG")," — accueil (lecture) + Field Support"),
-            React.createElement("div",null,"• Badge de Prêt : mot de passe ",React.createElement("code",{style:{background:"var(--surface3)",padding:"1px 5px",borderRadius:4}},"BadgeAAG")," — gestion badges de prêt + historique")
+          React.createElement("div",{style:{background:"var(--accentBg)",border:"1px solid rgba(59,130,246,.2)",borderRadius:8,padding:"10px 14px",fontSize:12,color:"var(--accent2)",marginBottom:16,lineHeight:1.5}},
+            React.createElement("div",{style:{fontWeight:700,marginBottom:4}},"🔒 Comment ajouter quelqu'un"),
+            React.createElement("div",null,"1. Crée son compte (e-mail + mot de passe) dans Supabase → Authentication → Users → Add user."),
+            React.createElement("div",null,"2. Ajoute son e-mail ci-dessous et choisis ses droits. Sans cette étape, il ne peut pas entrer dans l'appli."),
+            React.createElement("div",{style:{marginTop:4}},"Les mots de passe ne sont plus stockés dans l'appli.")
           ),
           (settings.users||[]).length>0&&React.createElement("div",{style:{marginBottom:12}},
             React.createElement("div",{style:{fontWeight:700,fontSize:12,color:"var(--text)",marginBottom:8}},"Comptes personnalisés"),
@@ -3371,7 +3394,9 @@ function SettingsModal({settings,setSettings,showToast,setShowSettings,racineRef
               React.createElement("div",{style:{flex:1}},
                 React.createElement("div",{style:{fontWeight:700,fontSize:13,color:"var(--text)"}},u.label||u.email),
                 React.createElement("div",{style:{fontSize:11,color:"var(--text3)"}},u.email),
-                u.perms&&Object.entries(u.perms).filter(([,v])=>v===PERM_NONE).length>0&&React.createElement("div",{style:{fontSize:10,color:"var(--red)",marginTop:2}},"🔒 Bloqué : "+Object.entries(u.perms).filter(([,v])=>v===PERM_NONE).map(([k])=>k).join(", "))
+                React.createElement("select",{value:u.role||"user",onChange:e=>{const r=e.target.value;setSettings(s=>({...s,users:(s.users||[]).map((x,j)=>j===i?{...x,role:r}:x)}));},style:{marginTop:4,padding:"3px 6px",borderRadius:5,border:"1px solid var(--border2)",fontSize:11,background:"var(--surface)",color:"var(--text)"}},
+                  Object.entries(ROLE_LABELS).map(([k,l])=>React.createElement("option",{key:k,value:k},l))),
+                (u.role||"user")==="user"&&u.perms&&Object.entries(u.perms).filter(([,v])=>v===PERM_NONE).length>0&&React.createElement("div",{style:{fontSize:10,color:"var(--red)",marginTop:2}},"🔒 Bloqué : "+Object.entries(u.perms).filter(([,v])=>v===PERM_NONE).map(([k])=>k).join(", "))
               ),
               React.createElement("button",{onClick:()=>setSettings(s=>({...s,users:(s.users||[]).filter((_,j)=>j!==i)})),className:"btn btn-danger",style:{fontSize:11,padding:"4px 8px"}},"🗑️ Retirer")
             ))
@@ -3906,6 +3931,41 @@ function App(){
   // ── Ouverture ciblée d'une fiche depuis le Rapport (résolution d'incohérence) ──
   const[pendingOpen,setPendingOpen]=useState(null); // {view:"collaborateurs"|"field_support", id}
   const[dbStatus,setDbStatus]=useState("loading");
+  // ── Connexion Supabase Auth ──
+  const[authChecking,setAuthChecking]=useState(true);const[authError,setAuthError]=useState("");
+  const openSession=async user=>{
+    let st={};
+    try{
+      const{data,error}=await sb.from("lp24_settings").select("*").eq("id",1).single();
+      if(error&&error.code!=="PGRST116")throw error; // PGRST116 = aucune ligne (1er démarrage)
+      if(data&&data.data)st=typeof data.data==="string"?JSON.parse(data.data):data.data;
+    }catch(e){
+      // Sans les réglages, impossible de connaître les droits : on refuse plutôt que de deviner.
+      console.error("lecture réglages",e);
+      setAuthError("Impossible de lire les droits du compte (réseau ?). Réessaie dans un instant.");
+      return;
+    }
+    settingsReadyRef.current=true;
+    const sess=sessionFromSettings(user,st);
+    if(!sess){
+      await sb.auth.signOut().catch(()=>{});
+      setAuthError("Ce compte n'a pas encore d'accès à l'appli. Demande à l'administrateur de l'ajouter dans Réglages → Comptes.");
+      return;
+    }
+    setAuthError("");setSettings(prev=>({...prev,...st}));setSession(sess);setUnlocked(true);
+    if(sess.role==="badge")setView("badges_pret");
+    if(sess.bootstrap)setTimeout(()=>showToast("⚠️ Aucun administrateur défini : ajoute ton compte en Administrateur dans Réglages → Comptes","err"),800);
+  };
+  const logout=async()=>{try{await sb.auth.signOut();}catch(e){}setUnlocked(false);setSession(null);setBadges([]);setCasiers([]);};
+  useEffect(()=>{
+    if(!sb){setAuthChecking(false);return;}
+    let alive=true;
+    sb.auth.getSession().then(async({data})=>{
+      if(alive&&data&&data.session&&data.session.user)await openSession(data.session.user);
+    }).catch(()=>{}).finally(()=>{if(alive)setAuthChecking(false);});
+    const{data:sub}=sb.auth.onAuthStateChange((ev)=>{if(ev==="SIGNED_OUT"){setUnlocked(false);setSession(null);}});
+    return()=>{alive=false;try{sub.subscription.unsubscribe();}catch(e){}};
+  },[]);
   // ── Casiers : la fiche collaborateur fait foi. Si un collaborateur actif a le casier X,
   // X est affiché "Occupé" à son nom, même si la ligne casier en base dit encore "Libre". ──
   const casiersEff=useMemo(()=>{
@@ -3919,6 +3979,7 @@ function App(){
     });
   },[badges,casiers]);
   const repairRef=useRef(new Set());
+  const settingsReadyRef=useRef(false); // les réglages ne sont ré-enregistrés qu'une fois lus depuis la base
   const[loading,setLoading]=useState(false);
   const[toast,setToast]=useState(null);
   const toastTimer=useRef(null);
@@ -4092,10 +4153,10 @@ function App(){
   // ── Auto-save settings (users, emails) dans Supabase ──
   const settingsTimer=useRef(null);
   useEffect(()=>{
-    if(!unlocked||!sb)return;
+    if(!unlocked||!sb||!settingsReadyRef.current)return;
     if(settingsTimer.current)clearTimeout(settingsTimer.current);
     settingsTimer.current=setTimeout(()=>{
-      (async()=>{try{await sb.from("lp24_settings").upsert({id:1,data:JSON.stringify(settings)});}catch(e){}})();
+      (async()=>{try{await sb.from("lp24_settings").upsert({id:1,data:JSON.stringify({...settings,users:(settings.users||[])})});}catch(e){}})();
     },1500);
   },[settings,unlocked]);
 
@@ -4331,17 +4392,8 @@ useEffect(()=>{
     }
   };
 
-  // ── Pré-chargement des settings (users) avant connexion ──
-  useEffect(()=>{
-    if(!sb)return;
-    sb.from("lp24_settings").select("*").eq("id",1).single().then(({data})=>{
-      if(data&&data.data){
-        try{const parsed=typeof data.data==="string"?JSON.parse(data.data):data.data;setSettings(prev=>({...prev,...parsed}));}catch(e){}
-      }
-    }).catch(()=>{});
-  },[]);
-
-  if(!unlocked)return React.createElement(LoginScreen,{onUnlock:(s)=>{setUnlocked(true);const sess=s||{role:"admin",label:"Admin"};setSession(sess);if(sess.role==="badge")setView("badges_pret");},users:settings.users||[]});
+  if(authChecking)return React.createElement("div",{style:{minHeight:"100vh",background:"var(--bg)",display:"flex",alignItems:"center",justifyContent:"center",color:"var(--text3)",fontWeight:700,fontSize:14}},"Chargement…");
+  if(!unlocked)return React.createElement(LoginScreen,{onUnlock:openSession,authError});
   if(dbStatus==="loading"&&!badges.length)return React.createElement("div",{style:{minHeight:"100vh",background:"var(--bg)",display:"flex",alignItems:"center",justifyContent:"center"}},React.createElement("div",{style:{textAlign:"center"}},React.createElement("div",{style:{fontSize:32,marginBottom:8}},"🔄"),React.createElement("div",{style:{fontWeight:700,fontSize:14,color:"var(--text2)"}},"Chargement...")));
 
   const dbDot=React.createElement("div",{style:{display:"flex",alignItems:"center",gap:5,fontSize:11,color:"var(--text3)"}},React.createElement("span",{className:"save-dot"+(saving?" saving":""),title:saving?"Sauvegarde...":"Sauvegardé"}),saving?"Sync...":dbStatus==="ok"?"✓":"Hors ligne");
@@ -4349,7 +4401,7 @@ useEffect(()=>{
   const toolbarButtons=React.createElement("div",{style:{display:"flex",gap:8,alignItems:"center"}},
     !isIT&&React.createElement("button",{title:"Paramètres & Import/Export",className:"btn-icon",onClick:()=>setShowSettings(true),style:{position:"relative"}},"⚙️",archivesCount>0&&React.createElement("span",{style:{position:"absolute",top:-4,right:-4,background:"var(--orange)",color:"#fff",borderRadius:999,fontSize:8,fontWeight:700,padding:"1px 4px",lineHeight:"11px"}},archivesCount)),
     session&&React.createElement("span",{style:{fontSize:11,color:"var(--text3)",marginLeft:2}},session.label),
-    session&&React.createElement("button",{title:"Déconnexion",onClick:()=>{setUnlocked(false);setSession(null);},style:{background:"var(--redBg)",border:"1px solid rgba(220,38,38,.2)",color:"var(--red)",borderRadius:6,padding:"3px 8px",fontSize:11,cursor:"pointer"}},"⏻"),
+    session&&React.createElement("button",{title:"Déconnexion",onClick:logout,style:{background:"var(--redBg)",border:"1px solid rgba(220,38,38,.2)",color:"var(--red)",borderRadius:6,padding:"3px 8px",fontSize:11,cursor:"pointer"}},"⏻"),
     dbDot
   );
 
@@ -4372,7 +4424,7 @@ useEffect(()=>{
         ),
         React.createElement("div",{style:{display:"flex",alignItems:"center",gap:8}},
           React.createElement("span",{style:{fontSize:11,color:"var(--text2)"}},"Gestionnaire Badges"),
-          React.createElement("button",{onClick:()=>{setUnlocked(false);setSession(null);},style:{background:"var(--redBg)",border:"1px solid rgba(220,38,38,.2)",color:"var(--red)",borderRadius:6,padding:"3px 8px",fontSize:11,cursor:"pointer"}},"⏻ Déco")
+          React.createElement("button",{onClick:logout,style:{background:"var(--redBg)",border:"1px solid rgba(220,38,38,.2)",color:"var(--red)",borderRadius:6,padding:"3px 8px",fontSize:11,cursor:"pointer"}},"⏻ Déco")
         )
       ),
       React.createElement("main",{style:{maxWidth:1400,margin:"0 auto",padding:"16px 20px"}},
@@ -4412,25 +4464,27 @@ useEffect(()=>{
 
 
 function AddUserForm({settings,setSettings,showToast}){
-  const[nu,setNu]=useState({email:"",pwd:"",label:""});
+  const[nu,setNu]=useState({email:"",label:"",role:"it"});
   const allViews=["accueil","collaborateurs","casiers","rapport","impression","historique","archives"];
   const[blocked,setBlocked]=useState(new Set());
   const toggleBlock=v=>setBlocked(p=>{const n=new Set(p);n.has(v)?n.delete(v):n.add(v);return n;});
   const addUser=()=>{
-    if(!nu.email||!nu.pwd){showToast("⚠️ Email et mot de passe requis","err");return;}
+    if(!nu.email.trim()){showToast("⚠️ E-mail requis","err");return;}
+    if((settings.users||[]).some(u=>String(u.email||"").toLowerCase()===nu.email.trim().toLowerCase())){showToast("⚠️ Ce compte existe déjà","err");return;}
     const perms={};allViews.forEach(v=>{perms[v]=blocked.has(v)?PERM_NONE:PERM_WRITE;});
-    setSettings(s=>({...s,users:[...(s.users||[]),{...nu,perms}]}));
-    setNu({email:"",pwd:"",label:""});setBlocked(new Set());
+    setSettings(s=>({...s,users:[...(s.users||[]),{email:nu.email.trim(),label:nu.label,role:nu.role,...(nu.role==="user"?{perms}:{})}]}));
+    setNu({email:"",label:"",role:"it"});setBlocked(new Set());
     showToast("✅ Compte ajouté");
   };
   return React.createElement("div",{style:{background:"#F9FAFB",borderRadius:7,padding:12,border:"1px solid #E5E7EB",marginTop:8}},
     React.createElement("div",{style:{fontWeight:600,fontSize:12,color:"#374151",marginBottom:8}},"+ Ajouter un compte"),
     React.createElement("div",{style:{display:"grid",gridTemplateColumns:"1fr 1fr",gap:6,marginBottom:6}},
       React.createElement("input",{value:nu.label,onChange:e=>setNu(u=>({...u,label:e.target.value.toUpperCase()})),placeholder:"Nom affiché",style:{padding:"6px 8px",borderRadius:5,border:"1px solid #D1D5DB",fontSize:12}}),
-      React.createElement("input",{type:"email",value:nu.email,onChange:e=>setNu(u=>({...u,email:e.target.value.toUpperCase()})),placeholder:"Email",style:{padding:"6px 8px",borderRadius:5,border:"1px solid #D1D5DB",fontSize:12}}),
-      React.createElement("input",{type:"text",value:nu.pwd,onChange:e=>setNu(u=>({...u,pwd:e.target.value})),placeholder:"Mot de passe",style:{padding:"6px 8px",borderRadius:5,border:"1px solid #D1D5DB",fontSize:12,gridColumn:"1/-1"}})
+      React.createElement("input",{type:"email",value:nu.email,onChange:e=>setNu(u=>({...u,email:e.target.value})),placeholder:"Email",style:{padding:"6px 8px",borderRadius:5,border:"1px solid #D1D5DB",fontSize:12}}),
+      React.createElement("select",{value:nu.role,onChange:e=>setNu(u=>({...u,role:e.target.value})),style:{padding:"6px 8px",borderRadius:5,border:"1px solid #D1D5DB",fontSize:12,gridColumn:"1/-1",background:"#fff"}},
+        Object.entries(ROLE_LABELS).map(([k,l])=>React.createElement("option",{key:k,value:k},l)))
     ),
-    React.createElement("div",{style:{marginBottom:8}},
+    nu.role==="user"&&React.createElement("div",{style:{marginBottom:8}},
       React.createElement("div",{style:{fontSize:11,fontWeight:600,color:"#6B7280",marginBottom:4}},"🔒 Bloquer l'accès à ces vues :"),
       React.createElement("div",{style:{display:"flex",flexWrap:"wrap",gap:6}},
         allViews.map(v=>React.createElement("label",{key:v,style:{display:"flex",alignItems:"center",gap:4,fontSize:11,cursor:"pointer",background:blocked.has(v)?"#FDEDEC":"#F3F4F6",color:blocked.has(v)?"#E74C3C":"#374151",borderRadius:5,padding:"3px 8px",border:"1px solid "+(blocked.has(v)?"#F1948A":"#E5E7EB")}},
@@ -4868,7 +4922,22 @@ function TestMailsBox({showToast,settings}){
     etat&&React.createElement("div",{style:{fontSize:12,color:"var(--text2)"}},etat));
 }
 const DEFAULT_PERMS={accueil:PERM_WRITE,collaborateurs:PERM_WRITE,casiers:PERM_WRITE,rapport:PERM_WRITE,impression:PERM_WRITE,historique:PERM_WRITE,archives:PERM_WRITE,field_support:PERM_WRITE};
-const IT_PERMS={accueil:PERM_READ,collaborateurs:PERM_NONE,casiers:PERM_NONE,rapport:PERM_NONE,impression:PERM_NONE,historique:PERM_NONE,archives:PERM_NONE,field_support:PERM_WRITE};
+const BADGE_PERMS={...DEFAULT_PERMS,collaborateurs:PERM_NONE,casiers:PERM_NONE,rapport:PERM_NONE,impression:PERM_NONE,archives:PERM_NONE,field_support:PERM_NONE};
+const ROLE_LABELS={admin:"Administrateur",it:"Field Support",badge:"Accueil — Badges de prêt",user:"Personnalisé"};
+// Construit la session (rôle + droits) d'un compte connecté à partir de la liste des comptes de l'appli.
+function sessionFromSettings(user,st){
+  const users=(st&&st.users)||[];const em=String(user.email||"").toLowerCase();
+  const entry=users.find(u=>String(u.email||"").toLowerCase()===em);
+  if(!entry){
+    // Tant qu'aucun administrateur n'est défini, le premier compte connecté l'est (pour pouvoir configurer).
+    if(!users.some(u=>u.role==="admin")&&em==="a.avonde@allianceautomotive.fr")return{role:"admin",email:user.email,label:"Arnaud AVONDE",perms:DEFAULT_PERMS,bootstrap:true};
+    return null;
+  }
+  const role=entry.role||"user";
+  const perms=role==="admin"?DEFAULT_PERMS:role==="it"?IT_PERMS:role==="badge"?BADGE_PERMS:(entry.perms||DEFAULT_PERMS);
+  return{role,email:user.email,label:entry.label||user.email,perms};
+}
+const IT_PERMS={accueil:PERM_READ,collaborateurs:PERM_NONE,casiers:PERM_NONE,rapport:PERM_NONE,impression:PERM_NONE,historique:PERM_NONE,archives:PERM_NONE,field_support:PERM_WRITE,colis:PERM_NONE};
 const norm=s=>String(s||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toUpperCase().trim();
 const findInWD=(wdCache,nom,prenom)=>{if(!wdCache)return null;const n=norm(nom),p=norm(prenom);return Object.values(wdCache).find(w=>{const wn=norm(w.nom),wp=norm(w.prenom);return(!n||(wn.includes(n)||n.includes(wn)))&&(!p||(wp.includes(p)||p.includes(wp)));});};
 const nxId=arr=>Math.max(0,...arr.map(x=>x.id||0))+1;
@@ -4922,25 +4991,33 @@ const Lbl=({children})=>React.createElement("label",{className:"lbl"},children);
 const Bdg=({children,color,bg})=>React.createElement("span",{className:"badge",style:{background:bg||"var(--surface3)",color:color||"var(--text2)"}},children);
 
 // ── Login ──
-function LoginScreen({onUnlock,users}){
-  const[_email,setEmail]=useState("");const[pwd,setPwd]=useState("");const[err,setErr]=useState(false);const[shake,setShake]=useState(false);
-  const check=()=>{
-    if(pwd==="AdminAAG"){onUnlock({role:"admin",email:"admin",label:"Administrateur",perms:DEFAULT_PERMS});return;}
-    if(pwd==="FieldAAG"){onUnlock({role:"it",email:"it",label:"Field Support",perms:IT_PERMS});return;}
-    if(pwd==="BadgeAAG"){onUnlock({role:"badge",email:"badge",label:"Badges de Prêt",perms:{...DEFAULT_PERMS,collaborateurs:"none",casiers:"none",rapport:"none",impression:"none",archives:"none",field_support:"none"}});return;}
-    const _u=(users||[]).find(u=>u.email.toLowerCase()===_email.toLowerCase()&&u.pwd===pwd);
-    if(_u){onUnlock({role:"user",email:_u.email,label:_u.label||_u.email,perms:_u.perms||DEFAULT_PERMS});return;}
-    setErr(true);setShake(true);setPwd("");setTimeout(()=>setShake(false),500);
-  };;
+function LoginScreen({onUnlock,authError}){
+  const[email,setEmail]=useState("");const[pwd,setPwd]=useState("");const[err,setErr]=useState("");const[shake,setShake]=useState(false);const[busy,setBusy]=useState(false);
+  const fail=msg=>{setErr(msg);setShake(true);setPwd("");setTimeout(()=>setShake(false),500);};
+  const check=async()=>{
+    if(busy)return;
+    if(!email.trim()||!pwd){fail("Saisis ton e-mail et ton mot de passe.");return;}
+    if(!sb){fail("Connexion à la base impossible. Vérifie ta connexion internet.");return;}
+    setBusy(true);setErr("");
+    try{
+      const{data,error}=await sb.auth.signInWithPassword({email:email.trim(),password:pwd});
+      if(error){fail(/invalid/i.test(error.message)?"E-mail ou mot de passe incorrect.":"Connexion impossible : "+error.message);return;}
+      await onUnlock(data.user);
+    }catch(e){fail("Connexion impossible. Vérifie ta connexion internet.");}
+    finally{setBusy(false);}
+  };
+  const shownErr=err||authError||"";
   return React.createElement("div",{style:{minHeight:"100vh",background:"var(--bg)",display:"flex",alignItems:"center",justifyContent:"center",position:"relative",overflow:"hidden",padding:16}},
     
     React.createElement("div",{className:"ios-login",style:{position:"relative",background:"var(--surface)",border:"1px solid var(--border)",borderRadius:20,boxShadow:"0 24px 80px rgba(0,0,0,.12)",padding:"40px min(48px, 7vw)",width:"100%",maxWidth:400,textAlign:"center",animation:shake?"shake .4s":"none"}},
       React.createElement("img",{className:"ios-login-icon",src:"https://aavonde-boop.github.io/collaborateurs/apple-touch-icon.png?v=2",alt:""}),
       React.createElement("h1",{className:"ios-large",style:{fontSize:22,fontWeight:800,color:"var(--text)",marginBottom:4}},"Gestion des Collaborateurs"),
       React.createElement("p",{style:{fontSize:13,color:"var(--text2)",marginBottom:28}},"Alliance Automotive Group"),
-      React.createElement("div",{style:{marginBottom:16}},React.createElement("input",{type:"password",value:pwd,onChange:e=>setPwd(e.target.value),onKeyDown:e=>e.key==="Enter"&&check(),placeholder:"Mot de passe",className:"inp",autoFocus:true,style:{border:err?"1px solid var(--red)":"",marginBottom:0}})),
-      err&&React.createElement("p",{style:{color:"var(--red)",fontSize:12,marginBottom:12}},"Mot de passe incorrect."),
-      React.createElement("button",{onClick:check,className:"btn btn-primary",style:{width:"100%",padding:"10px 0",fontSize:14,fontWeight:700,borderRadius:10,justifyContent:"center"}},"Connexion"),
+      React.createElement("div",{style:{marginBottom:10}},React.createElement("input",{type:"email",value:email,onChange:e=>setEmail(e.target.value),onKeyDown:e=>e.key==="Enter"&&check(),placeholder:"E-mail",className:"inp",autoFocus:true,autoComplete:"username",autoCapitalize:"none",style:{border:shownErr?"1px solid var(--red)":"",padding:"10px 14px",fontSize:14}})),
+      React.createElement("div",{style:{marginBottom:16}},React.createElement("input",{type:"password",value:pwd,onChange:e=>setPwd(e.target.value),onKeyDown:e=>e.key==="Enter"&&check(),placeholder:"Mot de passe",className:"inp",autoComplete:"current-password",style:{border:shownErr?"1px solid var(--red)":"",padding:"10px 14px",fontSize:14}})),
+      shownErr&&React.createElement("p",{style:{color:"var(--red)",fontSize:12,marginBottom:12}},shownErr),
+      React.createElement("button",{onClick:check,disabled:busy,className:"btn btn-primary",style:{width:"100%",padding:"10px 0",fontSize:14,fontWeight:700,borderRadius:10,justifyContent:"center"}},busy?"Connexion…":"Connexion"),
+      React.createElement("p",{style:{fontSize:11,color:"var(--text3)",marginTop:14}},"Mot de passe oublié ? Demande à l'administrateur de le réinitialiser."),
       React.createElement("style",null,"@keyframes shake{0%,100%{transform:translateX(0)}20%,60%{transform:translateX(-8px)}40%,80%{transform:translateX(8px)}}")
     )
   );
@@ -7427,11 +7504,11 @@ function SettingsModal({settings,setSettings,showToast,setShowSettings,racineRef
           )
         ),
         tab==="users"&&React.createElement("div",null,
-          React.createElement("div",{style:{background:"var(--accentBg)",border:"1px solid rgba(59,130,246,.2)",borderRadius:8,padding:"10px 14px",fontSize:12,color:"var(--accent2)",marginBottom:16}},
-            React.createElement("div",{style:{fontWeight:700,marginBottom:4}},"🔒 Comptes système (fixes, non modifiables)"),
-            React.createElement("div",null,"• Admin : mot de passe ",React.createElement("code",{style:{background:"var(--surface3)",padding:"1px 5px",borderRadius:4}},"AdminAAG")," — accès complet"),
-            React.createElement("div",null,"• Field Support IT : mot de passe ",React.createElement("code",{style:{background:"var(--surface3)",padding:"1px 5px",borderRadius:4}},"FieldAAG")," — accueil (lecture) + Field Support"),
-            React.createElement("div",null,"• Badge de Prêt : mot de passe ",React.createElement("code",{style:{background:"var(--surface3)",padding:"1px 5px",borderRadius:4}},"BadgeAAG")," — gestion badges de prêt + historique")
+          React.createElement("div",{style:{background:"var(--accentBg)",border:"1px solid rgba(59,130,246,.2)",borderRadius:8,padding:"10px 14px",fontSize:12,color:"var(--accent2)",marginBottom:16,lineHeight:1.5}},
+            React.createElement("div",{style:{fontWeight:700,marginBottom:4}},"🔒 Comment ajouter quelqu'un"),
+            React.createElement("div",null,"1. Crée son compte (e-mail + mot de passe) dans Supabase → Authentication → Users → Add user."),
+            React.createElement("div",null,"2. Ajoute son e-mail ci-dessous et choisis ses droits. Sans cette étape, il ne peut pas entrer dans l'appli."),
+            React.createElement("div",{style:{marginTop:4}},"Les mots de passe ne sont plus stockés dans l'appli.")
           ),
           (settings.users||[]).length>0&&React.createElement("div",{style:{marginBottom:12}},
             React.createElement("div",{style:{fontWeight:700,fontSize:12,color:"var(--text)",marginBottom:8}},"Comptes personnalisés"),
@@ -7440,7 +7517,9 @@ function SettingsModal({settings,setSettings,showToast,setShowSettings,racineRef
               React.createElement("div",{style:{flex:1}},
                 React.createElement("div",{style:{fontWeight:700,fontSize:13,color:"var(--text)"}},u.label||u.email),
                 React.createElement("div",{style:{fontSize:11,color:"var(--text3)"}},u.email),
-                u.perms&&Object.entries(u.perms).filter(([,v])=>v===PERM_NONE).length>0&&React.createElement("div",{style:{fontSize:10,color:"var(--red)",marginTop:2}},"🔒 Bloqué : "+Object.entries(u.perms).filter(([,v])=>v===PERM_NONE).map(([k])=>k).join(", "))
+                React.createElement("select",{value:u.role||"user",onChange:e=>{const r=e.target.value;setSettings(s=>({...s,users:(s.users||[]).map((x,j)=>j===i?{...x,role:r}:x)}));},style:{marginTop:4,padding:"3px 6px",borderRadius:5,border:"1px solid var(--border2)",fontSize:11,background:"var(--surface)",color:"var(--text)"}},
+                  Object.entries(ROLE_LABELS).map(([k,l])=>React.createElement("option",{key:k,value:k},l))),
+                (u.role||"user")==="user"&&u.perms&&Object.entries(u.perms).filter(([,v])=>v===PERM_NONE).length>0&&React.createElement("div",{style:{fontSize:10,color:"var(--red)",marginTop:2}},"🔒 Bloqué : "+Object.entries(u.perms).filter(([,v])=>v===PERM_NONE).map(([k])=>k).join(", "))
               ),
               React.createElement("button",{onClick:()=>setSettings(s=>({...s,users:(s.users||[]).filter((_,j)=>j!==i)})),className:"btn btn-danger",style:{fontSize:11,padding:"4px 8px"}},"🗑️ Retirer")
             ))
@@ -7982,6 +8061,41 @@ function App(){
   // ── Ouverture ciblée d'une fiche depuis le Rapport (résolution d'incohérence) ──
   const[pendingOpen,setPendingOpen]=useState(null); // {view:"collaborateurs"|"field_support", id}
   const[dbStatus,setDbStatus]=useState("loading");
+  // ── Connexion Supabase Auth ──
+  const[authChecking,setAuthChecking]=useState(true);const[authError,setAuthError]=useState("");
+  const openSession=async user=>{
+    let st={};
+    try{
+      const{data,error}=await sb.from("lp24_settings").select("*").eq("id",1).single();
+      if(error&&error.code!=="PGRST116")throw error; // PGRST116 = aucune ligne (1er démarrage)
+      if(data&&data.data)st=typeof data.data==="string"?JSON.parse(data.data):data.data;
+    }catch(e){
+      // Sans les réglages, impossible de connaître les droits : on refuse plutôt que de deviner.
+      console.error("lecture réglages",e);
+      setAuthError("Impossible de lire les droits du compte (réseau ?). Réessaie dans un instant.");
+      return;
+    }
+    settingsReadyRef.current=true;
+    const sess=sessionFromSettings(user,st);
+    if(!sess){
+      await sb.auth.signOut().catch(()=>{});
+      setAuthError("Ce compte n'a pas encore d'accès à l'appli. Demande à l'administrateur de l'ajouter dans Réglages → Comptes.");
+      return;
+    }
+    setAuthError("");setSettings(prev=>({...prev,...st}));setSession(sess);setUnlocked(true);
+    if(sess.role==="badge")setView("badges_pret");
+    if(sess.bootstrap)setTimeout(()=>showToast("⚠️ Aucun administrateur défini : ajoute ton compte en Administrateur dans Réglages → Comptes","err"),800);
+  };
+  const logout=async()=>{try{await sb.auth.signOut();}catch(e){}setUnlocked(false);setSession(null);setBadges([]);setCasiers([]);};
+  useEffect(()=>{
+    if(!sb){setAuthChecking(false);return;}
+    let alive=true;
+    sb.auth.getSession().then(async({data})=>{
+      if(alive&&data&&data.session&&data.session.user)await openSession(data.session.user);
+    }).catch(()=>{}).finally(()=>{if(alive)setAuthChecking(false);});
+    const{data:sub}=sb.auth.onAuthStateChange((ev)=>{if(ev==="SIGNED_OUT"){setUnlocked(false);setSession(null);}});
+    return()=>{alive=false;try{sub.subscription.unsubscribe();}catch(e){}};
+  },[]);
   // ── Casiers : la fiche collaborateur fait foi. Si un collaborateur actif a le casier X,
   // X est affiché "Occupé" à son nom, même si la ligne casier en base dit encore "Libre". ──
   const casiersEff=useMemo(()=>{
@@ -7995,6 +8109,7 @@ function App(){
     });
   },[badges,casiers]);
   const repairRef=useRef(new Set());
+  const settingsReadyRef=useRef(false); // les réglages ne sont ré-enregistrés qu'une fois lus depuis la base
   const[loading,setLoading]=useState(false);
   const[toast,setToast]=useState(null);
   const toastTimer=useRef(null);
@@ -8168,10 +8283,10 @@ function App(){
   // ── Auto-save settings (users, emails) dans Supabase ──
   const settingsTimer=useRef(null);
   useEffect(()=>{
-    if(!unlocked||!sb)return;
+    if(!unlocked||!sb||!settingsReadyRef.current)return;
     if(settingsTimer.current)clearTimeout(settingsTimer.current);
     settingsTimer.current=setTimeout(()=>{
-      (async()=>{try{await sb.from("lp24_settings").upsert({id:1,data:JSON.stringify(settings)});}catch(e){}})();
+      (async()=>{try{await sb.from("lp24_settings").upsert({id:1,data:JSON.stringify({...settings,users:(settings.users||[])})});}catch(e){}})();
     },1500);
   },[settings,unlocked]);
 
@@ -8408,17 +8523,8 @@ useEffect(()=>{
     }
   };
 
-  // ── Pré-chargement des settings (users) avant connexion ──
-  useEffect(()=>{
-    if(!sb)return;
-    sb.from("lp24_settings").select("*").eq("id",1).single().then(({data})=>{
-      if(data&&data.data){
-        try{const parsed=typeof data.data==="string"?JSON.parse(data.data):data.data;setSettings(prev=>({...prev,...parsed}));}catch(e){}
-      }
-    }).catch(()=>{});
-  },[]);
-
-  if(!unlocked)return React.createElement(LoginScreen,{onUnlock:(s)=>{setUnlocked(true);const sess=s||{role:"admin",label:"Admin"};setSession(sess);if(sess.role==="badge")setView("badges_pret");},users:settings.users||[]});
+  if(authChecking)return React.createElement("div",{style:{minHeight:"100vh",background:"var(--bg)",display:"flex",alignItems:"center",justifyContent:"center",color:"var(--text3)",fontWeight:700,fontSize:14}},"Chargement…");
+  if(!unlocked)return React.createElement(LoginScreen,{onUnlock:openSession,authError});
   if(dbStatus==="loading"&&!badges.length)return React.createElement("div",{style:{minHeight:"100vh",background:"var(--bg)",display:"flex",alignItems:"center",justifyContent:"center"}},React.createElement("div",{style:{textAlign:"center"}},React.createElement("div",{style:{fontSize:32,marginBottom:8}},"🔄"),React.createElement("div",{style:{fontWeight:700,fontSize:14,color:"var(--text2)"}},"Chargement...")));
 
   const dbDot=React.createElement("div",{style:{display:"flex",alignItems:"center",gap:5,fontSize:11,color:"var(--text3)"}},React.createElement("span",{className:"save-dot"+(saving?" saving":""),title:saving?"Sauvegarde...":"Sauvegardé"}),saving?"Sync...":dbStatus==="ok"?"✓":"Hors ligne");
@@ -8426,7 +8532,7 @@ useEffect(()=>{
   const toolbarButtons=React.createElement("div",{style:{display:"flex",gap:8,alignItems:"center"}},
     !isIT&&React.createElement("button",{title:"Paramètres & Import/Export",className:"btn-icon",onClick:()=>setShowSettings(true),style:{position:"relative"}},"⚙️",archivesCount>0&&React.createElement("span",{style:{position:"absolute",top:-4,right:-4,background:"var(--orange)",color:"#fff",borderRadius:999,fontSize:8,fontWeight:700,padding:"1px 4px",lineHeight:"11px"}},archivesCount)),
     session&&React.createElement("span",{style:{fontSize:11,color:"var(--text3)",marginLeft:2}},session.label),
-    session&&React.createElement("button",{title:"Déconnexion",onClick:()=>{setUnlocked(false);setSession(null);},style:{background:"var(--redBg)",border:"1px solid rgba(220,38,38,.2)",color:"var(--red)",borderRadius:6,padding:"3px 8px",fontSize:11,cursor:"pointer"}},"⏻"),
+    session&&React.createElement("button",{title:"Déconnexion",onClick:logout,style:{background:"var(--redBg)",border:"1px solid rgba(220,38,38,.2)",color:"var(--red)",borderRadius:6,padding:"3px 8px",fontSize:11,cursor:"pointer"}},"⏻"),
     dbDot
   );
 
@@ -8448,7 +8554,7 @@ useEffect(()=>{
         ),
         React.createElement("div",{style:{display:"flex",alignItems:"center",gap:8}},
           React.createElement("span",{className:"hide-m",style:{fontSize:11,color:"var(--text2)"}},"Gestionnaire Badges"),
-          React.createElement("button",{onClick:()=>{setUnlocked(false);setSession(null);},style:{background:"var(--redBg)",border:"1px solid rgba(220,38,38,.2)",color:"var(--red)",borderRadius:6,padding:"3px 8px",fontSize:11,cursor:"pointer"}},"⏻ Déco")
+          React.createElement("button",{onClick:logout,style:{background:"var(--redBg)",border:"1px solid rgba(220,38,38,.2)",color:"var(--red)",borderRadius:6,padding:"3px 8px",fontSize:11,cursor:"pointer"}},"⏻ Déco")
         )
       ),
       React.createElement("main",{style:{maxWidth:1400,margin:"0 auto",padding:"16px 20px"}},
@@ -8489,7 +8595,7 @@ useEffect(()=>{
     showMore&&React.createElement(IosSheet,{title:session&&session.label?("Connecté : "+session.label):null,onClose:()=>setShowMore(false),items:[
       ...moreTabs.map(n=>({label:n.label,icon:n.id,onClick:()=>setView(n.id)})),
       !isIT&&{label:"Réglages",icon:"settings",onClick:()=>setShowSettings(true)},
-      session&&{label:"Déconnexion",icon:"logout",danger:true,onClick:()=>{setUnlocked(false);setSession(null);}}
+      session&&{label:"Déconnexion",icon:"logout",danger:true,onClick:logout}
     ]}),
     React.createElement("main",{style:{width:"100%",padding:"16px 20px"}},view==="accueil"&&React.createElement(CarteInstall,{showToast}),view==="accueil"&&React.createElement(CarteNotifs,{showToast}),renderView())
   );
@@ -8497,25 +8603,27 @@ useEffect(()=>{
 
 
 function AddUserForm({settings,setSettings,showToast}){
-  const[nu,setNu]=useState({email:"",pwd:"",label:""});
+  const[nu,setNu]=useState({email:"",label:"",role:"it"});
   const allViews=["accueil","collaborateurs","casiers","rapport","impression","historique","archives"];
   const[blocked,setBlocked]=useState(new Set());
   const toggleBlock=v=>setBlocked(p=>{const n=new Set(p);n.has(v)?n.delete(v):n.add(v);return n;});
   const addUser=()=>{
-    if(!nu.email||!nu.pwd){showToast("⚠️ Email et mot de passe requis","err");return;}
+    if(!nu.email.trim()){showToast("⚠️ E-mail requis","err");return;}
+    if((settings.users||[]).some(u=>String(u.email||"").toLowerCase()===nu.email.trim().toLowerCase())){showToast("⚠️ Ce compte existe déjà","err");return;}
     const perms={};allViews.forEach(v=>{perms[v]=blocked.has(v)?PERM_NONE:PERM_WRITE;});
-    setSettings(s=>({...s,users:[...(s.users||[]),{...nu,perms}]}));
-    setNu({email:"",pwd:"",label:""});setBlocked(new Set());
+    setSettings(s=>({...s,users:[...(s.users||[]),{email:nu.email.trim(),label:nu.label,role:nu.role,...(nu.role==="user"?{perms}:{})}]}));
+    setNu({email:"",label:"",role:"it"});setBlocked(new Set());
     showToast("✅ Compte ajouté");
   };
   return React.createElement("div",{style:{background:"#F9FAFB",borderRadius:7,padding:12,border:"1px solid #E5E7EB",marginTop:8}},
     React.createElement("div",{style:{fontWeight:600,fontSize:12,color:"#374151",marginBottom:8}},"+ Ajouter un compte"),
     React.createElement("div",{style:{display:"grid",gridTemplateColumns:"1fr 1fr",gap:6,marginBottom:6}},
       React.createElement("input",{value:nu.label,onChange:e=>setNu(u=>({...u,label:e.target.value.toUpperCase()})),placeholder:"Nom affiché",style:{padding:"6px 8px",borderRadius:5,border:"1px solid #D1D5DB",fontSize:12}}),
-      React.createElement("input",{type:"email",value:nu.email,onChange:e=>setNu(u=>({...u,email:e.target.value.toUpperCase()})),placeholder:"Email",style:{padding:"6px 8px",borderRadius:5,border:"1px solid #D1D5DB",fontSize:12}}),
-      React.createElement("input",{type:"text",value:nu.pwd,onChange:e=>setNu(u=>({...u,pwd:e.target.value})),placeholder:"Mot de passe",style:{padding:"6px 8px",borderRadius:5,border:"1px solid #D1D5DB",fontSize:12,gridColumn:"1/-1"}})
+      React.createElement("input",{type:"email",value:nu.email,onChange:e=>setNu(u=>({...u,email:e.target.value})),placeholder:"Email",style:{padding:"6px 8px",borderRadius:5,border:"1px solid #D1D5DB",fontSize:12}}),
+      React.createElement("select",{value:nu.role,onChange:e=>setNu(u=>({...u,role:e.target.value})),style:{padding:"6px 8px",borderRadius:5,border:"1px solid #D1D5DB",fontSize:12,gridColumn:"1/-1",background:"#fff"}},
+        Object.entries(ROLE_LABELS).map(([k,l])=>React.createElement("option",{key:k,value:k},l)))
     ),
-    React.createElement("div",{style:{marginBottom:8}},
+    nu.role==="user"&&React.createElement("div",{style:{marginBottom:8}},
       React.createElement("div",{style:{fontSize:11,fontWeight:600,color:"#6B7280",marginBottom:4}},"🔒 Bloquer l'accès à ces vues :"),
       React.createElement("div",{style:{display:"flex",flexWrap:"wrap",gap:6}},
         allViews.map(v=>React.createElement("label",{key:v,style:{display:"flex",alignItems:"center",gap:4,fontSize:11,cursor:"pointer",background:blocked.has(v)?"#FDEDEC":"#F3F4F6",color:blocked.has(v)?"#E74C3C":"#374151",borderRadius:5,padding:"3px 8px",border:"1px solid "+(blocked.has(v)?"#F1948A":"#E5E7EB")}},
