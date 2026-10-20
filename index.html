@@ -772,6 +772,49 @@ function blocLienAppli(id){
 }
 // Ouverture directe d'une fiche Field Support depuis le lien d'un mail (?fiche=ID)
 var LIEN_FICHE=(function(){try{var m=location.search.match(/[?&]fiche=(\d+)/);return m?Number(m[1]):null;}catch(e){return null;}})();
+// ── Pastille sur l'icône + notifications : arrivées et départs du jour (comme Gestion des commandes) ──
+// navigator.setAppBadge : Windows/Mac (Chrome, Edge, appli installée) et iPhone 16.4+ (appli sur l'écran d'accueil).
+var TITRE_BASE="Gestion Collaborateurs";
+function jourISO(d){const x=d||new Date();return x.getFullYear()+"-"+String(x.getMonth()+1).padStart(2,"0")+"-"+String(x.getDate()).padStart(2,"0");}
+function mouvementsDuJour(badges){const t=jourISO();const L=[];(badges||[]).forEach(b=>{if(b.statut==="Archivé")return;
+  if(String(b.date_entree||"").slice(0,10)===t)L.push({id:b.id+"-a",type:"arrivée",b});
+  if(String(b.date_sortie_prevue||"").slice(0,10)===t)L.push({id:b.id+"-d",type:"départ",b});});return L;}
+function majPastille(n){try{document.title=(n?"("+n+") ":"")+TITRE_BASE;}catch(e){}
+  try{if("setAppBadge" in navigator){n?navigator.setAppBadge(n).catch(()=>{}):navigator.clearAppBadge().catch(()=>{});}}catch(e){}}
+function estIOS(){return /iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==="MacIntel"&&navigator.maxTouchPoints>1);}
+function estInstallee(){try{return window.matchMedia("(display-mode: standalone)").matches||navigator.standalone===true;}catch(e){return false;}}
+function notifsPretes(){return ("Notification" in window)&&Notification.permission==="granted";}
+async function notifSysteme(titre,corps){if(!notifsPretes())return false;
+  const o={body:corps,icon:"icons/icon-192.png",badge:"icons/icon-192.png",tag:"mouvements-jour",renotify:true};
+  try{const reg=await (navigator.serviceWorker&&navigator.serviceWorker.getRegistration&&navigator.serviceWorker.getRegistration());if(reg){await reg.showNotification(titre,o);return true;}}catch(e){}
+  try{new Notification(titre,o);return true;}catch(e){return false;}}
+function texteMouvements(L){const a=L.filter(x=>x.type==="arrivée").length,d=L.length-a;
+  const titre=L.length===1?(L[0].type==="arrivée"?"Arrivée aujourd'hui":"Départ aujourd'hui"):L.length+" mouvements aujourd'hui";
+  const noms=L.slice(0,4).map(x=>(x.type==="arrivée"?"→ ":"← ")+(x.b.prenom||"")+" "+String(x.b.nom||"").toUpperCase()).join(" · ")+(L.length>4?" …":"");
+  return [titre,(a?a+" arrivée"+(a>1?"s":""):"")+(a&&d?" · ":"")+(d?d+" départ"+(d>1?"s":""):"")+" — "+noms];}
+async function activerNotifs(showToast){
+  if(!("Notification" in window)){showToast("⚠️ Notifications non disponibles sur ce navigateur","err");return false;}
+  if(estIOS()&&!estInstallee()){showToast("Sur iPhone : ajoutez d'abord l'appli sur l'écran d'accueil, puis activez depuis l'appli","err");return false;}
+  const r=await Notification.requestPermission();
+  if(r==="granted"){await notifSysteme("Notifications activées","Vous serez prévenu des arrivées et départs du jour.");showToast("🔔 Notifications et pastille activées sur cet appareil");return true;}
+  showToast("⚠️ Refusé : à réactiver dans les réglages du navigateur","err");return false;}
+function CarteNotifs({showToast,toujours}){
+  const[,maj]=React.useState(0);const[ferme,setFerme]=React.useState(()=>{try{return localStorage.getItem("notifsCarteFermee")==="1";}catch(e){return false;}});
+  const pret=notifsPretes(), bloque=("Notification" in window)&&Notification.permission==="denied";
+  if(!toujours&&(pret||ferme))return null;
+  const aide=estIOS()&&!estInstallee();
+  return React.createElement("div",{style:{display:"flex",alignItems:"center",gap:12,flexWrap:"wrap",background:"var(--surface)",border:"1px solid var(--border)",borderLeft:"4px solid #F59E0B",borderRadius:"var(--radius-lg)",padding:"12px 14px",marginBottom:14}},
+    React.createElement("div",{style:{fontSize:24}},"🔔"),
+    React.createElement("div",{style:{flex:"1 1 220px"}},
+      React.createElement("div",{style:{fontWeight:700,fontSize:14,color:"var(--text)"}},"Notifications et pastille"+(pret?" : activées sur cet appareil":"")),
+      React.createElement("div",{style:{fontSize:12,color:"var(--text2)",marginTop:2}},
+        bloque?"Bloquées sur cet appareil : réactivez-les dans les réglages du navigateur (Notifications → autoriser ce site).":
+        aide?"Sur iPhone : ajoutez d'abord l'appli sur l'écran d'accueil (Partager → Sur l'écran d'accueil), ouvrez-la depuis l'icône, puis touchez « Activer ».":
+        "Un chiffre sur l'icône de l'appli et une alerte avec les arrivées et départs du jour.")),
+    !pret&&!bloque&&React.createElement("button",{type:"button",className:"btn btn-primary",style:{fontWeight:700},onClick:async()=>{await activerNotifs(showToast);maj(x=>x+1);window.dispatchEvent(new Event("notifs-change"));}},"Activer"),
+    pret&&React.createElement("button",{type:"button",className:"btn",onClick:()=>{window.dispatchEvent(new Event("notifs-test"));}},"Tester"),
+    !toujours&&React.createElement("button",{type:"button",title:"Masquer",onClick:()=>{setFerme(true);try{localStorage.setItem("notifsCarteFermee","1");}catch(e){}},style:{background:"none",border:"none",color:"var(--text3)",fontSize:18,cursor:"pointer"}},"×"));
+}
 var TEXTES_MAIL_DEFAUT={
   autoSignature:"Arnaud AVONDE\n07.85.42.37.24\nResponsable de site",
   autoHoraires:"Horaires de l'accueil :\n• Du lundi au jeudi : de 8h00 à 12h00 et de 13h30 à 17h00\n• Le vendredi : de 8h00 à 13h00\nAccueil joignable au 07.77.64.82.06 pendant les horaires d'ouverture.",
@@ -3233,6 +3276,7 @@ function SettingsModal({settings,setSettings,showToast,setShowSettings,racineRef
       // Body
       React.createElement("div",{style:{flex:1,overflowY:"auto",padding:24}},
         tab==="emails"&&React.createElement("div",{style:{display:"grid",gap:14}},
+          React.createElement(CarteNotifs,{showToast,toujours:true}),
           React.createElement(TestMailsBox,{showToast,settings}),
           React.createElement("div",null,
             React.createElement(Lbl,null,"Email restaurant"),
@@ -3898,6 +3942,22 @@ function App(){
   useEffect(()=>{window._fssNotifEmail=settings.fssEmail||"";},[settings.fssEmail]);
   useEffect(()=>{window._mailSignature=texteMail(settings,"autoSignature");},[settings.autoSignature]);
   useEffect(()=>{window._mailIT=settings.itEmail||"";},[settings.itEmail]);
+  // ── Pastille + notifications des arrivées / départs du jour ──
+  const[tickMvt,setTickMvt]=useState(0);
+  useEffect(()=>{const t=setInterval(()=>setTickMvt(x=>x+1),60000);const v=()=>{if(document.visibilityState==="visible")setTickMvt(x=>x+1);};
+    const n=()=>setTickMvt(x=>x+1);document.addEventListener("visibilitychange",v);window.addEventListener("notifs-change",n);
+    const tst=()=>{const L=mouvementsDuJour(badges);const[t1,t2]=L.length?texteMouvements(L):["Aucun mouvement aujourd'hui","Pas d'arrivée ni de départ prévu aujourd'hui."];notifSysteme(t1,t2);};
+    window.addEventListener("notifs-test",tst);
+    return()=>{clearInterval(t);document.removeEventListener("visibilitychange",v);window.removeEventListener("notifs-change",n);window.removeEventListener("notifs-test",tst);};},[badges]);
+  useEffect(()=>{
+    if(!unlocked){majPastille(0);return;}
+    const L=mouvementsDuJour(badges);majPastille(L.length);
+    if(!notifsPretes()||!L.length)return;
+    const cle="notifMvts:"+jourISO();let vus=[];try{vus=JSON.parse(localStorage.getItem(cle)||"[]");}catch(e){}
+    const nouveaux=L.filter(x=>vus.indexOf(x.id)<0);if(!nouveaux.length)return;
+    const[t1,t2]=texteMouvements(nouveaux.length===L.length?L:nouveaux);notifSysteme(t1,t2);
+    try{Object.keys(localStorage).filter(k=>k.indexOf("notifMvts:")===0&&k!==cle).forEach(k=>localStorage.removeItem(k));localStorage.setItem(cle,JSON.stringify(L.map(x=>x.id)));}catch(e){}
+  },[badges,unlocked,tickMvt]);
 
   // ── Migration ponctuelle : mettre en MAJUSCULES les champs texte déjà enregistrés ──
   // Ne touche jamais : statut, zone, dates, id, booléens (utilisés en comparaisons strictes).
@@ -4298,7 +4358,7 @@ useEffect(()=>{
         visibleNav.map(n=>React.createElement("button",{key:n.id,onClick:()=>setView(n.id),style:{flex:"none",minWidth:60,background:"transparent",color:view===n.id?"var(--text)":"var(--text3)",border:"none",padding:"8px 6px 4px",fontSize:7,fontWeight:600,cursor:"pointer",display:"flex",flexDirection:"column",alignItems:"center",gap:2,borderTop:view===n.id?"2px solid var(--accent)":"2px solid transparent"}},React.createElement("span",{style:{fontSize:15}},n.icon),n.label))
       )
     ),
-    React.createElement("main",{style:{width:"100%",padding:"16px 20px"}},renderView())
+    React.createElement("main",{style:{width:"100%",padding:"16px 20px"}},view==="accueil"&&React.createElement(CarteNotifs,{showToast}),renderView())
   );
 }
 
@@ -4640,6 +4700,49 @@ function blocLienAppli(id){
 }
 // Ouverture directe d'une fiche Field Support depuis le lien d'un mail (?fiche=ID)
 var LIEN_FICHE=(function(){try{var m=location.search.match(/[?&]fiche=(\d+)/);return m?Number(m[1]):null;}catch(e){return null;}})();
+// ── Pastille sur l'icône + notifications : arrivées et départs du jour (comme Gestion des commandes) ──
+// navigator.setAppBadge : Windows/Mac (Chrome, Edge, appli installée) et iPhone 16.4+ (appli sur l'écran d'accueil).
+var TITRE_BASE="Gestion Collaborateurs";
+function jourISO(d){const x=d||new Date();return x.getFullYear()+"-"+String(x.getMonth()+1).padStart(2,"0")+"-"+String(x.getDate()).padStart(2,"0");}
+function mouvementsDuJour(badges){const t=jourISO();const L=[];(badges||[]).forEach(b=>{if(b.statut==="Archivé")return;
+  if(String(b.date_entree||"").slice(0,10)===t)L.push({id:b.id+"-a",type:"arrivée",b});
+  if(String(b.date_sortie_prevue||"").slice(0,10)===t)L.push({id:b.id+"-d",type:"départ",b});});return L;}
+function majPastille(n){try{document.title=(n?"("+n+") ":"")+TITRE_BASE;}catch(e){}
+  try{if("setAppBadge" in navigator){n?navigator.setAppBadge(n).catch(()=>{}):navigator.clearAppBadge().catch(()=>{});}}catch(e){}}
+function estIOS(){return /iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==="MacIntel"&&navigator.maxTouchPoints>1);}
+function estInstallee(){try{return window.matchMedia("(display-mode: standalone)").matches||navigator.standalone===true;}catch(e){return false;}}
+function notifsPretes(){return ("Notification" in window)&&Notification.permission==="granted";}
+async function notifSysteme(titre,corps){if(!notifsPretes())return false;
+  const o={body:corps,icon:"icons/icon-192.png",badge:"icons/icon-192.png",tag:"mouvements-jour",renotify:true};
+  try{const reg=await (navigator.serviceWorker&&navigator.serviceWorker.getRegistration&&navigator.serviceWorker.getRegistration());if(reg){await reg.showNotification(titre,o);return true;}}catch(e){}
+  try{new Notification(titre,o);return true;}catch(e){return false;}}
+function texteMouvements(L){const a=L.filter(x=>x.type==="arrivée").length,d=L.length-a;
+  const titre=L.length===1?(L[0].type==="arrivée"?"Arrivée aujourd'hui":"Départ aujourd'hui"):L.length+" mouvements aujourd'hui";
+  const noms=L.slice(0,4).map(x=>(x.type==="arrivée"?"→ ":"← ")+(x.b.prenom||"")+" "+String(x.b.nom||"").toUpperCase()).join(" · ")+(L.length>4?" …":"");
+  return [titre,(a?a+" arrivée"+(a>1?"s":""):"")+(a&&d?" · ":"")+(d?d+" départ"+(d>1?"s":""):"")+" — "+noms];}
+async function activerNotifs(showToast){
+  if(!("Notification" in window)){showToast("⚠️ Notifications non disponibles sur ce navigateur","err");return false;}
+  if(estIOS()&&!estInstallee()){showToast("Sur iPhone : ajoutez d'abord l'appli sur l'écran d'accueil, puis activez depuis l'appli","err");return false;}
+  const r=await Notification.requestPermission();
+  if(r==="granted"){await notifSysteme("Notifications activées","Vous serez prévenu des arrivées et départs du jour.");showToast("🔔 Notifications et pastille activées sur cet appareil");return true;}
+  showToast("⚠️ Refusé : à réactiver dans les réglages du navigateur","err");return false;}
+function CarteNotifs({showToast,toujours}){
+  const[,maj]=React.useState(0);const[ferme,setFerme]=React.useState(()=>{try{return localStorage.getItem("notifsCarteFermee")==="1";}catch(e){return false;}});
+  const pret=notifsPretes(), bloque=("Notification" in window)&&Notification.permission==="denied";
+  if(!toujours&&(pret||ferme))return null;
+  const aide=estIOS()&&!estInstallee();
+  return React.createElement("div",{style:{display:"flex",alignItems:"center",gap:12,flexWrap:"wrap",background:"var(--surface)",border:"1px solid var(--border)",borderLeft:"4px solid #F59E0B",borderRadius:"var(--radius-lg)",padding:"12px 14px",marginBottom:14}},
+    React.createElement("div",{style:{fontSize:24}},"🔔"),
+    React.createElement("div",{style:{flex:"1 1 220px"}},
+      React.createElement("div",{style:{fontWeight:700,fontSize:14,color:"var(--text)"}},"Notifications et pastille"+(pret?" : activées sur cet appareil":"")),
+      React.createElement("div",{style:{fontSize:12,color:"var(--text2)",marginTop:2}},
+        bloque?"Bloquées sur cet appareil : réactivez-les dans les réglages du navigateur (Notifications → autoriser ce site).":
+        aide?"Sur iPhone : ajoutez d'abord l'appli sur l'écran d'accueil (Partager → Sur l'écran d'accueil), ouvrez-la depuis l'icône, puis touchez « Activer ».":
+        "Un chiffre sur l'icône de l'appli et une alerte avec les arrivées et départs du jour.")),
+    !pret&&!bloque&&React.createElement("button",{type:"button",className:"btn btn-primary",style:{fontWeight:700},onClick:async()=>{await activerNotifs(showToast);maj(x=>x+1);window.dispatchEvent(new Event("notifs-change"));}},"Activer"),
+    pret&&React.createElement("button",{type:"button",className:"btn",onClick:()=>{window.dispatchEvent(new Event("notifs-test"));}},"Tester"),
+    !toujours&&React.createElement("button",{type:"button",title:"Masquer",onClick:()=>{setFerme(true);try{localStorage.setItem("notifsCarteFermee","1");}catch(e){}},style:{background:"none",border:"none",color:"var(--text3)",fontSize:18,cursor:"pointer"}},"×"));
+}
 var TEXTES_MAIL_DEFAUT={
   autoSignature:"Arnaud AVONDE\n07.85.42.37.24\nResponsable de site",
   autoHoraires:"Horaires de l'accueil :\n• Du lundi au jeudi : de 8h00 à 12h00 et de 13h30 à 17h00\n• Le vendredi : de 8h00 à 13h00\nAccueil joignable au 07.77.64.82.06 pendant les horaires d'ouverture.",
@@ -7207,6 +7310,7 @@ function SettingsModal({settings,setSettings,showToast,setShowSettings,racineRef
       // Body
       React.createElement("div",{style:{flex:1,overflowY:"auto",padding:24}},
         tab==="emails"&&React.createElement("div",{style:{display:"grid",gap:14}},
+          React.createElement(CarteNotifs,{showToast,toujours:true}),
           React.createElement(TestMailsBox,{showToast,settings}),
           React.createElement("div",null,
             React.createElement(Lbl,null,"Email restaurant"),
@@ -7890,6 +7994,22 @@ function App(){
   useEffect(()=>{window._fssNotifEmail=settings.fssEmail||"";},[settings.fssEmail]);
   useEffect(()=>{window._mailSignature=texteMail(settings,"autoSignature");},[settings.autoSignature]);
   useEffect(()=>{window._mailIT=settings.itEmail||"";},[settings.itEmail]);
+  // ── Pastille + notifications des arrivées / départs du jour ──
+  const[tickMvt,setTickMvt]=useState(0);
+  useEffect(()=>{const t=setInterval(()=>setTickMvt(x=>x+1),60000);const v=()=>{if(document.visibilityState==="visible")setTickMvt(x=>x+1);};
+    const n=()=>setTickMvt(x=>x+1);document.addEventListener("visibilitychange",v);window.addEventListener("notifs-change",n);
+    const tst=()=>{const L=mouvementsDuJour(badges);const[t1,t2]=L.length?texteMouvements(L):["Aucun mouvement aujourd'hui","Pas d'arrivée ni de départ prévu aujourd'hui."];notifSysteme(t1,t2);};
+    window.addEventListener("notifs-test",tst);
+    return()=>{clearInterval(t);document.removeEventListener("visibilitychange",v);window.removeEventListener("notifs-change",n);window.removeEventListener("notifs-test",tst);};},[badges]);
+  useEffect(()=>{
+    if(!unlocked){majPastille(0);return;}
+    const L=mouvementsDuJour(badges);majPastille(L.length);
+    if(!notifsPretes()||!L.length)return;
+    const cle="notifMvts:"+jourISO();let vus=[];try{vus=JSON.parse(localStorage.getItem(cle)||"[]");}catch(e){}
+    const nouveaux=L.filter(x=>vus.indexOf(x.id)<0);if(!nouveaux.length)return;
+    const[t1,t2]=texteMouvements(nouveaux.length===L.length?L:nouveaux);notifSysteme(t1,t2);
+    try{Object.keys(localStorage).filter(k=>k.indexOf("notifMvts:")===0&&k!==cle).forEach(k=>localStorage.removeItem(k));localStorage.setItem(cle,JSON.stringify(L.map(x=>x.id)));}catch(e){}
+  },[badges,unlocked,tickMvt]);
 
   // ── Migration ponctuelle : mettre en MAJUSCULES les champs texte déjà enregistrés ──
   // Ne touche jamais : statut, zone, dates, id, booléens (utilisés en comparaisons strictes).
@@ -8299,7 +8419,7 @@ useEffect(()=>{
       !isIT&&{label:"Réglages",icon:"settings",onClick:()=>setShowSettings(true)},
       session&&{label:"Déconnexion",icon:"logout",danger:true,onClick:()=>{setUnlocked(false);setSession(null);}}
     ]}),
-    React.createElement("main",{style:{width:"100%",padding:"16px 20px"}},renderView())
+    React.createElement("main",{style:{width:"100%",padding:"16px 20px"}},view==="accueil"&&React.createElement(CarteNotifs,{showToast}),renderView())
   );
 }
 

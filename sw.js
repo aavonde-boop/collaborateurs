@@ -4,7 +4,7 @@
    - Bibliothèques (React, Supabase, XLSX, polices…) : servies depuis le cache
      pour un lancement rapide, mises à jour en arrière-plan.
    - Les données (Supabase, EmailJS) ne sont jamais mises en cache. */
-const VERSION = 'v22';
+const VERSION = 'v23';
 const PAGE_CACHE = 'collab-page-' + VERSION;
 const LIB_CACHE = 'collab-libs-' + VERSION;
 const CORE = ['./', './index.html', './manifest.webmanifest', './apple-touch-icon.png', './icons/icon-192.png'];
@@ -63,4 +63,13 @@ self.addEventListener('fetch', e => {
   if (LIB_HOSTS.includes(url.hostname)) {
     e.respondWith(libStaleWhileRevalidate(req));
   }
+});
+
+// Clic sur une notification : ramène l'appli au premier plan (ou l'ouvre)
+self.addEventListener('notificationclick', e => {
+  e.notification.close();
+  e.waitUntil(self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then(list => {
+    for (const c of list) { if ('focus' in c) return c.focus(); }
+    return self.clients.openWindow('./');
+  }));
 });
