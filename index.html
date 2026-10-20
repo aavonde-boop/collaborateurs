@@ -652,6 +652,20 @@
   .ct-row{padding-right:34px!important;}
   @media(min-width:769px){.ios-idx{display:none;}}
 </style>
+<style id="reglages-css">
+  /* Réglages : barre latérale par thème sur ordinateur */
+  html:not(.ios-ui) .rg-card{display:grid!important;grid-template-columns:230px 1fr;grid-template-rows:auto minmax(0,1fr) auto;max-width:980px!important;height:min(760px,90vh);}
+  html:not(.ios-ui) .rg-card.rg-wide{max-width:1240px!important;}
+  html:not(.ios-ui) .rg-head{display:contents!important;}
+  html:not(.ios-ui) .rg-title{grid-column:1/-1;padding:20px 24px 16px;margin:0!important;border-bottom:1px solid var(--border);}
+  html:not(.ios-ui) .rg-tabs{grid-column:1;grid-row:2;flex-direction:column;overflow-y:auto!important;overflow-x:hidden!important;padding:10px 10px 16px!important;gap:2px!important;background:var(--surface2);border-right:1px solid var(--border);}
+  html:not(.ios-ui) .rg-tabs .settings-tab{text-align:left;width:100%;font-size:13px;padding:8px 12px;}
+  html:not(.ios-ui) .rg-group{font-size:10.5px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.6px;padding:12px 12px 4px;}
+  html:not(.ios-ui) .rg-tabs .rg-group:first-child{padding-top:4px;}
+  html:not(.ios-ui) .rg-body{grid-column:2;grid-row:2;min-height:0;}
+  html:not(.ios-ui) .rg-foot{grid-column:1/-1;grid-row:3;}
+  html.ios-ui .rg-group{display:none;}
+</style>
 <style id="pages-css">
   /* Refonte des pages (style de l'Accueil) — ordinateur uniquement */
   html:not(.ios-ui) main table thead tr{background:var(--surface2)!important;}
@@ -3302,14 +3316,21 @@ function SettingsModal({settings,setSettings,showToast,setShowSettings,racineRef
   const[tab,setTab]=useState(initialTab||"emails");
   const archivesCount=badges.filter(b=>b.statut==="Archivé").length;
   const histoCount=(histo||[]).length;
+  // Réglages rangés par thème (barre latérale sur ordinateur, onglets sur iPhone)
   const tabs=[
-    {id:"emails",label:"📧 Emails",icon:"📧"},
-    {id:"import",label:"📁 Données",icon:"📁"},
-    {id:"users",label:"👤 Comptes",icon:"👤"},
-    {id:"templates",label:"✉️ Modèles",icon:"✉️"},
-    canHistorique!==false&&{id:"historique",label:"🕐 Historique"+(histoCount>0?" ("+histoCount+")":"")},
+    {grp:"Application"},
+    {id:"appareil",label:"📱 Cet appareil"},
+    {grp:"E-mails"},
+    {id:"emails",label:"📧 Adresses e-mail"},
+    {id:"templates",label:"✉️ Textes des mails"},
+    {grp:"Accès"},
+    {id:"users",label:"👤 Comptes"},
+    {grp:"Données"},
+    {id:"import",label:"📁 Import / Export"},
     canArchives!==false&&{id:"archives",label:"🗃️ Archives"+(archivesCount>0?" ("+archivesCount+")":"")},
-    canHistoriquePret!==false&&{id:"historique_pret",label:"🕐 Historique Prêts"}
+    {grp:"Journal"},
+    canHistorique!==false&&{id:"historique",label:"🕐 Historique"+(histoCount>0?" ("+histoCount+")":"")},
+    canHistoriquePret!==false&&{id:"historique_pret",label:"🕐 Historique prêts"}
   ].filter(Boolean);
   const wide=tab==="historique"||tab==="archives"||tab==="historique_pret";
   useEffect(()=>{
@@ -3318,26 +3339,27 @@ function SettingsModal({settings,setSettings,showToast,setShowSettings,racineRef
     if(hcmRef.current)hcmRef.current.onchange=e=>{if(e.target.files[0]){window._handleHR&&window._handleHR(e.target.files[0],"fh");}e.target.value="";};
   });
   return React.createElement("div",{style:{position:"fixed",inset:0,background:"rgba(30,40,60,.45)",zIndex:2000,display:"flex",alignItems:"center",justifyContent:"center",padding:16,backdropFilter:"blur(4px)"},onClick:e=>{if(e.target===e.currentTarget)setShowSettings(false);}},
-    React.createElement("div",{style:{background:"var(--surface)",border:"1px solid var(--border)",borderRadius:20,width:"100%",maxWidth:wide?1100:620,boxShadow:"0 32px 80px rgba(0,0,0,.2)",maxHeight:"90vh",display:"flex",flexDirection:"column",overflow:"hidden",transition:"max-width .15s"}},
+    React.createElement("div",{className:"rg-card"+(wide?" rg-wide":""),style:{background:"var(--surface)",border:"1px solid var(--border)",borderRadius:20,width:"100%",maxWidth:wide?1100:620,boxShadow:"0 32px 80px rgba(0,0,0,.2)",maxHeight:"90vh",display:"flex",flexDirection:"column",overflow:"hidden",transition:"max-width .15s"}},
       // Header
-      React.createElement("div",{style:{padding:"20px 24px 0",borderBottom:"1px solid var(--border)"}},
-        React.createElement("div",{style:{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:16}},
+      React.createElement("div",{className:"rg-head",style:{padding:"20px 24px 0",borderBottom:"1px solid var(--border)"}},
+        React.createElement("div",{className:"rg-title",style:{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:16}},
           React.createElement("div",null,
-            React.createElement("h2",{style:{fontWeight:800,fontSize:18,color:"var(--text)"}},"⚙️ Paramètres"),
-            React.createElement("p",{style:{fontSize:12,color:"var(--text3)",marginTop:2}},"Configuration de l'application")
+            React.createElement("h2",{style:{fontWeight:800,fontSize:18,color:"var(--text)"}},"⚙️ Réglages"),
+            React.createElement("p",{style:{fontSize:12,color:"var(--text3)",marginTop:2}},"Configuration de l'application, rangée par thème")
           ),
           React.createElement("button",{onClick:()=>setShowSettings(false),style:{background:"var(--surface2)",border:"1px solid var(--border)",borderRadius:8,width:32,height:32,cursor:"pointer",fontSize:16,color:"var(--text2)",display:"flex",alignItems:"center",justifyContent:"center"}},"×")
         ),
-        React.createElement("div",{style:{display:"flex",gap:4,overflowX:"auto",paddingBottom:1}},
-          tabs.map(t=>React.createElement("button",{key:t.id,onClick:()=>setTab(t.id),className:"settings-tab"+(tab===t.id?" active":"")},t.label))
+        React.createElement("div",{className:"rg-tabs",style:{display:"flex",gap:4,overflowX:"auto",paddingBottom:1}},
+          tabs.map((t,i)=>t.grp?React.createElement("div",{key:"g"+i,className:"rg-group"},t.grp):React.createElement("button",{key:t.id,onClick:()=>setTab(t.id),className:"settings-tab"+(tab===t.id?" active":"")},t.label))
         )
       ),
       // Body
-      React.createElement("div",{style:{flex:1,overflowY:"auto",padding:24}},
-        tab==="emails"&&React.createElement("div",{style:{display:"grid",gap:14}},
+      React.createElement("div",{className:"rg-body",style:{flex:1,overflowY:"auto",padding:24}},
+        tab==="appareil"&&React.createElement("div",{style:{display:"grid",gap:4}},
+          React.createElement("div",{style:{fontSize:12,color:"var(--text3)",marginBottom:8}},"Ces réglages ne concernent que l'appareil sur lequel vous êtes (ordinateur ou téléphone)."),
           React.createElement(CarteInstall,{showToast,toujours:true}),
-          React.createElement(CarteNotifs,{showToast,toujours:true}),
-          React.createElement(TestMailsBox,{showToast,settings}),
+          React.createElement(CarteNotifs,{showToast,toujours:true})),
+        tab==="emails"&&React.createElement("div",{style:{display:"grid",gap:14}},
           React.createElement("div",null,
             React.createElement(Lbl,null,"Email restaurant"),
             React.createElement("input",{type:"email",value:settings.restaurantEmail||"",onChange:e=>setSettings(s=>({...s,restaurantEmail:e.target.value.toUpperCase()})),className:"inp",placeholder:"restaurant@exemple.fr"})
@@ -3355,7 +3377,8 @@ function SettingsModal({settings,setSettings,showToast,setShowSettings,racineRef
             React.createElement(Lbl,null,"CC (séparées par virgules)"),
             React.createElement("input",{type:"text",value:settings.ccEmails||"",onChange:e=>setSettings(s=>({...s,ccEmails:e.target.value.toUpperCase()})),className:"inp",placeholder:"cc1@ex.fr, cc2@ex.fr"})
           ),
-          React.createElement("div",{style:{background:"var(--accentBg)",border:"1px solid rgba(59,130,246,.2)",borderRadius:8,padding:"10px 14px",fontSize:12,color:"var(--accent2)"}},"💡 Ces emails sont utilisés pour les mails d'arrivée et de départ depuis l'accueil et Field Support.")
+          React.createElement("div",{style:{background:"var(--accentBg)",border:"1px solid rgba(59,130,246,.2)",borderRadius:8,padding:"10px 14px",fontSize:12,color:"var(--accent2)"}},"💡 Mails automatiques : l'IT est prévenue la veille des arrivées et départs, le restaurant le jour même ; la notification Field Support part à l'IT avec le champ « Field Support » en copie. Plusieurs adresses : séparez-les par une virgule ou un point-virgule."),
+          React.createElement(TestMailsBox,{showToast,settings})
         ),
         tab==="import"&&React.createElement("div",null,
           React.createElement("div",{style:{marginBottom:16}},
@@ -3420,7 +3443,7 @@ function SettingsModal({settings,setSettings,showToast,setShowSettings,racineRef
         tab==="historique_pret"&&React.createElement(VueHistoriquePret,null)
       ),
       // Footer
-      React.createElement("div",{style:{padding:"14px 24px",borderTop:"1px solid var(--border)",display:"flex",justifyContent:"flex-end"}},
+      React.createElement("div",{className:"rg-foot",style:{padding:"14px 24px",borderTop:"1px solid var(--border)",display:"flex",justifyContent:"flex-end"}},
         React.createElement("button",{onClick:()=>setShowSettings(false),className:"btn btn-primary"},"✓ Fermer")
       )
     )
@@ -7425,14 +7448,21 @@ function SettingsModal({settings,setSettings,showToast,setShowSettings,racineRef
   const[tab,setTab]=useState(initialTab||"emails");
   const archivesCount=badges.filter(b=>b.statut==="Archivé").length;
   const histoCount=(histo||[]).length;
+  // Réglages rangés par thème (barre latérale sur ordinateur, onglets sur iPhone)
   const tabs=[
-    {id:"emails",label:"📧 Emails",icon:"📧"},
-    {id:"import",label:"📁 Données",icon:"📁"},
-    {id:"users",label:"👤 Comptes",icon:"👤"},
-    {id:"templates",label:"✉️ Modèles",icon:"✉️"},
-    canHistorique!==false&&{id:"historique",label:"🕐 Historique"+(histoCount>0?" ("+histoCount+")":"")},
+    {grp:"Application"},
+    {id:"appareil",label:"📱 Cet appareil"},
+    {grp:"E-mails"},
+    {id:"emails",label:"📧 Adresses e-mail"},
+    {id:"templates",label:"✉️ Textes des mails"},
+    {grp:"Accès"},
+    {id:"users",label:"👤 Comptes"},
+    {grp:"Données"},
+    {id:"import",label:"📁 Import / Export"},
     canArchives!==false&&{id:"archives",label:"🗃️ Archives"+(archivesCount>0?" ("+archivesCount+")":"")},
-    canHistoriquePret!==false&&{id:"historique_pret",label:"🕐 Historique Prêts"}
+    {grp:"Journal"},
+    canHistorique!==false&&{id:"historique",label:"🕐 Historique"+(histoCount>0?" ("+histoCount+")":"")},
+    canHistoriquePret!==false&&{id:"historique_pret",label:"🕐 Historique prêts"}
   ].filter(Boolean);
   const wide=tab==="historique"||tab==="archives"||tab==="historique_pret";
   useEffect(()=>{
@@ -7443,24 +7473,25 @@ function SettingsModal({settings,setSettings,showToast,setShowSettings,racineRef
   return React.createElement("div",{className:"ios-overlay",style:{position:"fixed",inset:0,background:"rgba(30,40,60,.45)",zIndex:2000,display:"flex",alignItems:"center",justifyContent:"center",padding:16,backdropFilter:"blur(4px)"},onClick:e=>{if(e.target===e.currentTarget)setShowSettings(false);}},
     React.createElement("div",{className:"ios-modal",style:{background:"var(--surface)",border:"1px solid var(--border)",borderRadius:20,width:"100%",maxWidth:wide?1100:620,boxShadow:"0 32px 80px rgba(0,0,0,.2)",maxHeight:"90vh",display:"flex",flexDirection:"column",overflow:"hidden",transition:"max-width .15s"}},
       // Header
-      React.createElement("div",{style:{padding:"20px 24px 0",borderBottom:"1px solid var(--border)"}},
-        React.createElement("div",{style:{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:16}},
+      React.createElement("div",{className:"rg-head",style:{padding:"20px 24px 0",borderBottom:"1px solid var(--border)"}},
+        React.createElement("div",{className:"rg-title",style:{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:16}},
           React.createElement("div",null,
             React.createElement("h2",{style:{fontWeight:700,fontSize:22,color:"var(--text)"}},"Réglages"),
             React.createElement("p",{style:{fontSize:12,color:"var(--text3)",marginTop:2}},"Configuration de l'application")
           ),
           React.createElement("button",{onClick:()=>setShowSettings(false),style:{background:"var(--surface2)",border:"1px solid var(--border)",borderRadius:8,width:32,height:32,cursor:"pointer",fontSize:16,color:"var(--text2)",display:"flex",alignItems:"center",justifyContent:"center"}},"×")
         ),
-        React.createElement("div",{style:{display:"flex",gap:4,overflowX:"auto",paddingBottom:1}},
-          tabs.map(t=>React.createElement("button",{key:t.id,onClick:()=>setTab(t.id),className:"settings-tab"+(tab===t.id?" active":"")},t.label))
+        React.createElement("div",{className:"rg-tabs",style:{display:"flex",gap:4,overflowX:"auto",paddingBottom:1}},
+          tabs.map((t,i)=>t.grp?React.createElement("div",{key:"g"+i,className:"rg-group"},t.grp):React.createElement("button",{key:t.id,onClick:()=>setTab(t.id),className:"settings-tab"+(tab===t.id?" active":"")},t.label))
         )
       ),
       // Body
-      React.createElement("div",{style:{flex:1,overflowY:"auto",padding:24}},
-        tab==="emails"&&React.createElement("div",{style:{display:"grid",gap:14}},
+      React.createElement("div",{className:"rg-body",style:{flex:1,overflowY:"auto",padding:24}},
+        tab==="appareil"&&React.createElement("div",{style:{display:"grid",gap:4}},
+          React.createElement("div",{style:{fontSize:12,color:"var(--text3)",marginBottom:8}},"Ces réglages ne concernent que l'appareil sur lequel vous êtes (ordinateur ou téléphone)."),
           React.createElement(CarteInstall,{showToast,toujours:true}),
-          React.createElement(CarteNotifs,{showToast,toujours:true}),
-          React.createElement(TestMailsBox,{showToast,settings}),
+          React.createElement(CarteNotifs,{showToast,toujours:true})),
+        tab==="emails"&&React.createElement("div",{style:{display:"grid",gap:14}},
           React.createElement("div",null,
             React.createElement(Lbl,null,"Email restaurant"),
             React.createElement("input",{type:"email",value:settings.restaurantEmail||"",onChange:e=>setSettings(s=>({...s,restaurantEmail:e.target.value.toUpperCase()})),className:"inp",placeholder:"restaurant@exemple.fr"})
@@ -7478,7 +7509,8 @@ function SettingsModal({settings,setSettings,showToast,setShowSettings,racineRef
             React.createElement(Lbl,null,"CC (séparées par virgules)"),
             React.createElement("input",{type:"text",value:settings.ccEmails||"",onChange:e=>setSettings(s=>({...s,ccEmails:e.target.value.toUpperCase()})),className:"inp",placeholder:"cc1@ex.fr, cc2@ex.fr"})
           ),
-          React.createElement("div",{style:{background:"var(--accentBg)",border:"1px solid rgba(59,130,246,.2)",borderRadius:8,padding:"10px 14px",fontSize:12,color:"var(--accent2)"}},"💡 Ces emails sont utilisés pour les mails d'arrivée et de départ depuis l'accueil et Field Support.")
+          React.createElement("div",{style:{background:"var(--accentBg)",border:"1px solid rgba(59,130,246,.2)",borderRadius:8,padding:"10px 14px",fontSize:12,color:"var(--accent2)"}},"💡 Mails automatiques : l'IT est prévenue la veille des arrivées et départs, le restaurant le jour même ; la notification Field Support part à l'IT avec le champ « Field Support » en copie. Plusieurs adresses : séparez-les par une virgule ou un point-virgule."),
+          React.createElement(TestMailsBox,{showToast,settings})
         ),
         tab==="import"&&React.createElement("div",null,
           React.createElement("div",{style:{marginBottom:16}},
@@ -7543,7 +7575,7 @@ function SettingsModal({settings,setSettings,showToast,setShowSettings,racineRef
         tab==="historique_pret"&&React.createElement(VueHistoriquePret,null)
       ),
       // Footer
-      React.createElement("div",{style:{padding:"14px 24px",borderTop:"1px solid var(--border)",display:"flex",justifyContent:"flex-end"}},
+      React.createElement("div",{className:"rg-foot",style:{padding:"14px 24px",borderTop:"1px solid var(--border)",display:"flex",justifyContent:"flex-end"}},
         React.createElement("button",{onClick:()=>setShowSettings(false),className:"btn btn-primary"},"✓ Fermer")
       )
     )
