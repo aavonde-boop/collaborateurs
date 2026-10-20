@@ -798,6 +798,29 @@ async function activerNotifs(showToast){
   const r=await Notification.requestPermission();
   if(r==="granted"){await notifSysteme("Notifications activées","Vous serez prévenu des arrivées et départs du jour.");showToast("🔔 Notifications et pastille activées sur cet appareil");return true;}
   showToast("⚠️ Refusé : à réactiver dans les réglages du navigateur","err");return false;}
+// ── Installation de l'appli (PC : Chrome / Edge ; iPhone : instructions) ──
+var _promptInstall=null;
+try{window.addEventListener("beforeinstallprompt",e=>{e.preventDefault();_promptInstall=e;window.dispatchEvent(new Event("install-dispo"));});
+  window.addEventListener("appinstalled",()=>{_promptInstall=null;window.dispatchEvent(new Event("install-dispo"));});}catch(e){}
+function CarteInstall({showToast,toujours}){
+  const[,maj]=React.useState(0);
+  React.useEffect(()=>{const f=()=>maj(x=>x+1);window.addEventListener("install-dispo",f);return()=>window.removeEventListener("install-dispo",f);},[]);
+  const[ferme,setFerme]=React.useState(()=>{try{return localStorage.getItem("installCarteFermee")==="1";}catch(e){return false;}});
+  if(estInstallee()){return toujours?React.createElement("div",{style:{fontSize:12,color:"var(--text2)",padding:"2px 2px 6px"}},"✅ Appli installée sur cet appareil"):null;}
+  const ios=estIOS();
+  if(!toujours&&(ferme||(!ios&&!_promptInstall)))return null;
+  const installer=async()=>{if(!_promptInstall)return;try{_promptInstall.prompt();const c=await _promptInstall.userChoice;if(c&&c.outcome==="accepted")showToast("✅ Appli installée : ouvrez-la depuis son icône");}catch(e){}_promptInstall=null;maj(x=>x+1);};
+  return React.createElement("div",{style:{display:"flex",alignItems:"center",gap:12,flexWrap:"wrap",background:"var(--surface)",border:"1px solid var(--border)",borderLeft:"4px solid #2563EB",borderRadius:"var(--radius-lg)",padding:"12px 14px",marginBottom:14}},
+    React.createElement("div",{style:{fontSize:24}},"📲"),
+    React.createElement("div",{style:{flex:"1 1 220px"}},
+      React.createElement("div",{style:{fontWeight:700,fontSize:14,color:"var(--text)"}},"Installer l'appli"),
+      React.createElement("div",{style:{fontSize:12,color:"var(--text2)",marginTop:2}},
+        ios?"Dans Safari : touchez Partager (carré avec une flèche) puis « Sur l'écran d'accueil ». Ouvrez ensuite l'appli depuis son icône.":
+        _promptInstall?"Sa propre fenêtre et son icône dans la barre des tâches, avec la pastille des arrivées et départs du jour.":
+        "Chrome : menu ⋮ → Caster, enregistrer et partager → Installer la page en tant qu'application. Edge : menu … → Applications → Installer ce site.")),
+    !ios&&_promptInstall&&React.createElement("button",{type:"button",className:"btn btn-primary",style:{fontWeight:700},onClick:installer},"Installer"),
+    !toujours&&React.createElement("button",{type:"button",title:"Masquer",onClick:()=>{setFerme(true);try{localStorage.setItem("installCarteFermee","1");}catch(e){}},style:{background:"none",border:"none",color:"var(--text3)",fontSize:18,cursor:"pointer"}},"×"));
+}
 function CarteNotifs({showToast,toujours}){
   const[,maj]=React.useState(0);const[ferme,setFerme]=React.useState(()=>{try{return localStorage.getItem("notifsCarteFermee")==="1";}catch(e){return false;}});
   const pret=notifsPretes(), bloque=("Notification" in window)&&Notification.permission==="denied";
@@ -3276,6 +3299,7 @@ function SettingsModal({settings,setSettings,showToast,setShowSettings,racineRef
       // Body
       React.createElement("div",{style:{flex:1,overflowY:"auto",padding:24}},
         tab==="emails"&&React.createElement("div",{style:{display:"grid",gap:14}},
+          React.createElement(CarteInstall,{showToast,toujours:true}),
           React.createElement(CarteNotifs,{showToast,toujours:true}),
           React.createElement(TestMailsBox,{showToast,settings}),
           React.createElement("div",null,
@@ -4358,7 +4382,7 @@ useEffect(()=>{
         visibleNav.map(n=>React.createElement("button",{key:n.id,onClick:()=>setView(n.id),style:{flex:"none",minWidth:60,background:"transparent",color:view===n.id?"var(--text)":"var(--text3)",border:"none",padding:"8px 6px 4px",fontSize:7,fontWeight:600,cursor:"pointer",display:"flex",flexDirection:"column",alignItems:"center",gap:2,borderTop:view===n.id?"2px solid var(--accent)":"2px solid transparent"}},React.createElement("span",{style:{fontSize:15}},n.icon),n.label))
       )
     ),
-    React.createElement("main",{style:{width:"100%",padding:"16px 20px"}},view==="accueil"&&React.createElement(CarteNotifs,{showToast}),renderView())
+    React.createElement("main",{style:{width:"100%",padding:"16px 20px"}},view==="accueil"&&React.createElement(CarteInstall,{showToast}),view==="accueil"&&React.createElement(CarteNotifs,{showToast}),renderView())
   );
 }
 
@@ -4726,6 +4750,29 @@ async function activerNotifs(showToast){
   const r=await Notification.requestPermission();
   if(r==="granted"){await notifSysteme("Notifications activées","Vous serez prévenu des arrivées et départs du jour.");showToast("🔔 Notifications et pastille activées sur cet appareil");return true;}
   showToast("⚠️ Refusé : à réactiver dans les réglages du navigateur","err");return false;}
+// ── Installation de l'appli (PC : Chrome / Edge ; iPhone : instructions) ──
+var _promptInstall=null;
+try{window.addEventListener("beforeinstallprompt",e=>{e.preventDefault();_promptInstall=e;window.dispatchEvent(new Event("install-dispo"));});
+  window.addEventListener("appinstalled",()=>{_promptInstall=null;window.dispatchEvent(new Event("install-dispo"));});}catch(e){}
+function CarteInstall({showToast,toujours}){
+  const[,maj]=React.useState(0);
+  React.useEffect(()=>{const f=()=>maj(x=>x+1);window.addEventListener("install-dispo",f);return()=>window.removeEventListener("install-dispo",f);},[]);
+  const[ferme,setFerme]=React.useState(()=>{try{return localStorage.getItem("installCarteFermee")==="1";}catch(e){return false;}});
+  if(estInstallee()){return toujours?React.createElement("div",{style:{fontSize:12,color:"var(--text2)",padding:"2px 2px 6px"}},"✅ Appli installée sur cet appareil"):null;}
+  const ios=estIOS();
+  if(!toujours&&(ferme||(!ios&&!_promptInstall)))return null;
+  const installer=async()=>{if(!_promptInstall)return;try{_promptInstall.prompt();const c=await _promptInstall.userChoice;if(c&&c.outcome==="accepted")showToast("✅ Appli installée : ouvrez-la depuis son icône");}catch(e){}_promptInstall=null;maj(x=>x+1);};
+  return React.createElement("div",{style:{display:"flex",alignItems:"center",gap:12,flexWrap:"wrap",background:"var(--surface)",border:"1px solid var(--border)",borderLeft:"4px solid #2563EB",borderRadius:"var(--radius-lg)",padding:"12px 14px",marginBottom:14}},
+    React.createElement("div",{style:{fontSize:24}},"📲"),
+    React.createElement("div",{style:{flex:"1 1 220px"}},
+      React.createElement("div",{style:{fontWeight:700,fontSize:14,color:"var(--text)"}},"Installer l'appli"),
+      React.createElement("div",{style:{fontSize:12,color:"var(--text2)",marginTop:2}},
+        ios?"Dans Safari : touchez Partager (carré avec une flèche) puis « Sur l'écran d'accueil ». Ouvrez ensuite l'appli depuis son icône.":
+        _promptInstall?"Sa propre fenêtre et son icône dans la barre des tâches, avec la pastille des arrivées et départs du jour.":
+        "Chrome : menu ⋮ → Caster, enregistrer et partager → Installer la page en tant qu'application. Edge : menu … → Applications → Installer ce site.")),
+    !ios&&_promptInstall&&React.createElement("button",{type:"button",className:"btn btn-primary",style:{fontWeight:700},onClick:installer},"Installer"),
+    !toujours&&React.createElement("button",{type:"button",title:"Masquer",onClick:()=>{setFerme(true);try{localStorage.setItem("installCarteFermee","1");}catch(e){}},style:{background:"none",border:"none",color:"var(--text3)",fontSize:18,cursor:"pointer"}},"×"));
+}
 function CarteNotifs({showToast,toujours}){
   const[,maj]=React.useState(0);const[ferme,setFerme]=React.useState(()=>{try{return localStorage.getItem("notifsCarteFermee")==="1";}catch(e){return false;}});
   const pret=notifsPretes(), bloque=("Notification" in window)&&Notification.permission==="denied";
@@ -7310,6 +7357,7 @@ function SettingsModal({settings,setSettings,showToast,setShowSettings,racineRef
       // Body
       React.createElement("div",{style:{flex:1,overflowY:"auto",padding:24}},
         tab==="emails"&&React.createElement("div",{style:{display:"grid",gap:14}},
+          React.createElement(CarteInstall,{showToast,toujours:true}),
           React.createElement(CarteNotifs,{showToast,toujours:true}),
           React.createElement(TestMailsBox,{showToast,settings}),
           React.createElement("div",null,
@@ -8419,7 +8467,7 @@ useEffect(()=>{
       !isIT&&{label:"Réglages",icon:"settings",onClick:()=>setShowSettings(true)},
       session&&{label:"Déconnexion",icon:"logout",danger:true,onClick:()=>{setUnlocked(false);setSession(null);}}
     ]}),
-    React.createElement("main",{style:{width:"100%",padding:"16px 20px"}},view==="accueil"&&React.createElement(CarteNotifs,{showToast}),renderView())
+    React.createElement("main",{style:{width:"100%",padding:"16px 20px"}},view==="accueil"&&React.createElement(CarteInstall,{showToast}),view==="accueil"&&React.createElement(CarteNotifs,{showToast}),renderView())
   );
 }
 
