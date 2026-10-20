@@ -15,5 +15,10 @@ create table if not exists public.lp24_colis(
   recupere_le timestamptz,
   commentaire text
 );
+alter table public.lp24_colis add column if not exists recupere_par text;   -- récupéré par une autre personne
+alter table public.lp24_colis disable row level security;
+drop policy if exists colis_acces on public.lp24_colis;
+create policy colis_acces on public.lp24_colis for all to anon, authenticated using (true) with check (true);
 grant select, insert, update, delete on public.lp24_colis to anon, authenticated;
+notify pgrst, 'reload schema';
 select 'Installé' as resultat;
