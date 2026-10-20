@@ -652,6 +652,17 @@
   .ct-row{padding-right:34px!important;}
   @media(min-width:769px){.ios-idx{display:none;}}
 </style>
+<style id="pages-css">
+  /* Refonte des pages (style de l'Accueil) — ordinateur uniquement */
+  html:not(.ios-ui) main table thead tr{background:var(--surface2)!important;}
+  html:not(.ios-ui) main table thead th,html:not(.ios-ui) main table thead th *{color:var(--text2)!important;}
+  html:not(.ios-ui) main table thead th{font-size:11px!important;font-weight:700!important;text-transform:uppercase;letter-spacing:.4px;border-bottom:1px solid var(--border)!important;}
+  /* Cartes de chiffres : même rectangle que l'Accueil */
+  html:not(.ios-ui) .kpi-std{text-align:left!important;padding:18px 20px!important;border-top-width:2px!important;border-radius:var(--radius-lg)!important;transition:all .2s!important;}
+  html:not(.ios-ui) .kpi-std:hover{transform:translateY(-1px);border-color:var(--border2);}
+  html:not(.ios-ui) .kpi-std>div:first-child{font-size:28px!important;font-weight:800!important;line-height:1!important;}
+  html:not(.ios-ui) .kpi-std>div:nth-child(2){font-size:11px!important;font-weight:600!important;margin-top:4px!important;}
+</style>
 </head>
 <body>
 <div id="root"></div>
@@ -1859,9 +1870,10 @@ function VueCollaborateurs({badges,casiers,setBadges,setCasiers,showToast,wdCach
   const mailArrivee=b=>{const to=encodeURIComponent(restEmail);const cc=encodeURIComponent(ccEmails);const s=encodeURIComponent("Nouvelle arrivée — "+b.prenom+" "+b.nom);const c=encodeURIComponent("Bonjour,\n\nNous vous informons de l'arrivée d'un nouveau collaborateur accédant au restaurant d'entreprise :\n\nNom : "+b.nom+"\nPrénom : "+b.prenom+"\nAdresse e-mail : "+(b.email||"Non renseigné")+"\nN° de badge : "+(b.serie||"Non attribué")+"\n\nMerci de bien vouloir l'ajouter à vos systèmes.\n\nCordialement,\nService RH");window.open("mailto:"+to+"?subject="+s+"&body="+c+(cc?"&cc="+cc:""));};
   const mailDepart=b=>{const to=encodeURIComponent(restEmail);const cc=encodeURIComponent(ccEmails);const s=encodeURIComponent("Départ collaborateur — "+b.prenom+" "+b.nom);const c=encodeURIComponent(texteDepartResto(settings&&settings.bodyDepartResto,b));window.open("mailto:"+to+"?subject="+s+"&body="+c+(cc?"&cc="+cc:""));};
   return React.createElement("div",null,
+    React.createElement(PageHero,{icone:"👥",titre:"Collaborateurs",sousTitre:filtered.length+" affiché(s) sur "+badges.filter(b=>b.statut!=="Archivé").length+" · "+badges.filter(b=>b.statut==="À récupérer").length+" à récupérer"}),
     React.createElement("div",{style:{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:12,flexWrap:"wrap",gap:8}},
       React.createElement("div",{style:{flex:1}},
-        React.createElement("h1",{style:{fontSize:22,fontWeight:700,color:C.blue,marginBottom:10}},"👥 Collaborateurs ("+filtered.length+"/"+badges.filter(b=>b.statut!=="Archivé").length+")"),
+        null,
         React.createElement("div",{className:"m-grid-2",style:{display:"grid",gridTemplateColumns:"repeat(5,1fr)",gap:8,marginBottom:4}},
           [
             {label:"Total",val:badges.filter(b=>b.statut!=="Archivé").length,color:"#3B82F6",id:""},
@@ -1869,7 +1881,7 @@ function VueCollaborateurs({badges,casiers,setBadges,setCasiers,showToast,wdCach
             {label:"À récupérer",val:badges.filter(b=>b.statut==="À récupérer").length,color:C.red,id:"À récupérer"},
             {label:"Sans matricule",val:badges.filter(b=>(!b.matricule||String(b.matricule)==="0")&&b.statut!=="Archivé").length,color:"#F59E0B",id:"sans_matricule"},
             {label:"Nouveaux",val:badges.filter(b=>b.from_accueil&&!b.serie).length,color:"#EA580C",id:"nouveau_mat"},
-          ].map(k=>React.createElement("div",{key:k.label,
+          ].map(k=>React.createElement("div",{className:"kpi-std",key:k.label,
             onClick:k.id?()=>setFStat(fStat===k.id?"":k.id):undefined,
             style:{background:"var(--surface)",border:"1px solid "+(fStat===k.id?k.color:"var(--border)"),
               borderTop:"2px solid "+k.color,borderRadius:"var(--radius-lg)",padding:"8px 10px",
@@ -2209,9 +2221,10 @@ function VueCasiers({casiers,badges,setCasiers,showToast,addLog,setView}){
   );
 
   return React.createElement("div",null,
+    React.createElement(PageHero,{icone:"📦",titre:"Casiers",sousTitre:libres+" libre(s) sur "+casiers.length+(aViderCount>0?" · "+aViderCount+" à vider":"")}),
     React.createElement("div",{style:{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:16,flexWrap:"wrap",gap:8}},
       React.createElement("div",{style:{display:"flex",alignItems:"center",gap:10,flexWrap:"wrap"}},
-        React.createElement("h1",{style:{fontSize:22,fontWeight:700,color:C.purple}},"📦 Casiers ("+libres+" libres / "+casiers.length+")"),
+        null,
         aViderCount>0&&React.createElement("span",{onClick:()=>setFStat(fStat==="a_vider"?"":"a_vider"),title:"Filtrer sur les casiers à vider",style:{cursor:"pointer",background:C.redBg,color:C.red,border:"1px solid rgba(220,38,38,.3)",borderRadius:999,fontSize:11,fontWeight:700,padding:"3px 10px"}},"🧹 "+aViderCount+" à vider")
       ),
       React.createElement("div",{style:{display:"flex",gap:8}},
@@ -2231,8 +2244,8 @@ function VueCasiers({casiers,badges,setCasiers,showToast,addLog,setView}){
     React.createElement(Card,{style:{marginBottom:12,padding:12}},
       React.createElement("div",{style:{display:"flex",gap:10,flexWrap:"wrap",alignItems:"center"}},
         React.createElement(Inp,{value:search,onChange:setSearch,placeholder:"🔍 N° casier, occupant...",style:{maxWidth:200}}),
-        React.createElement(Sel,{value:fZone,onChange:setFZone,options:ZONES.map(z=>({v:z,l:ZONES_LABELS[z]})),placeholder:"Toutes zones"}),
-        React.createElement(Sel,{value:fStat,onChange:setFStat,options:[{v:"Libre",l:"Libre"},{v:"Occupé",l:"Occupé"},{v:"Réservé",l:"Réservé"},{v:"Hors service",l:"Hors service"},{v:"a_vider",l:"🧹 À vider"}],placeholder:"Tous statuts"}),
+        React.createElement(Sel,{value:fZone,onChange:setFZone,options:ZONES.map(z=>({v:z,l:ZONES_LABELS[z]})),placeholder:"Toutes zones",style:{maxWidth:200}}),
+        React.createElement(Sel,{value:fStat,onChange:setFStat,options:[{v:"Libre",l:"Libre"},{v:"Occupé",l:"Occupé"},{v:"Réservé",l:"Réservé"},{v:"Hors service",l:"Hors service"},{v:"a_vider",l:"🧹 À vider"}],placeholder:"Tous statuts",style:{maxWidth:200}}),
         (search||fZone||fStat)&&React.createElement(Btn,{variant:"outline",color:C.gray,onClick:()=>{setSearch("");setFZone("");setFStat("");}},"✕ Effacer"),
         React.createElement("span",{style:{fontSize:12,color:"#9CA3AF",marginLeft:"auto"}},filtered.length+" casier(s)")
       )
@@ -2390,11 +2403,11 @@ function VueRapport({badges,fssData,setBadges,setFssData,showToast,addLog,setVie
   );
 
   return React.createElement("div",null,
+    React.createElement(PageHero,{icone:"📊",titre:"Rapport",sousTitre:"événements à venir"}),
     // Header
-    React.createElement("div",{style:{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:24,flexWrap:"wrap",gap:8}},
+    React.createElement("div",{style:{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:16,flexWrap:"wrap",gap:8}},
       React.createElement("div",null,
-        React.createElement("h1",{style:{fontSize:22,fontWeight:800,margin:0}},"📊 Rapport — Événements à venir"),
-        React.createElement("p",{style:{fontSize:12,color:"var(--text2)",marginTop:4}},
+        React.createElement("p",{style:{fontSize:12,color:"var(--text2)",margin:0}},
           "À partir d'aujourd'hui : "+fmtD(today)+" — Collaborateurs et Field Support fusionnés, ⚠️ = présent d'un seul côté (clique dessus pour créer la fiche manquante)")
       ),
       React.createElement("button",{onClick:()=>window.print(),
@@ -2409,7 +2422,7 @@ function VueRapport({badges,fssData,setBadges,setFssData,showToast,addLog,setVie
        {label:"Départs",val:departs.length,color:"#DC2626"},
        {label:"Incohérences arrivées",val:mismatchCount(arrivees),color:"#D97706"},
        {label:"Incohérences départs",val:mismatchCount(departs),color:"#D97706"},
-      ].map(k=>React.createElement("div",{key:k.label,style:{background:"var(--surface)",border:"1px solid var(--border)",
+      ].map(k=>React.createElement("div",{className:"kpi-std",key:k.label,style:{background:"var(--surface)",border:"1px solid var(--border)",
         borderTop:"3px solid "+k.color,borderRadius:"var(--radius-lg)",padding:"14px 18px",textAlign:"center"}},
         React.createElement("div",{style:{fontSize:28,fontWeight:800,color:k.color,lineHeight:1}},k.val),
         React.createElement("div",{style:{fontSize:11,fontWeight:600,color:"var(--text2)",marginTop:5,textTransform:"uppercase",letterSpacing:".4px"}},k.label)
@@ -2688,8 +2701,9 @@ function VueImpression({badges}){
       .print-only{display:none;}
     `),
     React.createElement("div",{className:"no-print"},
+      React.createElement(PageHero,{icone:"🏷️",titre:"Impression étiquettes",sousTitre:"étiquettes de badge à imprimer"}),
       React.createElement("div",{style:{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:16,flexWrap:"wrap",gap:8}},
-        React.createElement("h1",{style:{fontSize:22,fontWeight:700,color:"#0F172A"}},"🏷️ Impression étiquettes"),
+        React.createElement("div",{style:{fontSize:13,color:"var(--text2)"}},toPrint.length+" étiquette(s) sélectionnée(s)"),
         React.createElement(Btn,{onClick:()=>doPrintEtiquettes(toPrint,startPos,IMG_BG,IMG_LOGO,BLUE),color:"#002E8A",style:{fontSize:13}},"🖨️ Imprimer "+(toPrint.length)+" étiquette(s)")
       ),
       React.createElement(Card,{style:{marginBottom:12,padding:12}},
@@ -3029,17 +3043,16 @@ function VueFieldSupport({fssData,setFssData,showToast,addLog,badges,casiers,set
   ];
 
   return el("div",{className:"anim-in"},
+    React.createElement(PageHero,{icone:"📋",titre:"Field Support",sousTitre:(fssData||[]).length+" fiche(s) · "+openCount+" en attente · "+clotureCount+" clôturée(s)"}),
     // ── Header ──
     el("div",{style:{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:16,flexWrap:"wrap",gap:10}},
       el("div",null,
-        el("h1",{style:{fontSize:22,fontWeight:800,color:"var(--text)",marginBottom:4,display:"flex",alignItems:"center",gap:10}},
-          el("span",null,"📋"),"Field Support",
-          el("span",{style:{background:"var(--accentBg)",color:"var(--accent2)",borderRadius:20,padding:"2px 10px",fontSize:13,fontWeight:600}},(fssData||[]).length+" fiches"),
+        el("div",{style:{display:"flex",alignItems:"center",gap:10,marginBottom:4,minHeight:4}},
           fssSyncStatus==="saving"&&el("span",{style:{fontSize:11,fontWeight:600,color:"#CA8A04",background:"rgba(202,138,4,.1)",border:"1px solid rgba(202,138,4,.25)",borderRadius:20,padding:"2px 10px"}},"💾 Sauvegarde..."),
           fssSyncStatus==="ok"&&el("span",{style:{fontSize:11,fontWeight:600,color:"var(--green)",background:"var(--greenBg)",border:"1px solid rgba(22,163,74,.25)",borderRadius:20,padding:"2px 10px"}},"✓ Sauvegardé"),
           fssSyncStatus==="error"&&el("span",{style:{fontSize:11,fontWeight:600,color:"var(--red)",background:"var(--redBg)",border:"1px solid rgba(220,38,38,.25)",borderRadius:20,padding:"2px 10px"}},"⚠️ Erreur sync")
         ),
-        el("div",{style:{display:"flex",gap:12,fontSize:12,color:"var(--text2)"}},
+        el("div",{style:{display:"none"}},
           el("span",{style:{color:"var(--green)",fontWeight:700}},"✓ "+clotureCount+" clôturées"),
           el("span",{style:{color:"var(--red)",fontWeight:700}},"⚡ "+openCount+" en attente")
         )
@@ -3060,7 +3073,7 @@ function VueFieldSupport({fssData,setFssData,showToast,addLog,badges,casiers,set
 
     // ── KPIs ──
     el("div",{className:"m-grid-2",style:{display:"grid",gridTemplateColumns:"repeat(6,1fr)",gap:8,marginBottom:16}},
-      kpis.map(k=>el("div",{key:k.label,
+      kpis.map(k=>el("div",{className:"kpi-std",key:k.label,
         onClick:k.id?()=>{
           if(k.id.startsWith("sit_"))setFiltSit(filtSit===k.id.slice(4)?"":k.id.slice(4));
           else setFiltStat(filtStat===k.id?"":k.id);
@@ -3505,7 +3518,7 @@ function VueBadgesPret({showToast,addLog}){
       {label:"Disponibles",val:stats.disponibles,color:"#16A34A",id:"disponible"},
       {label:"Prêtées",val:stats.pretees,color:"#D97706",id:"prete"},
       {label:"Empruntées",val:stats.empruntees,color:"#DC2626",id:"empruntee"},
-    ]].map(k=>el("div",{key:k.label,onClick:k.id?()=>setFiltreStatut(filtreStatut===k.id?"":k.id):undefined,
+    ]].map(k=>el("div",{className:"kpi-std",key:k.label,onClick:k.id?()=>setFiltreStatut(filtreStatut===k.id?"":k.id):undefined,
       style:{background:"var(--surface)",border:"1px solid "+(filtreStatut===k.id?k.color:"var(--border)"),
         borderTop:"3px solid "+k.color,borderRadius:"var(--radius-lg)",padding:"16px 20px",
         cursor:k.id?"pointer":"default",transition:"all .15s",textAlign:"center",
@@ -3648,6 +3661,7 @@ function VueBadgesPret({showToast,addLog}){
   );
 
   return el("div",null,
+    React.createElement(PageHero,{icone:"🪪",titre:"Badges de prêt",sousTitre:stats.disponibles+" disponible(s) · "+(stats.pretees+stats.empruntees)+" sorti(s)"}),
     saving&&el("div",{style:{position:"fixed",bottom:20,right:20,background:"var(--surface)",
       border:"1px solid var(--border)",borderRadius:8,padding:"6px 14px",fontSize:12,
       color:"var(--text2)",zIndex:999,boxShadow:"0 2px 12px rgba(0,0,0,.1)"}},"💾 Sauvegarde..."),
@@ -3714,7 +3728,7 @@ function VueColis({showToast,addLog,badges}){
 
   const kpis=el("div",{className:"m-grid-2",style:{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:12,marginBottom:18}},
     [["À prévenir",stats.recu,"#2563EB","recu"],["Prévenus",stats.prevenu,"#D97706","prevenu"],["Récupérés",stats.recupere,"#16A34A","recupere"],["En cours",stats.recu+stats.prevenu,"#64748B","encours"]].map(([l,v,c,f])=>
-      el("div",{key:l,onClick:()=>setFiltre(filtre===f?"":f),style:{background:"var(--surface)",border:"1px solid "+(filtre===f?c:"var(--border)"),borderTop:"3px solid "+c,borderRadius:"var(--radius-lg)",padding:"14px 16px",textAlign:"center",cursor:"pointer"}},
+      el("div",{className:"kpi-std",key:l,onClick:()=>setFiltre(filtre===f?"":f),style:{background:"var(--surface)",border:"1px solid "+(filtre===f?c:"var(--border)"),borderTop:"3px solid "+c,borderRadius:"var(--radius-lg)",padding:"14px 16px",textAlign:"center",cursor:"pointer"}},
         el("div",{style:{fontSize:28,fontWeight:800,color:c,lineHeight:1}},v),el("div",{style:{fontSize:11,fontWeight:600,color:"var(--text2)",marginTop:5,textTransform:"uppercase",letterSpacing:".4px"}},l))));
   const barre=el("div",{style:{display:"flex",gap:8,alignItems:"center",marginBottom:14,flexWrap:"wrap"}},
     el("div",{style:{flex:"1 1 240px",display:"flex",gap:8,alignItems:"center",background:"var(--surface)",border:"1px solid var(--border)",borderRadius:"var(--radius)",padding:"8px 12px"}},
@@ -3789,8 +3803,18 @@ function VueColis({showToast,addLog,badges}){
         el("button",{type:"button",className:"btn",onClick:()=>setRetrait(null)},"Annuler"))));
 
   return el("div",null,
-    el("div",{style:{display:"flex",alignItems:"baseline",gap:10,marginBottom:14}},el("h2",{style:{margin:0,fontSize:22,fontWeight:800}},"📦 Colis"),el("span",{style:{fontSize:13,color:"var(--text3)"}},"Registre des colis reçus à l'accueil")),
+    React.createElement(PageHero,{icone:"📦",titre:"Colis",sousTitre:"registre des colis reçus à l'accueil · "+(stats.recu+stats.prevenu)+" en cours"}),
     kpis,barre,ios?listeIos():table,modal,fenRetrait);
+}
+// ── Bandeau de page (même style que l'Accueil : bleu nuit, titre, date) ──
+function PageHero({icone,titre,sousTitre,children}){
+  const d=new Date();const date=d.toLocaleDateString("fr-FR",{weekday:"long",day:"numeric",month:"long"})+" · "+d.toLocaleTimeString("fr-FR",{hour:"2-digit",minute:"2-digit"});
+  return React.createElement("div",{className:"hero",style:{marginBottom:14}},
+    React.createElement("div",{className:"hero-top",style:{alignItems:"center"}},
+      React.createElement("div",null,
+        React.createElement("h1",null,(icone?icone+" ":"")+titre),
+        React.createElement("p",{className:"greet"},date+(sousTitre?" — "+sousTitre:""))),
+      children&&React.createElement("div",{className:"hero-actions"},children)));
 }
 // ════════════════ VUE HISTORIQUE PRÊTS ════════════════
 function VueHistoriquePret(){
