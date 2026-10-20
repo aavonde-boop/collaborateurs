@@ -3601,7 +3601,7 @@ function VueColis({showToast,addLog,badges}){
   const today=()=>{const x=new Date();return x.getFullYear()+"-"+String(x.getMonth()+1).padStart(2,"0")+"-"+String(x.getDate()).padStart(2,"0");};
   const[liste,setListe]=useState([]);const[loading,setLoading]=useState(true);const[erreurTable,setErreurTable]=useState(false);
   const[q,setQ]=useState("");const[filtre,setFiltre]=useState("encours");
-  const[form,setForm]=useState(null);
+  const[form,setForm]=useState(null);const[retrait,setRetrait]=useState(null);
   const annuaire=useMemo(()=>(badges||[]).filter(b=>b.statut!=="Archivé"&&(b.nom||b.prenom)),[badges]);
   useEffect(()=>{(async()=>{if(!sb){setLoading(false);return;}
     const r=await sb.from("lp24_colis").select("*").order("numero",{ascending:false});
@@ -3609,19 +3609,27 @@ function VueColis({showToast,addLog,badges}){
   const stats=useMemo(()=>({recu:liste.filter(c=>c.statut==="recu").length,prevenu:liste.filter(c=>c.statut==="prevenu").length,recupere:liste.filter(c=>c.statut==="recupere").length,total:liste.length}),[liste]);
   const vus=useMemo(()=>{let r=liste;
     if(filtre==="encours")r=r.filter(c=>c.statut!=="recupere");else if(filtre)r=r.filter(c=>c.statut===filtre);
-    if(q.trim()){const k=q.toLowerCase().replace(/^#0*/,"");r=r.filter(c=>[c.nom,c.prenom,c.email,c.taille,c.commentaire,String(c.numero)].some(v=>String(v||"").toLowerCase().includes(k)));}
+    if(q.trim()){const k=q.toLowerCase().replace(/^#0*/,"");r=r.filter(c=>[c.nom,c.prenom,c.email,c.taille,c.commentaire,c.recupere_par,String(c.numero)].some(v=>String(v||"").toLowerCase().includes(k)));}
     return r;},[liste,filtre,q]);
   const maj=async(c,chg,msg)=>{const avant=liste;const n={...c,...chg};setListe(l=>l.map(x=>x.id===c.id?n:x));
-    const r=await sb.from("lp24_colis").update(chg).eq("id",c.id);
+    let r=await sb.from("lp24_colis").update(chg).eq("id",c.id);
+    if(r.error&&/recupere_par/.test(r.error.message||"")&&"recupere_par" in chg){const c2={...chg};delete c2.recupere_par;r=await sb.from("lp24_colis").update(c2).eq("id",c.id);if(!r.error&&chg.recupere_par)showToast("⚠️ « Récupéré par » non enregistré : lancez le petit script SQL","err");}
     if(r.error){setListe(avant);showToast("⚠️ Colis non enregistré : "+r.error.message,"err");return;}
     if(msg){showToast(msg);addLog&&addLog("Colis",num(c.numero)+" "+(c.prenom||"")+" "+(c.nom||"")+" → "+msg.replace(/^✅ /,""));}};
   const prevenir=c=>maj(c,{statut:"prevenu",prevenu_le:today()},"✅ "+num(c.numero)+" prévenu");
-  const recuperer=c=>maj(c,{statut:"recupere",recupere_le:new Date().toISOString(),prevenu_le:c.prevenu_le||today()},"✅ "+num(c.numero)+" récupéré");
+  const recuperer=c=>setRetrait({c,par:""});
+  const confirmerRetrait=async()=>{const{c,par}=retrait;const qui=String(par||"").trim();setRetrait(null);
+    await maj(c,{statut:"recupere",recupere_le:new Date().toISOString(),prevenu_le:c.prevenu_le||today(),recupere_par:qui||null},"✅ "+num(c.numero)+" récupéré"+(qui?" par "+qui:""));};
+  const dupliquer=async c=>{const champs={nom:c.nom||"",prenom:c.prenom||"",email:c.email||"",taille:c.taille||"",commentaire:c.commentaire||"",statut:"recu"};
+    const r=await sb.from("lp24_colis").insert([champs]).select().single();
+    if(r.error){showToast("⚠️ Colis non dupliqué : "+r.error.message,"err");return;}
+    setListe(l=>[r.data,...l]);setForm(null);showToast("📦 Colis "+num(r.data.numero)+" créé (copie de "+num(c.numero)+")");addLog&&addLog("Colis",num(r.data.numero)+" reçu pour "+(c.prenom||"")+" "+(c.nom||"")+" (copie de "+num(c.numero)+")");};
   const enregistrer=async()=>{const f=form;if(!String(f.nom||"").trim()&&!String(f.prenom||"").trim()){showToast("⚠️ Indiquez au moins le nom","err");return;}
     const champs={nom:String(f.nom||"").trim().toUpperCase(),prenom:String(f.prenom||"").trim(),email:String(f.email||"").trim().toLowerCase(),taille:f.taille||"",commentaire:String(f.commentaire||"").trim(),
-      statut:f.statut||"recu",prevenu_le:f.prevenu_le||null,recupere_le:f.statut==="recupere"?(f.recupere_le||new Date().toISOString()):null};
+      statut:f.statut||"recu",prevenu_le:f.prevenu_le||null,recupere_le:f.statut==="recupere"?(f.recupere_le||new Date().toISOString()):null,recupere_par:f.statut==="recupere"?(String(f.recupere_par||"").trim()||null):null};
     if(champs.statut!=="recu"&&!champs.prevenu_le)champs.prevenu_le=today();
     if(f.id){await maj(f,champs,"✅ Colis "+num(f.numero)+" modifié");setForm(null);return;}
+    delete champs.recupere_par;if(f.recupere_par&&champs.statut==="recupere")champs.recupere_par=String(f.recupere_par).trim();
     const r=await sb.from("lp24_colis").insert([champs]).select().single();
     if(r.error){showToast("⚠️ Colis non enregistré : "+r.error.message,"err");return;}
     setListe(l=>[r.data,...l]);setForm(null);showToast("📦 Colis "+num(r.data.numero)+" enregistré");addLog&&addLog("Colis",num(r.data.numero)+" reçu pour "+champs.prenom+" "+champs.nom);};
@@ -3662,15 +3670,16 @@ function VueColis({showToast,addLog,badges}){
         el("td",{style:{padding:"9px 12px"}},el("div",{style:{display:"flex",gap:6}},
           c.statut==="recu"&&btn("📣 Prévenu","rgba(217,119,6,.10)","#D97706",()=>prevenir(c),"Marquer comme prévenu aujourd'hui"),
           c.statut!=="recupere"&&btn("✅ Récupéré","rgba(22,163,74,.10)","#16A34A",()=>recuperer(c),"Marquer comme récupéré"),
-          c.statut==="recupere"&&el("span",{style:{fontSize:11,color:"var(--text3)"}},"le "+fd(c.recupere_le)))))))));
-  const listeIos=()=>el("div",{className:"ios-group"},vus.length===0?vide:vus.map(c=>{const acts=[c.statut==="recu"&&{label:"Prévenu",color:"#FF9500",onClick:()=>prevenir(c)},c.statut!=="recupere"&&{label:"Récupéré",color:"#34C759",onClick:()=>recuperer(c)}].filter(Boolean);
+          c.statut==="recupere"&&el("span",{style:{fontSize:11,color:"var(--text3)"}},"le "+fd(c.recupere_le)+(c.recupere_par?" par "+c.recupere_par:"")),
+          btn("⧉ Dupliquer","var(--surface3)","#64748B",()=>dupliquer(c),"Nouveau colis pour la même personne (nouveau numéro)"))))))));
+  const listeIos=()=>el("div",{className:"ios-group"},vus.length===0?vide:vus.map(c=>{const acts=[c.statut==="recu"&&{label:"Prévenu",color:"#FF9500",onClick:()=>prevenir(c)},c.statut!=="recupere"&&{label:"Récupéré",color:"#34C759",onClick:()=>recuperer(c)},{label:"Dupliquer",color:"#8E8E93",onClick:()=>dupliquer(c)}].filter(Boolean);
     const st=ST[c.statut]||ST.recu;
     return el(IosSwipeRow,{key:c.id,className:"bp-swipe",actions:acts,onTap:()=>setForm({...c})},
       el("div",{className:"il-row"},
         el("div",{className:"il-ico",style:{background:st.bg,color:st.c}},el(IosIcon,{id:"colis",size:22,filled:true})),
         el("div",{className:"t"},
           el("div",{className:"t1"},el("b",null,num(c.numero)),"  ",(c.prenom||"")+" ",el("b",null,c.nom||"")),
-          el("div",{className:"t2"},"Reçu le "+fd(c.recu_le)+(c.taille?" · "+c.taille:"")+(c.statut==="prevenu"?" · prévenu le "+fd(c.prevenu_le):c.statut==="recupere"?" · récupéré le "+fd(c.recupere_le):"")),
+          el("div",{className:"t2"},"Reçu le "+fd(c.recu_le)+(c.taille?" · "+c.taille:"")+(c.statut==="prevenu"?" · prévenu le "+fd(c.prevenu_le):c.statut==="recupere"?" · récupéré le "+fd(c.recupere_le)+(c.recupere_par?" par "+c.recupere_par:""):"")),
           c.email&&el("div",{className:"t2",style:{color:"var(--accent)",whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}},c.email)),
         el(Pill,{st:c.statut}),el("span",{className:"ios-chev"},"›")));}));
 
@@ -3695,14 +3704,25 @@ function VueColis({showToast,addLog,badges}){
           el("div",null,lab("Taille"),el("select",{className:"inp",value:form.taille||"",onChange:e=>setForm({...form,taille:e.target.value})},el("option",{value:""},"—"),TAILLES.map(t=>el("option",{key:t,value:t},t)))),
           el("div",null,lab("Statut"),el("select",{className:"inp",value:form.statut||"recu",onChange:e=>setForm({...form,statut:e.target.value})},Object.keys(ST).map(k=>el("option",{key:k,value:k},ST[k].l))))),
         el("div",null,lab("Prévenu le"),el("input",{className:"inp",type:"date",value:String(form.prevenu_le||"").slice(0,10),onChange:e=>setForm({...form,prevenu_le:e.target.value||null})})),
+        (form.statut==="recupere")&&el("div",null,lab("🙋 Récupéré par (si une autre personne)"),el("input",{className:"inp",value:form.recupere_par||"",onChange:e=>setForm({...form,recupere_par:e.target.value}),placeholder:"Laisser vide si c'est le destinataire"})),
         el("div",null,lab("💬 Commentaire"),el("input",{className:"inp",value:form.commentaire||"",onChange:e=>setForm({...form,commentaire:e.target.value}),placeholder:"Transporteur, emplacement…"}))),
       el("div",{style:{display:"flex",gap:8,marginTop:18,flexWrap:"wrap"}},
         el("button",{type:"button",className:"btn btn-primary",style:{flex:1,justifyContent:"center",fontWeight:700},onClick:enregistrer},form.id?"Enregistrer":"📦 Enregistrer le colis"),
+        form.id&&el("button",{type:"button",className:"btn",onClick:()=>dupliquer(form),title:"Nouveau colis pour la même personne, avec un nouveau numéro"},"⧉ Dupliquer"),
         form.id&&el("button",{type:"button",className:"btn btn-danger",onClick:()=>supprimer(form)},"Supprimer"))));
+  const fenRetrait=retrait&&el("div",{style:{position:"fixed",inset:0,background:"rgba(0,0,0,.45)",zIndex:1001,display:"flex",alignItems:"center",justifyContent:"center",padding:16,backdropFilter:"blur(4px)"},onClick:e=>{if(e.target===e.currentTarget)setRetrait(null);}},
+    el("div",{style:{background:"var(--surface)",border:"1px solid var(--border)",borderRadius:"var(--radius-lg)",padding:22,width:"100%",maxWidth:400,boxShadow:"0 24px 60px rgba(0,0,0,.2)"}},
+      el("div",{style:{fontSize:18,fontWeight:800,marginBottom:4}},"✅ Colis "+num(retrait.c.numero)+" récupéré"),
+      el("div",{style:{fontSize:13,color:"var(--text2)",marginBottom:14}},"Destinataire : "+((retrait.c.prenom||"")+" "+(retrait.c.nom||"")).trim()),
+      lab("🙋 Récupéré par une autre personne ?"),
+      el("input",{className:"inp",autoFocus:true,value:retrait.par,onChange:e=>setRetrait({...retrait,par:e.target.value}),onKeyDown:e=>{if(e.key==="Enter")confirmerRetrait();},placeholder:"Nom de la personne — laisser vide si c'est le destinataire"}),
+      el("div",{style:{display:"flex",gap:8,marginTop:16}},
+        el("button",{type:"button",className:"btn btn-success",style:{flex:1,justifyContent:"center",fontWeight:700},onClick:confirmerRetrait},"Confirmer"),
+        el("button",{type:"button",className:"btn",onClick:()=>setRetrait(null)},"Annuler"))));
 
   return el("div",null,
     el("div",{style:{display:"flex",alignItems:"baseline",gap:10,marginBottom:14}},el("h2",{style:{margin:0,fontSize:22,fontWeight:800}},"📦 Colis"),el("span",{style:{fontSize:13,color:"var(--text3)"}},"Registre des colis reçus à l'accueil")),
-    kpis,barre,ios?listeIos():table,modal);
+    kpis,barre,ios?listeIos():table,modal,fenRetrait);
 }
 // ════════════════ VUE HISTORIQUE PRÊTS ════════════════
 function VueHistoriquePret(){
@@ -7573,7 +7593,7 @@ function VueColis({showToast,addLog,badges}){
   const today=()=>{const x=new Date();return x.getFullYear()+"-"+String(x.getMonth()+1).padStart(2,"0")+"-"+String(x.getDate()).padStart(2,"0");};
   const[liste,setListe]=useState([]);const[loading,setLoading]=useState(true);const[erreurTable,setErreurTable]=useState(false);
   const[q,setQ]=useState("");const[filtre,setFiltre]=useState("encours");
-  const[form,setForm]=useState(null);
+  const[form,setForm]=useState(null);const[retrait,setRetrait]=useState(null);
   const annuaire=useMemo(()=>(badges||[]).filter(b=>b.statut!=="Archivé"&&(b.nom||b.prenom)),[badges]);
   useEffect(()=>{(async()=>{if(!sb){setLoading(false);return;}
     const r=await sb.from("lp24_colis").select("*").order("numero",{ascending:false});
@@ -7581,19 +7601,27 @@ function VueColis({showToast,addLog,badges}){
   const stats=useMemo(()=>({recu:liste.filter(c=>c.statut==="recu").length,prevenu:liste.filter(c=>c.statut==="prevenu").length,recupere:liste.filter(c=>c.statut==="recupere").length,total:liste.length}),[liste]);
   const vus=useMemo(()=>{let r=liste;
     if(filtre==="encours")r=r.filter(c=>c.statut!=="recupere");else if(filtre)r=r.filter(c=>c.statut===filtre);
-    if(q.trim()){const k=q.toLowerCase().replace(/^#0*/,"");r=r.filter(c=>[c.nom,c.prenom,c.email,c.taille,c.commentaire,String(c.numero)].some(v=>String(v||"").toLowerCase().includes(k)));}
+    if(q.trim()){const k=q.toLowerCase().replace(/^#0*/,"");r=r.filter(c=>[c.nom,c.prenom,c.email,c.taille,c.commentaire,c.recupere_par,String(c.numero)].some(v=>String(v||"").toLowerCase().includes(k)));}
     return r;},[liste,filtre,q]);
   const maj=async(c,chg,msg)=>{const avant=liste;const n={...c,...chg};setListe(l=>l.map(x=>x.id===c.id?n:x));
-    const r=await sb.from("lp24_colis").update(chg).eq("id",c.id);
+    let r=await sb.from("lp24_colis").update(chg).eq("id",c.id);
+    if(r.error&&/recupere_par/.test(r.error.message||"")&&"recupere_par" in chg){const c2={...chg};delete c2.recupere_par;r=await sb.from("lp24_colis").update(c2).eq("id",c.id);if(!r.error&&chg.recupere_par)showToast("⚠️ « Récupéré par » non enregistré : lancez le petit script SQL","err");}
     if(r.error){setListe(avant);showToast("⚠️ Colis non enregistré : "+r.error.message,"err");return;}
     if(msg){showToast(msg);addLog&&addLog("Colis",num(c.numero)+" "+(c.prenom||"")+" "+(c.nom||"")+" → "+msg.replace(/^✅ /,""));}};
   const prevenir=c=>maj(c,{statut:"prevenu",prevenu_le:today()},"✅ "+num(c.numero)+" prévenu");
-  const recuperer=c=>maj(c,{statut:"recupere",recupere_le:new Date().toISOString(),prevenu_le:c.prevenu_le||today()},"✅ "+num(c.numero)+" récupéré");
+  const recuperer=c=>setRetrait({c,par:""});
+  const confirmerRetrait=async()=>{const{c,par}=retrait;const qui=String(par||"").trim();setRetrait(null);
+    await maj(c,{statut:"recupere",recupere_le:new Date().toISOString(),prevenu_le:c.prevenu_le||today(),recupere_par:qui||null},"✅ "+num(c.numero)+" récupéré"+(qui?" par "+qui:""));};
+  const dupliquer=async c=>{const champs={nom:c.nom||"",prenom:c.prenom||"",email:c.email||"",taille:c.taille||"",commentaire:c.commentaire||"",statut:"recu"};
+    const r=await sb.from("lp24_colis").insert([champs]).select().single();
+    if(r.error){showToast("⚠️ Colis non dupliqué : "+r.error.message,"err");return;}
+    setListe(l=>[r.data,...l]);setForm(null);showToast("📦 Colis "+num(r.data.numero)+" créé (copie de "+num(c.numero)+")");addLog&&addLog("Colis",num(r.data.numero)+" reçu pour "+(c.prenom||"")+" "+(c.nom||"")+" (copie de "+num(c.numero)+")");};
   const enregistrer=async()=>{const f=form;if(!String(f.nom||"").trim()&&!String(f.prenom||"").trim()){showToast("⚠️ Indiquez au moins le nom","err");return;}
     const champs={nom:String(f.nom||"").trim().toUpperCase(),prenom:String(f.prenom||"").trim(),email:String(f.email||"").trim().toLowerCase(),taille:f.taille||"",commentaire:String(f.commentaire||"").trim(),
-      statut:f.statut||"recu",prevenu_le:f.prevenu_le||null,recupere_le:f.statut==="recupere"?(f.recupere_le||new Date().toISOString()):null};
+      statut:f.statut||"recu",prevenu_le:f.prevenu_le||null,recupere_le:f.statut==="recupere"?(f.recupere_le||new Date().toISOString()):null,recupere_par:f.statut==="recupere"?(String(f.recupere_par||"").trim()||null):null};
     if(champs.statut!=="recu"&&!champs.prevenu_le)champs.prevenu_le=today();
     if(f.id){await maj(f,champs,"✅ Colis "+num(f.numero)+" modifié");setForm(null);return;}
+    delete champs.recupere_par;if(f.recupere_par&&champs.statut==="recupere")champs.recupere_par=String(f.recupere_par).trim();
     const r=await sb.from("lp24_colis").insert([champs]).select().single();
     if(r.error){showToast("⚠️ Colis non enregistré : "+r.error.message,"err");return;}
     setListe(l=>[r.data,...l]);setForm(null);showToast("📦 Colis "+num(r.data.numero)+" enregistré");addLog&&addLog("Colis",num(r.data.numero)+" reçu pour "+champs.prenom+" "+champs.nom);};
@@ -7634,15 +7662,16 @@ function VueColis({showToast,addLog,badges}){
         el("td",{style:{padding:"9px 12px"}},el("div",{style:{display:"flex",gap:6}},
           c.statut==="recu"&&btn("📣 Prévenu","rgba(217,119,6,.10)","#D97706",()=>prevenir(c),"Marquer comme prévenu aujourd'hui"),
           c.statut!=="recupere"&&btn("✅ Récupéré","rgba(22,163,74,.10)","#16A34A",()=>recuperer(c),"Marquer comme récupéré"),
-          c.statut==="recupere"&&el("span",{style:{fontSize:11,color:"var(--text3)"}},"le "+fd(c.recupere_le)))))))));
-  const listeIos=()=>el("div",{className:"ios-group"},vus.length===0?vide:vus.map(c=>{const acts=[c.statut==="recu"&&{label:"Prévenu",color:"#FF9500",onClick:()=>prevenir(c)},c.statut!=="recupere"&&{label:"Récupéré",color:"#34C759",onClick:()=>recuperer(c)}].filter(Boolean);
+          c.statut==="recupere"&&el("span",{style:{fontSize:11,color:"var(--text3)"}},"le "+fd(c.recupere_le)+(c.recupere_par?" par "+c.recupere_par:"")),
+          btn("⧉ Dupliquer","var(--surface3)","#64748B",()=>dupliquer(c),"Nouveau colis pour la même personne (nouveau numéro)"))))))));
+  const listeIos=()=>el("div",{className:"ios-group"},vus.length===0?vide:vus.map(c=>{const acts=[c.statut==="recu"&&{label:"Prévenu",color:"#FF9500",onClick:()=>prevenir(c)},c.statut!=="recupere"&&{label:"Récupéré",color:"#34C759",onClick:()=>recuperer(c)},{label:"Dupliquer",color:"#8E8E93",onClick:()=>dupliquer(c)}].filter(Boolean);
     const st=ST[c.statut]||ST.recu;
     return el(IosSwipeRow,{key:c.id,className:"bp-swipe",actions:acts,onTap:()=>setForm({...c})},
       el("div",{className:"il-row"},
         el("div",{className:"il-ico",style:{background:st.bg,color:st.c}},el(IosIcon,{id:"colis",size:22,filled:true})),
         el("div",{className:"t"},
           el("div",{className:"t1"},el("b",null,num(c.numero)),"  ",(c.prenom||"")+" ",el("b",null,c.nom||"")),
-          el("div",{className:"t2"},"Reçu le "+fd(c.recu_le)+(c.taille?" · "+c.taille:"")+(c.statut==="prevenu"?" · prévenu le "+fd(c.prevenu_le):c.statut==="recupere"?" · récupéré le "+fd(c.recupere_le):"")),
+          el("div",{className:"t2"},"Reçu le "+fd(c.recu_le)+(c.taille?" · "+c.taille:"")+(c.statut==="prevenu"?" · prévenu le "+fd(c.prevenu_le):c.statut==="recupere"?" · récupéré le "+fd(c.recupere_le)+(c.recupere_par?" par "+c.recupere_par:""):"")),
           c.email&&el("div",{className:"t2",style:{color:"var(--accent)",whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}},c.email)),
         el(Pill,{st:c.statut}),el("span",{className:"ios-chev"},"›")));}));
 
@@ -7667,14 +7696,25 @@ function VueColis({showToast,addLog,badges}){
           el("div",null,lab("Taille"),el("select",{className:"inp",value:form.taille||"",onChange:e=>setForm({...form,taille:e.target.value})},el("option",{value:""},"—"),TAILLES.map(t=>el("option",{key:t,value:t},t)))),
           el("div",null,lab("Statut"),el("select",{className:"inp",value:form.statut||"recu",onChange:e=>setForm({...form,statut:e.target.value})},Object.keys(ST).map(k=>el("option",{key:k,value:k},ST[k].l))))),
         el("div",null,lab("Prévenu le"),el("input",{className:"inp",type:"date",value:String(form.prevenu_le||"").slice(0,10),onChange:e=>setForm({...form,prevenu_le:e.target.value||null})})),
+        (form.statut==="recupere")&&el("div",null,lab("🙋 Récupéré par (si une autre personne)"),el("input",{className:"inp",value:form.recupere_par||"",onChange:e=>setForm({...form,recupere_par:e.target.value}),placeholder:"Laisser vide si c'est le destinataire"})),
         el("div",null,lab("💬 Commentaire"),el("input",{className:"inp",value:form.commentaire||"",onChange:e=>setForm({...form,commentaire:e.target.value}),placeholder:"Transporteur, emplacement…"}))),
       el("div",{style:{display:"flex",gap:8,marginTop:18,flexWrap:"wrap"}},
         el("button",{type:"button",className:"btn btn-primary",style:{flex:1,justifyContent:"center",fontWeight:700},onClick:enregistrer},form.id?"Enregistrer":"📦 Enregistrer le colis"),
+        form.id&&el("button",{type:"button",className:"btn",onClick:()=>dupliquer(form),title:"Nouveau colis pour la même personne, avec un nouveau numéro"},"⧉ Dupliquer"),
         form.id&&el("button",{type:"button",className:"btn btn-danger",onClick:()=>supprimer(form)},"Supprimer"))));
+  const fenRetrait=retrait&&el("div",{style:{position:"fixed",inset:0,background:"rgba(0,0,0,.45)",zIndex:1001,display:"flex",alignItems:"center",justifyContent:"center",padding:16,backdropFilter:"blur(4px)"},onClick:e=>{if(e.target===e.currentTarget)setRetrait(null);}},
+    el("div",{style:{background:"var(--surface)",border:"1px solid var(--border)",borderRadius:"var(--radius-lg)",padding:22,width:"100%",maxWidth:400,boxShadow:"0 24px 60px rgba(0,0,0,.2)"}},
+      el("div",{style:{fontSize:18,fontWeight:800,marginBottom:4}},"✅ Colis "+num(retrait.c.numero)+" récupéré"),
+      el("div",{style:{fontSize:13,color:"var(--text2)",marginBottom:14}},"Destinataire : "+((retrait.c.prenom||"")+" "+(retrait.c.nom||"")).trim()),
+      lab("🙋 Récupéré par une autre personne ?"),
+      el("input",{className:"inp",autoFocus:true,value:retrait.par,onChange:e=>setRetrait({...retrait,par:e.target.value}),onKeyDown:e=>{if(e.key==="Enter")confirmerRetrait();},placeholder:"Nom de la personne — laisser vide si c'est le destinataire"}),
+      el("div",{style:{display:"flex",gap:8,marginTop:16}},
+        el("button",{type:"button",className:"btn btn-success",style:{flex:1,justifyContent:"center",fontWeight:700},onClick:confirmerRetrait},"Confirmer"),
+        el("button",{type:"button",className:"btn",onClick:()=>setRetrait(null)},"Annuler"))));
 
   return el("div",null,
     el("div",{style:{display:"flex",alignItems:"baseline",gap:10,marginBottom:14}},el("h2",{style:{margin:0,fontSize:22,fontWeight:800}},"📦 Colis"),el("span",{style:{fontSize:13,color:"var(--text3)"}},"Registre des colis reçus à l'accueil")),
-    kpis,barre,ios?listeIos():table,modal);
+    kpis,barre,ios?listeIos():table,modal,fenRetrait);
 }
 // ════════════════ VUE HISTORIQUE PRÊTS ════════════════
 function VueHistoriquePret(){
