@@ -4456,7 +4456,7 @@ useEffect(()=>{
   const dbDot=React.createElement("div",{style:{display:"flex",alignItems:"center",gap:5,fontSize:11,color:"var(--text3)"}},React.createElement("span",{className:"save-dot"+(saving?" saving":""),title:saving?"Sauvegarde...":"Sauvegardé"}),saving?"Sync...":dbStatus==="ok"?"✓":"Hors ligne");
 
   const toolbarButtons=React.createElement("div",{style:{display:"flex",gap:8,alignItems:"center"}},
-    !isIT&&React.createElement("button",{title:"Paramètres & Import/Export",className:"btn-icon",onClick:()=>setShowSettings(true),style:{position:"relative"}},"⚙️",archivesCount>0&&React.createElement("span",{style:{position:"absolute",top:-4,right:-4,background:"var(--orange)",color:"#fff",borderRadius:999,fontSize:8,fontWeight:700,padding:"1px 4px",lineHeight:"11px"}},archivesCount)),
+    !isIT&&React.createElement("button",{title:"Paramètres & Import/Export",className:"btn-icon",onClick:()=>setShowSettings(true),style:{position:"relative"}},"⚙️"),
     session&&React.createElement("span",{style:{fontSize:11,color:"var(--text3)",marginLeft:2}},session.label),
     session&&React.createElement("button",{title:"Déconnexion",onClick:logout,style:{background:"var(--redBg)",border:"1px solid rgba(220,38,38,.2)",color:"var(--red)",borderRadius:6,padding:"3px 8px",fontSize:11,cursor:"pointer"}},"⏻"),
     dbDot
@@ -8630,7 +8630,7 @@ useEffect(()=>{
   const dbDot=React.createElement("div",{style:{display:"flex",alignItems:"center",gap:5,fontSize:11,color:"var(--text3)"}},React.createElement("span",{className:"save-dot"+(saving?" saving":""),title:saving?"Sauvegarde...":"Sauvegardé"}),saving?"Sync...":dbStatus==="ok"?"✓":"Hors ligne");
 
   const toolbarButtons=React.createElement("div",{style:{display:"flex",gap:8,alignItems:"center"}},
-    !isIT&&React.createElement("button",{title:"Paramètres & Import/Export",className:"btn-icon",onClick:()=>setShowSettings(true),style:{position:"relative"}},"⚙️",archivesCount>0&&React.createElement("span",{style:{position:"absolute",top:-4,right:-4,background:"var(--orange)",color:"#fff",borderRadius:999,fontSize:8,fontWeight:700,padding:"1px 4px",lineHeight:"11px"}},archivesCount)),
+    !isIT&&React.createElement("button",{title:"Paramètres & Import/Export",className:"btn-icon",onClick:()=>setShowSettings(true),style:{position:"relative"}},"⚙️"),
     session&&React.createElement("span",{style:{fontSize:11,color:"var(--text3)",marginLeft:2}},session.label),
     session&&React.createElement("button",{title:"Déconnexion",onClick:logout,style:{background:"var(--redBg)",border:"1px solid rgba(220,38,38,.2)",color:"var(--red)",borderRadius:6,padding:"3px 8px",fontSize:11,cursor:"pointer"}},"⏻"),
     dbDot
