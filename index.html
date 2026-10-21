@@ -988,8 +988,36 @@ const Bdg=({children,color,bg})=>React.createElement("span",{className:"badge",s
 // ── Login ──
 function LoginScreen({onUnlock,authError}){
   const[email,setEmail]=useState("");const[pwd,setPwd]=useState("");const[err,setErr]=useState("");const[shake,setShake]=useState(false);const[busy,setBusy]=useState(false);
-  const fail=msg=>{setErr(msg);setShake(true);setPwd("");setTimeout(()=>setShake(false),500);};
+  const[mode,setMode]=useState("login");const[pwd2,setPwd2]=useState("");const[info,setInfo]=useState("");
+  const fail=msg=>{setErr(msg);setInfo("");setShake(true);setPwd("");setPwd2("");setTimeout(()=>setShake(false),500);};
+  const changerMode=m=>{setMode(m);setErr("");setInfo("");setPwd("");setPwd2("");};
+  // Création de compte par la personne elle-même (seuls les e-mails ajoutés dans Réglages → Comptes sont acceptés)
+  const inscrire=async()=>{
+    if(busy)return;
+    const em=email.trim();
+    if(!em||!pwd){fail("Saisis ton e-mail et choisis un mot de passe.");return;}
+    if(pwd.length<6){fail("Le mot de passe doit faire au moins 6 caractères.");return;}
+    if(pwd!==pwd2){fail("Les deux mots de passe ne sont pas identiques.");return;}
+    if(!sb){fail("Connexion à la base impossible. Vérifie ta connexion internet.");return;}
+    setBusy(true);setErr("");
+    try{
+      const{data,error}=await sb.auth.signUp({email:em,password:pwd});
+      if(error){
+        const m=error.message||"";
+        if(/already|registered|exists/i.test(m))fail("Un compte existe déjà avec cet e-mail : connecte-toi avec ton mot de passe.");
+        else if(/database|saving|autoris/i.test(m))fail("Cette adresse n'est pas autorisée. Demande à l'administrateur de l'ajouter dans Réglages → Comptes, puis réessaie.");
+        else if(/password/i.test(m))fail("Mot de passe trop simple : au moins 6 caractères.");
+        else fail("Création impossible : "+m);
+        return;
+      }
+      if(data&&data.user&&Array.isArray(data.user.identities)&&data.user.identities.length===0){fail("Un compte existe déjà avec cet e-mail : connecte-toi avec ton mot de passe.");return;}
+      if(data&&data.session&&data.user){await onUnlock(data.user);return;}
+      setMode("login");setPwd("");setPwd2("");setInfo("Compte créé ✓ Ouvre le mail de confirmation reçu, puis connecte-toi ici.");
+    }catch(e){fail("Création impossible. Vérifie ta connexion internet.");}
+    finally{setBusy(false);}
+  };
   const check=async()=>{
+    if(mode==="signup")return inscrire();
     if(busy)return;
     if(!email.trim()||!pwd){fail("Saisis ton e-mail et ton mot de passe.");return;}
     if(!sb){fail("Connexion à la base impossible. Vérifie ta connexion internet.");return;}
@@ -1001,7 +1029,7 @@ function LoginScreen({onUnlock,authError}){
     }catch(e){fail("Connexion impossible. Vérifie ta connexion internet.");}
     finally{setBusy(false);}
   };
-  const shownErr=err||authError||"";
+  const shownErr=err||(mode==="login"?authError:"")||"";const inscription=mode==="signup";
   return React.createElement("div",{style:{minHeight:"100vh",background:"var(--bg)",display:"flex",alignItems:"center",justifyContent:"center",position:"relative",overflow:"hidden",padding:16}},
     React.createElement("div",{style:{position:"absolute",inset:0,background:"radial-gradient(ellipse 80% 60% at 50% -10%,rgba(59,130,246,.12),transparent)"}}),
     React.createElement("div",{style:{position:"relative",background:"var(--surface)",border:"1px solid var(--border)",borderRadius:20,boxShadow:"0 24px 80px rgba(0,0,0,.12)",padding:"40px min(48px, 7vw)",width:"100%",maxWidth:400,textAlign:"center",animation:shake?"shake .4s":"none"}},
@@ -1009,10 +1037,16 @@ function LoginScreen({onUnlock,authError}){
       React.createElement("h1",{style:{fontSize:22,fontWeight:800,color:"var(--text)",marginBottom:4}},"Gestion des Collaborateurs"),
       React.createElement("p",{style:{fontSize:13,color:"var(--text2)",marginBottom:28}},"Alliance Automotive Group"),
       React.createElement("div",{style:{marginBottom:10}},React.createElement("input",{type:"email",value:email,onChange:e=>setEmail(e.target.value),onKeyDown:e=>e.key==="Enter"&&check(),placeholder:"E-mail",className:"inp",autoFocus:true,autoComplete:"username",autoCapitalize:"none",style:{border:shownErr?"1px solid var(--red)":"",padding:"10px 14px",fontSize:14}})),
-      React.createElement("div",{style:{marginBottom:16}},React.createElement("input",{type:"password",value:pwd,onChange:e=>setPwd(e.target.value),onKeyDown:e=>e.key==="Enter"&&check(),placeholder:"Mot de passe",className:"inp",autoComplete:"current-password",style:{border:shownErr?"1px solid var(--red)":"",padding:"10px 14px",fontSize:14}})),
+      React.createElement("div",{style:{marginBottom:16}},React.createElement("input",{type:"password",value:pwd,onChange:e=>setPwd(e.target.value),onKeyDown:e=>e.key==="Enter"&&check(),className:"inp",placeholder:inscription?"Mot de passe (6 caractères min.)":"Mot de passe",autoComplete:inscription?"new-password":"current-password",style:{border:shownErr?"1px solid var(--red)":"",padding:"10px 14px",fontSize:14}})),
+      inscription&&React.createElement("div",{style:{marginTop:-6,marginBottom:16}},React.createElement("input",{type:"password",value:pwd2,onChange:e=>setPwd2(e.target.value),onKeyDown:e=>e.key==="Enter"&&check(),placeholder:"Confirme le mot de passe",className:"inp",autoComplete:"new-password",style:{border:shownErr?"1px solid var(--red)":"",padding:"10px 14px",fontSize:14}})),
+      inscription&&React.createElement("p",{style:{fontSize:12,color:"var(--text2)",margin:"-4px 0 14px",lineHeight:1.45}},"Utilise l'e-mail que l'administrateur a ajouté pour toi dans l'appli."),
       shownErr&&React.createElement("p",{style:{color:"var(--red)",fontSize:12,marginBottom:12}},shownErr),
-      React.createElement("button",{onClick:check,disabled:busy,className:"btn btn-primary",style:{width:"100%",padding:"10px 0",fontSize:14,fontWeight:700,borderRadius:10,justifyContent:"center"}},busy?"Connexion…":"Connexion"),
-      React.createElement("p",{style:{fontSize:11,color:"var(--text3)",marginTop:14}},"Mot de passe oublié ? Demande à l'administrateur de le réinitialiser."),
+      !shownErr&&info&&React.createElement("p",{style:{color:"var(--green, #16a34a)",fontSize:12,marginBottom:12,fontWeight:600}},info),
+      React.createElement("button",{onClick:check,disabled:busy,className:"btn btn-primary",style:{width:"100%",padding:"10px 0",fontSize:14,fontWeight:700,borderRadius:10,justifyContent:"center"}},busy?(inscription?"Création…":"Connexion…"):(inscription?"Créer mon compte":"Connexion")),
+      React.createElement("div",{style:{marginTop:16,fontSize:13,color:"var(--text2)"}},
+        inscription?"Déjà un compte ? ":"Première connexion ? ",
+        React.createElement("button",{onClick:()=>changerMode(inscription?"login":"signup"),style:{background:"none",border:"none",padding:0,color:"var(--accent)",fontWeight:700,fontSize:13,cursor:"pointer"}},inscription?"Se connecter":"Créer mon compte")),
+      !inscription&&React.createElement("p",{style:{fontSize:11,color:"var(--text3)",marginTop:10}},"Mot de passe oublié ? Demande à l'administrateur de le réinitialiser."),
       React.createElement("style",null,"@keyframes shake{0%,100%{transform:translateX(0)}20%,60%{transform:translateX(-8px)}40%,80%{transform:translateX(8px)}}")
     )
   );
@@ -3406,8 +3440,8 @@ function SettingsModal({settings,setSettings,showToast,setShowSettings,racineRef
         tab==="users"&&React.createElement("div",null,
           React.createElement("div",{style:{background:"var(--accentBg)",border:"1px solid rgba(59,130,246,.2)",borderRadius:8,padding:"10px 14px",fontSize:12,color:"var(--accent2)",marginBottom:16,lineHeight:1.5}},
             React.createElement("div",{style:{fontWeight:700,marginBottom:4}},"🔒 Comment ajouter quelqu'un"),
-            React.createElement("div",null,"1. Crée son compte (e-mail + mot de passe) dans Supabase → Authentication → Users → Add user."),
-            React.createElement("div",null,"2. Ajoute son e-mail ci-dessous et choisis ses droits. Sans cette étape, il ne peut pas entrer dans l'appli."),
+            React.createElement("div",null,"1. Ajoute son e-mail ci-dessous et choisis ses droits."),
+            React.createElement("div",null,"2. Envoie-lui le lien de l'appli : il clique sur « Créer mon compte », saisit cet e-mail et choisit lui-même son mot de passe."),
             React.createElement("div",{style:{marginTop:4}},"Les mots de passe ne sont plus stockés dans l'appli.")
           ),
           (settings.users||[]).length>0&&React.createElement("div",{style:{marginBottom:12}},
@@ -5016,8 +5050,36 @@ const Bdg=({children,color,bg})=>React.createElement("span",{className:"badge",s
 // ── Login ──
 function LoginScreen({onUnlock,authError}){
   const[email,setEmail]=useState("");const[pwd,setPwd]=useState("");const[err,setErr]=useState("");const[shake,setShake]=useState(false);const[busy,setBusy]=useState(false);
-  const fail=msg=>{setErr(msg);setShake(true);setPwd("");setTimeout(()=>setShake(false),500);};
+  const[mode,setMode]=useState("login");const[pwd2,setPwd2]=useState("");const[info,setInfo]=useState("");
+  const fail=msg=>{setErr(msg);setInfo("");setShake(true);setPwd("");setPwd2("");setTimeout(()=>setShake(false),500);};
+  const changerMode=m=>{setMode(m);setErr("");setInfo("");setPwd("");setPwd2("");};
+  // Création de compte par la personne elle-même (seuls les e-mails ajoutés dans Réglages → Comptes sont acceptés)
+  const inscrire=async()=>{
+    if(busy)return;
+    const em=email.trim();
+    if(!em||!pwd){fail("Saisis ton e-mail et choisis un mot de passe.");return;}
+    if(pwd.length<6){fail("Le mot de passe doit faire au moins 6 caractères.");return;}
+    if(pwd!==pwd2){fail("Les deux mots de passe ne sont pas identiques.");return;}
+    if(!sb){fail("Connexion à la base impossible. Vérifie ta connexion internet.");return;}
+    setBusy(true);setErr("");
+    try{
+      const{data,error}=await sb.auth.signUp({email:em,password:pwd});
+      if(error){
+        const m=error.message||"";
+        if(/already|registered|exists/i.test(m))fail("Un compte existe déjà avec cet e-mail : connecte-toi avec ton mot de passe.");
+        else if(/database|saving|autoris/i.test(m))fail("Cette adresse n'est pas autorisée. Demande à l'administrateur de l'ajouter dans Réglages → Comptes, puis réessaie.");
+        else if(/password/i.test(m))fail("Mot de passe trop simple : au moins 6 caractères.");
+        else fail("Création impossible : "+m);
+        return;
+      }
+      if(data&&data.user&&Array.isArray(data.user.identities)&&data.user.identities.length===0){fail("Un compte existe déjà avec cet e-mail : connecte-toi avec ton mot de passe.");return;}
+      if(data&&data.session&&data.user){await onUnlock(data.user);return;}
+      setMode("login");setPwd("");setPwd2("");setInfo("Compte créé ✓ Ouvre le mail de confirmation reçu, puis connecte-toi ici.");
+    }catch(e){fail("Création impossible. Vérifie ta connexion internet.");}
+    finally{setBusy(false);}
+  };
   const check=async()=>{
+    if(mode==="signup")return inscrire();
     if(busy)return;
     if(!email.trim()||!pwd){fail("Saisis ton e-mail et ton mot de passe.");return;}
     if(!sb){fail("Connexion à la base impossible. Vérifie ta connexion internet.");return;}
@@ -5029,7 +5091,7 @@ function LoginScreen({onUnlock,authError}){
     }catch(e){fail("Connexion impossible. Vérifie ta connexion internet.");}
     finally{setBusy(false);}
   };
-  const shownErr=err||authError||"";
+  const shownErr=err||(mode==="login"?authError:"")||"";const inscription=mode==="signup";
   return React.createElement("div",{style:{minHeight:"100vh",background:"var(--bg)",display:"flex",alignItems:"center",justifyContent:"center",position:"relative",overflow:"hidden",padding:16}},
     
     React.createElement("div",{className:"ios-login",style:{position:"relative",background:"var(--surface)",border:"1px solid var(--border)",borderRadius:20,boxShadow:"0 24px 80px rgba(0,0,0,.12)",padding:"40px min(48px, 7vw)",width:"100%",maxWidth:400,textAlign:"center",animation:shake?"shake .4s":"none"}},
@@ -5037,10 +5099,16 @@ function LoginScreen({onUnlock,authError}){
       React.createElement("h1",{className:"ios-large",style:{fontSize:22,fontWeight:800,color:"var(--text)",marginBottom:4}},"Gestion des Collaborateurs"),
       React.createElement("p",{style:{fontSize:13,color:"var(--text2)",marginBottom:28}},"Alliance Automotive Group"),
       React.createElement("div",{style:{marginBottom:10}},React.createElement("input",{type:"email",value:email,onChange:e=>setEmail(e.target.value),onKeyDown:e=>e.key==="Enter"&&check(),placeholder:"E-mail",className:"inp",autoFocus:true,autoComplete:"username",autoCapitalize:"none",style:{border:shownErr?"1px solid var(--red)":"",padding:"10px 14px",fontSize:14}})),
-      React.createElement("div",{style:{marginBottom:16}},React.createElement("input",{type:"password",value:pwd,onChange:e=>setPwd(e.target.value),onKeyDown:e=>e.key==="Enter"&&check(),placeholder:"Mot de passe",className:"inp",autoComplete:"current-password",style:{border:shownErr?"1px solid var(--red)":"",padding:"10px 14px",fontSize:14}})),
+      React.createElement("div",{style:{marginBottom:16}},React.createElement("input",{type:"password",value:pwd,onChange:e=>setPwd(e.target.value),onKeyDown:e=>e.key==="Enter"&&check(),className:"inp",placeholder:inscription?"Mot de passe (6 caractères min.)":"Mot de passe",autoComplete:inscription?"new-password":"current-password",style:{border:shownErr?"1px solid var(--red)":"",padding:"10px 14px",fontSize:14}})),
+      inscription&&React.createElement("div",{style:{marginTop:-6,marginBottom:16}},React.createElement("input",{type:"password",value:pwd2,onChange:e=>setPwd2(e.target.value),onKeyDown:e=>e.key==="Enter"&&check(),placeholder:"Confirme le mot de passe",className:"inp",autoComplete:"new-password",style:{border:shownErr?"1px solid var(--red)":"",padding:"10px 14px",fontSize:14}})),
+      inscription&&React.createElement("p",{style:{fontSize:12,color:"var(--text2)",margin:"-4px 0 14px",lineHeight:1.45}},"Utilise l'e-mail que l'administrateur a ajouté pour toi dans l'appli."),
       shownErr&&React.createElement("p",{style:{color:"var(--red)",fontSize:12,marginBottom:12}},shownErr),
-      React.createElement("button",{onClick:check,disabled:busy,className:"btn btn-primary",style:{width:"100%",padding:"10px 0",fontSize:14,fontWeight:700,borderRadius:10,justifyContent:"center"}},busy?"Connexion…":"Connexion"),
-      React.createElement("p",{style:{fontSize:11,color:"var(--text3)",marginTop:14}},"Mot de passe oublié ? Demande à l'administrateur de le réinitialiser."),
+      !shownErr&&info&&React.createElement("p",{style:{color:"var(--green, #16a34a)",fontSize:12,marginBottom:12,fontWeight:600}},info),
+      React.createElement("button",{onClick:check,disabled:busy,className:"btn btn-primary",style:{width:"100%",padding:"10px 0",fontSize:14,fontWeight:700,borderRadius:10,justifyContent:"center"}},busy?(inscription?"Création…":"Connexion…"):(inscription?"Créer mon compte":"Connexion")),
+      React.createElement("div",{style:{marginTop:16,fontSize:13,color:"var(--text2)"}},
+        inscription?"Déjà un compte ? ":"Première connexion ? ",
+        React.createElement("button",{onClick:()=>changerMode(inscription?"login":"signup"),style:{background:"none",border:"none",padding:0,color:"var(--accent)",fontWeight:700,fontSize:13,cursor:"pointer"}},inscription?"Se connecter":"Créer mon compte")),
+      !inscription&&React.createElement("p",{style:{fontSize:11,color:"var(--text3)",marginTop:10}},"Mot de passe oublié ? Demande à l'administrateur de le réinitialiser."),
       React.createElement("style",null,"@keyframes shake{0%,100%{transform:translateX(0)}20%,60%{transform:translateX(-8px)}40%,80%{transform:translateX(8px)}}")
     )
   );
@@ -7538,8 +7606,8 @@ function SettingsModal({settings,setSettings,showToast,setShowSettings,racineRef
         tab==="users"&&React.createElement("div",null,
           React.createElement("div",{style:{background:"var(--accentBg)",border:"1px solid rgba(59,130,246,.2)",borderRadius:8,padding:"10px 14px",fontSize:12,color:"var(--accent2)",marginBottom:16,lineHeight:1.5}},
             React.createElement("div",{style:{fontWeight:700,marginBottom:4}},"🔒 Comment ajouter quelqu'un"),
-            React.createElement("div",null,"1. Crée son compte (e-mail + mot de passe) dans Supabase → Authentication → Users → Add user."),
-            React.createElement("div",null,"2. Ajoute son e-mail ci-dessous et choisis ses droits. Sans cette étape, il ne peut pas entrer dans l'appli."),
+            React.createElement("div",null,"1. Ajoute son e-mail ci-dessous et choisis ses droits."),
+            React.createElement("div",null,"2. Envoie-lui le lien de l'appli : il clique sur « Créer mon compte », saisit cet e-mail et choisit lui-même son mot de passe."),
             React.createElement("div",{style:{marginTop:4}},"Les mots de passe ne sont plus stockés dans l'appli.")
           ),
           (settings.users||[]).length>0&&React.createElement("div",{style:{marginBottom:12}},
