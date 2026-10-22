@@ -705,6 +705,31 @@
     top:calc(env(safe-area-inset-top) + 12px)!important;padding:12px 16px!important;}
   /* Onglets des Réglages sur plusieurs lignes : tout est visible */
   .rg-tabs{flex-wrap:wrap!important;overflow:visible!important;row-gap:6px!important;}
+
+  /* Collaborateurs : bandeau et cases sur toute la largeur, bouton en dessous */
+  main div:has(> .m-grid-2 > .ios-kpi){flex:1 1 100%!important;width:100%!important;min-width:0;}
+  main div:has(> div > .m-grid-2 > .ios-kpi){flex-wrap:wrap!important;}
+  .ios-kpi{min-width:0;overflow:hidden;}
+  .ios-kpi>div:nth-child(2){font-size:9.5px!important;letter-spacing:.2px!important;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+  /* Casiers : deux colonnes qui tiennent dans l'écran, noms longs coupés proprement */
+  .hm-tiles{grid-template-columns:repeat(2,minmax(0,1fr))!important;}
+  .hm-tile{min-width:0;border:1px solid var(--border)!important;}
+  .hm-tile>*{min-width:0;}
+  .hm-tile div{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+  .hm-chip{border:1px solid var(--border)!important;}
+  /* Rapport : panneaux à la largeur de l'écran */
+  .rp-panel{min-width:0!important;max-width:100%;}
+  main div:has(> .rp-panel){grid-template-columns:minmax(0,1fr)!important;min-width:0;}
+  .il-row{min-width:0;}
+
+  /* Field Support : la recherche prend toute la ligne */
+  main input[style*="min-width: 150px"]{flex:1 1 calc(100% - 34px)!important;min-width:0!important;}
+
+  /* Étiquettes : aperçus sur 2 colonnes (moins de défilement) */
+  main div[style*="minmax(200px, 1fr)"]{grid-template-columns:repeat(2,minmax(0,1fr))!important;}
+  /* Mode sombre : bandeau un peu plus clair pour se détacher du fond */
+  body.dark .ios-head,body.dark main h1.ios-large,body.dark main h1.ios-large+.ios-sub,body.dark .cc-top{background:linear-gradient(90deg,#1B3A6B,#24518F)!important;}
+  body.dark .ios-head h1.ios-large,body.dark .ios-head h1.ios-large+.ios-sub{background:none!important;}
 </style>
 <style id="reglages-css">
   /* Réglages : barre latérale par thème sur ordinateur */
