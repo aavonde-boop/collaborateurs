@@ -4,10 +4,10 @@
    - Bibliothèques (React, Supabase, XLSX, polices…) : servies depuis le cache
      pour un lancement rapide, mises à jour en arrière-plan.
    - Les données (Supabase, EmailJS) ne sont jamais mises en cache. */
-const VERSION = 'v34';
+const VERSION = 'v35';
 const PAGE_CACHE = 'collab-page-' + VERSION;
 const LIB_CACHE = 'collab-libs-' + VERSION;
-const CORE = ['./', './index.html', './manifest.webmanifest', './apple-touch-icon.png', './icons/icon-192.png'];
+const CORE = ['./', './index.html'];
 const LIB_HOSTS = ['unpkg.com', 'cdn.jsdelivr.net', 'fonts.googleapis.com', 'fonts.gstatic.com'];
 const NETWORK_TIMEOUT_MS = 4000;
 
@@ -55,9 +55,8 @@ self.addEventListener('fetch', e => {
   if (url.origin === self.location.origin) {
     if (req.mode === 'navigate' || url.pathname.endsWith('/') || url.pathname.endsWith('.html')) {
       e.respondWith(pageNetworkFirst(req));
-    } else if (url.pathname.includes('/icons/') || url.pathname.endsWith('.webmanifest')) {
-      e.respondWith(libStaleWhileRevalidate(req));
     }
+    // Icônes et manifeste : jamais interceptés (Safari les lit directement pour l'écran d'accueil)
     return;
   }
   if (LIB_HOSTS.includes(url.hostname)) {
