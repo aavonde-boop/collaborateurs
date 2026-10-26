@@ -767,7 +767,31 @@ const{useState,useMemo,useCallback,useEffect,useRef}=React;
 // sbFire l'envoie, et prévient l'utilisateur si l'enregistrement échoue.
 function sbFire(q,label){
   return Promise.resolve(q).then(r=>{if(r&&r.error)throw r.error;return r;})
-    .catch(e=>{console.error("Enregistrement échoué ("+label+")",e);try{window.__sbErr&&window.__sbErr(label);}catch(_){}return null;});
+    .catch(e=>{console.error("Enregistrement échoué ("+label+")",e);try{window.__sbErr&&window.__sbErr(label,e);}catch(_){}return null;});
+}
+
+// ── Doublons : un collaborateur est-il déjà dans le tableau ? (même nom+prénom, inversés, même matricule ou e-mail) ──
+function trouverDoublons(badges,f,exceptId){
+  const norm=x=>String(x||"").normalize("NFD").replace(/[\u0300-\u036f]/g,"").toUpperCase().replace(/[^A-Z0-9]/g,"");
+  const n=norm(f&&f.nom),pr=norm(f&&f.prenom),m=String((f&&f.matricule)||"").trim(),e=String((f&&f.email)||"").trim().toLowerCase();
+  if(!n&&!m&&!e)return [];
+  return (badges||[]).filter(b=>b&&b.id!==exceptId).map(b=>{const r=[];
+    if(n&&pr&&norm(b.nom)===n&&norm(b.prenom)===pr)r.push("même nom et prénom");
+    else if(n&&pr&&norm(b.nom)===pr&&norm(b.prenom)===n)r.push("nom et prénom inversés");
+    if(m&&m!=="0"&&String(b.matricule||"").trim()===m)r.push("même matricule");
+    if(e&&String(b.email||"").trim().toLowerCase()===e)r.push("même e-mail");
+    return r.length?{b,r}:null;}).filter(Boolean);
+}
+function texteDoublons(d){return d.slice(0,5).map(({b,r})=>"• "+((b.prenom||"")+" "+(b.nom||"")).trim()+" — "+(b.statut||"")+(b.matricule?" · mat. "+b.matricule:"")+(b.casier?" · casier "+b.casier:"")+" ("+r.join(", ")+")").join("\n")+(d.length>5?"\n…":"");}
+// Message clair selon l'erreur renvoyée par la base
+function messageErreurBase(e){
+  const m=String((e&&(e.message||e.details||e.hint))||"");const c=e&&e.code;
+  if(c==="42501"||/row-level security|permission denied/i.test(m))return "accès refusé par la base (droits) — déconnecte-toi puis reconnecte-toi";
+  if(c==="23505"||/duplicate key/i.test(m))return "numéro de fiche déjà utilisé dans la base ("+m+")";
+  if(c==="PGRST204"||c==="42703"||/column/i.test(m))return "champ inconnu dans la base ("+m+")";
+  if(c==="22007"||c==="22P02"||/invalid input/i.test(m))return "valeur refusée par la base ("+m+")";
+  if(!m||/fetch|network|Failed|Load failed/i.test(m))return "pas de réseau, réessaie";
+  return m;
 }
 
 const C={blue:"#3B82F6",blueBg:"rgba(59,130,246,.12)",purple:"#9333EA",purpleBg:"rgba(147,51,234,.12)",green:"#16A34A",greenBg:"rgba(22,163,74,.12)",red:"#DC2626",redBg:"rgba(220,38,38,.12)",orange:"#EA580C",orangeBg:"rgba(234,88,12,.12)",gray:"#718096",grayBg:"rgba(113,128,150,.12)",dark:"#1A1F2E",cyan:"#0891B2"};
@@ -1366,10 +1390,10 @@ function VueAccueil({badges,casiers,setView,wdCache,setBadges,setCasiers,showToa
     if(!nomArr.trim()&&!prenomArr.trim()){showToast("⚠️ Saisissez nom ou prénom","err");return;}
     const wd=wdCache?Object.values(wdCache).find(w=>(w.nom.includes(nomArr.toUpperCase())||!nomArr)&&(w.prenom.toLowerCase().includes(prenomArr.toLowerCase())||!prenomArr)):null;
     const ex=badges.find(b=>(b.nom.toLowerCase().includes(nomArr.toLowerCase())||!nomArr)&&(b.prenom.toLowerCase().includes(prenomArr.toLowerCase())||!prenomArr)&&b.statut!=="Archivé");
-    if(ex){showToast("⚠️ Ce collaborateur existe déjà","err");return;}
-    const nb={id:nxId(badges),nom:wd?wd.nom:nomArr.toUpperCase(),prenom:wd?wd.prenom:prenomArr,matricule:wd?wd.matricule:"",email:wd?wd.email:"",serie:"",zeplug:"",carte_rechargement:"",casier:"",manager:managerArr||wd?.manager||"",mail_manager:wd?.mailMgr||"",statut:"Actif",badge_donne:true,date_entree:dateArr||wd?.hireDate||"",date_sortie_prevue:"",date_archive:"",commentaire:"",date_ajout:todayISO(),etiquette_imprimee:false,from_accueil:true};
+    if(ex){showToast("⚠️ Déjà dans le tableau : "+((ex.prenom||"")+" "+(ex.nom||"")).trim()+(ex.matricule?" (mat. "+ex.matricule+")":"")+(ex.statut?" — "+ex.statut:"")+" : pas de doublon créé","err");return;}
+    const nb={id:"tmp_"+Date.now(),nom:wd?wd.nom:nomArr.toUpperCase(),prenom:wd?wd.prenom:prenomArr,matricule:wd?wd.matricule:"",email:wd?wd.email:"",serie:"",zeplug:"",carte_rechargement:"",casier:"",manager:managerArr||wd?.manager||"",mail_manager:wd?.mailMgr||"",statut:"Actif",badge_donne:true,date_entree:dateArr||wd?.hireDate||"",date_sortie_prevue:"",date_archive:"",commentaire:"",date_ajout:todayISO(),etiquette_imprimee:false,from_accueil:true};
     setBadges(p=>[...p,nb]);
-    if(sb){const{id,...row}=nb;sbFire(sb.from("lp24_badges").insert(row).select("id").single(),"collaborateur").then(r=>{if(r&&r.data&&r.data.id!=null&&r.data.id!==nb.id)setBadges(p=>p.map(x=>x===nb||(x.id===nb.id&&x.nom===nb.nom)?{...x,id:r.data.id}:x));});}
+    if(sb){const{id,...row}=nb;sbFire(sb.from("lp24_badges").insert(row).select("id").single(),"collaborateur").then(r=>{if(!r){setBadges(p=>p.filter(x=>x!==nb));return;}if(r&&r.data&&r.data.id!=null&&r.data.id!==nb.id)setBadges(p=>p.map(x=>x===nb||(x.id===nb.id&&x.nom===nb.nom)?{...x,id:r.data.id}:x));});}
     addLog("Arrivée",(wd?"Workday":"Manuel")+" : "+nb.prenom+" "+nb.nom);
     addFssEntry({nom:nb.nom,prenom:nb.prenom,situation:"Arrivée",statut:"A traiter",lieu:lieuArr||"",dateEvt:dateArr||today,manager:nb.manager||"",matPC:"",ritm:"",matRecu:"",idMat:"",dateRecep:"",matDonne:"",commentaires:"",cloture:false});
     showToast("✅ "+(wd?"Arrivée Workday":"Arrivée enregistrée")+" — "+nb.prenom+" "+nb.nom+" + fiche Field Support créée");
@@ -1986,11 +2010,12 @@ function VueCollaborateurs({badges,casiers,setBadges,setCasiers,showToast,wdCach
     if(editing){
       const old=badges.find(b=>b.id===editing);const updated={...old,...form};
       setBadges(p=>p.map(b=>b.id===editing?updated:b));
-      if(sb){try{const{error}=await sb.from("lp24_badges").upsert(updated);if(error)throw error;}catch(e){console.error("save badge",e);showToast("⚠️ Pas sauvegardé (réseau) — réessaie","err");return;}}
+      if(sb){try{const{error}=await sb.from("lp24_badges").upsert(updated);if(error)throw error;}catch(e){console.error("save badge",e);showToast("⚠️ Pas sauvegardé — "+messageErreurBase(e),"err");return;}}
       await syncCasier(old.casier,form.casier,form.nom,form.prenom,form.matricule);
       addLog("Modification",form.prenom+" "+form.nom);showToast("✅ Collaborateur mis à jour");
     }else{
-      const nb={...form,id:nxId(badges),date_ajout:form.date_ajout||todayISO()};setBadges(p=>[...p,nb]);
+      {const d=trouverDoublons(badges,form,null);if(d.length&&!confirm("⚠️ Ce collaborateur est peut-être déjà dans le tableau :\n\n"+texteDoublons(d)+"\n\nL'ajouter quand même ?"))return;}
+      const nb={...form,id:"tmp_"+Date.now(),date_ajout:form.date_ajout||todayISO()};setBadges(p=>[...p,nb]);
       if(sb){
         const{id,...row}=nb;
         try{
@@ -1999,7 +2024,7 @@ function VueCollaborateurs({badges,casiers,setBadges,setCasiers,showToast,wdCach
           // On reprend l'identifiant réel donné par la base, sinon les modifications suivantes
           // écriraient sur une autre ligne.
           if(data&&data.id!=null&&data.id!==nb.id)setBadges(p=>p.map(b=>b===nb||b.id===nb.id&&b.nom===nb.nom?{...b,id:data.id}:b));
-        }catch(e){console.error("insert badge",e);showToast("⚠️ Pas sauvegardé (réseau) — réessaie","err");return;}
+        }catch(e){console.error("insert badge",e);setBadges(p=>p.filter(b=>b!==nb));showToast("⚠️ Pas sauvegardé — "+messageErreurBase(e),"err");return;}
       }
       await syncCasier("",form.casier,form.nom,form.prenom,form.matricule);
       addLog("Ajout",form.prenom+" "+form.nom);showToast("✅ Collaborateur ajouté");
@@ -2056,6 +2081,7 @@ function VueCollaborateurs({badges,casiers,setBadges,setCasiers,showToast,wdCach
           wdCache&&Object.keys(wdCache).length>0?React.createElement("p",{style:{fontSize:11,color:"#0369a1",background:"#e0f2fe",borderRadius:6,padding:"6px 10px",flex:1,margin:0}},"💡 Saisissez le nom ET prénom pour auto-compléter depuis Workday"):React.createElement("p",{style:{fontSize:11,color:"#9CA3AF",background:"#F3F4F6",borderRadius:6,padding:"6px 10px",flex:1,margin:0}},"⚠️ Workday non chargé — importez HR Data (👤)"),
           wdCache&&React.createElement(Btn,{color:"#0369a1",style:{fontSize:11,padding:"5px 10px",whiteSpace:"nowrap"},onClick:wdSearch},"🔍 Chercher")
         ),
+        (()=>{const d=trouverDoublons(badges,form,editing||null);return d.length?React.createElement("div",{style:{background:"#FFF7ED",border:"1px solid #FDBA74",color:"#9A3412",borderRadius:8,padding:"8px 12px",fontSize:12,marginBottom:10,whiteSpace:"pre-line",lineHeight:1.5}},React.createElement("b",null,"⚠️ Déjà dans le tableau :"),"\n"+texteDoublons(d)):null;})(),
         React.createElement("div",{style:{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(160px,1fr))",gap:10,marginBottom:10}},
           React.createElement("div",null,React.createElement(Lbl,null,"Nom *"),React.createElement(Inp,{value:form.nom,onChange:v=>updateForm("nom",v),placeholder:"DUPONT"})),
           React.createElement("div",null,React.createElement(Lbl,null,"Prénom"),React.createElement(Inp,{value:form.prenom,onChange:v=>updateForm("prenom",v),placeholder:"Jean"})),
@@ -2481,12 +2507,12 @@ function VueRapport({badges,fssData,setBadges,setFssData,showToast,addLog,setVie
       if(setView)setView("field_support");
       if(setPendingOpen)setPendingOpen({view:"field_support",id:tmpId});
     }else if(!m.hasBadge){
-      const nb={id:nxId(badges),nom:m.nom,prenom:m.prenom,matricule:"",email:"",serie:"",zeplug:"",carte_rechargement:"",
+      const nb={id:"tmp_"+Date.now(),nom:m.nom,prenom:m.prenom,matricule:"",email:"",serie:"",zeplug:"",carte_rechargement:"",
         casier:"",manager:m.manager||"",mail_manager:"",statut:category==="depart"?"À récupérer":"Actif",badge_donne:false,
         date_entree:category==="arrivee"?(m.date||today):"",date_sortie_prevue:category==="depart"?(m.date||today):"",
         date_archive:"",commentaire:"",date_ajout:todayISO(),etiquette_imprimee:false};
       setBadges(p=>[...p,nb]);
-      if(sb){const{id,...row}=nb;sbFire(sb.from("lp24_badges").insert(row).select("id").single(),"collaborateur").then(r=>{if(r&&r.data&&r.data.id!=null&&r.data.id!==nb.id)setBadges(p=>p.map(x=>x===nb||(x.id===nb.id&&x.nom===nb.nom)?{...x,id:r.data.id}:x));});}
+      if(sb){const{id,...row}=nb;sbFire(sb.from("lp24_badges").insert(row).select("id").single(),"collaborateur").then(r=>{if(!r){setBadges(p=>p.filter(x=>x!==nb));return;}if(r&&r.data&&r.data.id!=null&&r.data.id!==nb.id)setBadges(p=>p.map(x=>x===nb||(x.id===nb.id&&x.nom===nb.nom)?{...x,id:r.data.id}:x));});}
       if(addLog)addLog("Badge créé (Rapport)",m.prenom+" "+m.nom);
       if(showToast)showToast("✅ Badge collaborateur créé — "+m.prenom+" "+m.nom+", à compléter");
       if(setView)setView("collaborateurs");
@@ -2649,7 +2675,7 @@ function VueMSLists({badges,setBadges,showToast,addLog,wdCache}){
   const[rows,setRows]=useState([]);const[processed,setProcessed]=useState(new Set());
   const fmtFR=s=>{if(!s)return"";const m=s.match(/^(\d{2})\/(\d{2})\/(\d{4})/);return m?m[3]+"-"+m[2].padStart(2,"0")+"-"+m[1].padStart(2,"0"):s;};
   const loadCSV=file=>{const r=new FileReader();r.onload=e=>{try{const rows=parseMSListsCSV(e.target.result);setRows(rows);showToast("✅ "+rows.length+" lignes chargées");}catch(err){alert("Erreur CSV : "+err.message);}};r.readAsText(file,"UTF-8");};
-  const appArr=row=>{const nom=(row["Nom"]||"").toUpperCase().trim();const prenom=(row["Prénom"]||"").trim();const dateEvt=fmtFR(row["Date événement "]||row["Date événement"]||"");const manager=(row["Manager de l'embauché(e)"]||"").trim();const ex=badges.find(b=>b.nom===nom&&b.prenom.toLowerCase()===prenom.toLowerCase()&&b.statut!=="Archivé");if(ex){showToast("⚠️ "+prenom+" "+nom+" déjà présent","err");return;}const wd=wdCache?Object.values(wdCache).find(w=>w.nom===nom&&w.prenom.toLowerCase()===prenom.toLowerCase()):null;const nb={id:nxId(badges),nom,prenom,matricule:wd?wd.matricule:"",email:wd?wd.email:"",serie:"",zeplug:"",carte_rechargement:"",casier:"",manager:manager||(wd?wd.manager:""),mail_manager:wd?wd.mailMgr:"",statut:"Actif",date_sortie_prevue:"",date_archive:"",commentaire:"Importé MS Lists"+(dateEvt?" — arrivée : "+dateEvt:"")};setBadges(p=>[...p,nb]);addLog("Arrivée (MS Lists)",prenom+" "+nom+(dateEvt?" le "+dateEvt:""));setProcessed(p=>new Set([...p,row._idx]));showToast("✅ Arrivée : "+prenom+" "+nom);};
+  const appArr=row=>{const nom=(row["Nom"]||"").toUpperCase().trim();const prenom=(row["Prénom"]||"").trim();const dateEvt=fmtFR(row["Date événement "]||row["Date événement"]||"");const manager=(row["Manager de l'embauché(e)"]||"").trim();const ex=badges.find(b=>b.nom===nom&&b.prenom.toLowerCase()===prenom.toLowerCase()&&b.statut!=="Archivé");if(ex){showToast("⚠️ "+prenom+" "+nom+" déjà présent","err");return;}const wd=wdCache?Object.values(wdCache).find(w=>w.nom===nom&&w.prenom.toLowerCase()===prenom.toLowerCase()):null;const nb={id:"tmp_"+Date.now(),nom,prenom,matricule:wd?wd.matricule:"",email:wd?wd.email:"",serie:"",zeplug:"",carte_rechargement:"",casier:"",manager:manager||(wd?wd.manager:""),mail_manager:wd?wd.mailMgr:"",statut:"Actif",date_sortie_prevue:"",date_archive:"",commentaire:"Importé MS Lists"+(dateEvt?" — arrivée : "+dateEvt:"")};setBadges(p=>[...p,nb]);if(sb){const{id,...row}=nb;sbFire(sb.from("lp24_badges").insert(row).select("id").single(),"collaborateur").then(r=>{if(!r){setBadges(p=>p.filter(x=>x!==nb));return;}if(r.data&&r.data.id!=null)setBadges(p=>p.map(x=>x===nb?{...x,id:r.data.id}:x));});}addLog("Arrivée (MS Lists)",prenom+" "+nom+(dateEvt?" le "+dateEvt:""));setProcessed(p=>new Set([...p,row._idx]));showToast("✅ Arrivée : "+prenom+" "+nom);};
   const appDep=row=>{const nom=(row["Nom"]||"").toUpperCase().trim();const prenom=(row["Prénom"]||"").trim();const dateEvt=fmtFR(row["Date événement "]||row["Date événement"]||"");const c=badges.find(b=>b.nom===nom&&b.prenom.toLowerCase()===prenom.toLowerCase()&&b.statut!=="Archivé");if(!c){showToast("⚠️ "+prenom+" "+nom+" introuvable","err");return;}const u={...c,date_sortie_prevue:dateEvt||todayISO()};setBadges(p=>p.map(b=>b.id===c.id?u:b));addLog("Départ (MS Lists)",prenom+" "+nom+(dateEvt?" le "+dateEvt:""));setProcessed(p=>new Set([...p,row._idx]));showToast("✅ Départ : "+prenom+" "+nom);};
   const arrivees=rows.filter(r=>r["Situation collaborateur"]==="Arrivée");
   const departs=rows.filter(r=>r["Situation collaborateur"]==="Départ");
@@ -4298,7 +4324,7 @@ function App(){
   },[settings,unlocked]);
 
   const showToast=(msg,type="ok")=>{if(toastTimer.current)clearTimeout(toastTimer.current);setToast({msg,type});toastTimer.current=setTimeout(()=>setToast(null),3500);};
-  window.__sbErr=label=>showToast("⚠️ Pas sauvegardé ("+label+") — vérifie le réseau et réessaie","err");
+  window.__sbErr=(label,e)=>showToast("⚠️ Pas sauvegardé ("+label+") — "+messageErreurBase(e),"err");
   const addLog=useCallback((action,detail)=>{
   const entry={id:Date.now(),ts:TS(),action,detail,user:session?session.label:"admin"};
   setHisto(prev=>[entry,...prev].slice(0,300));
@@ -4729,7 +4755,31 @@ const{useState,useMemo,useCallback,useEffect,useRef}=React;
 // sbFire l'envoie, et prévient l'utilisateur si l'enregistrement échoue.
 function sbFire(q,label){
   return Promise.resolve(q).then(r=>{if(r&&r.error)throw r.error;return r;})
-    .catch(e=>{console.error("Enregistrement échoué ("+label+")",e);try{window.__sbErr&&window.__sbErr(label);}catch(_){}return null;});
+    .catch(e=>{console.error("Enregistrement échoué ("+label+")",e);try{window.__sbErr&&window.__sbErr(label,e);}catch(_){}return null;});
+}
+
+// ── Doublons : un collaborateur est-il déjà dans le tableau ? (même nom+prénom, inversés, même matricule ou e-mail) ──
+function trouverDoublons(badges,f,exceptId){
+  const norm=x=>String(x||"").normalize("NFD").replace(/[\u0300-\u036f]/g,"").toUpperCase().replace(/[^A-Z0-9]/g,"");
+  const n=norm(f&&f.nom),pr=norm(f&&f.prenom),m=String((f&&f.matricule)||"").trim(),e=String((f&&f.email)||"").trim().toLowerCase();
+  if(!n&&!m&&!e)return [];
+  return (badges||[]).filter(b=>b&&b.id!==exceptId).map(b=>{const r=[];
+    if(n&&pr&&norm(b.nom)===n&&norm(b.prenom)===pr)r.push("même nom et prénom");
+    else if(n&&pr&&norm(b.nom)===pr&&norm(b.prenom)===n)r.push("nom et prénom inversés");
+    if(m&&m!=="0"&&String(b.matricule||"").trim()===m)r.push("même matricule");
+    if(e&&String(b.email||"").trim().toLowerCase()===e)r.push("même e-mail");
+    return r.length?{b,r}:null;}).filter(Boolean);
+}
+function texteDoublons(d){return d.slice(0,5).map(({b,r})=>"• "+((b.prenom||"")+" "+(b.nom||"")).trim()+" — "+(b.statut||"")+(b.matricule?" · mat. "+b.matricule:"")+(b.casier?" · casier "+b.casier:"")+" ("+r.join(", ")+")").join("\n")+(d.length>5?"\n…":"");}
+// Message clair selon l'erreur renvoyée par la base
+function messageErreurBase(e){
+  const m=String((e&&(e.message||e.details||e.hint))||"");const c=e&&e.code;
+  if(c==="42501"||/row-level security|permission denied/i.test(m))return "accès refusé par la base (droits) — déconnecte-toi puis reconnecte-toi";
+  if(c==="23505"||/duplicate key/i.test(m))return "numéro de fiche déjà utilisé dans la base ("+m+")";
+  if(c==="PGRST204"||c==="42703"||/column/i.test(m))return "champ inconnu dans la base ("+m+")";
+  if(c==="22007"||c==="22P02"||/invalid input/i.test(m))return "valeur refusée par la base ("+m+")";
+  if(!m||/fetch|network|Failed|Load failed/i.test(m))return "pas de réseau, réessaie";
+  return m;
 }
 
 const C={blue:"#007AFF",blueBg:"rgba(0,122,255,.12)",purple:"#007AFF",purpleBg:"rgba(0,122,255,.12)",green:"#34C759",greenBg:"rgba(52,199,89,.15)",red:"#FF3B30",redBg:"rgba(255,59,48,.12)",orange:"#FF9500",orangeBg:"rgba(255,149,0,.15)",gray:"#8E8E93",grayBg:"rgba(118,118,128,.12)",dark:"#1C1C1E",cyan:"#32ADE6"};
@@ -5432,10 +5482,10 @@ function VueAccueil({badges,casiers,setView,wdCache,setBadges,setCasiers,showToa
     if(!nomArr.trim()&&!prenomArr.trim()){showToast("⚠️ Saisissez nom ou prénom","err");return;}
     const wd=wdCache?Object.values(wdCache).find(w=>(w.nom.includes(nomArr.toUpperCase())||!nomArr)&&(w.prenom.toLowerCase().includes(prenomArr.toLowerCase())||!prenomArr)):null;
     const ex=badges.find(b=>(b.nom.toLowerCase().includes(nomArr.toLowerCase())||!nomArr)&&(b.prenom.toLowerCase().includes(prenomArr.toLowerCase())||!prenomArr)&&b.statut!=="Archivé");
-    if(ex){showToast("⚠️ Ce collaborateur existe déjà","err");return;}
-    const nb={id:nxId(badges),nom:wd?wd.nom:nomArr.toUpperCase(),prenom:wd?wd.prenom:prenomArr,matricule:wd?wd.matricule:"",email:wd?wd.email:"",serie:"",zeplug:"",carte_rechargement:"",casier:"",manager:managerArr||wd?.manager||"",mail_manager:wd?.mailMgr||"",statut:"Actif",badge_donne:true,date_entree:dateArr||wd?.hireDate||"",date_sortie_prevue:"",date_archive:"",commentaire:"",date_ajout:todayISO(),etiquette_imprimee:false,from_accueil:true};
+    if(ex){showToast("⚠️ Déjà dans le tableau : "+((ex.prenom||"")+" "+(ex.nom||"")).trim()+(ex.matricule?" (mat. "+ex.matricule+")":"")+(ex.statut?" — "+ex.statut:"")+" : pas de doublon créé","err");return;}
+    const nb={id:"tmp_"+Date.now(),nom:wd?wd.nom:nomArr.toUpperCase(),prenom:wd?wd.prenom:prenomArr,matricule:wd?wd.matricule:"",email:wd?wd.email:"",serie:"",zeplug:"",carte_rechargement:"",casier:"",manager:managerArr||wd?.manager||"",mail_manager:wd?.mailMgr||"",statut:"Actif",badge_donne:true,date_entree:dateArr||wd?.hireDate||"",date_sortie_prevue:"",date_archive:"",commentaire:"",date_ajout:todayISO(),etiquette_imprimee:false,from_accueil:true};
     setBadges(p=>[...p,nb]);
-    if(sb){const{id,...row}=nb;sbFire(sb.from("lp24_badges").insert(row).select("id").single(),"collaborateur").then(r=>{if(r&&r.data&&r.data.id!=null&&r.data.id!==nb.id)setBadges(p=>p.map(x=>x===nb||(x.id===nb.id&&x.nom===nb.nom)?{...x,id:r.data.id}:x));});}
+    if(sb){const{id,...row}=nb;sbFire(sb.from("lp24_badges").insert(row).select("id").single(),"collaborateur").then(r=>{if(!r){setBadges(p=>p.filter(x=>x!==nb));return;}if(r&&r.data&&r.data.id!=null&&r.data.id!==nb.id)setBadges(p=>p.map(x=>x===nb||(x.id===nb.id&&x.nom===nb.nom)?{...x,id:r.data.id}:x));});}
     addLog("Arrivée",(wd?"Workday":"Manuel")+" : "+nb.prenom+" "+nb.nom);
     addFssEntry({nom:nb.nom,prenom:nb.prenom,situation:"Arrivée",statut:"A traiter",lieu:lieuArr||"",dateEvt:dateArr||today,manager:nb.manager||"",matPC:"",ritm:"",matRecu:"",idMat:"",dateRecep:"",matDonne:"",commentaires:"",cloture:false});
     showToast("✅ "+(wd?"Arrivée Workday":"Arrivée enregistrée")+" — "+nb.prenom+" "+nb.nom+" + fiche Field Support créée");
@@ -6039,11 +6089,12 @@ function VueCollaborateurs({badges,casiers,setBadges,setCasiers,showToast,wdCach
     if(editing){
       const old=badges.find(b=>b.id===editing);const updated={...old,...form};
       setBadges(p=>p.map(b=>b.id===editing?updated:b));
-      if(sb){try{const{error}=await sb.from("lp24_badges").upsert(updated);if(error)throw error;}catch(e){console.error("save badge",e);showToast("⚠️ Pas sauvegardé (réseau) — réessaie","err");return;}}
+      if(sb){try{const{error}=await sb.from("lp24_badges").upsert(updated);if(error)throw error;}catch(e){console.error("save badge",e);showToast("⚠️ Pas sauvegardé — "+messageErreurBase(e),"err");return;}}
       await syncCasier(old.casier,form.casier,form.nom,form.prenom,form.matricule);
       addLog("Modification",form.prenom+" "+form.nom);showToast("✅ Collaborateur mis à jour");
     }else{
-      const nb={...form,id:nxId(badges),date_ajout:form.date_ajout||todayISO()};setBadges(p=>[...p,nb]);
+      {const d=trouverDoublons(badges,form,null);if(d.length&&!confirm("⚠️ Ce collaborateur est peut-être déjà dans le tableau :\n\n"+texteDoublons(d)+"\n\nL'ajouter quand même ?"))return;}
+      const nb={...form,id:"tmp_"+Date.now(),date_ajout:form.date_ajout||todayISO()};setBadges(p=>[...p,nb]);
       if(sb){
         const{id,...row}=nb;
         try{
@@ -6052,7 +6103,7 @@ function VueCollaborateurs({badges,casiers,setBadges,setCasiers,showToast,wdCach
           // On reprend l'identifiant réel donné par la base, sinon les modifications suivantes
           // écriraient sur une autre ligne.
           if(data&&data.id!=null&&data.id!==nb.id)setBadges(p=>p.map(b=>b===nb||b.id===nb.id&&b.nom===nb.nom?{...b,id:data.id}:b));
-        }catch(e){console.error("insert badge",e);showToast("⚠️ Pas sauvegardé (réseau) — réessaie","err");return;}
+        }catch(e){console.error("insert badge",e);setBadges(p=>p.filter(b=>b!==nb));showToast("⚠️ Pas sauvegardé — "+messageErreurBase(e),"err");return;}
       }
       await syncCasier("",form.casier,form.nom,form.prenom,form.matricule);
       addLog("Ajout",form.prenom+" "+form.nom);showToast("✅ Collaborateur ajouté");
@@ -6185,6 +6236,7 @@ function VueCollaborateurs({badges,casiers,setBadges,setCasiers,showToast,wdCach
           wdCache&&Object.keys(wdCache).length>0?React.createElement("p",{style:{fontSize:11,color:"#0369a1",background:"#e0f2fe",borderRadius:6,padding:"6px 10px",flex:1,margin:0}},"💡 Saisissez le nom ET prénom pour auto-compléter depuis Workday"):React.createElement("p",{style:{fontSize:11,color:"#9CA3AF",background:"#F3F4F6",borderRadius:6,padding:"6px 10px",flex:1,margin:0}},"⚠️ Workday non chargé — importez HR Data (👤)"),
           wdCache&&React.createElement(Btn,{color:"#0369a1",style:{fontSize:11,padding:"5px 10px",whiteSpace:"nowrap"},onClick:wdSearch},"🔍 Chercher")
         ),
+        (()=>{const d=trouverDoublons(badges,form,editing||null);return d.length?React.createElement("div",{style:{background:"#FFF7ED",border:"1px solid #FDBA74",color:"#9A3412",borderRadius:8,padding:"8px 12px",fontSize:12,marginBottom:10,whiteSpace:"pre-line",lineHeight:1.5}},React.createElement("b",null,"⚠️ Déjà dans le tableau :"),"\n"+texteDoublons(d)):null;})(),
         React.createElement("div",{style:{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(160px,1fr))",gap:10,marginBottom:10}},
           React.createElement("div",null,React.createElement(Lbl,null,"Nom *"),React.createElement(Inp,{value:form.nom,onChange:v=>updateForm("nom",v),placeholder:"DUPONT"})),
           React.createElement("div",null,React.createElement(Lbl,null,"Prénom"),React.createElement(Inp,{value:form.prenom,onChange:v=>updateForm("prenom",v),placeholder:"Jean"})),
@@ -6622,12 +6674,12 @@ function VueRapport({badges,fssData,setBadges,setFssData,showToast,addLog,setVie
       if(setView)setView("field_support");
       if(setPendingOpen)setPendingOpen({view:"field_support",id:tmpId});
     }else if(!m.hasBadge){
-      const nb={id:nxId(badges),nom:m.nom,prenom:m.prenom,matricule:"",email:"",serie:"",zeplug:"",carte_rechargement:"",
+      const nb={id:"tmp_"+Date.now(),nom:m.nom,prenom:m.prenom,matricule:"",email:"",serie:"",zeplug:"",carte_rechargement:"",
         casier:"",manager:m.manager||"",mail_manager:"",statut:category==="depart"?"À récupérer":"Actif",badge_donne:false,
         date_entree:category==="arrivee"?(m.date||today):"",date_sortie_prevue:category==="depart"?(m.date||today):"",
         date_archive:"",commentaire:"",date_ajout:todayISO(),etiquette_imprimee:false};
       setBadges(p=>[...p,nb]);
-      if(sb){const{id,...row}=nb;sbFire(sb.from("lp24_badges").insert(row).select("id").single(),"collaborateur").then(r=>{if(r&&r.data&&r.data.id!=null&&r.data.id!==nb.id)setBadges(p=>p.map(x=>x===nb||(x.id===nb.id&&x.nom===nb.nom)?{...x,id:r.data.id}:x));});}
+      if(sb){const{id,...row}=nb;sbFire(sb.from("lp24_badges").insert(row).select("id").single(),"collaborateur").then(r=>{if(!r){setBadges(p=>p.filter(x=>x!==nb));return;}if(r&&r.data&&r.data.id!=null&&r.data.id!==nb.id)setBadges(p=>p.map(x=>x===nb||(x.id===nb.id&&x.nom===nb.nom)?{...x,id:r.data.id}:x));});}
       if(addLog)addLog("Badge créé (Rapport)",m.prenom+" "+m.nom);
       if(showToast)showToast("✅ Badge collaborateur créé — "+m.prenom+" "+m.nom+", à compléter");
       if(setView)setView("collaborateurs");
@@ -6801,7 +6853,7 @@ function VueMSLists({badges,setBadges,showToast,addLog,wdCache}){
   const[rows,setRows]=useState([]);const[processed,setProcessed]=useState(new Set());
   const fmtFR=s=>{if(!s)return"";const m=s.match(/^(\d{2})\/(\d{2})\/(\d{4})/);return m?m[3]+"-"+m[2].padStart(2,"0")+"-"+m[1].padStart(2,"0"):s;};
   const loadCSV=file=>{const r=new FileReader();r.onload=e=>{try{const rows=parseMSListsCSV(e.target.result);setRows(rows);showToast("✅ "+rows.length+" lignes chargées");}catch(err){alert("Erreur CSV : "+err.message);}};r.readAsText(file,"UTF-8");};
-  const appArr=row=>{const nom=(row["Nom"]||"").toUpperCase().trim();const prenom=(row["Prénom"]||"").trim();const dateEvt=fmtFR(row["Date événement "]||row["Date événement"]||"");const manager=(row["Manager de l'embauché(e)"]||"").trim();const ex=badges.find(b=>b.nom===nom&&b.prenom.toLowerCase()===prenom.toLowerCase()&&b.statut!=="Archivé");if(ex){showToast("⚠️ "+prenom+" "+nom+" déjà présent","err");return;}const wd=wdCache?Object.values(wdCache).find(w=>w.nom===nom&&w.prenom.toLowerCase()===prenom.toLowerCase()):null;const nb={id:nxId(badges),nom,prenom,matricule:wd?wd.matricule:"",email:wd?wd.email:"",serie:"",zeplug:"",carte_rechargement:"",casier:"",manager:manager||(wd?wd.manager:""),mail_manager:wd?wd.mailMgr:"",statut:"Actif",date_sortie_prevue:"",date_archive:"",commentaire:"Importé MS Lists"+(dateEvt?" — arrivée : "+dateEvt:"")};setBadges(p=>[...p,nb]);addLog("Arrivée (MS Lists)",prenom+" "+nom+(dateEvt?" le "+dateEvt:""));setProcessed(p=>new Set([...p,row._idx]));showToast("✅ Arrivée : "+prenom+" "+nom);};
+  const appArr=row=>{const nom=(row["Nom"]||"").toUpperCase().trim();const prenom=(row["Prénom"]||"").trim();const dateEvt=fmtFR(row["Date événement "]||row["Date événement"]||"");const manager=(row["Manager de l'embauché(e)"]||"").trim();const ex=badges.find(b=>b.nom===nom&&b.prenom.toLowerCase()===prenom.toLowerCase()&&b.statut!=="Archivé");if(ex){showToast("⚠️ "+prenom+" "+nom+" déjà présent","err");return;}const wd=wdCache?Object.values(wdCache).find(w=>w.nom===nom&&w.prenom.toLowerCase()===prenom.toLowerCase()):null;const nb={id:"tmp_"+Date.now(),nom,prenom,matricule:wd?wd.matricule:"",email:wd?wd.email:"",serie:"",zeplug:"",carte_rechargement:"",casier:"",manager:manager||(wd?wd.manager:""),mail_manager:wd?wd.mailMgr:"",statut:"Actif",date_sortie_prevue:"",date_archive:"",commentaire:"Importé MS Lists"+(dateEvt?" — arrivée : "+dateEvt:"")};setBadges(p=>[...p,nb]);if(sb){const{id,...row}=nb;sbFire(sb.from("lp24_badges").insert(row).select("id").single(),"collaborateur").then(r=>{if(!r){setBadges(p=>p.filter(x=>x!==nb));return;}if(r.data&&r.data.id!=null)setBadges(p=>p.map(x=>x===nb?{...x,id:r.data.id}:x));});}addLog("Arrivée (MS Lists)",prenom+" "+nom+(dateEvt?" le "+dateEvt:""));setProcessed(p=>new Set([...p,row._idx]));showToast("✅ Arrivée : "+prenom+" "+nom);};
   const appDep=row=>{const nom=(row["Nom"]||"").toUpperCase().trim();const prenom=(row["Prénom"]||"").trim();const dateEvt=fmtFR(row["Date événement "]||row["Date événement"]||"");const c=badges.find(b=>b.nom===nom&&b.prenom.toLowerCase()===prenom.toLowerCase()&&b.statut!=="Archivé");if(!c){showToast("⚠️ "+prenom+" "+nom+" introuvable","err");return;}const u={...c,date_sortie_prevue:dateEvt||todayISO()};setBadges(p=>p.map(b=>b.id===c.id?u:b));addLog("Départ (MS Lists)",prenom+" "+nom+(dateEvt?" le "+dateEvt:""));setProcessed(p=>new Set([...p,row._idx]));showToast("✅ Départ : "+prenom+" "+nom);};
   const arrivees=rows.filter(r=>r["Situation collaborateur"]==="Arrivée");
   const departs=rows.filter(r=>r["Situation collaborateur"]==="Départ");
@@ -8475,7 +8527,7 @@ function App(){
   },[settings,unlocked]);
 
   const showToast=(msg,type="ok")=>{if(toastTimer.current)clearTimeout(toastTimer.current);setToast({msg,type});toastTimer.current=setTimeout(()=>setToast(null),3500);};
-  window.__sbErr=label=>showToast("⚠️ Pas sauvegardé ("+label+") — vérifie le réseau et réessaie","err");
+  window.__sbErr=(label,e)=>showToast("⚠️ Pas sauvegardé ("+label+") — "+messageErreurBase(e),"err");
   const addLog=useCallback((action,detail)=>{
   const entry={id:Date.now(),ts:TS(),action,detail,user:session?session.label:"admin"};
   setHisto(prev=>[entry,...prev].slice(0,300));
