@@ -3645,6 +3645,24 @@ function PadSignature({onChange}){
       el("button",{type:"button",className:"btn",style:{fontSize:11,padding:"3px 10px"},onClick:effacer},"Effacer")));
 }
 
+
+// ════════════════ COLIS : historique d'un colis (table lp24_colis_journal, remplie par la base) ════════════════
+function HistoriqueColis({id}){
+  const el=React.createElement;const[lignes,setLignes]=React.useState(null);const[err,setErr]=React.useState(false);
+  React.useEffect(()=>{let ok=true;(async()=>{try{const r=await sb.from("lp24_colis_journal").select("action,par,le,apres").eq("colis_id",id).order("le",{ascending:true});
+    if(!ok)return;if(r.error)setErr(true);else setLignes(r.data||[]);}catch(e){if(ok)setErr(true);}})();return()=>{ok=false;};},[id]);
+  const dt=d=>{try{return new Date(d).toLocaleString("fr-FR",{day:"2-digit",month:"2-digit",year:"numeric",hour:"2-digit",minute:"2-digit"});}catch(e){return "";}};
+  return el("div",{style:{border:"1px solid var(--border)",borderRadius:10,padding:"10px 12px",background:"var(--surface2)"}},
+    el("div",{style:{fontSize:11,fontWeight:700,color:"var(--text2)",textTransform:"uppercase",letterSpacing:".4px",marginBottom:6}},"🕐 Historique du colis"),
+    err?el("div",{style:{fontSize:12,color:"var(--text3)"}},"Historique pas encore activé (script colis-historique.sql à lancer dans Supabase)."):
+    !lignes?el("div",{style:{fontSize:12,color:"var(--text3)"}},"Chargement…"):
+    lignes.length===0?el("div",{style:{fontSize:12,color:"var(--text3)"}},"Aucun événement enregistré (colis créé avant l'activation de l'historique)."):
+    lignes.map((l,i)=>el("div",{key:i,style:{display:"flex",gap:8,fontSize:12,padding:"4px 0",borderTop:i?"1px solid var(--border)":"none"}},
+      el("span",{style:{color:"var(--text3)",whiteSpace:"nowrap"}},dt(l.le)),
+      el("span",{style:{fontWeight:600,color:"var(--text)"}},l.action+(l.apres&&l.apres.recupere_par&&/Récupéré/.test(l.action)?" par "+l.apres.recupere_par:"")),
+      el("span",{style:{color:"var(--text3)",marginLeft:"auto",whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}},l.par&&l.par!=="système"?l.par:""))));
+}
+
 function SettingsModal({settings,setSettings,showToast,setShowSettings,racineRef,hrRef,hcmRef,importJsonRef,exportExcel,exportJSON,importJSON,badges,setBadges,casiers,wdCache,histo,addLog,canHistorique,canArchives,canHistoriquePret,initialTab}){
   const[tab,setTab]=useState(initialTab||"emails");
   const archivesCount=badges.filter(b=>b.statut==="Archivé").length;
@@ -4168,7 +4186,7 @@ function VueColis({showToast,addLog,badges}){
           el("div",{style:{fontSize:20,fontWeight:800}},form.id?"📦 "+num(form.numero):"📦 Nouveau colis")),
         el("button",{type:"button",onClick:()=>setForm(null),style:{background:"var(--surface3)",border:"none",borderRadius:8,padding:"6px 10px",fontSize:18,cursor:"pointer",color:"var(--text3)"}},"×")),
       el("div",{style:{display:"grid",gap:12}},
-        el("div",null,
+        !form.id&&el("div",null,
           el("label",{className:"btn btn-outline",style:{width:"100%",justifyContent:"center",fontWeight:700,cursor:"pointer"}},"📷 Photographier l'étiquette",
             el("input",{type:"file",accept:"image/*",capture:"environment",style:{display:"none"},onChange:e=>{const f=e.target.files&&e.target.files[0];e.target.value="";lireEtiquette(f);}})),
           ocr&&el("div",{style:{fontSize:12,marginTop:6,color:/^✅/.test(ocr)?"var(--green)":/^⚠️/.test(ocr)?"var(--orange)":"var(--text2)",fontWeight:600}},ocr)),
@@ -4184,12 +4202,14 @@ function VueColis({showToast,addLog,badges}){
         el("div",null,lab("Prévenu le"),el("input",{className:"inp",type:"date",value:String(form.prevenu_le||"").slice(0,10),onChange:e=>setForm({...form,prevenu_le:e.target.value||null})})),
         (form.statut==="recupere")&&el("div",null,lab("🙋 Récupéré par (si une autre personne)"),el("input",{className:"inp",value:form.recupere_par||"",onChange:e=>setForm({...form,recupere_par:e.target.value}),placeholder:"Laisser vide si c'est le destinataire"})),
         el("div",null,lab("💬 Commentaire"),el("input",{className:"inp",value:form.commentaire||"",onChange:e=>setForm({...form,commentaire:e.target.value}),placeholder:"Transporteur, emplacement…"})),
+        form.id&&el(HistoriqueColis,{id:form.id}),
         form.signature&&el("div",null,lab("✍️ Signature à la remise"+(form.signe_le?" — "+new Date(form.signe_le).toLocaleString("fr-FR",{day:"2-digit",month:"2-digit",year:"numeric",hour:"2-digit",minute:"2-digit"}):"")),
           el("img",{src:form.signature,alt:"Signature",style:{width:"100%",maxHeight:110,objectFit:"contain",background:"#fff",border:"1px solid var(--border)",borderRadius:8}}))),
       el("div",{style:{display:"flex",gap:8,marginTop:18,flexWrap:"wrap"}},
         el("button",{type:"button",className:"btn btn-primary",style:{flex:1,justifyContent:"center",fontWeight:700},onClick:enregistrer},form.id?"Enregistrer":"📦 Enregistrer le colis"),
         form.id&&el("button",{type:"button",className:"btn",onClick:()=>dupliquer(form),title:"Nouveau colis pour la même personne, avec un nouveau numéro"},"⧉ Dupliquer"),
-        form.id&&el("button",{type:"button",className:"btn btn-danger",onClick:()=>supprimer(form)},"Supprimer"))));
+        form.id&&!(form.statut==="recupere"||form.signature)&&el("button",{type:"button",className:"btn btn-danger",onClick:()=>supprimer(form)},"Supprimer"),
+        form.id&&(form.statut==="recupere"||form.signature)&&el("div",{style:{width:"100%",fontSize:11,color:"var(--text3)",textAlign:"center"}},"Colis remis : conservé avec sa signature et son historique, il ne peut pas être supprimé."))));
   const fenRetrait=retrait&&el("div",{style:{position:"fixed",inset:0,background:"rgba(0,0,0,.45)",zIndex:1001,display:"flex",alignItems:"center",justifyContent:"center",padding:16,backdropFilter:"blur(4px)"},onClick:e=>{if(e.target===e.currentTarget)setRetrait(null);}},
     el("div",{style:{background:"var(--surface)",border:"1px solid var(--border)",borderRadius:"var(--radius-lg)",padding:22,width:"100%",maxWidth:400,boxShadow:"0 24px 60px rgba(0,0,0,.2)"}},
       el("div",{style:{fontSize:18,fontWeight:800,marginBottom:4}},"✅ Colis "+num(retrait.c.numero)+" récupéré"),
@@ -8052,6 +8072,24 @@ function PadSignature({onChange}){
       el("button",{type:"button",className:"btn",style:{fontSize:11,padding:"3px 10px"},onClick:effacer},"Effacer")));
 }
 
+
+// ════════════════ COLIS : historique d'un colis (table lp24_colis_journal, remplie par la base) ════════════════
+function HistoriqueColis({id}){
+  const el=React.createElement;const[lignes,setLignes]=React.useState(null);const[err,setErr]=React.useState(false);
+  React.useEffect(()=>{let ok=true;(async()=>{try{const r=await sb.from("lp24_colis_journal").select("action,par,le,apres").eq("colis_id",id).order("le",{ascending:true});
+    if(!ok)return;if(r.error)setErr(true);else setLignes(r.data||[]);}catch(e){if(ok)setErr(true);}})();return()=>{ok=false;};},[id]);
+  const dt=d=>{try{return new Date(d).toLocaleString("fr-FR",{day:"2-digit",month:"2-digit",year:"numeric",hour:"2-digit",minute:"2-digit"});}catch(e){return "";}};
+  return el("div",{style:{border:"1px solid var(--border)",borderRadius:10,padding:"10px 12px",background:"var(--surface2)"}},
+    el("div",{style:{fontSize:11,fontWeight:700,color:"var(--text2)",textTransform:"uppercase",letterSpacing:".4px",marginBottom:6}},"🕐 Historique du colis"),
+    err?el("div",{style:{fontSize:12,color:"var(--text3)"}},"Historique pas encore activé (script colis-historique.sql à lancer dans Supabase)."):
+    !lignes?el("div",{style:{fontSize:12,color:"var(--text3)"}},"Chargement…"):
+    lignes.length===0?el("div",{style:{fontSize:12,color:"var(--text3)"}},"Aucun événement enregistré (colis créé avant l'activation de l'historique)."):
+    lignes.map((l,i)=>el("div",{key:i,style:{display:"flex",gap:8,fontSize:12,padding:"4px 0",borderTop:i?"1px solid var(--border)":"none"}},
+      el("span",{style:{color:"var(--text3)",whiteSpace:"nowrap"}},dt(l.le)),
+      el("span",{style:{fontWeight:600,color:"var(--text)"}},l.action+(l.apres&&l.apres.recupere_par&&/Récupéré/.test(l.action)?" par "+l.apres.recupere_par:"")),
+      el("span",{style:{color:"var(--text3)",marginLeft:"auto",whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}},l.par&&l.par!=="système"?l.par:""))));
+}
+
 function SettingsModal({settings,setSettings,showToast,setShowSettings,racineRef,hrRef,hcmRef,importJsonRef,exportExcel,exportJSON,importJSON,badges,setBadges,casiers,wdCache,histo,addLog,canHistorique,canArchives,canHistoriquePret,initialTab}){
   const[tab,setTab]=useState(initialTab||"emails");
   const archivesCount=badges.filter(b=>b.statut==="Archivé").length;
@@ -8592,7 +8630,7 @@ function VueColis({showToast,addLog,badges}){
           el("div",{style:{fontSize:20,fontWeight:800}},form.id?"📦 "+num(form.numero):"📦 Nouveau colis")),
         el("button",{type:"button",onClick:()=>setForm(null),style:{background:"var(--surface3)",border:"none",borderRadius:8,padding:"6px 10px",fontSize:18,cursor:"pointer",color:"var(--text3)"}},"×")),
       el("div",{style:{display:"grid",gap:12}},
-        el("div",null,
+        !form.id&&el("div",null,
           el("label",{className:"btn btn-outline",style:{width:"100%",justifyContent:"center",fontWeight:700,cursor:"pointer"}},"📷 Photographier l'étiquette",
             el("input",{type:"file",accept:"image/*",capture:"environment",style:{display:"none"},onChange:e=>{const f=e.target.files&&e.target.files[0];e.target.value="";lireEtiquette(f);}})),
           ocr&&el("div",{style:{fontSize:12,marginTop:6,color:/^✅/.test(ocr)?"var(--green)":/^⚠️/.test(ocr)?"var(--orange)":"var(--text2)",fontWeight:600}},ocr)),
@@ -8608,12 +8646,14 @@ function VueColis({showToast,addLog,badges}){
         el("div",null,lab("Prévenu le"),el("input",{className:"inp",type:"date",value:String(form.prevenu_le||"").slice(0,10),onChange:e=>setForm({...form,prevenu_le:e.target.value||null})})),
         (form.statut==="recupere")&&el("div",null,lab("🙋 Récupéré par (si une autre personne)"),el("input",{className:"inp",value:form.recupere_par||"",onChange:e=>setForm({...form,recupere_par:e.target.value}),placeholder:"Laisser vide si c'est le destinataire"})),
         el("div",null,lab("💬 Commentaire"),el("input",{className:"inp",value:form.commentaire||"",onChange:e=>setForm({...form,commentaire:e.target.value}),placeholder:"Transporteur, emplacement…"})),
+        form.id&&el(HistoriqueColis,{id:form.id}),
         form.signature&&el("div",null,lab("✍️ Signature à la remise"+(form.signe_le?" — "+new Date(form.signe_le).toLocaleString("fr-FR",{day:"2-digit",month:"2-digit",year:"numeric",hour:"2-digit",minute:"2-digit"}):"")),
           el("img",{src:form.signature,alt:"Signature",style:{width:"100%",maxHeight:110,objectFit:"contain",background:"#fff",border:"1px solid var(--border)",borderRadius:8}}))),
       el("div",{style:{display:"flex",gap:8,marginTop:18,flexWrap:"wrap"}},
         el("button",{type:"button",className:"btn btn-primary",style:{flex:1,justifyContent:"center",fontWeight:700},onClick:enregistrer},form.id?"Enregistrer":"📦 Enregistrer le colis"),
         form.id&&el("button",{type:"button",className:"btn",onClick:()=>dupliquer(form),title:"Nouveau colis pour la même personne, avec un nouveau numéro"},"⧉ Dupliquer"),
-        form.id&&el("button",{type:"button",className:"btn btn-danger",onClick:()=>supprimer(form)},"Supprimer"))));
+        form.id&&!(form.statut==="recupere"||form.signature)&&el("button",{type:"button",className:"btn btn-danger",onClick:()=>supprimer(form)},"Supprimer"),
+        form.id&&(form.statut==="recupere"||form.signature)&&el("div",{style:{width:"100%",fontSize:11,color:"var(--text3)",textAlign:"center"}},"Colis remis : conservé avec sa signature et son historique, il ne peut pas être supprimé."))));
   const fenRetrait=retrait&&el("div",{style:{position:"fixed",inset:0,background:"rgba(0,0,0,.45)",zIndex:1001,display:"flex",alignItems:"center",justifyContent:"center",padding:16,backdropFilter:"blur(4px)"},onClick:e=>{if(e.target===e.currentTarget)setRetrait(null);}},
     el("div",{style:{background:"var(--surface)",border:"1px solid var(--border)",borderRadius:"var(--radius-lg)",padding:22,width:"100%",maxWidth:400,boxShadow:"0 24px 60px rgba(0,0,0,.2)"}},
       el("div",{style:{fontSize:18,fontWeight:800,marginBottom:4}},"✅ Colis "+num(retrait.c.numero)+" récupéré"),
