@@ -2237,7 +2237,7 @@ function VueCollaborateurs({badges,casiers,setBadges,setCasiers,showToast,wdCach
 }
 
 // ════════════════ VUE CASIERS ════════════════
-function VueCasiers({casiers,badges,setCasiers,showToast,addLog,setView}){
+function VueCasiers({casiers,badges,setCasiers,setBadges,showToast,addLog,setView}){
   const[fZone,setFZone]=useState("");const[fStat,setFStat]=useState("");const[search,setSearch]=useState("");
   const[showForm,setShowForm]=useState(false);const[editing,setEditing]=useState(null);const[viewMode,setViewMode0]=useState(()=>{try{return localStorage.getItem("casiersView")||"liste";}catch(e){return "liste";}});
   const setViewMode=f=>setViewMode0(v=>{const n=typeof f==="function"?f(v):f;try{localStorage.setItem("casiersView",n);}catch(e){}return n;});
@@ -2256,7 +2256,7 @@ function VueCasiers({casiers,badges,setCasiers,showToast,addLog,setView}){
   const aViderWhy=c=>{const m=movedTo(c);return m?("a maintenant le casier "+m.casier):"plus dans la liste";};
   const findLinked=useCallback(c=>{const b=badgeByCasier[casierKey(c.numero)];if(b)return b;const n=c.occupant&&badgeNoCasierByName[personKey(c.occupant)];return n?{...n,_sansCasier:true}:null;},[badgeByCasier,badgeNoCasierByName]);
   const isOccupied=c=>c.statut==="Occupé"||!!c.occupant;
-  const isAVider=useCallback(c=>isOccupied(c)&&!findLinked(c),[findLinked]);
+  const isAVider=useCallback(c=>isOccupied(c)&&!!String(c.occupant||"").trim()&&!findLinked(c),[findLinked]);
   const statCLinked=st=>({"Actif":C.green,"À récupérer":C.red,"Badge prêt":C.blue,"Badge VIP":"#7C3AED","Futur arrivant":"#0891B2"}[st]||C.gray);
   const aViderCount=useMemo(()=>casiers.filter(isAVider).length,[casiers,isAVider]);
 
@@ -2281,7 +2281,29 @@ function VueCasiers({casiers,badges,setCasiers,showToast,addLog,setView}){
     else if(fStat&&c.statut!==fStat)return false;
     const q=search.toLowerCase();return!q||(c.numero+c.occupant+c.matricule).toLowerCase().includes(q);
   }),[casiers,fZone,fStat,search,isAVider]);
-  const save=async()=>{
+  const[qui,setQui]=useState(null); // null = personne actuelle du casier
+  useEffect(()=>{setQui(null);},[showForm,editing]);
+  const actifsTries=useMemo(()=>badges.filter(b=>b.statut!=="Archivé").slice().sort((a,b)=>((a.nom||"")+" "+(a.prenom||"")).localeCompare((b.nom||"")+" "+(b.prenom||""),"fr")),[badges]);
+  const titulaire=form&&form.numero?badgeByCasier[casierKey(form.numero)]||null:null;
+  const quiSel=qui===null?(titulaire?String(titulaire.id):""):qui;
+  const enregistrerCasier=async()=>{
+    const sel=quiSel?badges.find(b=>String(b.id)===String(quiSel)):null;
+    let nf={...form};
+    if(sel)nf={...nf,statut:"Occupé",occupant:((sel.nom||"")+" "+(sel.prenom||"")).trim(),matricule:String(sel.matricule||"")};
+    else if(titulaire||nf.statut!=="Occupé"||!String(nf.occupant||"").trim())nf={...nf,occupant:"",matricule:""};
+    const ok=await save(nf);if(!ok)return;
+    const num=String(nf.numero||"").trim();const chg=[];
+    if(titulaire&&(!sel||sel.id!==titulaire.id))chg.push({...titulaire,casier:""});
+    if(sel&&casierKey(sel.casier)!==casierKey(num))chg.push({...sel,casier:num});
+    if(!chg.length)return;
+    setBadges(prev=>prev.map(b=>chg.find(x=>x.id===b.id)||b));
+    chg.forEach(x=>{if(sb&&typeof x.id==="number")sbFire(sb.from("lp24_badges").upsert(x),"collaborateur");});
+    if(sel){addLog("Casier attribué",num+" → "+sel.prenom+" "+sel.nom+(sel.casier&&casierKey(sel.casier)!==casierKey(num)?" (avant : "+sel.casier+")":""));
+      showToast("✅ Casier "+num+" attribué à "+sel.prenom+" "+sel.nom+(sel.casier&&casierKey(sel.casier)!==casierKey(num)?" — son ancien casier "+sel.casier+" passe « à vider »":""));}
+    else if(titulaire){addLog("Casier retiré",num+" (était à "+titulaire.prenom+" "+titulaire.nom+")");showToast("Casier "+num+" retiré de la fiche de "+titulaire.prenom+" "+titulaire.nom);}
+  };
+  const lireForm=()=>form;
+  const save=async(fx)=>{const form=(fx&&fx.numero!==undefined)?fx:lireForm();
     if(!form.numero.trim())return;
     if(editing){
       const orig=casiers.find(c=>c.id===editing);const upd={...orig,...form};
@@ -2306,7 +2328,7 @@ function VueCasiers({casiers,badges,setCasiers,showToast,addLog,setView}){
       }
       addLog("Casier ajouté",form.numero);showToast("✅ Casier ajouté");
     }
-    setShowForm(false);setEditing(null);
+    setShowForm(false);setEditing(null);return true;
   };
   const del=async id=>{
     if(!confirm("Supprimer ce casier ?"))return;
@@ -2423,13 +2445,18 @@ function VueCasiers({casiers,badges,setCasiers,showToast,addLog,setView}){
       )
     ),
     showForm&&React.createElement(Card,{style:{marginBottom:16,borderLeft:"4px solid "+C.purple,background:"#F5F3FF"}},
-      React.createElement("div",{style:{fontSize:11,color:"#7C3AED",marginBottom:10}},"ℹ️ L'attribution d'un casier à un collaborateur se fait depuis la fiche Collaborateur — ici on ne gère que l'inventaire (numéro, zone, réservation, hors service)."),
+      React.createElement("div",{style:{marginBottom:10}},
+        React.createElement(Lbl,null,"👤 Attribué à"),
+        React.createElement("select",{className:"inp",value:quiSel,onChange:e=>setQui(e.target.value),style:{width:"100%",cursor:"pointer"}},
+          React.createElement("option",{value:""},"— Personne —"),
+          actifsTries.map(b=>React.createElement("option",{key:b.id,value:String(b.id)},String(b.nom||"").toUpperCase()+" "+(b.prenom||"")+(b.casier&&casierKey(b.casier)!==casierKey(form.numero||"")?"  (a déjà le casier "+b.casier+")":"")))),
+        React.createElement("div",{style:{fontSize:11,color:"#7C3AED",marginTop:4}},quiSel?"La fiche du collaborateur est mise à jour automatiquement avec ce casier.":"Sans personne : choisis le statut ci-dessous (« Occupé » = occupé sans nom).")),
       React.createElement("div",{style:{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(150px,1fr))",gap:10,marginBottom:10}},
         React.createElement("div",null,React.createElement(Lbl,null,"N° Casier *"),React.createElement(Inp,{value:form.numero,onChange:v=>setForm({...form,numero:v}),placeholder:"DE103"})),
         React.createElement("div",null,React.createElement(Lbl,null,"Zone"),React.createElement(Sel,{value:form.zone,onChange:v=>setForm({...form,zone:v}),options:ZONES.map(z=>({v:z,l:z+" — "+ZONES_LABELS[z]})),style:{width:"100%"}})),
-        React.createElement("div",null,React.createElement(Lbl,null,"Statut"),React.createElement(Sel,{value:form.statut,onChange:v=>setForm({...form,statut:v}),options:["Libre","Réservé","Hors service"],style:{width:"100%"}})),
+        React.createElement("div",null,React.createElement(Lbl,null,"Statut"),quiSel?React.createElement("div",{className:"inp",style:{display:"flex",alignItems:"center",color:"var(--text2)",background:"var(--surface2)"}},"Occupé"):React.createElement(Sel,{value:form.statut,onChange:v=>setForm({...form,statut:v}),options:[{v:"Libre",l:"Libre"},{v:"Occupé",l:"Occupé (sans nom)"},{v:"Réservé",l:"Réservé"},{v:"Hors service",l:"Hors service"}],style:{width:"100%"}})),
       ),
-      React.createElement("div",{style:{display:"flex",gap:8}},React.createElement(Btn,{onClick:save,color:C.purple},"💾 Enregistrer"),React.createElement(Btn,{onClick:()=>{setShowForm(false);setEditing(null);},variant:"outline",color:C.gray},"Annuler"))
+      React.createElement("div",{style:{display:"flex",gap:8}},React.createElement(Btn,{onClick:enregistrerCasier,color:C.purple},"💾 Enregistrer"),React.createElement(Btn,{onClick:()=>{setShowForm(false);setEditing(null);},variant:"outline",color:C.gray},"Annuler"))
     ),
     React.createElement(Card,{style:{marginBottom:12,padding:12}},
       React.createElement("div",{style:{display:"flex",gap:10,flexWrap:"wrap",alignItems:"center"}},
@@ -6715,7 +6742,7 @@ function VueCollaborateurs({badges,casiers,setBadges,setCasiers,showToast,wdCach
 }
 
 // ════════════════ VUE CASIERS ════════════════
-function VueCasiers({casiers,badges,setCasiers,showToast,addLog,setView}){
+function VueCasiers({casiers,badges,setCasiers,setBadges,showToast,addLog,setView}){
   const[fZone,setFZone]=useState("");const[fStat,setFStat]=useState("");const[search,setSearch]=useState("");
   const[showForm,setShowForm]=useState(false);const[editing,setEditing]=useState(null);const[viewMode,setViewMode0]=useState(()=>{try{return localStorage.getItem("casiersView")||"liste";}catch(e){return "liste";}});
   const setViewMode=f=>setViewMode0(v=>{const n=typeof f==="function"?f(v):f;try{localStorage.setItem("casiersView",n);}catch(e){}return n;});
@@ -6734,7 +6761,7 @@ function VueCasiers({casiers,badges,setCasiers,showToast,addLog,setView}){
   const aViderWhy=c=>{const m=movedTo(c);return m?("a maintenant le casier "+m.casier):"plus dans la liste";};
   const findLinked=useCallback(c=>{const b=badgeByCasier[casierKey(c.numero)];if(b)return b;const n=c.occupant&&badgeNoCasierByName[personKey(c.occupant)];return n?{...n,_sansCasier:true}:null;},[badgeByCasier,badgeNoCasierByName]);
   const isOccupied=c=>c.statut==="Occupé"||!!c.occupant;
-  const isAVider=useCallback(c=>isOccupied(c)&&!findLinked(c),[findLinked]);
+  const isAVider=useCallback(c=>isOccupied(c)&&!!String(c.occupant||"").trim()&&!findLinked(c),[findLinked]);
   const statCLinked=st=>({"Actif":C.green,"À récupérer":C.red,"Badge prêt":C.blue,"Badge VIP":"#7C3AED","Futur arrivant":"#0891B2"}[st]||C.gray);
   const aViderCount=useMemo(()=>casiers.filter(isAVider).length,[casiers,isAVider]);
 
@@ -6759,7 +6786,29 @@ function VueCasiers({casiers,badges,setCasiers,showToast,addLog,setView}){
     else if(fStat&&c.statut!==fStat)return false;
     const q=search.toLowerCase();return!q||(c.numero+c.occupant+c.matricule).toLowerCase().includes(q);
   }),[casiers,fZone,fStat,search,isAVider]);
-  const save=async()=>{
+  const[qui,setQui]=useState(null); // null = personne actuelle du casier
+  useEffect(()=>{setQui(null);},[showForm,editing]);
+  const actifsTries=useMemo(()=>badges.filter(b=>b.statut!=="Archivé").slice().sort((a,b)=>((a.nom||"")+" "+(a.prenom||"")).localeCompare((b.nom||"")+" "+(b.prenom||""),"fr")),[badges]);
+  const titulaire=form&&form.numero?badgeByCasier[casierKey(form.numero)]||null:null;
+  const quiSel=qui===null?(titulaire?String(titulaire.id):""):qui;
+  const enregistrerCasier=async()=>{
+    const sel=quiSel?badges.find(b=>String(b.id)===String(quiSel)):null;
+    let nf={...form};
+    if(sel)nf={...nf,statut:"Occupé",occupant:((sel.nom||"")+" "+(sel.prenom||"")).trim(),matricule:String(sel.matricule||"")};
+    else if(titulaire||nf.statut!=="Occupé"||!String(nf.occupant||"").trim())nf={...nf,occupant:"",matricule:""};
+    const ok=await save(nf);if(!ok)return;
+    const num=String(nf.numero||"").trim();const chg=[];
+    if(titulaire&&(!sel||sel.id!==titulaire.id))chg.push({...titulaire,casier:""});
+    if(sel&&casierKey(sel.casier)!==casierKey(num))chg.push({...sel,casier:num});
+    if(!chg.length)return;
+    setBadges(prev=>prev.map(b=>chg.find(x=>x.id===b.id)||b));
+    chg.forEach(x=>{if(sb&&typeof x.id==="number")sbFire(sb.from("lp24_badges").upsert(x),"collaborateur");});
+    if(sel){addLog("Casier attribué",num+" → "+sel.prenom+" "+sel.nom+(sel.casier&&casierKey(sel.casier)!==casierKey(num)?" (avant : "+sel.casier+")":""));
+      showToast("✅ Casier "+num+" attribué à "+sel.prenom+" "+sel.nom+(sel.casier&&casierKey(sel.casier)!==casierKey(num)?" — son ancien casier "+sel.casier+" passe « à vider »":""));}
+    else if(titulaire){addLog("Casier retiré",num+" (était à "+titulaire.prenom+" "+titulaire.nom+")");showToast("Casier "+num+" retiré de la fiche de "+titulaire.prenom+" "+titulaire.nom);}
+  };
+  const lireForm=()=>form;
+  const save=async(fx)=>{const form=(fx&&fx.numero!==undefined)?fx:lireForm();
     if(!form.numero.trim())return;
     if(editing){
       const orig=casiers.find(c=>c.id===editing);const upd={...orig,...form};
@@ -6784,7 +6833,7 @@ function VueCasiers({casiers,badges,setCasiers,showToast,addLog,setView}){
       }
       addLog("Casier ajouté",form.numero);showToast("✅ Casier ajouté");
     }
-    setShowForm(false);setEditing(null);
+    setShowForm(false);setEditing(null);return true;
   };
   const del=async id=>{
     if(!confirm("Supprimer ce casier ?"))return;
@@ -6942,13 +6991,18 @@ function VueCasiers({casiers,badges,setCasiers,showToast,addLog,setView}){
       )
     ),
     showForm&&React.createElement(Card,{style:{marginBottom:16,borderLeft:"4px solid "+C.purple,background:"#F5F3FF"}},
-      React.createElement("div",{style:{fontSize:11,color:"#7C3AED",marginBottom:10}},"ℹ️ L'attribution d'un casier à un collaborateur se fait depuis la fiche Collaborateur — ici on ne gère que l'inventaire (numéro, zone, réservation, hors service)."),
+      React.createElement("div",{style:{marginBottom:10}},
+        React.createElement(Lbl,null,"👤 Attribué à"),
+        React.createElement("select",{className:"inp",value:quiSel,onChange:e=>setQui(e.target.value),style:{width:"100%",cursor:"pointer"}},
+          React.createElement("option",{value:""},"— Personne —"),
+          actifsTries.map(b=>React.createElement("option",{key:b.id,value:String(b.id)},String(b.nom||"").toUpperCase()+" "+(b.prenom||"")+(b.casier&&casierKey(b.casier)!==casierKey(form.numero||"")?"  (a déjà le casier "+b.casier+")":"")))),
+        React.createElement("div",{style:{fontSize:11,color:"#7C3AED",marginTop:4}},quiSel?"La fiche du collaborateur est mise à jour automatiquement avec ce casier.":"Sans personne : choisis le statut ci-dessous (« Occupé » = occupé sans nom).")),
       React.createElement("div",{style:{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(150px,1fr))",gap:10,marginBottom:10}},
         React.createElement("div",null,React.createElement(Lbl,null,"N° Casier *"),React.createElement(Inp,{value:form.numero,onChange:v=>setForm({...form,numero:v}),placeholder:"DE103"})),
         React.createElement("div",null,React.createElement(Lbl,null,"Zone"),React.createElement(Sel,{value:form.zone,onChange:v=>setForm({...form,zone:v}),options:ZONES.map(z=>({v:z,l:z+" — "+ZONES_LABELS[z]})),style:{width:"100%"}})),
-        React.createElement("div",null,React.createElement(Lbl,null,"Statut"),React.createElement(Sel,{value:form.statut,onChange:v=>setForm({...form,statut:v}),options:["Libre","Réservé","Hors service"],style:{width:"100%"}})),
+        React.createElement("div",null,React.createElement(Lbl,null,"Statut"),quiSel?React.createElement("div",{className:"inp",style:{display:"flex",alignItems:"center",color:"var(--text2)",background:"var(--surface2)"}},"Occupé"):React.createElement(Sel,{value:form.statut,onChange:v=>setForm({...form,statut:v}),options:[{v:"Libre",l:"Libre"},{v:"Occupé",l:"Occupé (sans nom)"},{v:"Réservé",l:"Réservé"},{v:"Hors service",l:"Hors service"}],style:{width:"100%"}})),
       ),
-      React.createElement("div",{style:{display:"flex",gap:8}},React.createElement(Btn,{onClick:save,color:C.purple},"💾 Enregistrer"),React.createElement(Btn,{onClick:()=>{setShowForm(false);setEditing(null);},variant:"outline",color:C.gray},"Annuler"))
+      React.createElement("div",{style:{display:"flex",gap:8}},React.createElement(Btn,{onClick:enregistrerCasier,color:C.purple},"💾 Enregistrer"),React.createElement(Btn,{onClick:()=>{setShowForm(false);setEditing(null);},variant:"outline",color:C.gray},"Annuler"))
     ),
     viewMode==="grille"?React.createElement("div",null,zonesGrid):iosList,
     sheet&&React.createElement(IosSheet,sheet)
