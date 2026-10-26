@@ -863,10 +863,10 @@ function EditeurTextesMails({settings,setSettings,showToast}){
   const champs=[
     ["autoSignature","Signature","{signature} dans les textes ci-dessous",3],
     ["autoHoraires","Horaires de l'accueil","{horaires} dans les mails de prêt",4],
-    ["autoITArrivee","IT — arrivée (la veille)","{nom} {prenom} {date} {manager} {signature}",8],
-    ["autoITDepart","IT — départ (la veille)","{nom} {prenom} {date} {manager} {signature}",8],
-    ["autoRestoArrivee","Restaurant — arrivée (le jour même)","{nom} {prenom} {date} {badge} {signature}",8],
-    ["autoRestoDepart","Restaurant — départ (le jour même)","{nom} {prenom} {date} {badge} {signature}",8],
+    ["autoITArrivee","IT — arrivée (la veille)","{nom} {prenom} {date} {email} {manager} {signature}",8],
+    ["autoITDepart","IT — départ (la veille)","{nom} {prenom} {date} {email} {manager} {signature}",8],
+    ["autoRestoArrivee","Restaurant — arrivée (le jour même)","{nom} {prenom} {date} {email} {badge} {signature}",8],
+    ["autoRestoDepart","Restaurant — départ (le jour même)","{nom} {prenom} {date} {email} {badge} {signature}",8],
     ["autoPret","Badge de prêt — au moment du prêt","{emprunteur} {code} {badge_nom} {date_pret} {ligne_retour} {horaires} {signature}",10],
     ["autoRappel","Badge de prêt — rappel après 24 h","{emprunteur} {code} {badge_nom} {date_pret} {horaires} {signature}",9],
     ["bienvenueSujet","Mail de bienvenue — objet","{prenom} {nom}",1],
@@ -976,8 +976,8 @@ var TEXTES_MAIL_DEFAUT={
   autoHoraires:"Horaires de l'accueil :\n• Du lundi au jeudi : de 8h00 à 12h00 et de 13h30 à 17h00\n• Le vendredi : de 8h00 à 13h00\nAccueil joignable au 07.77.64.82.06 pendant les horaires d'ouverture.",
   autoITArrivee:"Bonjour,\n\nNous vous informons de l'arrivée d'un nouveau collaborateur :\n\nNom : {nom}\nPrénom : {prenom}\nDate d'arrivée : {date}\nManager : {manager}\n\nMerci de créer les accès nécessaires.\n\nCordialement,\n{signature}",
   autoITDepart:"Bonjour,\n\nNous vous informons du départ du collaborateur suivant :\n\nNom : {nom}\nPrénom : {prenom}\nDate de départ : {date}\nManager : {manager}\n\nMerci de supprimer les accès.\n\nCordialement,\n{signature}",
-  autoRestoArrivee:"Bonjour,\n\nNous vous informons de l'arrivée d'un nouveau collaborateur :\n\nNom : {nom}\nPrénom : {prenom}\nDate d'arrivée : {date}\nNuméro de badge : {badge}\n\nMerci de bien vouloir l'ajouter à vos systèmes.\n\nCordialement,\n{signature}",
-  autoRestoDepart:"Bonjour,\n\nNous vous informons du départ du collaborateur suivant :\n\nNom : {nom}\nPrénom : {prenom}\nDate de départ : {date}\nNuméro de badge : {badge}\n\nMerci de bien vouloir le retirer de vos systèmes.\n\nCordialement,\n{signature}",
+  autoRestoArrivee:"Bonjour,\n\nNous vous informons de l'arrivée d'un nouveau collaborateur :\n\nNom : {nom}\nPrénom : {prenom}\nDate d'arrivée : {date}\nAdresse e-mail : {email}\nNuméro de badge : {badge}\n\nMerci de bien vouloir l'ajouter à vos systèmes.\n\nCordialement,\n{signature}",
+  autoRestoDepart:"Bonjour,\n\nNous vous informons du départ du collaborateur suivant :\n\nNom : {nom}\nPrénom : {prenom}\nDate de départ : {date}\nAdresse e-mail : {email}\nNuméro de badge : {badge}\n\nMerci de bien vouloir le retirer de vos systèmes.\n\nCordialement,\n{signature}",
   autoPret:"Bonjour {emprunteur},\n\nLe badge de prêt {code} ({badge_nom}) vous a été remis le {date_pret}.\n{ligne_retour}\n\nMerci de le rapporter à l'accueil.\n\n{horaires}\n\nÀ défaut de retour de votre part, des rappels vous seront envoyés jusqu'à confirmation de la restitution du badge.\n\nCordialement,\n{signature}",
   autoRappel:"Bonjour {emprunteur},\n\nLe badge de prêt {code} ({badge_nom}) vous a été remis le {date_pret} et n'a pas encore été restitué.\n\nMerci de bien vouloir le rapporter à l'accueil dès que possible.\nSi vous l'avez déjà rendu, merci de ne pas tenir compte de ce message.\n\n{horaires}\n\nCordialement,\n{signature}"
 };
@@ -987,7 +987,7 @@ function remplirModele(modele,vars){let t=String(modele||"");Object.keys(vars).f
 function mailsDeTest(settings){
   const T=k=>texteMail(settings,k), sig=T("autoSignature"), hor=T("autoHoraires");
   const d=n=>{const x=new Date();x.setDate(x.getDate()+n);return x.toLocaleDateString("fr-FR");};
-  const p={nom:"DUPONT",prenom:"Jean",manager:"LEROY THOMAS",badge:"12345",signature:sig};
+  const p={nom:"DUPONT",prenom:"Jean",manager:"LEROY THOMAS",badge:"12345",email:"jean.dupont@allianceautomotive.fr",signature:sig};
   const finFss="\n\nCordialement,\n"+sig;
   return [
     ["[TEST] Arrivée — Jean DUPONT — "+d(1)+"  (IT, la veille)",remplirModele(T("autoITArrivee"),{...p,date:d(1)})],
@@ -1206,7 +1206,7 @@ function parseWDFileAsync(file,type,wdCache,setWdCache,showToast,setLoading){
         const inCoFromHeader=norm(String(o["In Company"]||o["Still Employed"]||""))==="YES";
         const inCo=inCoFromHeader||colGisYes;
         const termDate=inCo?"":toISO(o["Termination Date"]);
-        parsed.push({matricule:mat,nom,prenom,workerType:String(o["Worker Type"]||"").trim(),actif:String(o["Active Status"]||"").trim(),location:String(o["Location"]||"").trim(),email:String(o["Email - Primary Work"]||o["Work Email"]||"").trim(),manager:norm(String(o["Manager's Name"]||o["Manager"]||"")),mailMgr:String(o["Manager e-mail"]||o["Manager's Email"]||"").trim(),hireDate:toISO(o["Hire Date"]),termDate,inCo,source:type});
+        parsed.push({matricule:mat,nom,prenom,workerType:String(o["Worker Type"]||"").trim(),actif:String(o["Active Status"]||"").trim(),location:String(o["Location"]||"").trim(),email:String(o["Email - Primary Work"]||o["Work Email"]||champWD(o,/e-?mail/i,/manager|personal|perso|home/i)||"").trim(),manager:norm(String(o["Manager's Name"]||o["Manager"]||"")),mailMgr:String(o["Manager e-mail"]||o["Manager's Email"]||"").trim(),hireDate:toISO(o["Hire Date"]||champWD(o,/hire date|date d.?(entr|embauche)|start date|date de d[ée]but/i,/term|fin|end/i)),termDate,inCo,source:type});
       });
       if(!parsed.length){alert("Aucune donnée valide.");setLoading(false);return;}
       setWdCache(prev=>{const next={...(prev||{})};parsed.forEach(p=>{next[p.matricule]=p;});
@@ -2074,6 +2074,7 @@ function VueCollaborateurs({badges,casiers,setBadges,setCasiers,showToast,wdCach
           ))
         )
       ),
+      React.createElement(Btn,{onClick:()=>{window._verifierWorkday&&window._verifierWorkday();},color:"#0369a1",variant:"outline",title:"Compléter les fiches (e-mail, manager, date d'entrée, matricule) avec le dernier fichier Workday"},"📡 Vérifier avec Workday"),
       nbDbl>0&&React.createElement(Btn,{onClick:()=>setShowDbl(true),color:C.orange,variant:"outline"},"🔁 Doublons ("+nbDbl+")"),
       React.createElement(Btn,{onClick:()=>{setForm(empty);setEditing(null);setShowForm(!showForm);},color:C.blue},"+ Nouveau collaborateur"),
       showDbl&&React.createElement(FenetreDoublons,{badges,setBadges,onClose:()=>setShowDbl(false),showToast,addLog})
@@ -3726,6 +3727,35 @@ function VueNotifications({items,supprimer,toutSupprimer,restaurer,nbSupprimees,
     }));
 }
 
+
+// ════════════════ WORKDAY : vérification de toutes les fiches ════════════════
+// 1) même matricule ; 2) sinon même nom + prénom (accents et majuscules ignorés, un seul résultat).
+// On ne remplace jamais une information déjà saisie : on complète seulement les champs vides.
+function synchroWorkday(badges,wdList){
+  const norm=x=>String(x||"").normalize("NFD").replace(/[̀-ͯ]/g,"").toUpperCase().replace(/[^A-Z0-9]/g,"");
+  const parMat={},parNom={};
+  (wdList||[]).forEach(w=>{if(!w)return;const m=String(w.matricule||"").trim();if(m)parMat[m]=w;const k=norm(w.nom)+"|"+norm(w.prenom);if(k!=="|")(parNom[k]=parNom[k]||[]).push(w);});
+  Object.keys(parNom).forEach(k=>{const vus={};parNom[k]=parNom[k].filter(w=>{const m=String(w.matricule||"");if(vus[m])return false;vus[m]=1;return true;});});
+  const res=[];const pris={};(badges||[]).forEach(b=>{if(b&&b.statut!=="Archivé"){const m=String(b.matricule||"").trim();if(m&&m!=="0")pris[m]=b.id;}});
+  (badges||[]).forEach(b=>{if(!b||b.statut==="Archivé")return;
+    const m=String(b.matricule||"").trim();const aMat=m&&m!=="0";
+    let w=aMat?parMat[m]:null;
+    if(!w){const l=parNom[norm(b.nom)+"|"+norm(b.prenom)]||parNom[norm(b.prenom)+"|"+norm(b.nom)];if(l&&l.length===1&&!(pris[String(l[0].matricule||"")]&&pris[String(l[0].matricule||"")]!==b.id))w=l[0];}
+    if(!w)return;
+    const chg={};const champs=[];
+    const remplir=(k,v,lab)=>{v=String(v||"").trim();if(v&&!String(b[k]||"").trim()){chg[k]=v;champs.push(lab);}};
+    if(!aMat&&w.matricule){chg.matricule=String(w.matricule);champs.push("matricule");}
+    remplir("email",String(w.email||"").toLowerCase(),"e-mail");
+    remplir("manager",w.manager,"manager");
+    remplir("mail_manager",String(w.mailMgr||"").toLowerCase(),"e-mail du manager");
+    remplir("date_entree",w.hireDate,"date d'entrée");
+    if(champs.length)res.push({id:b.id,chg,nom:((b.prenom||"")+" "+String(b.nom||"").toUpperCase()).trim(),champs});
+  });
+  return res;
+}
+// Cherche une colonne par son intitulé (fichiers Workday dont les en-têtes varient)
+function champWD(o,re,excl){const k=Object.keys(o||{}).find(h=>re.test(h)&&!(excl&&excl.test(h)));return k?o[k]:"";}
+
 function SettingsModal({settings,setSettings,showToast,setShowSettings,racineRef,hrRef,hcmRef,importJsonRef,exportExcel,exportJSON,importJSON,badges,setBadges,casiers,wdCache,histo,addLog,canHistorique,canArchives,canHistoriquePret,initialTab}){
   const[tab,setTab]=useState(initialTab||"emails");
   const archivesCount=badges.filter(b=>b.statut==="Archivé").length;
@@ -4625,26 +4655,28 @@ function App(){
   if(sb){(async()=>{try{const r=await sb.from("historique").insert({action,detail,user_email:session?session.label:"admin",ts:new Date().toISOString()});if(r.error)console.error("historique insert error:",JSON.stringify(r.error));}catch(e){console.error("historique insert exception:",e);}})();}
 },[session]);
 
+  // ── Workday : vérification de toutes les fiches (à l'ouverture, à chaque import, ou par le bouton) ──
+  const badgesRefWD=useRef(badges);badgesRefWD.current=badges;
+  const verifierWorkday=useCallback((liste,silencieux)=>{
+    const L=liste||Object.values(wdCache||{});
+    if(!L.length){if(!silencieux)showToast("⚠️ Aucun fichier Workday chargé : importe HR Data dans Réglages → Import / Export","err");return;}
+    const res=synchroWorkday(badgesRefWD.current,L);
+    if(!res.length){if(!silencieux)showToast("✅ Workday : toutes les fiches sont déjà à jour");return;}
+    const par={};res.forEach(r=>{par[r.id]=r.chg;});
+    setBadges(prev=>prev.map(x=>par[x.id]?{...x,...par[x.id]}:x));
+    const avecMat=res.filter(r=>r.chg.matricule).map(r=>r.id);if(avecMat.length)setNewMats(prev2=>new Set([...prev2,...avecMat]));
+    setSettings(st=>({...st,wdAutoUpdateMeta:{date:new Date().toISOString(),count:res.length,noms:res.map(r=>r.nom+" : "+r.champs.join(", "))}}));
+    addLog("Sync Workday",res.length+" fiche(s) complétée(s) — "+res.slice(0,5).map(r=>r.nom).join(", ")+(res.length>5?"…":""));
+    showToast("📡 Workday : "+res.length+" fiche(s) complétée(s) (e-mail, manager, date d'entrée…)");
+  },[wdCache,addLog]);
+  const wdVerifieRef=useRef(false);
+  useEffect(()=>{if(!unlocked||wdVerifieRef.current||!badges.length||!wdCache||!Object.keys(wdCache).length)return;wdVerifieRef.current=true;setTimeout(()=>verifierWorkday(null,true),1500);},[unlocked,badges.length,wdCache,verifierWorkday]);
+  useEffect(()=>{window._verifierWorkday=()=>verifierWorkday(null,false);},[verifierWorkday]);
   // Expose file handlers for SettingsModal
   useEffect(()=>{
     window._handleRacine=(file)=>{parseRacineAsync(file,badges,setBadges,setCasiers,showToast,setLoading,addLog);setShowSettings(false);};
     window._handleHR=(file,type)=>{parseWDFileAsync(file,type,wdCache,setWdCache,showToast,setLoading);setShowSettings(false);};
-    window._onWdImport=(parsed)=>{
-      // Chercher badges sans matricule et les matcher avec Workday
-      setBadges(prev=>{
-        const updated=[...prev];const newIds=new Set();
-        updated.forEach((b,i)=>{
-          if(b.matricule&&String(b.matricule)!=="0")return;
-          const n=b.nom.toUpperCase();const p=(b.prenom||"").toLowerCase();
-          const match=parsed.find(w=>(w.nom.toUpperCase().includes(n)||n.includes(w.nom.toUpperCase()))&&(w.prenom.toLowerCase().includes(p)||p.includes(w.prenom.toLowerCase())));
-          if(match&&match.matricule){updated[i]={...b,matricule:match.matricule,email:b.email||match.email,manager:b.manager||match.manager,mail_manager:b.mail_manager||match.mailMgr};newIds.add(b.id);if(sb)sbFire(sb.from("lp24_badges").upsert(updated[i]),"collaborateur");}
-        });
-        if(newIds.size>0)setNewMats(prev2=>new Set([...prev2,...newIds]));
-        // ── Mémoriser le résultat de la synchro auto pour l'afficher sur l'accueil ──
-        setSettings(s=>({...s,wdAutoUpdateMeta:{date:new Date().toISOString(),count:newIds.size,noms:updated.filter(b=>newIds.has(b.id)).map(b=>b.prenom+" "+b.nom)}}));
-        return updated;
-      });
-    };
+    window._onWdImport=(parsed)=>{verifierWorkday([...Object.values(wdCache||{}),...(parsed||[])],false);};
     window._onWdImportMeta=(meta)=>{setSettings(s=>({...s,wdImportMeta:meta}));addLog("Import Workday",meta.count+" ligne(s) — "+(meta.type==="hr"?"HR Data":"Future Hires")+" ("+meta.fileName+")");};
   },[badges,wdCache,addLog]);
 
@@ -5267,10 +5299,10 @@ function EditeurTextesMails({settings,setSettings,showToast}){
   const champs=[
     ["autoSignature","Signature","{signature} dans les textes ci-dessous",3],
     ["autoHoraires","Horaires de l'accueil","{horaires} dans les mails de prêt",4],
-    ["autoITArrivee","IT — arrivée (la veille)","{nom} {prenom} {date} {manager} {signature}",8],
-    ["autoITDepart","IT — départ (la veille)","{nom} {prenom} {date} {manager} {signature}",8],
-    ["autoRestoArrivee","Restaurant — arrivée (le jour même)","{nom} {prenom} {date} {badge} {signature}",8],
-    ["autoRestoDepart","Restaurant — départ (le jour même)","{nom} {prenom} {date} {badge} {signature}",8],
+    ["autoITArrivee","IT — arrivée (la veille)","{nom} {prenom} {date} {email} {manager} {signature}",8],
+    ["autoITDepart","IT — départ (la veille)","{nom} {prenom} {date} {email} {manager} {signature}",8],
+    ["autoRestoArrivee","Restaurant — arrivée (le jour même)","{nom} {prenom} {date} {email} {badge} {signature}",8],
+    ["autoRestoDepart","Restaurant — départ (le jour même)","{nom} {prenom} {date} {email} {badge} {signature}",8],
     ["autoPret","Badge de prêt — au moment du prêt","{emprunteur} {code} {badge_nom} {date_pret} {ligne_retour} {horaires} {signature}",10],
     ["autoRappel","Badge de prêt — rappel après 24 h","{emprunteur} {code} {badge_nom} {date_pret} {horaires} {signature}",9],
     ["bienvenueSujet","Mail de bienvenue — objet","{prenom} {nom}",1],
@@ -5380,8 +5412,8 @@ var TEXTES_MAIL_DEFAUT={
   autoHoraires:"Horaires de l'accueil :\n• Du lundi au jeudi : de 8h00 à 12h00 et de 13h30 à 17h00\n• Le vendredi : de 8h00 à 13h00\nAccueil joignable au 07.77.64.82.06 pendant les horaires d'ouverture.",
   autoITArrivee:"Bonjour,\n\nNous vous informons de l'arrivée d'un nouveau collaborateur :\n\nNom : {nom}\nPrénom : {prenom}\nDate d'arrivée : {date}\nManager : {manager}\n\nMerci de créer les accès nécessaires.\n\nCordialement,\n{signature}",
   autoITDepart:"Bonjour,\n\nNous vous informons du départ du collaborateur suivant :\n\nNom : {nom}\nPrénom : {prenom}\nDate de départ : {date}\nManager : {manager}\n\nMerci de supprimer les accès.\n\nCordialement,\n{signature}",
-  autoRestoArrivee:"Bonjour,\n\nNous vous informons de l'arrivée d'un nouveau collaborateur :\n\nNom : {nom}\nPrénom : {prenom}\nDate d'arrivée : {date}\nNuméro de badge : {badge}\n\nMerci de bien vouloir l'ajouter à vos systèmes.\n\nCordialement,\n{signature}",
-  autoRestoDepart:"Bonjour,\n\nNous vous informons du départ du collaborateur suivant :\n\nNom : {nom}\nPrénom : {prenom}\nDate de départ : {date}\nNuméro de badge : {badge}\n\nMerci de bien vouloir le retirer de vos systèmes.\n\nCordialement,\n{signature}",
+  autoRestoArrivee:"Bonjour,\n\nNous vous informons de l'arrivée d'un nouveau collaborateur :\n\nNom : {nom}\nPrénom : {prenom}\nDate d'arrivée : {date}\nAdresse e-mail : {email}\nNuméro de badge : {badge}\n\nMerci de bien vouloir l'ajouter à vos systèmes.\n\nCordialement,\n{signature}",
+  autoRestoDepart:"Bonjour,\n\nNous vous informons du départ du collaborateur suivant :\n\nNom : {nom}\nPrénom : {prenom}\nDate de départ : {date}\nAdresse e-mail : {email}\nNuméro de badge : {badge}\n\nMerci de bien vouloir le retirer de vos systèmes.\n\nCordialement,\n{signature}",
   autoPret:"Bonjour {emprunteur},\n\nLe badge de prêt {code} ({badge_nom}) vous a été remis le {date_pret}.\n{ligne_retour}\n\nMerci de le rapporter à l'accueil.\n\n{horaires}\n\nÀ défaut de retour de votre part, des rappels vous seront envoyés jusqu'à confirmation de la restitution du badge.\n\nCordialement,\n{signature}",
   autoRappel:"Bonjour {emprunteur},\n\nLe badge de prêt {code} ({badge_nom}) vous a été remis le {date_pret} et n'a pas encore été restitué.\n\nMerci de bien vouloir le rapporter à l'accueil dès que possible.\nSi vous l'avez déjà rendu, merci de ne pas tenir compte de ce message.\n\n{horaires}\n\nCordialement,\n{signature}"
 };
@@ -5391,7 +5423,7 @@ function remplirModele(modele,vars){let t=String(modele||"");Object.keys(vars).f
 function mailsDeTest(settings){
   const T=k=>texteMail(settings,k), sig=T("autoSignature"), hor=T("autoHoraires");
   const d=n=>{const x=new Date();x.setDate(x.getDate()+n);return x.toLocaleDateString("fr-FR");};
-  const p={nom:"DUPONT",prenom:"Jean",manager:"LEROY THOMAS",badge:"12345",signature:sig};
+  const p={nom:"DUPONT",prenom:"Jean",manager:"LEROY THOMAS",badge:"12345",email:"jean.dupont@allianceautomotive.fr",signature:sig};
   const finFss="\n\nCordialement,\n"+sig;
   return [
     ["[TEST] Arrivée — Jean DUPONT — "+d(1)+"  (IT, la veille)",remplirModele(T("autoITArrivee"),{...p,date:d(1)})],
@@ -5610,7 +5642,7 @@ function parseWDFileAsync(file,type,wdCache,setWdCache,showToast,setLoading){
         const inCoFromHeader=norm(String(o["In Company"]||o["Still Employed"]||""))==="YES";
         const inCo=inCoFromHeader||colGisYes;
         const termDate=inCo?"":toISO(o["Termination Date"]);
-        parsed.push({matricule:mat,nom,prenom,workerType:String(o["Worker Type"]||"").trim(),actif:String(o["Active Status"]||"").trim(),location:String(o["Location"]||"").trim(),email:String(o["Email - Primary Work"]||o["Work Email"]||"").trim(),manager:norm(String(o["Manager's Name"]||o["Manager"]||"")),mailMgr:String(o["Manager e-mail"]||o["Manager's Email"]||"").trim(),hireDate:toISO(o["Hire Date"]),termDate,inCo,source:type});
+        parsed.push({matricule:mat,nom,prenom,workerType:String(o["Worker Type"]||"").trim(),actif:String(o["Active Status"]||"").trim(),location:String(o["Location"]||"").trim(),email:String(o["Email - Primary Work"]||o["Work Email"]||champWD(o,/e-?mail/i,/manager|personal|perso|home/i)||"").trim(),manager:norm(String(o["Manager's Name"]||o["Manager"]||"")),mailMgr:String(o["Manager e-mail"]||o["Manager's Email"]||"").trim(),hireDate:toISO(o["Hire Date"]||champWD(o,/hire date|date d.?(entr|embauche)|start date|date de d[ée]but/i,/term|fin|end/i)),termDate,inCo,source:type});
       });
       if(!parsed.length){alert("Aucune donnée valide.");setLoading(false);return;}
       setWdCache(prev=>{const next={...(prev||{})};parsed.forEach(p=>{next[p.matricule]=p;});
@@ -6541,7 +6573,8 @@ function VueCollaborateurs({badges,casiers,setBadges,setCasiers,showToast,wdCach
       ),
       React.createElement("div",{style:{display:"flex",gap:14,alignItems:"center"}},
         React.createElement("button",{type:"button",className:"ios-link hide-m",onClick:()=>setTableMode(!tableMode)},tableMode?"Fiches":"Tableau"),
-        nbDbl>0&&React.createElement(Btn,{onClick:()=>setShowDbl(true),color:C.orange,variant:"outline"},"🔁 Doublons ("+nbDbl+")"),
+        React.createElement(Btn,{onClick:()=>{window._verifierWorkday&&window._verifierWorkday();},color:"#0369a1",variant:"outline",title:"Compléter les fiches (e-mail, manager, date d'entrée, matricule) avec le dernier fichier Workday"},"📡 Vérifier avec Workday"),
+      nbDbl>0&&React.createElement(Btn,{onClick:()=>setShowDbl(true),color:C.orange,variant:"outline"},"🔁 Doublons ("+nbDbl+")"),
       React.createElement(Btn,{onClick:()=>{setForm(empty);setEditing(null);setShowForm(!showForm);},color:C.blue},"+ Nouveau collaborateur"),
       showDbl&&React.createElement(FenetreDoublons,{badges,setBadges,onClose:()=>setShowDbl(false),showToast,addLog}))
     ),
@@ -8234,6 +8267,35 @@ function VueNotifications({items,supprimer,toutSupprimer,restaurer,nbSupprimees,
     }));
 }
 
+
+// ════════════════ WORKDAY : vérification de toutes les fiches ════════════════
+// 1) même matricule ; 2) sinon même nom + prénom (accents et majuscules ignorés, un seul résultat).
+// On ne remplace jamais une information déjà saisie : on complète seulement les champs vides.
+function synchroWorkday(badges,wdList){
+  const norm=x=>String(x||"").normalize("NFD").replace(/[̀-ͯ]/g,"").toUpperCase().replace(/[^A-Z0-9]/g,"");
+  const parMat={},parNom={};
+  (wdList||[]).forEach(w=>{if(!w)return;const m=String(w.matricule||"").trim();if(m)parMat[m]=w;const k=norm(w.nom)+"|"+norm(w.prenom);if(k!=="|")(parNom[k]=parNom[k]||[]).push(w);});
+  Object.keys(parNom).forEach(k=>{const vus={};parNom[k]=parNom[k].filter(w=>{const m=String(w.matricule||"");if(vus[m])return false;vus[m]=1;return true;});});
+  const res=[];const pris={};(badges||[]).forEach(b=>{if(b&&b.statut!=="Archivé"){const m=String(b.matricule||"").trim();if(m&&m!=="0")pris[m]=b.id;}});
+  (badges||[]).forEach(b=>{if(!b||b.statut==="Archivé")return;
+    const m=String(b.matricule||"").trim();const aMat=m&&m!=="0";
+    let w=aMat?parMat[m]:null;
+    if(!w){const l=parNom[norm(b.nom)+"|"+norm(b.prenom)]||parNom[norm(b.prenom)+"|"+norm(b.nom)];if(l&&l.length===1&&!(pris[String(l[0].matricule||"")]&&pris[String(l[0].matricule||"")]!==b.id))w=l[0];}
+    if(!w)return;
+    const chg={};const champs=[];
+    const remplir=(k,v,lab)=>{v=String(v||"").trim();if(v&&!String(b[k]||"").trim()){chg[k]=v;champs.push(lab);}};
+    if(!aMat&&w.matricule){chg.matricule=String(w.matricule);champs.push("matricule");}
+    remplir("email",String(w.email||"").toLowerCase(),"e-mail");
+    remplir("manager",w.manager,"manager");
+    remplir("mail_manager",String(w.mailMgr||"").toLowerCase(),"e-mail du manager");
+    remplir("date_entree",w.hireDate,"date d'entrée");
+    if(champs.length)res.push({id:b.id,chg,nom:((b.prenom||"")+" "+String(b.nom||"").toUpperCase()).trim(),champs});
+  });
+  return res;
+}
+// Cherche une colonne par son intitulé (fichiers Workday dont les en-têtes varient)
+function champWD(o,re,excl){const k=Object.keys(o||{}).find(h=>re.test(h)&&!(excl&&excl.test(h)));return k?o[k]:"";}
+
 function SettingsModal({settings,setSettings,showToast,setShowSettings,racineRef,hrRef,hcmRef,importJsonRef,exportExcel,exportJSON,importJSON,badges,setBadges,casiers,wdCache,histo,addLog,canHistorique,canArchives,canHistoriquePret,initialTab}){
   const[tab,setTab]=useState(initialTab||"emails");
   const archivesCount=badges.filter(b=>b.statut==="Archivé").length;
@@ -9140,26 +9202,28 @@ function App(){
   if(sb){(async()=>{try{const r=await sb.from("historique").insert({action,detail,user_email:session?session.label:"admin",ts:new Date().toISOString()});if(r.error)console.error("historique insert error:",JSON.stringify(r.error));}catch(e){console.error("historique insert exception:",e);}})();}
 },[session]);
 
+  // ── Workday : vérification de toutes les fiches (à l'ouverture, à chaque import, ou par le bouton) ──
+  const badgesRefWD=useRef(badges);badgesRefWD.current=badges;
+  const verifierWorkday=useCallback((liste,silencieux)=>{
+    const L=liste||Object.values(wdCache||{});
+    if(!L.length){if(!silencieux)showToast("⚠️ Aucun fichier Workday chargé : importe HR Data dans Réglages → Import / Export","err");return;}
+    const res=synchroWorkday(badgesRefWD.current,L);
+    if(!res.length){if(!silencieux)showToast("✅ Workday : toutes les fiches sont déjà à jour");return;}
+    const par={};res.forEach(r=>{par[r.id]=r.chg;});
+    setBadges(prev=>prev.map(x=>par[x.id]?{...x,...par[x.id]}:x));
+    const avecMat=res.filter(r=>r.chg.matricule).map(r=>r.id);if(avecMat.length)setNewMats(prev2=>new Set([...prev2,...avecMat]));
+    setSettings(st=>({...st,wdAutoUpdateMeta:{date:new Date().toISOString(),count:res.length,noms:res.map(r=>r.nom+" : "+r.champs.join(", "))}}));
+    addLog("Sync Workday",res.length+" fiche(s) complétée(s) — "+res.slice(0,5).map(r=>r.nom).join(", ")+(res.length>5?"…":""));
+    showToast("📡 Workday : "+res.length+" fiche(s) complétée(s) (e-mail, manager, date d'entrée…)");
+  },[wdCache,addLog]);
+  const wdVerifieRef=useRef(false);
+  useEffect(()=>{if(!unlocked||wdVerifieRef.current||!badges.length||!wdCache||!Object.keys(wdCache).length)return;wdVerifieRef.current=true;setTimeout(()=>verifierWorkday(null,true),1500);},[unlocked,badges.length,wdCache,verifierWorkday]);
+  useEffect(()=>{window._verifierWorkday=()=>verifierWorkday(null,false);},[verifierWorkday]);
   // Expose file handlers for SettingsModal
   useEffect(()=>{
     window._handleRacine=(file)=>{parseRacineAsync(file,badges,setBadges,setCasiers,showToast,setLoading,addLog);setShowSettings(false);};
     window._handleHR=(file,type)=>{parseWDFileAsync(file,type,wdCache,setWdCache,showToast,setLoading);setShowSettings(false);};
-    window._onWdImport=(parsed)=>{
-      // Chercher badges sans matricule et les matcher avec Workday
-      setBadges(prev=>{
-        const updated=[...prev];const newIds=new Set();
-        updated.forEach((b,i)=>{
-          if(b.matricule&&String(b.matricule)!=="0")return;
-          const n=b.nom.toUpperCase();const p=(b.prenom||"").toLowerCase();
-          const match=parsed.find(w=>(w.nom.toUpperCase().includes(n)||n.includes(w.nom.toUpperCase()))&&(w.prenom.toLowerCase().includes(p)||p.includes(w.prenom.toLowerCase())));
-          if(match&&match.matricule){updated[i]={...b,matricule:match.matricule,email:b.email||match.email,manager:b.manager||match.manager,mail_manager:b.mail_manager||match.mailMgr};newIds.add(b.id);if(sb)sbFire(sb.from("lp24_badges").upsert(updated[i]),"collaborateur");}
-        });
-        if(newIds.size>0)setNewMats(prev2=>new Set([...prev2,...newIds]));
-        // ── Mémoriser le résultat de la synchro auto pour l'afficher sur l'accueil ──
-        setSettings(s=>({...s,wdAutoUpdateMeta:{date:new Date().toISOString(),count:newIds.size,noms:updated.filter(b=>newIds.has(b.id)).map(b=>b.prenom+" "+b.nom)}}));
-        return updated;
-      });
-    };
+    window._onWdImport=(parsed)=>{verifierWorkday([...Object.values(wdCache||{}),...(parsed||[])],false);};
     window._onWdImportMeta=(meta)=>{setSettings(s=>({...s,wdImportMeta:meta}));addLog("Import Workday",meta.count+" ligne(s) — "+(meta.type==="hr"?"HR Data":"Future Hires")+" ("+meta.fileName+")");};
   },[badges,wdCache,addLog]);
 
