@@ -870,7 +870,7 @@ function EditeurTextesMails({settings,setSettings,showToast}){
     ["autoPret","Badge de prêt — au moment du prêt","{emprunteur} {code} {badge_nom} {date_pret} {ligne_retour} {horaires} {signature}",10],
     ["autoRappel","Badge de prêt — rappel après 24 h","{emprunteur} {code} {badge_nom} {date_pret} {horaires} {signature}",9],
     ["bienvenueSujet","Mail de bienvenue — objet","{prenom} {nom}",1],
-    ["bienvenueCorps","Mail de bienvenue — texte (bouton « Mail de bienvenue » de la fiche ; sa photo est ajoutée en haut si elle existe)","{prenom} {nom} {badge} {casier} {manager} {date} {horaires} {signature}",14],
+    ["bienvenueCorps","Mail de bienvenue — texte (le bouton de la fiche ouvre ce mail dans ta messagerie, tu y joins sa photo)","{prenom} {nom} {badge} {casier} {manager} {date} {horaires} {signature}",14],
   ];
   return React.createElement("div",{style:{display:"grid",gap:14}},
     React.createElement("div",{style:{background:"var(--accentBg)",border:"1px solid var(--border)",borderRadius:8,padding:"10px 14px",fontSize:12,color:"var(--text2)"}},
@@ -971,7 +971,7 @@ function CarteNotifs({showToast,toujours}){
 }
 var TEXTES_MAIL_DEFAUT={
   bienvenueSujet:"Bienvenue chez Alliance Automotive Group, {prenom} !",
-  bienvenueCorps:"Bonjour {prenom},\n\nToute l'équipe vous souhaite la bienvenue !\n\nVoici quelques informations utiles pour vos premiers jours :\n\n• Votre numéro de badge : {badge}\n• Votre casier : {casier}\n• Votre manager : {manager}\n\n{horaires}\n\nL'accueil reste à votre disposition pour toute question.\n\nBelle arrivée parmi nous,\n{signature}",
+  bienvenueCorps:"Bonjour {prenom},\n\nToute l'équipe vous souhaite la bienvenue !\n\nVous trouverez ci-joint votre photo : merci de l'ajouter à votre profil Office 365 (dans Outlook ou Teams, cliquez sur vos initiales en haut à droite, puis « Modifier la photo »).\n\nVoici quelques informations utiles pour vos premiers jours :\n\n• Votre numéro de badge : {badge}\n• Votre casier : {casier}\n• Votre manager : {manager}\n\n{horaires}\n\nL'accueil reste à votre disposition pour toute question.\n\nBelle arrivée parmi nous,\n{signature}",
   autoSignature:"Arnaud AVONDE\n07.85.42.37.24\nResponsable de site",
   autoHoraires:"Horaires de l'accueil :\n• Du lundi au jeudi : de 8h00 à 12h00 et de 13h30 à 17h00\n• Le vendredi : de 8h00 à 13h00\nAccueil joignable au 07.77.64.82.06 pendant les horaires d'ouverture.",
   autoITArrivee:"Bonjour,\n\nNous vous informons de l'arrivée d'un nouveau collaborateur :\n\nNom : {nom}\nPrénom : {prenom}\nDate d'arrivée : {date}\nManager : {manager}\n\nMerci de créer les accès nécessaires.\n\nCordialement,\n{signature}",
@@ -2090,8 +2090,8 @@ function VueCollaborateurs({badges,casiers,setBadges,setCasiers,showToast,wdCach
           wdCache&&React.createElement(Btn,{color:"#0369a1",style:{fontSize:11,padding:"5px 10px",whiteSpace:"nowrap"},onClick:wdSearch},"🔍 Chercher")
         ),
         React.createElement("div",{style:{display:"flex",alignItems:"center",justifyContent:"space-between",gap:10,flexWrap:"wrap",marginBottom:12,padding:"10px 12px",background:"var(--surface2)",border:"1px solid var(--border)",borderRadius:10}},
-          React.createElement(PhotoCollab,{value:form.photo||"",onChange:u=>setForm(f=>({...f,photo:u})),showToast}),
-          React.createElement("button",{type:"button",className:"btn btn-primary",disabled:!String(form.email||"").trim(),title:String(form.email||"").trim()?"Envoyer le mail de bienvenue à "+form.email:"Ajoute d'abord l'e-mail",
+          React.createElement("div",{style:{fontSize:12,color:"var(--text2)",flex:"1 1 200px"}},"Ouvre le mail de bienvenue dans ta messagerie : joins sa photo puis envoie. Texte modifiable dans Réglages → Textes des mails."),
+          React.createElement("button",{type:"button",className:"btn btn-primary",disabled:!String(form.email||"").trim(),title:String(form.email||"").trim()?"Ouvrir le mail de bienvenue pour "+form.email:"Ajoute d'abord l'e-mail",
             onClick:()=>envoyerBienvenue({...form},settings,showToast,addLog),style:{fontSize:12,opacity:String(form.email||"").trim()?1:.5}},"✉️ Mail de bienvenue")),
         (()=>{const d=trouverDoublons(badges,form,editing||null);return d.length?React.createElement("div",{style:{background:"#FFF7ED",border:"1px solid #FDBA74",color:"#9A3412",borderRadius:8,padding:"8px 12px",fontSize:12,marginBottom:10,whiteSpace:"pre-line",lineHeight:1.5}},React.createElement("b",null,"⚠️ Déjà dans le tableau :"),"\n"+texteDoublons(d)):null;})(),
         React.createElement("div",{style:{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(160px,1fr))",gap:10,marginBottom:10}},
@@ -3567,13 +3567,27 @@ function reduireImage(file,max,q){return new Promise((res,rej)=>{const img=new I
   img.onload=()=>{const r=Math.min(1,max/Math.max(img.width,img.height));const c=document.createElement("canvas");c.width=Math.round(img.width*r);c.height=Math.round(img.height*r);
     c.getContext("2d").drawImage(img,0,0,c.width,c.height);URL.revokeObjectURL(u);c.toBlob(b=>b?res(b):rej(new Error("image illisible")),"image/jpeg",q);};
   img.onerror=()=>{URL.revokeObjectURL(u);rej(new Error("image illisible"));};img.src=u;});}
-async function envoyerPhoto(file){
+async function envoyerPhoto(file,dossier,max){
   if(!sb||!sb.storage)throw new Error("base indisponible");
-  const blob=await reduireImage(file,480,.82);
-  const nom="collab/"+((window.crypto&&crypto.randomUUID)?crypto.randomUUID():(Date.now()+"-"+Math.random().toString(36).slice(2)))+".jpg";
+  const blob=await reduireImage(file,max||480,.82);
+  const nom=(dossier||"collab")+"/"+((window.crypto&&crypto.randomUUID)?crypto.randomUUID():(Date.now()+"-"+Math.random().toString(36).slice(2)))+".jpg";
   const r=await sb.storage.from("photos").upload(nom,blob,{contentType:"image/jpeg",upsert:false});
   if(r.error)throw r.error;
   return sb.storage.from("photos").getPublicUrl(nom).data.publicUrl;
+}
+function ImageBienvenue({settings,setSettings,showToast}){
+  const el=React.createElement;const[busy,setBusy]=React.useState(false);const val=(settings&&settings.bienvenueImage)||"";
+  const choisir=async f=>{if(!f)return;setBusy(true);try{const u=await envoyerPhoto(f,"mail",1200);setSettings(st=>({...st,bienvenueImage:u}));showToast("🖼️ Image ajoutée au mail de bienvenue");}
+    catch(e){console.error("image",e);showToast("⚠️ Image non enregistrée : "+((e&&e.message)||"erreur")+(/bucket|not found|policy|security/i.test((e&&e.message)||"")?" — lance le script photos-signature.sql":""),"err");}
+    finally{setBusy(false);}};
+  return el("div",null,
+    el(Lbl,null,"Mail de bienvenue — image (affichée en haut du mail)"),
+    el("div",{style:{display:"flex",alignItems:"center",gap:10,flexWrap:"wrap",padding:"10px 12px",border:"1px solid var(--border)",borderRadius:8,background:"var(--surface2)"}},
+      val?el("img",{src:val,alt:"",style:{width:160,maxHeight:100,objectFit:"cover",borderRadius:6,border:"1px solid var(--border)"}}):el("div",{style:{fontSize:12,color:"var(--text3)"}},"Aucune image : le mail part avec le texte seul."),
+      el("label",{className:"btn btn-outline",style:{fontSize:12,cursor:"pointer",opacity:busy?.6:1}},busy?"Envoi…":(val?"🖼️ Changer l'image":"🖼️ Ajouter une image"),
+        el("input",{type:"file",accept:"image/*",style:{display:"none"},disabled:busy,onChange:e=>{const f=e.target.files&&e.target.files[0];e.target.value="";choisir(f);}})),
+      val&&el("button",{type:"button",className:"btn",style:{fontSize:12},onClick:()=>{setSettings(st=>{const n={...st};delete n.bienvenueImage;return n;});showToast("Image retirée du mail");}},"Retirer")),
+    el("div",{style:{fontSize:11,color:"var(--text3)",marginTop:3}},"Par exemple une photo de l'accueil, de l'entrée du bâtiment ou de l'équipe."));
 }
 function PhotoCollab({value,onChange,showToast}){
   const el=React.createElement;const[busy,setBusy]=React.useState(false);
@@ -3592,21 +3606,17 @@ function echapHtml(t){return String(t==null?"":t).replace(/&/g,"&amp;").replace(
 async function envoyerBienvenue(b,settings,showToast,addLog){
   const to=String(b.email||"").trim();
   if(!to){showToast("⚠️ Ajoute d'abord l'e-mail du collaborateur","err");return;}
-  if(!window.emailjs){showToast("⚠️ Service mail indisponible","err");return;}
   const T=k=>texteMail(settings,k);
   const cap=x=>String(x||"").toLowerCase().replace(/(^|[\s-])(\S)/g,(m,a,c)=>a+c.toUpperCase());
   const fr=d=>{const m=String(d||"").match(/^(\d{4})-(\d{2})-(\d{2})/);return m?m[3]+"/"+m[2]+"/"+m[1]:"";};
   const vars={prenom:cap(b.prenom),nom:String(b.nom||"").toUpperCase(),badge:b.serie||"remis à votre arrivée",casier:b.casier||"attribué prochainement",
     manager:b.manager||"",date:fr(b.date_entree),horaires:T("autoHoraires"),signature:T("autoSignature")};
-  const sujet=remplirModele(T("bienvenueSujet"),vars);const texte=remplirModele(T("bienvenueCorps"),vars).split("\n").filter(l=>!(/^\s*[•\-]/.test(l)&&/:\s*$/.test(l))).join("\n");
-  if(!confirm("Envoyer le mail de bienvenue à "+(vars.prenom+" "+vars.nom).trim()+" ("+to+") ?\n\nObjet : "+sujet+(b.photo?"\n\nSa photo sera ajoutée en haut du mail.":"")))return;
-  const photo=(b.photo&&/^https?:\/\//.test(b.photo))?'<div style="margin:0 0 14px"><img src="'+echapHtml(b.photo)+'" width="110" height="110" alt="" style="width:110px;height:110px;border-radius:55px;object-fit:cover;display:block"></div>':"";
-  try{
-    await window.emailjs.send(EMAILJS_SERVICE,EMAILJS_TEMPLATE,{to_email:to,cc_email:"",sujet,message:photo+echapHtml(texte)},{publicKey:EMAILJS_KEY});
-    if(typeof noterMailAppli==="function")noterMailAppli("bienvenue",to);
-    addLog&&addLog("Mail de bienvenue",(vars.prenom+" "+vars.nom).trim()+" ("+to+")");
-    showToast("✅ Mail de bienvenue envoyé à "+to);
-  }catch(e){console.error("bienvenue",e);showToast("⚠️ Mail non envoyé : "+((e&&(e.text||e.message))||"erreur"),"err");}
+  const sujet=remplirModele(T("bienvenueSujet"),vars);
+  const texte=remplirModele(T("bienvenueCorps"),vars).split("\n").filter(l=>!(/^\s*[•\-]/.test(l)&&/:\s*$/.test(l))).join("\n");
+  // Ouvre un nouveau mail dans la messagerie (Outlook sur PC, Mail sur iPhone) : il reste à joindre sa photo puis envoyer
+  window.location.href="mailto:"+encodeURIComponent(to)+"?subject="+encodeURIComponent(sujet)+"&body="+encodeURIComponent(texte.replace(/\n/g,"\r\n"));
+  addLog&&addLog("Mail de bienvenue",(vars.prenom+" "+vars.nom).trim()+" ("+to+") — ouvert dans la messagerie");
+  showToast("✉️ Mail ouvert dans ta messagerie : ajoute sa photo puis envoie");
 }
 
 // ════════════════ COLIS : lecture de l'étiquette en photo ════════════════
@@ -5264,7 +5274,7 @@ function EditeurTextesMails({settings,setSettings,showToast}){
     ["autoPret","Badge de prêt — au moment du prêt","{emprunteur} {code} {badge_nom} {date_pret} {ligne_retour} {horaires} {signature}",10],
     ["autoRappel","Badge de prêt — rappel après 24 h","{emprunteur} {code} {badge_nom} {date_pret} {horaires} {signature}",9],
     ["bienvenueSujet","Mail de bienvenue — objet","{prenom} {nom}",1],
-    ["bienvenueCorps","Mail de bienvenue — texte (bouton « Mail de bienvenue » de la fiche ; sa photo est ajoutée en haut si elle existe)","{prenom} {nom} {badge} {casier} {manager} {date} {horaires} {signature}",14],
+    ["bienvenueCorps","Mail de bienvenue — texte (le bouton de la fiche ouvre ce mail dans ta messagerie, tu y joins sa photo)","{prenom} {nom} {badge} {casier} {manager} {date} {horaires} {signature}",14],
   ];
   return React.createElement("div",{style:{display:"grid",gap:14}},
     React.createElement("div",{style:{background:"var(--accentBg)",border:"1px solid var(--border)",borderRadius:8,padding:"10px 14px",fontSize:12,color:"var(--text2)"}},
@@ -5365,7 +5375,7 @@ function CarteNotifs({showToast,toujours}){
 }
 var TEXTES_MAIL_DEFAUT={
   bienvenueSujet:"Bienvenue chez Alliance Automotive Group, {prenom} !",
-  bienvenueCorps:"Bonjour {prenom},\n\nToute l'équipe vous souhaite la bienvenue !\n\nVoici quelques informations utiles pour vos premiers jours :\n\n• Votre numéro de badge : {badge}\n• Votre casier : {casier}\n• Votre manager : {manager}\n\n{horaires}\n\nL'accueil reste à votre disposition pour toute question.\n\nBelle arrivée parmi nous,\n{signature}",
+  bienvenueCorps:"Bonjour {prenom},\n\nToute l'équipe vous souhaite la bienvenue !\n\nVous trouverez ci-joint votre photo : merci de l'ajouter à votre profil Office 365 (dans Outlook ou Teams, cliquez sur vos initiales en haut à droite, puis « Modifier la photo »).\n\nVoici quelques informations utiles pour vos premiers jours :\n\n• Votre numéro de badge : {badge}\n• Votre casier : {casier}\n• Votre manager : {manager}\n\n{horaires}\n\nL'accueil reste à votre disposition pour toute question.\n\nBelle arrivée parmi nous,\n{signature}",
   autoSignature:"Arnaud AVONDE\n07.85.42.37.24\nResponsable de site",
   autoHoraires:"Horaires de l'accueil :\n• Du lundi au jeudi : de 8h00 à 12h00 et de 13h30 à 17h00\n• Le vendredi : de 8h00 à 13h00\nAccueil joignable au 07.77.64.82.06 pendant les horaires d'ouverture.",
   autoITArrivee:"Bonjour,\n\nNous vous informons de l'arrivée d'un nouveau collaborateur :\n\nNom : {nom}\nPrénom : {prenom}\nDate d'arrivée : {date}\nManager : {manager}\n\nMerci de créer les accès nécessaires.\n\nCordialement,\n{signature}",
@@ -6460,7 +6470,7 @@ function VueCollaborateurs({badges,casiers,setBadges,setCasiers,showToast,wdCach
         React.createElement("button",{type:"button",className:"ios-link",onClick:close},"‹ Collaborateurs"),
         !arch&&React.createElement("button",{type:"button",className:"ios-link",onClick:edit},"Modifier")),
       React.createElement("div",{className:"cc-top"},
-        React.createElement("div",{className:"cc-av",style:b.photo?{backgroundImage:"url("+JSON.stringify(b.photo)+")",backgroundSize:"cover",backgroundPosition:"center"}:null},b.photo?"":ctInit(b)),
+        React.createElement("div",{className:"cc-av"},ctInit(b)),
         React.createElement("div",{style:{flex:1,minWidth:0}},
           React.createElement("div",{className:"cc-nm"},ctCap(b.prenom)+" "+String(b.nom||"").toUpperCase()),
           React.createElement("div",{className:"cc-st"},React.createElement("span",{style:{color:statCol,fontWeight:600}},b.statut),stLine.slice(String(b.statut).length))),
@@ -6547,8 +6557,8 @@ function VueCollaborateurs({badges,casiers,setBadges,setCasiers,showToast,wdCach
           wdCache&&React.createElement(Btn,{color:"#0369a1",style:{fontSize:11,padding:"5px 10px",whiteSpace:"nowrap"},onClick:wdSearch},"🔍 Chercher")
         ),
         React.createElement("div",{style:{display:"flex",alignItems:"center",justifyContent:"space-between",gap:10,flexWrap:"wrap",marginBottom:12,padding:"10px 12px",background:"var(--surface2)",border:"1px solid var(--border)",borderRadius:10}},
-          React.createElement(PhotoCollab,{value:form.photo||"",onChange:u=>setForm(f=>({...f,photo:u})),showToast}),
-          React.createElement("button",{type:"button",className:"btn btn-primary",disabled:!String(form.email||"").trim(),title:String(form.email||"").trim()?"Envoyer le mail de bienvenue à "+form.email:"Ajoute d'abord l'e-mail",
+          React.createElement("div",{style:{fontSize:12,color:"var(--text2)",flex:"1 1 200px"}},"Ouvre le mail de bienvenue dans ta messagerie : joins sa photo puis envoie. Texte modifiable dans Réglages → Textes des mails."),
+          React.createElement("button",{type:"button",className:"btn btn-primary",disabled:!String(form.email||"").trim(),title:String(form.email||"").trim()?"Ouvrir le mail de bienvenue pour "+form.email:"Ajoute d'abord l'e-mail",
             onClick:()=>envoyerBienvenue({...form},settings,showToast,addLog),style:{fontSize:12,opacity:String(form.email||"").trim()?1:.5}},"✉️ Mail de bienvenue")),
         (()=>{const d=trouverDoublons(badges,form,editing||null);return d.length?React.createElement("div",{style:{background:"#FFF7ED",border:"1px solid #FDBA74",color:"#9A3412",borderRadius:8,padding:"8px 12px",fontSize:12,marginBottom:10,whiteSpace:"pre-line",lineHeight:1.5}},React.createElement("b",null,"⚠️ Déjà dans le tableau :"),"\n"+texteDoublons(d)):null;})(),
         React.createElement("div",{style:{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(160px,1fr))",gap:10,marginBottom:10}},
@@ -8065,13 +8075,27 @@ function reduireImage(file,max,q){return new Promise((res,rej)=>{const img=new I
   img.onload=()=>{const r=Math.min(1,max/Math.max(img.width,img.height));const c=document.createElement("canvas");c.width=Math.round(img.width*r);c.height=Math.round(img.height*r);
     c.getContext("2d").drawImage(img,0,0,c.width,c.height);URL.revokeObjectURL(u);c.toBlob(b=>b?res(b):rej(new Error("image illisible")),"image/jpeg",q);};
   img.onerror=()=>{URL.revokeObjectURL(u);rej(new Error("image illisible"));};img.src=u;});}
-async function envoyerPhoto(file){
+async function envoyerPhoto(file,dossier,max){
   if(!sb||!sb.storage)throw new Error("base indisponible");
-  const blob=await reduireImage(file,480,.82);
-  const nom="collab/"+((window.crypto&&crypto.randomUUID)?crypto.randomUUID():(Date.now()+"-"+Math.random().toString(36).slice(2)))+".jpg";
+  const blob=await reduireImage(file,max||480,.82);
+  const nom=(dossier||"collab")+"/"+((window.crypto&&crypto.randomUUID)?crypto.randomUUID():(Date.now()+"-"+Math.random().toString(36).slice(2)))+".jpg";
   const r=await sb.storage.from("photos").upload(nom,blob,{contentType:"image/jpeg",upsert:false});
   if(r.error)throw r.error;
   return sb.storage.from("photos").getPublicUrl(nom).data.publicUrl;
+}
+function ImageBienvenue({settings,setSettings,showToast}){
+  const el=React.createElement;const[busy,setBusy]=React.useState(false);const val=(settings&&settings.bienvenueImage)||"";
+  const choisir=async f=>{if(!f)return;setBusy(true);try{const u=await envoyerPhoto(f,"mail",1200);setSettings(st=>({...st,bienvenueImage:u}));showToast("🖼️ Image ajoutée au mail de bienvenue");}
+    catch(e){console.error("image",e);showToast("⚠️ Image non enregistrée : "+((e&&e.message)||"erreur")+(/bucket|not found|policy|security/i.test((e&&e.message)||"")?" — lance le script photos-signature.sql":""),"err");}
+    finally{setBusy(false);}};
+  return el("div",null,
+    el(Lbl,null,"Mail de bienvenue — image (affichée en haut du mail)"),
+    el("div",{style:{display:"flex",alignItems:"center",gap:10,flexWrap:"wrap",padding:"10px 12px",border:"1px solid var(--border)",borderRadius:8,background:"var(--surface2)"}},
+      val?el("img",{src:val,alt:"",style:{width:160,maxHeight:100,objectFit:"cover",borderRadius:6,border:"1px solid var(--border)"}}):el("div",{style:{fontSize:12,color:"var(--text3)"}},"Aucune image : le mail part avec le texte seul."),
+      el("label",{className:"btn btn-outline",style:{fontSize:12,cursor:"pointer",opacity:busy?.6:1}},busy?"Envoi…":(val?"🖼️ Changer l'image":"🖼️ Ajouter une image"),
+        el("input",{type:"file",accept:"image/*",style:{display:"none"},disabled:busy,onChange:e=>{const f=e.target.files&&e.target.files[0];e.target.value="";choisir(f);}})),
+      val&&el("button",{type:"button",className:"btn",style:{fontSize:12},onClick:()=>{setSettings(st=>{const n={...st};delete n.bienvenueImage;return n;});showToast("Image retirée du mail");}},"Retirer")),
+    el("div",{style:{fontSize:11,color:"var(--text3)",marginTop:3}},"Par exemple une photo de l'accueil, de l'entrée du bâtiment ou de l'équipe."));
 }
 function PhotoCollab({value,onChange,showToast}){
   const el=React.createElement;const[busy,setBusy]=React.useState(false);
@@ -8090,21 +8114,17 @@ function echapHtml(t){return String(t==null?"":t).replace(/&/g,"&amp;").replace(
 async function envoyerBienvenue(b,settings,showToast,addLog){
   const to=String(b.email||"").trim();
   if(!to){showToast("⚠️ Ajoute d'abord l'e-mail du collaborateur","err");return;}
-  if(!window.emailjs){showToast("⚠️ Service mail indisponible","err");return;}
   const T=k=>texteMail(settings,k);
   const cap=x=>String(x||"").toLowerCase().replace(/(^|[\s-])(\S)/g,(m,a,c)=>a+c.toUpperCase());
   const fr=d=>{const m=String(d||"").match(/^(\d{4})-(\d{2})-(\d{2})/);return m?m[3]+"/"+m[2]+"/"+m[1]:"";};
   const vars={prenom:cap(b.prenom),nom:String(b.nom||"").toUpperCase(),badge:b.serie||"remis à votre arrivée",casier:b.casier||"attribué prochainement",
     manager:b.manager||"",date:fr(b.date_entree),horaires:T("autoHoraires"),signature:T("autoSignature")};
-  const sujet=remplirModele(T("bienvenueSujet"),vars);const texte=remplirModele(T("bienvenueCorps"),vars).split("\n").filter(l=>!(/^\s*[•\-]/.test(l)&&/:\s*$/.test(l))).join("\n");
-  if(!confirm("Envoyer le mail de bienvenue à "+(vars.prenom+" "+vars.nom).trim()+" ("+to+") ?\n\nObjet : "+sujet+(b.photo?"\n\nSa photo sera ajoutée en haut du mail.":"")))return;
-  const photo=(b.photo&&/^https?:\/\//.test(b.photo))?'<div style="margin:0 0 14px"><img src="'+echapHtml(b.photo)+'" width="110" height="110" alt="" style="width:110px;height:110px;border-radius:55px;object-fit:cover;display:block"></div>':"";
-  try{
-    await window.emailjs.send(EMAILJS_SERVICE,EMAILJS_TEMPLATE,{to_email:to,cc_email:"",sujet,message:photo+echapHtml(texte)},{publicKey:EMAILJS_KEY});
-    if(typeof noterMailAppli==="function")noterMailAppli("bienvenue",to);
-    addLog&&addLog("Mail de bienvenue",(vars.prenom+" "+vars.nom).trim()+" ("+to+")");
-    showToast("✅ Mail de bienvenue envoyé à "+to);
-  }catch(e){console.error("bienvenue",e);showToast("⚠️ Mail non envoyé : "+((e&&(e.text||e.message))||"erreur"),"err");}
+  const sujet=remplirModele(T("bienvenueSujet"),vars);
+  const texte=remplirModele(T("bienvenueCorps"),vars).split("\n").filter(l=>!(/^\s*[•\-]/.test(l)&&/:\s*$/.test(l))).join("\n");
+  // Ouvre un nouveau mail dans la messagerie (Outlook sur PC, Mail sur iPhone) : il reste à joindre sa photo puis envoyer
+  window.location.href="mailto:"+encodeURIComponent(to)+"?subject="+encodeURIComponent(sujet)+"&body="+encodeURIComponent(texte.replace(/\n/g,"\r\n"));
+  addLog&&addLog("Mail de bienvenue",(vars.prenom+" "+vars.nom).trim()+" ("+to+") — ouvert dans la messagerie");
+  showToast("✉️ Mail ouvert dans ta messagerie : ajoute sa photo puis envoie");
 }
 
 // ════════════════ COLIS : lecture de l'étiquette en photo ════════════════
