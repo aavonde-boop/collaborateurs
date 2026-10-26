@@ -678,7 +678,7 @@
   .ios-sheet-cancel{background:var(--surface);border:1px solid var(--border);color:var(--text2);font-size:16px;}
   /* Fiche collaborateur : bandeau bleu marine comme les en-têtes de l'ordinateur */
   .cc-top{background:linear-gradient(135deg,#0F172A,#1B3A6B);border-radius:12px;padding:18px 16px!important;color:#fff;}
-  .cc-av{background:rgba(255,255,255,.16)!important;border:2px solid rgba(255,255,255,.35);width:84px!important;height:84px!important;font-size:32px!important;}
+  .cc-av{background-color:rgba(255,255,255,.16)!important;border:2px solid rgba(255,255,255,.35);width:84px!important;height:84px!important;font-size:32px!important;}
   .cc-nm{color:#fff!important;font-size:22px!important;font-weight:800!important;}
   .cc-st{color:rgba(255,255,255,.78)!important;}
   .cc-st span{color:#fff!important;background:rgba(255,255,255,.16);padding:1px 8px;border-radius:999px;}
@@ -869,6 +869,8 @@ function EditeurTextesMails({settings,setSettings,showToast}){
     ["autoRestoDepart","Restaurant — départ (le jour même)","{nom} {prenom} {date} {badge} {signature}",8],
     ["autoPret","Badge de prêt — au moment du prêt","{emprunteur} {code} {badge_nom} {date_pret} {ligne_retour} {horaires} {signature}",10],
     ["autoRappel","Badge de prêt — rappel après 24 h","{emprunteur} {code} {badge_nom} {date_pret} {horaires} {signature}",9],
+    ["bienvenueSujet","Mail de bienvenue — objet","{prenom} {nom}",1],
+    ["bienvenueCorps","Mail de bienvenue — texte (bouton « Mail de bienvenue » de la fiche ; sa photo est ajoutée en haut si elle existe)","{prenom} {nom} {badge} {casier} {manager} {date} {horaires} {signature}",14],
   ];
   return React.createElement("div",{style:{display:"grid",gap:14}},
     React.createElement("div",{style:{background:"var(--accentBg)",border:"1px solid var(--border)",borderRadius:8,padding:"10px 14px",fontSize:12,color:"var(--text2)"}},
@@ -968,6 +970,8 @@ function CarteNotifs({showToast,toujours}){
     !toujours&&React.createElement("button",{type:"button",title:"Masquer",onClick:()=>{setFerme(true);try{localStorage.setItem("notifsCarteFermee","1");}catch(e){}},style:{background:"none",border:"none",color:"var(--text3)",fontSize:18,cursor:"pointer"}},"×"));
 }
 var TEXTES_MAIL_DEFAUT={
+  bienvenueSujet:"Bienvenue chez Alliance Automotive Group, {prenom} !",
+  bienvenueCorps:"Bonjour {prenom},\n\nToute l'équipe vous souhaite la bienvenue !\n\nVoici quelques informations utiles pour vos premiers jours :\n\n• Votre numéro de badge : {badge}\n• Votre casier : {casier}\n• Votre manager : {manager}\n\n{horaires}\n\nL'accueil reste à votre disposition pour toute question.\n\nBelle arrivée parmi nous,\n{signature}",
   autoSignature:"Arnaud AVONDE\n07.85.42.37.24\nResponsable de site",
   autoHoraires:"Horaires de l'accueil :\n• Du lundi au jeudi : de 8h00 à 12h00 et de 13h30 à 17h00\n• Le vendredi : de 8h00 à 13h00\nAccueil joignable au 07.77.64.82.06 pendant les horaires d'ouverture.",
   autoITArrivee:"Bonjour,\n\nNous vous informons de l'arrivée d'un nouveau collaborateur :\n\nNom : {nom}\nPrénom : {prenom}\nDate d'arrivée : {date}\nManager : {manager}\n\nMerci de créer les accès nécessaires.\n\nCordialement,\n{signature}",
@@ -2085,6 +2089,10 @@ function VueCollaborateurs({badges,casiers,setBadges,setCasiers,showToast,wdCach
           wdCache&&Object.keys(wdCache).length>0?React.createElement("p",{style:{fontSize:11,color:"#0369a1",background:"#e0f2fe",borderRadius:6,padding:"6px 10px",flex:1,margin:0}},"💡 Saisissez le nom ET prénom pour auto-compléter depuis Workday"):React.createElement("p",{style:{fontSize:11,color:"#9CA3AF",background:"#F3F4F6",borderRadius:6,padding:"6px 10px",flex:1,margin:0}},"⚠️ Workday non chargé — importez HR Data (👤)"),
           wdCache&&React.createElement(Btn,{color:"#0369a1",style:{fontSize:11,padding:"5px 10px",whiteSpace:"nowrap"},onClick:wdSearch},"🔍 Chercher")
         ),
+        React.createElement("div",{style:{display:"flex",alignItems:"center",justifyContent:"space-between",gap:10,flexWrap:"wrap",marginBottom:12,padding:"10px 12px",background:"var(--surface2)",border:"1px solid var(--border)",borderRadius:10}},
+          React.createElement(PhotoCollab,{value:form.photo||"",onChange:u=>setForm(f=>({...f,photo:u})),showToast}),
+          React.createElement("button",{type:"button",className:"btn btn-primary",disabled:!String(form.email||"").trim(),title:String(form.email||"").trim()?"Envoyer le mail de bienvenue à "+form.email:"Ajoute d'abord l'e-mail",
+            onClick:()=>envoyerBienvenue({...form},settings,showToast,addLog),style:{fontSize:12,opacity:String(form.email||"").trim()?1:.5}},"✉️ Mail de bienvenue")),
         (()=>{const d=trouverDoublons(badges,form,editing||null);return d.length?React.createElement("div",{style:{background:"#FFF7ED",border:"1px solid #FDBA74",color:"#9A3412",borderRadius:8,padding:"8px 12px",fontSize:12,marginBottom:10,whiteSpace:"pre-line",lineHeight:1.5}},React.createElement("b",null,"⚠️ Déjà dans le tableau :"),"\n"+texteDoublons(d)):null;})(),
         React.createElement("div",{style:{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(160px,1fr))",gap:10,marginBottom:10}},
           React.createElement("div",null,React.createElement(Lbl,null,"Nom *"),React.createElement(Inp,{value:form.nom,onChange:v=>updateForm("nom",v),placeholder:"DUPONT"})),
@@ -3553,6 +3561,90 @@ function FenetreDoublons({badges,setBadges,onClose,showToast,addLog}){
       el("div",{style:{padding:"10px 22px",borderTop:"1px solid var(--border)",fontSize:11,color:"var(--text3)"}},"« Garder celle-ci » complète la fiche choisie avec les informations manquantes des autres, puis archive les autres. Rien n'est supprimé.")));
 }
 
+
+// ════════════════ PHOTO DU COLLABORATEUR (dossier « photos » de Supabase) ════════════════
+function reduireImage(file,max,q){return new Promise((res,rej)=>{const img=new Image();const u=URL.createObjectURL(file);
+  img.onload=()=>{const r=Math.min(1,max/Math.max(img.width,img.height));const c=document.createElement("canvas");c.width=Math.round(img.width*r);c.height=Math.round(img.height*r);
+    c.getContext("2d").drawImage(img,0,0,c.width,c.height);URL.revokeObjectURL(u);c.toBlob(b=>b?res(b):rej(new Error("image illisible")),"image/jpeg",q);};
+  img.onerror=()=>{URL.revokeObjectURL(u);rej(new Error("image illisible"));};img.src=u;});}
+async function envoyerPhoto(file){
+  if(!sb||!sb.storage)throw new Error("base indisponible");
+  const blob=await reduireImage(file,480,.82);
+  const nom="collab/"+((window.crypto&&crypto.randomUUID)?crypto.randomUUID():(Date.now()+"-"+Math.random().toString(36).slice(2)))+".jpg";
+  const r=await sb.storage.from("photos").upload(nom,blob,{contentType:"image/jpeg",upsert:false});
+  if(r.error)throw r.error;
+  return sb.storage.from("photos").getPublicUrl(nom).data.publicUrl;
+}
+function PhotoCollab({value,onChange,showToast}){
+  const el=React.createElement;const[busy,setBusy]=React.useState(false);
+  const choisir=async f=>{if(!f)return;setBusy(true);try{const u=await envoyerPhoto(f);onChange(u);showToast("📷 Photo ajoutée — pense à enregistrer la fiche");}
+    catch(e){console.error("photo",e);showToast("⚠️ Photo non enregistrée : "+((e&&e.message)||"erreur")+(/bucket|not found|policy|security/i.test((e&&e.message)||"")?" — lance le script photos-signature.sql":""),"err");}
+    finally{setBusy(false);}};
+  return el("div",{style:{display:"flex",alignItems:"center",gap:10}},
+    el("div",{style:{width:56,height:56,borderRadius:"50%",flexShrink:0,background:value?"center/cover no-repeat url("+JSON.stringify(value)+")":"var(--surface3)",border:"1px solid var(--border)",display:"flex",alignItems:"center",justifyContent:"center",fontSize:24}},value?"":"👤"),
+    el("label",{className:"btn btn-outline",style:{fontSize:12,cursor:"pointer",opacity:busy?.6:1}},busy?"Envoi…":(value?"📷 Changer la photo":"📷 Ajouter une photo"),
+      el("input",{type:"file",accept:"image/*",style:{display:"none"},disabled:busy,onChange:e=>{const f=e.target.files&&e.target.files[0];e.target.value="";choisir(f);}})),
+    value&&el("button",{type:"button",className:"btn",style:{fontSize:12},onClick:()=>onChange("")},"Retirer"));
+}
+
+// ════════════════ MAIL DE BIENVENUE (envoyé par le bouton de la fiche ; texte modifiable dans Réglages) ════════════════
+function echapHtml(t){return String(t==null?"":t).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;");}
+async function envoyerBienvenue(b,settings,showToast,addLog){
+  const to=String(b.email||"").trim();
+  if(!to){showToast("⚠️ Ajoute d'abord l'e-mail du collaborateur","err");return;}
+  if(!window.emailjs){showToast("⚠️ Service mail indisponible","err");return;}
+  const T=k=>texteMail(settings,k);
+  const cap=x=>String(x||"").toLowerCase().replace(/(^|[\s-])(\S)/g,(m,a,c)=>a+c.toUpperCase());
+  const fr=d=>{const m=String(d||"").match(/^(\d{4})-(\d{2})-(\d{2})/);return m?m[3]+"/"+m[2]+"/"+m[1]:"";};
+  const vars={prenom:cap(b.prenom),nom:String(b.nom||"").toUpperCase(),badge:b.serie||"remis à votre arrivée",casier:b.casier||"attribué prochainement",
+    manager:b.manager||"",date:fr(b.date_entree),horaires:T("autoHoraires"),signature:T("autoSignature")};
+  const sujet=remplirModele(T("bienvenueSujet"),vars);const texte=remplirModele(T("bienvenueCorps"),vars).split("\n").filter(l=>!(/^\s*[•\-]/.test(l)&&/:\s*$/.test(l))).join("\n");
+  if(!confirm("Envoyer le mail de bienvenue à "+(vars.prenom+" "+vars.nom).trim()+" ("+to+") ?\n\nObjet : "+sujet+(b.photo?"\n\nSa photo sera ajoutée en haut du mail.":"")))return;
+  const photo=(b.photo&&/^https?:\/\//.test(b.photo))?'<div style="margin:0 0 14px"><img src="'+echapHtml(b.photo)+'" width="110" height="110" alt="" style="width:110px;height:110px;border-radius:55px;object-fit:cover;display:block"></div>':"";
+  try{
+    await window.emailjs.send(EMAILJS_SERVICE,EMAILJS_TEMPLATE,{to_email:to,cc_email:"",sujet,message:photo+echapHtml(texte)},{publicKey:EMAILJS_KEY});
+    if(typeof noterMailAppli==="function")noterMailAppli("bienvenue",to);
+    addLog&&addLog("Mail de bienvenue",(vars.prenom+" "+vars.nom).trim()+" ("+to+")");
+    showToast("✅ Mail de bienvenue envoyé à "+to);
+  }catch(e){console.error("bienvenue",e);showToast("⚠️ Mail non envoyé : "+((e&&(e.text||e.message))||"erreur"),"err");}
+}
+
+// ════════════════ COLIS : lecture de l'étiquette en photo ════════════════
+function chargerTesseract(){if(window.Tesseract)return Promise.resolve();return new Promise((res,rej)=>{const sc=document.createElement("script");
+  sc.src="https://cdn.jsdelivr.net/npm/tesseract.js@5.1.1/dist/tesseract.min.js";sc.onload=()=>res();sc.onerror=()=>rej(new Error("module de lecture non chargé"));document.head.appendChild(sc);});}
+function trouverDansTexte(texte,annuaire){
+  const norm=x=>String(x||"").normalize("NFD").replace(/[̀-ͯ]/g,"").toUpperCase().replace(/[^A-Z0-9]+/g," ").trim();
+  const T=" "+norm(texte)+" ";const mots=x=>norm(x).split(" ").filter(w=>w.length>=2);
+  const avecPrenom=[],nomSeul=[];
+  (annuaire||[]).forEach(b=>{const n=mots(b.nom);if(!n.length)return;if(!n.every(w=>T.includes(" "+w+" ")))return;
+    const pr=mots(b.prenom);if(pr.length&&pr.every(w=>T.includes(" "+w+" ")))avecPrenom.push(b);else nomSeul.push(b);});
+  if(avecPrenom.length===1)return {b:avecPrenom[0]};
+  if(avecPrenom.length>1)return {plusieurs:avecPrenom};
+  if(nomSeul.length===1)return {b:nomSeul[0],sansPrenom:true};
+  if(nomSeul.length>1)return {plusieurs:nomSeul};
+  return null;
+}
+
+// ════════════════ COLIS : signature du destinataire à la remise ════════════════
+function PadSignature({onChange}){
+  const el=React.createElement;const ref=React.useRef(null);const dessin=React.useRef(false);const vide=React.useRef(true);
+  React.useEffect(()=>{const c=ref.current;if(!c)return;const r=c.getBoundingClientRect();const k=window.devicePixelRatio||1;c.width=Math.max(1,r.width*k);c.height=Math.max(1,r.height*k);
+    const g=c.getContext("2d");g.scale(k,k);g.lineWidth=2.4;g.lineCap="round";g.lineJoin="round";g.strokeStyle="#0F172A";},[]);
+  const pos=e=>{const r=ref.current.getBoundingClientRect();return[e.clientX-r.left,e.clientY-r.top];};
+  const exporter=()=>{const c=ref.current;const o=document.createElement("canvas");const w=360,h=Math.max(1,Math.round(360*c.height/c.width));o.width=w;o.height=h;
+    const g=o.getContext("2d");g.fillStyle="#fff";g.fillRect(0,0,w,h);g.drawImage(c,0,0,w,h);return o.toDataURL("image/jpeg",.75);};
+  const down=e=>{e.preventDefault();try{ref.current.setPointerCapture(e.pointerId);}catch(_){}dessin.current=true;const[x,y]=pos(e);const g=ref.current.getContext("2d");g.beginPath();g.moveTo(x,y);g.lineTo(x+.1,y+.1);g.stroke();vide.current=false;};
+  const move=e=>{if(!dessin.current)return;e.preventDefault();const[x,y]=pos(e);const g=ref.current.getContext("2d");g.lineTo(x,y);g.stroke();};
+  const up=()=>{if(!dessin.current)return;dessin.current=false;if(!vide.current)onChange(exporter());};
+  const effacer=()=>{const c=ref.current;const g=c.getContext("2d");g.save();g.setTransform(1,0,0,1,0,0);g.clearRect(0,0,c.width,c.height);g.restore();vide.current=true;onChange("");};
+  return el("div",null,
+    el("canvas",{ref,onPointerDown:down,onPointerMove:move,onPointerUp:up,onPointerCancel:up,onPointerLeave:up,
+      style:{width:"100%",height:150,background:"#fff",border:"1.5px dashed var(--border2)",borderRadius:10,touchAction:"none",display:"block",cursor:"crosshair"}}),
+    el("div",{style:{display:"flex",justifyContent:"space-between",alignItems:"center",marginTop:6}},
+      el("span",{style:{fontSize:11,color:"var(--text3)"}},"Signez avec le doigt dans le cadre"),
+      el("button",{type:"button",className:"btn",style:{fontSize:11,padding:"3px 10px"},onClick:effacer},"Effacer")));
+}
+
 function SettingsModal({settings,setSettings,showToast,setShowSettings,racineRef,hrRef,hcmRef,importJsonRef,exportExcel,exportJSON,importJSON,badges,setBadges,casiers,wdCache,histo,addLog,canHistorique,canArchives,canHistoriquePret,initialTab}){
   const[tab,setTab]=useState(initialTab||"emails");
   const archivesCount=badges.filter(b=>b.statut==="Archivé").length;
@@ -3973,7 +4065,16 @@ function VueColis({showToast,addLog,badges}){
   const today=()=>{const x=new Date();return x.getFullYear()+"-"+String(x.getMonth()+1).padStart(2,"0")+"-"+String(x.getDate()).padStart(2,"0");};
   const[liste,setListe]=useState([]);const[loading,setLoading]=useState(true);const[erreurTable,setErreurTable]=useState(false);
   const[q,setQ]=useState("");const[filtre,setFiltre]=useState("encours");
-  const[form,setForm]=useState(null);const[retrait,setRetrait]=useState(null);
+  const[form,setForm]=useState(null);const[retrait,setRetrait]=useState(null);const[ocr,setOcr]=useState("");
+  const lireEtiquette=async file=>{if(!file)return;setOcr("📷 Lecture de l'étiquette…");
+    try{await chargerTesseract();
+      const r=await window.Tesseract.recognize(file,"fra",{logger:m=>{if(m&&m.status==="recognizing text")setOcr("📷 Lecture… "+Math.round((m.progress||0)*100)+" %");}});
+      const t=(r&&r.data&&r.data.text)||"";const res=trouverDansTexte(t,annuaire);
+      if(res&&res.b){const x=res.b;setForm(f=>({...f,nom:String(x.nom||"").toUpperCase(),prenom:x.prenom||"",email:String(x.email||"").trim().toLowerCase()||f.email}));
+        setOcr("✅ Trouvé : "+(x.prenom||"")+" "+String(x.nom||"").toUpperCase()+(res.sansPrenom?" (nom seul)":"")+" — vérifie avant d'enregistrer");}
+      else if(res&&res.plusieurs)setOcr("⚠️ Plusieurs personnes possibles : "+res.plusieurs.slice(0,4).map(x=>(x.prenom||"")+" "+String(x.nom||"").toUpperCase()).join(", ")+" — choisis dans la liste");
+      else setOcr("⚠️ Aucun collaborateur reconnu sur l'étiquette — saisis le nom à la main");
+    }catch(e){console.error("OCR",e);setOcr("⚠️ Lecture impossible ("+((e&&e.message)||"erreur")+")");}};
   const annuaire=useMemo(()=>(badges||[]).filter(b=>b.statut!=="Archivé"&&(b.nom||b.prenom)),[badges]);
   useEffect(()=>{(async()=>{if(!sb){setLoading(false);return;}
     const r=await sb.from("lp24_colis").select("*").order("numero",{ascending:false});
@@ -3985,13 +4086,14 @@ function VueColis({showToast,addLog,badges}){
     return r;},[liste,filtre,q]);
   const maj=async(c,chg,msg)=>{const avant=liste;const n={...c,...chg};setListe(l=>l.map(x=>x.id===c.id?n:x));
     let r=await sb.from("lp24_colis").update(chg).eq("id",c.id);
+    if(r.error&&/signature|signe_le/.test(r.error.message||"")&&("signature" in chg||"signe_le" in chg)){const c2={...chg};delete c2.signature;delete c2.signe_le;r=await sb.from("lp24_colis").update(c2).eq("id",c.id);if(!r.error)showToast("⚠️ Signature non enregistrée : lance le script photos-signature.sql","err");chg=c2;}
     if(r.error&&/recupere_par/.test(r.error.message||"")&&"recupere_par" in chg){const c2={...chg};delete c2.recupere_par;r=await sb.from("lp24_colis").update(c2).eq("id",c.id);if(!r.error&&chg.recupere_par)showToast("⚠️ « Récupéré par » non enregistré : lancez le petit script SQL","err");}
     if(r.error){setListe(avant);showToast("⚠️ Colis non enregistré : "+r.error.message,"err");return;}
     if(msg){showToast(msg);addLog&&addLog("Colis",num(c.numero)+" "+(c.prenom||"")+" "+(c.nom||"")+" → "+msg.replace(/^✅ /,""));}};
   const prevenir=c=>maj(c,{statut:"prevenu",prevenu_le:today()},"✅ "+num(c.numero)+" prévenu");
   const recuperer=c=>setRetrait({c,par:""});
-  const confirmerRetrait=async()=>{const{c,par}=retrait;const qui=String(par||"").trim();setRetrait(null);
-    await maj(c,{statut:"recupere",recupere_le:new Date().toISOString(),prevenu_le:c.prevenu_le||today(),recupere_par:qui||null},"✅ "+num(c.numero)+" récupéré"+(qui?" par "+qui:""));};
+  const confirmerRetrait=async()=>{const{c,par,sig}=retrait;const qui=String(par||"").trim();setRetrait(null);
+    await maj(c,{statut:"recupere",recupere_le:new Date().toISOString(),prevenu_le:c.prevenu_le||today(),recupere_par:qui||null,...(sig?{signature:sig,signe_le:new Date().toISOString()}:{})},"✅ "+num(c.numero)+" récupéré"+(qui?" par "+qui:""));};
   const dupliquer=async c=>{const champs={nom:c.nom||"",prenom:c.prenom||"",email:c.email||"",taille:c.taille||"",commentaire:c.commentaire||"",statut:"recu"};
     const r=await sb.from("lp24_colis").insert([champs]).select().single();
     if(r.error){showToast("⚠️ Colis non dupliqué : "+r.error.message,"err");return;}
@@ -4024,7 +4126,7 @@ function VueColis({showToast,addLog,badges}){
     el("div",{style:{flex:"1 1 240px",display:"flex",gap:8,alignItems:"center",background:"var(--surface)",border:"1px solid var(--border)",borderRadius:"var(--radius)",padding:"8px 12px"}},
       el("span",null,"🔍"),el("input",{value:q,onChange:e=>setQ(e.target.value),placeholder:"Rechercher n°, nom, e-mail…",style:{flex:1,background:"transparent",border:"none",outline:"none",fontSize:13,color:"var(--text)"}}),
       el("span",{style:{fontSize:11,color:"var(--text3)"}},vus.length+"/"+liste.length)),
-    el("button",{type:"button",className:"btn btn-primary",onClick:()=>setForm({taille:"Petit",statut:"recu"}),style:{fontWeight:700}},"+ Nouveau colis"));
+    el("button",{type:"button",className:"btn btn-primary",onClick:()=>{setOcr("");setForm({taille:"Petit",statut:"recu"});},style:{fontWeight:700}},"+ Nouveau colis"));
   const vide=el("div",{style:{textAlign:"center",padding:40,color:"var(--text3)",fontSize:13}},"📦 Aucun colis"+(filtre?" dans ce filtre":""));
   const H=["N°","Nom","Prénom","E-mail","Reçu le","Taille","Prévenu le","Statut","Actions"];
   const table=el("div",{style:{background:"var(--surface)",border:"1px solid var(--border)",borderRadius:"var(--radius-lg)",overflow:"auto"}},
@@ -4066,6 +4168,10 @@ function VueColis({showToast,addLog,badges}){
           el("div",{style:{fontSize:20,fontWeight:800}},form.id?"📦 "+num(form.numero):"📦 Nouveau colis")),
         el("button",{type:"button",onClick:()=>setForm(null),style:{background:"var(--surface3)",border:"none",borderRadius:8,padding:"6px 10px",fontSize:18,cursor:"pointer",color:"var(--text3)"}},"×")),
       el("div",{style:{display:"grid",gap:12}},
+        el("div",null,
+          el("label",{className:"btn btn-outline",style:{width:"100%",justifyContent:"center",fontWeight:700,cursor:"pointer"}},"📷 Photographier l'étiquette",
+            el("input",{type:"file",accept:"image/*",capture:"environment",style:{display:"none"},onChange:e=>{const f=e.target.files&&e.target.files[0];e.target.value="";lireEtiquette(f);}})),
+          ocr&&el("div",{style:{fontSize:12,marginTop:6,color:/^✅/.test(ocr)?"var(--green)":/^⚠️/.test(ocr)?"var(--orange)":"var(--text2)",fontWeight:600}},ocr)),
         el("div",null,lab("🔎 Collaborateur (recherche dans la base)"),el("input",{className:"inp",list:"colis-annuaire",placeholder:"Taper un nom…",onChange:e=>choisir(e.target.value)}),
           el("datalist",{id:"colis-annuaire"},annuaire.map((x,i)=>el("option",{key:i,value:(String(x.nom||"").toUpperCase()+" "+String(x.prenom||"")).trim()})))),
         el("div",{style:{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10}},
@@ -4077,7 +4183,9 @@ function VueColis({showToast,addLog,badges}){
           el("div",null,lab("Statut"),el("select",{className:"inp",value:form.statut||"recu",onChange:e=>setForm({...form,statut:e.target.value})},Object.keys(ST).map(k=>el("option",{key:k,value:k},ST[k].l))))),
         el("div",null,lab("Prévenu le"),el("input",{className:"inp",type:"date",value:String(form.prevenu_le||"").slice(0,10),onChange:e=>setForm({...form,prevenu_le:e.target.value||null})})),
         (form.statut==="recupere")&&el("div",null,lab("🙋 Récupéré par (si une autre personne)"),el("input",{className:"inp",value:form.recupere_par||"",onChange:e=>setForm({...form,recupere_par:e.target.value}),placeholder:"Laisser vide si c'est le destinataire"})),
-        el("div",null,lab("💬 Commentaire"),el("input",{className:"inp",value:form.commentaire||"",onChange:e=>setForm({...form,commentaire:e.target.value}),placeholder:"Transporteur, emplacement…"}))),
+        el("div",null,lab("💬 Commentaire"),el("input",{className:"inp",value:form.commentaire||"",onChange:e=>setForm({...form,commentaire:e.target.value}),placeholder:"Transporteur, emplacement…"})),
+        form.signature&&el("div",null,lab("✍️ Signature à la remise"+(form.signe_le?" — "+new Date(form.signe_le).toLocaleString("fr-FR",{day:"2-digit",month:"2-digit",year:"numeric",hour:"2-digit",minute:"2-digit"}):"")),
+          el("img",{src:form.signature,alt:"Signature",style:{width:"100%",maxHeight:110,objectFit:"contain",background:"#fff",border:"1px solid var(--border)",borderRadius:8}}))),
       el("div",{style:{display:"flex",gap:8,marginTop:18,flexWrap:"wrap"}},
         el("button",{type:"button",className:"btn btn-primary",style:{flex:1,justifyContent:"center",fontWeight:700},onClick:enregistrer},form.id?"Enregistrer":"📦 Enregistrer le colis"),
         form.id&&el("button",{type:"button",className:"btn",onClick:()=>dupliquer(form),title:"Nouveau colis pour la même personne, avec un nouveau numéro"},"⧉ Dupliquer"),
@@ -4088,6 +4196,7 @@ function VueColis({showToast,addLog,badges}){
       el("div",{style:{fontSize:13,color:"var(--text2)",marginBottom:14}},"Destinataire : "+((retrait.c.prenom||"")+" "+(retrait.c.nom||"")).trim()),
       lab("🙋 Récupéré par une autre personne ?"),
       el("input",{className:"inp",autoFocus:true,value:retrait.par,onChange:e=>setRetrait({...retrait,par:e.target.value}),onKeyDown:e=>{if(e.key==="Enter")confirmerRetrait();},placeholder:"Nom de la personne — laisser vide si c'est le destinataire"}),
+      el("div",{style:{marginTop:14}},lab("✍️ Signature de la personne qui récupère"),el(PadSignature,{onChange:sig=>setRetrait(r=>r?{...r,sig}:r)})),
       el("div",{style:{display:"flex",gap:8,marginTop:16}},
         el("button",{type:"button",className:"btn btn-success",style:{flex:1,justifyContent:"center",fontWeight:700},onClick:confirmerRetrait},"Confirmer"),
         el("button",{type:"button",className:"btn",onClick:()=>setRetrait(null)},"Annuler"))));
@@ -5063,6 +5172,8 @@ function EditeurTextesMails({settings,setSettings,showToast}){
     ["autoRestoDepart","Restaurant — départ (le jour même)","{nom} {prenom} {date} {badge} {signature}",8],
     ["autoPret","Badge de prêt — au moment du prêt","{emprunteur} {code} {badge_nom} {date_pret} {ligne_retour} {horaires} {signature}",10],
     ["autoRappel","Badge de prêt — rappel après 24 h","{emprunteur} {code} {badge_nom} {date_pret} {horaires} {signature}",9],
+    ["bienvenueSujet","Mail de bienvenue — objet","{prenom} {nom}",1],
+    ["bienvenueCorps","Mail de bienvenue — texte (bouton « Mail de bienvenue » de la fiche ; sa photo est ajoutée en haut si elle existe)","{prenom} {nom} {badge} {casier} {manager} {date} {horaires} {signature}",14],
   ];
   return React.createElement("div",{style:{display:"grid",gap:14}},
     React.createElement("div",{style:{background:"var(--accentBg)",border:"1px solid var(--border)",borderRadius:8,padding:"10px 14px",fontSize:12,color:"var(--text2)"}},
@@ -5162,6 +5273,8 @@ function CarteNotifs({showToast,toujours}){
     !toujours&&React.createElement("button",{type:"button",title:"Masquer",onClick:()=>{setFerme(true);try{localStorage.setItem("notifsCarteFermee","1");}catch(e){}},style:{background:"none",border:"none",color:"var(--text3)",fontSize:18,cursor:"pointer"}},"×"));
 }
 var TEXTES_MAIL_DEFAUT={
+  bienvenueSujet:"Bienvenue chez Alliance Automotive Group, {prenom} !",
+  bienvenueCorps:"Bonjour {prenom},\n\nToute l'équipe vous souhaite la bienvenue !\n\nVoici quelques informations utiles pour vos premiers jours :\n\n• Votre numéro de badge : {badge}\n• Votre casier : {casier}\n• Votre manager : {manager}\n\n{horaires}\n\nL'accueil reste à votre disposition pour toute question.\n\nBelle arrivée parmi nous,\n{signature}",
   autoSignature:"Arnaud AVONDE\n07.85.42.37.24\nResponsable de site",
   autoHoraires:"Horaires de l'accueil :\n• Du lundi au jeudi : de 8h00 à 12h00 et de 13h30 à 17h00\n• Le vendredi : de 8h00 à 13h00\nAccueil joignable au 07.77.64.82.06 pendant les horaires d'ouverture.",
   autoITArrivee:"Bonjour,\n\nNous vous informons de l'arrivée d'un nouveau collaborateur :\n\nNom : {nom}\nPrénom : {prenom}\nDate d'arrivée : {date}\nManager : {manager}\n\nMerci de créer les accès nécessaires.\n\nCordialement,\n{signature}",
@@ -6256,7 +6369,7 @@ function VueCollaborateurs({badges,casiers,setBadges,setCasiers,showToast,wdCach
         React.createElement("button",{type:"button",className:"ios-link",onClick:close},"‹ Collaborateurs"),
         !arch&&React.createElement("button",{type:"button",className:"ios-link",onClick:edit},"Modifier")),
       React.createElement("div",{className:"cc-top"},
-        React.createElement("div",{className:"cc-av"},ctInit(b)),
+        React.createElement("div",{className:"cc-av",style:b.photo?{backgroundImage:"url("+JSON.stringify(b.photo)+")",backgroundSize:"cover",backgroundPosition:"center"}:null},b.photo?"":ctInit(b)),
         React.createElement("div",{style:{flex:1,minWidth:0}},
           React.createElement("div",{className:"cc-nm"},ctCap(b.prenom)+" "+String(b.nom||"").toUpperCase()),
           React.createElement("div",{className:"cc-st"},React.createElement("span",{style:{color:statCol,fontWeight:600}},b.statut),stLine.slice(String(b.statut).length))),
@@ -6342,6 +6455,10 @@ function VueCollaborateurs({badges,casiers,setBadges,setCasiers,showToast,wdCach
           wdCache&&Object.keys(wdCache).length>0?React.createElement("p",{style:{fontSize:11,color:"#0369a1",background:"#e0f2fe",borderRadius:6,padding:"6px 10px",flex:1,margin:0}},"💡 Saisissez le nom ET prénom pour auto-compléter depuis Workday"):React.createElement("p",{style:{fontSize:11,color:"#9CA3AF",background:"#F3F4F6",borderRadius:6,padding:"6px 10px",flex:1,margin:0}},"⚠️ Workday non chargé — importez HR Data (👤)"),
           wdCache&&React.createElement(Btn,{color:"#0369a1",style:{fontSize:11,padding:"5px 10px",whiteSpace:"nowrap"},onClick:wdSearch},"🔍 Chercher")
         ),
+        React.createElement("div",{style:{display:"flex",alignItems:"center",justifyContent:"space-between",gap:10,flexWrap:"wrap",marginBottom:12,padding:"10px 12px",background:"var(--surface2)",border:"1px solid var(--border)",borderRadius:10}},
+          React.createElement(PhotoCollab,{value:form.photo||"",onChange:u=>setForm(f=>({...f,photo:u})),showToast}),
+          React.createElement("button",{type:"button",className:"btn btn-primary",disabled:!String(form.email||"").trim(),title:String(form.email||"").trim()?"Envoyer le mail de bienvenue à "+form.email:"Ajoute d'abord l'e-mail",
+            onClick:()=>envoyerBienvenue({...form},settings,showToast,addLog),style:{fontSize:12,opacity:String(form.email||"").trim()?1:.5}},"✉️ Mail de bienvenue")),
         (()=>{const d=trouverDoublons(badges,form,editing||null);return d.length?React.createElement("div",{style:{background:"#FFF7ED",border:"1px solid #FDBA74",color:"#9A3412",borderRadius:8,padding:"8px 12px",fontSize:12,marginBottom:10,whiteSpace:"pre-line",lineHeight:1.5}},React.createElement("b",null,"⚠️ Déjà dans le tableau :"),"\n"+texteDoublons(d)):null;})(),
         React.createElement("div",{style:{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(160px,1fr))",gap:10,marginBottom:10}},
           React.createElement("div",null,React.createElement(Lbl,null,"Nom *"),React.createElement(Inp,{value:form.nom,onChange:v=>updateForm("nom",v),placeholder:"DUPONT"})),
@@ -7851,6 +7968,90 @@ function FenetreDoublons({badges,setBadges,onClose,showToast,addLog}){
       el("div",{style:{padding:"10px 22px",borderTop:"1px solid var(--border)",fontSize:11,color:"var(--text3)"}},"« Garder celle-ci » complète la fiche choisie avec les informations manquantes des autres, puis archive les autres. Rien n'est supprimé.")));
 }
 
+
+// ════════════════ PHOTO DU COLLABORATEUR (dossier « photos » de Supabase) ════════════════
+function reduireImage(file,max,q){return new Promise((res,rej)=>{const img=new Image();const u=URL.createObjectURL(file);
+  img.onload=()=>{const r=Math.min(1,max/Math.max(img.width,img.height));const c=document.createElement("canvas");c.width=Math.round(img.width*r);c.height=Math.round(img.height*r);
+    c.getContext("2d").drawImage(img,0,0,c.width,c.height);URL.revokeObjectURL(u);c.toBlob(b=>b?res(b):rej(new Error("image illisible")),"image/jpeg",q);};
+  img.onerror=()=>{URL.revokeObjectURL(u);rej(new Error("image illisible"));};img.src=u;});}
+async function envoyerPhoto(file){
+  if(!sb||!sb.storage)throw new Error("base indisponible");
+  const blob=await reduireImage(file,480,.82);
+  const nom="collab/"+((window.crypto&&crypto.randomUUID)?crypto.randomUUID():(Date.now()+"-"+Math.random().toString(36).slice(2)))+".jpg";
+  const r=await sb.storage.from("photos").upload(nom,blob,{contentType:"image/jpeg",upsert:false});
+  if(r.error)throw r.error;
+  return sb.storage.from("photos").getPublicUrl(nom).data.publicUrl;
+}
+function PhotoCollab({value,onChange,showToast}){
+  const el=React.createElement;const[busy,setBusy]=React.useState(false);
+  const choisir=async f=>{if(!f)return;setBusy(true);try{const u=await envoyerPhoto(f);onChange(u);showToast("📷 Photo ajoutée — pense à enregistrer la fiche");}
+    catch(e){console.error("photo",e);showToast("⚠️ Photo non enregistrée : "+((e&&e.message)||"erreur")+(/bucket|not found|policy|security/i.test((e&&e.message)||"")?" — lance le script photos-signature.sql":""),"err");}
+    finally{setBusy(false);}};
+  return el("div",{style:{display:"flex",alignItems:"center",gap:10}},
+    el("div",{style:{width:56,height:56,borderRadius:"50%",flexShrink:0,background:value?"center/cover no-repeat url("+JSON.stringify(value)+")":"var(--surface3)",border:"1px solid var(--border)",display:"flex",alignItems:"center",justifyContent:"center",fontSize:24}},value?"":"👤"),
+    el("label",{className:"btn btn-outline",style:{fontSize:12,cursor:"pointer",opacity:busy?.6:1}},busy?"Envoi…":(value?"📷 Changer la photo":"📷 Ajouter une photo"),
+      el("input",{type:"file",accept:"image/*",style:{display:"none"},disabled:busy,onChange:e=>{const f=e.target.files&&e.target.files[0];e.target.value="";choisir(f);}})),
+    value&&el("button",{type:"button",className:"btn",style:{fontSize:12},onClick:()=>onChange("")},"Retirer"));
+}
+
+// ════════════════ MAIL DE BIENVENUE (envoyé par le bouton de la fiche ; texte modifiable dans Réglages) ════════════════
+function echapHtml(t){return String(t==null?"":t).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;");}
+async function envoyerBienvenue(b,settings,showToast,addLog){
+  const to=String(b.email||"").trim();
+  if(!to){showToast("⚠️ Ajoute d'abord l'e-mail du collaborateur","err");return;}
+  if(!window.emailjs){showToast("⚠️ Service mail indisponible","err");return;}
+  const T=k=>texteMail(settings,k);
+  const cap=x=>String(x||"").toLowerCase().replace(/(^|[\s-])(\S)/g,(m,a,c)=>a+c.toUpperCase());
+  const fr=d=>{const m=String(d||"").match(/^(\d{4})-(\d{2})-(\d{2})/);return m?m[3]+"/"+m[2]+"/"+m[1]:"";};
+  const vars={prenom:cap(b.prenom),nom:String(b.nom||"").toUpperCase(),badge:b.serie||"remis à votre arrivée",casier:b.casier||"attribué prochainement",
+    manager:b.manager||"",date:fr(b.date_entree),horaires:T("autoHoraires"),signature:T("autoSignature")};
+  const sujet=remplirModele(T("bienvenueSujet"),vars);const texte=remplirModele(T("bienvenueCorps"),vars).split("\n").filter(l=>!(/^\s*[•\-]/.test(l)&&/:\s*$/.test(l))).join("\n");
+  if(!confirm("Envoyer le mail de bienvenue à "+(vars.prenom+" "+vars.nom).trim()+" ("+to+") ?\n\nObjet : "+sujet+(b.photo?"\n\nSa photo sera ajoutée en haut du mail.":"")))return;
+  const photo=(b.photo&&/^https?:\/\//.test(b.photo))?'<div style="margin:0 0 14px"><img src="'+echapHtml(b.photo)+'" width="110" height="110" alt="" style="width:110px;height:110px;border-radius:55px;object-fit:cover;display:block"></div>':"";
+  try{
+    await window.emailjs.send(EMAILJS_SERVICE,EMAILJS_TEMPLATE,{to_email:to,cc_email:"",sujet,message:photo+echapHtml(texte)},{publicKey:EMAILJS_KEY});
+    if(typeof noterMailAppli==="function")noterMailAppli("bienvenue",to);
+    addLog&&addLog("Mail de bienvenue",(vars.prenom+" "+vars.nom).trim()+" ("+to+")");
+    showToast("✅ Mail de bienvenue envoyé à "+to);
+  }catch(e){console.error("bienvenue",e);showToast("⚠️ Mail non envoyé : "+((e&&(e.text||e.message))||"erreur"),"err");}
+}
+
+// ════════════════ COLIS : lecture de l'étiquette en photo ════════════════
+function chargerTesseract(){if(window.Tesseract)return Promise.resolve();return new Promise((res,rej)=>{const sc=document.createElement("script");
+  sc.src="https://cdn.jsdelivr.net/npm/tesseract.js@5.1.1/dist/tesseract.min.js";sc.onload=()=>res();sc.onerror=()=>rej(new Error("module de lecture non chargé"));document.head.appendChild(sc);});}
+function trouverDansTexte(texte,annuaire){
+  const norm=x=>String(x||"").normalize("NFD").replace(/[̀-ͯ]/g,"").toUpperCase().replace(/[^A-Z0-9]+/g," ").trim();
+  const T=" "+norm(texte)+" ";const mots=x=>norm(x).split(" ").filter(w=>w.length>=2);
+  const avecPrenom=[],nomSeul=[];
+  (annuaire||[]).forEach(b=>{const n=mots(b.nom);if(!n.length)return;if(!n.every(w=>T.includes(" "+w+" ")))return;
+    const pr=mots(b.prenom);if(pr.length&&pr.every(w=>T.includes(" "+w+" ")))avecPrenom.push(b);else nomSeul.push(b);});
+  if(avecPrenom.length===1)return {b:avecPrenom[0]};
+  if(avecPrenom.length>1)return {plusieurs:avecPrenom};
+  if(nomSeul.length===1)return {b:nomSeul[0],sansPrenom:true};
+  if(nomSeul.length>1)return {plusieurs:nomSeul};
+  return null;
+}
+
+// ════════════════ COLIS : signature du destinataire à la remise ════════════════
+function PadSignature({onChange}){
+  const el=React.createElement;const ref=React.useRef(null);const dessin=React.useRef(false);const vide=React.useRef(true);
+  React.useEffect(()=>{const c=ref.current;if(!c)return;const r=c.getBoundingClientRect();const k=window.devicePixelRatio||1;c.width=Math.max(1,r.width*k);c.height=Math.max(1,r.height*k);
+    const g=c.getContext("2d");g.scale(k,k);g.lineWidth=2.4;g.lineCap="round";g.lineJoin="round";g.strokeStyle="#0F172A";},[]);
+  const pos=e=>{const r=ref.current.getBoundingClientRect();return[e.clientX-r.left,e.clientY-r.top];};
+  const exporter=()=>{const c=ref.current;const o=document.createElement("canvas");const w=360,h=Math.max(1,Math.round(360*c.height/c.width));o.width=w;o.height=h;
+    const g=o.getContext("2d");g.fillStyle="#fff";g.fillRect(0,0,w,h);g.drawImage(c,0,0,w,h);return o.toDataURL("image/jpeg",.75);};
+  const down=e=>{e.preventDefault();try{ref.current.setPointerCapture(e.pointerId);}catch(_){}dessin.current=true;const[x,y]=pos(e);const g=ref.current.getContext("2d");g.beginPath();g.moveTo(x,y);g.lineTo(x+.1,y+.1);g.stroke();vide.current=false;};
+  const move=e=>{if(!dessin.current)return;e.preventDefault();const[x,y]=pos(e);const g=ref.current.getContext("2d");g.lineTo(x,y);g.stroke();};
+  const up=()=>{if(!dessin.current)return;dessin.current=false;if(!vide.current)onChange(exporter());};
+  const effacer=()=>{const c=ref.current;const g=c.getContext("2d");g.save();g.setTransform(1,0,0,1,0,0);g.clearRect(0,0,c.width,c.height);g.restore();vide.current=true;onChange("");};
+  return el("div",null,
+    el("canvas",{ref,onPointerDown:down,onPointerMove:move,onPointerUp:up,onPointerCancel:up,onPointerLeave:up,
+      style:{width:"100%",height:150,background:"#fff",border:"1.5px dashed var(--border2)",borderRadius:10,touchAction:"none",display:"block",cursor:"crosshair"}}),
+    el("div",{style:{display:"flex",justifyContent:"space-between",alignItems:"center",marginTop:6}},
+      el("span",{style:{fontSize:11,color:"var(--text3)"}},"Signez avec le doigt dans le cadre"),
+      el("button",{type:"button",className:"btn",style:{fontSize:11,padding:"3px 10px"},onClick:effacer},"Effacer")));
+}
+
 function SettingsModal({settings,setSettings,showToast,setShowSettings,racineRef,hrRef,hcmRef,importJsonRef,exportExcel,exportJSON,importJSON,badges,setBadges,casiers,wdCache,histo,addLog,canHistorique,canArchives,canHistoriquePret,initialTab}){
   const[tab,setTab]=useState(initialTab||"emails");
   const archivesCount=badges.filter(b=>b.statut==="Archivé").length;
@@ -8288,7 +8489,16 @@ function VueColis({showToast,addLog,badges}){
   const today=()=>{const x=new Date();return x.getFullYear()+"-"+String(x.getMonth()+1).padStart(2,"0")+"-"+String(x.getDate()).padStart(2,"0");};
   const[liste,setListe]=useState([]);const[loading,setLoading]=useState(true);const[erreurTable,setErreurTable]=useState(false);
   const[q,setQ]=useState("");const[filtre,setFiltre]=useState("encours");
-  const[form,setForm]=useState(null);const[retrait,setRetrait]=useState(null);
+  const[form,setForm]=useState(null);const[retrait,setRetrait]=useState(null);const[ocr,setOcr]=useState("");
+  const lireEtiquette=async file=>{if(!file)return;setOcr("📷 Lecture de l'étiquette…");
+    try{await chargerTesseract();
+      const r=await window.Tesseract.recognize(file,"fra",{logger:m=>{if(m&&m.status==="recognizing text")setOcr("📷 Lecture… "+Math.round((m.progress||0)*100)+" %");}});
+      const t=(r&&r.data&&r.data.text)||"";const res=trouverDansTexte(t,annuaire);
+      if(res&&res.b){const x=res.b;setForm(f=>({...f,nom:String(x.nom||"").toUpperCase(),prenom:x.prenom||"",email:String(x.email||"").trim().toLowerCase()||f.email}));
+        setOcr("✅ Trouvé : "+(x.prenom||"")+" "+String(x.nom||"").toUpperCase()+(res.sansPrenom?" (nom seul)":"")+" — vérifie avant d'enregistrer");}
+      else if(res&&res.plusieurs)setOcr("⚠️ Plusieurs personnes possibles : "+res.plusieurs.slice(0,4).map(x=>(x.prenom||"")+" "+String(x.nom||"").toUpperCase()).join(", ")+" — choisis dans la liste");
+      else setOcr("⚠️ Aucun collaborateur reconnu sur l'étiquette — saisis le nom à la main");
+    }catch(e){console.error("OCR",e);setOcr("⚠️ Lecture impossible ("+((e&&e.message)||"erreur")+")");}};
   const annuaire=useMemo(()=>(badges||[]).filter(b=>b.statut!=="Archivé"&&(b.nom||b.prenom)),[badges]);
   useEffect(()=>{(async()=>{if(!sb){setLoading(false);return;}
     const r=await sb.from("lp24_colis").select("*").order("numero",{ascending:false});
@@ -8300,13 +8510,14 @@ function VueColis({showToast,addLog,badges}){
     return r;},[liste,filtre,q]);
   const maj=async(c,chg,msg)=>{const avant=liste;const n={...c,...chg};setListe(l=>l.map(x=>x.id===c.id?n:x));
     let r=await sb.from("lp24_colis").update(chg).eq("id",c.id);
+    if(r.error&&/signature|signe_le/.test(r.error.message||"")&&("signature" in chg||"signe_le" in chg)){const c2={...chg};delete c2.signature;delete c2.signe_le;r=await sb.from("lp24_colis").update(c2).eq("id",c.id);if(!r.error)showToast("⚠️ Signature non enregistrée : lance le script photos-signature.sql","err");chg=c2;}
     if(r.error&&/recupere_par/.test(r.error.message||"")&&"recupere_par" in chg){const c2={...chg};delete c2.recupere_par;r=await sb.from("lp24_colis").update(c2).eq("id",c.id);if(!r.error&&chg.recupere_par)showToast("⚠️ « Récupéré par » non enregistré : lancez le petit script SQL","err");}
     if(r.error){setListe(avant);showToast("⚠️ Colis non enregistré : "+r.error.message,"err");return;}
     if(msg){showToast(msg);addLog&&addLog("Colis",num(c.numero)+" "+(c.prenom||"")+" "+(c.nom||"")+" → "+msg.replace(/^✅ /,""));}};
   const prevenir=c=>maj(c,{statut:"prevenu",prevenu_le:today()},"✅ "+num(c.numero)+" prévenu");
   const recuperer=c=>setRetrait({c,par:""});
-  const confirmerRetrait=async()=>{const{c,par}=retrait;const qui=String(par||"").trim();setRetrait(null);
-    await maj(c,{statut:"recupere",recupere_le:new Date().toISOString(),prevenu_le:c.prevenu_le||today(),recupere_par:qui||null},"✅ "+num(c.numero)+" récupéré"+(qui?" par "+qui:""));};
+  const confirmerRetrait=async()=>{const{c,par,sig}=retrait;const qui=String(par||"").trim();setRetrait(null);
+    await maj(c,{statut:"recupere",recupere_le:new Date().toISOString(),prevenu_le:c.prevenu_le||today(),recupere_par:qui||null,...(sig?{signature:sig,signe_le:new Date().toISOString()}:{})},"✅ "+num(c.numero)+" récupéré"+(qui?" par "+qui:""));};
   const dupliquer=async c=>{const champs={nom:c.nom||"",prenom:c.prenom||"",email:c.email||"",taille:c.taille||"",commentaire:c.commentaire||"",statut:"recu"};
     const r=await sb.from("lp24_colis").insert([champs]).select().single();
     if(r.error){showToast("⚠️ Colis non dupliqué : "+r.error.message,"err");return;}
@@ -8339,7 +8550,7 @@ function VueColis({showToast,addLog,badges}){
     el("div",{style:{flex:"1 1 240px",display:"flex",gap:8,alignItems:"center",background:"var(--surface)",border:"1px solid var(--border)",borderRadius:"var(--radius)",padding:"8px 12px"}},
       el("span",null,"🔍"),el("input",{value:q,onChange:e=>setQ(e.target.value),placeholder:"Rechercher n°, nom, e-mail…",style:{flex:1,background:"transparent",border:"none",outline:"none",fontSize:13,color:"var(--text)"}}),
       el("span",{style:{fontSize:11,color:"var(--text3)"}},vus.length+"/"+liste.length)),
-    el("button",{type:"button",className:"btn btn-primary",onClick:()=>setForm({taille:"Petit",statut:"recu"}),style:{fontWeight:700}},"+ Nouveau colis"));
+    el("button",{type:"button",className:"btn btn-primary",onClick:()=>{setOcr("");setForm({taille:"Petit",statut:"recu"});},style:{fontWeight:700}},"+ Nouveau colis"));
   const vide=el("div",{style:{textAlign:"center",padding:40,color:"var(--text3)",fontSize:13}},"📦 Aucun colis"+(filtre?" dans ce filtre":""));
   const H=["N°","Nom","Prénom","E-mail","Reçu le","Taille","Prévenu le","Statut","Actions"];
   const table=el("div",{style:{background:"var(--surface)",border:"1px solid var(--border)",borderRadius:"var(--radius-lg)",overflow:"auto"}},
@@ -8381,6 +8592,10 @@ function VueColis({showToast,addLog,badges}){
           el("div",{style:{fontSize:20,fontWeight:800}},form.id?"📦 "+num(form.numero):"📦 Nouveau colis")),
         el("button",{type:"button",onClick:()=>setForm(null),style:{background:"var(--surface3)",border:"none",borderRadius:8,padding:"6px 10px",fontSize:18,cursor:"pointer",color:"var(--text3)"}},"×")),
       el("div",{style:{display:"grid",gap:12}},
+        el("div",null,
+          el("label",{className:"btn btn-outline",style:{width:"100%",justifyContent:"center",fontWeight:700,cursor:"pointer"}},"📷 Photographier l'étiquette",
+            el("input",{type:"file",accept:"image/*",capture:"environment",style:{display:"none"},onChange:e=>{const f=e.target.files&&e.target.files[0];e.target.value="";lireEtiquette(f);}})),
+          ocr&&el("div",{style:{fontSize:12,marginTop:6,color:/^✅/.test(ocr)?"var(--green)":/^⚠️/.test(ocr)?"var(--orange)":"var(--text2)",fontWeight:600}},ocr)),
         el("div",null,lab("🔎 Collaborateur (recherche dans la base)"),el("input",{className:"inp",list:"colis-annuaire",placeholder:"Taper un nom…",onChange:e=>choisir(e.target.value)}),
           el("datalist",{id:"colis-annuaire"},annuaire.map((x,i)=>el("option",{key:i,value:(String(x.nom||"").toUpperCase()+" "+String(x.prenom||"")).trim()})))),
         el("div",{style:{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10}},
@@ -8392,7 +8607,9 @@ function VueColis({showToast,addLog,badges}){
           el("div",null,lab("Statut"),el("select",{className:"inp",value:form.statut||"recu",onChange:e=>setForm({...form,statut:e.target.value})},Object.keys(ST).map(k=>el("option",{key:k,value:k},ST[k].l))))),
         el("div",null,lab("Prévenu le"),el("input",{className:"inp",type:"date",value:String(form.prevenu_le||"").slice(0,10),onChange:e=>setForm({...form,prevenu_le:e.target.value||null})})),
         (form.statut==="recupere")&&el("div",null,lab("🙋 Récupéré par (si une autre personne)"),el("input",{className:"inp",value:form.recupere_par||"",onChange:e=>setForm({...form,recupere_par:e.target.value}),placeholder:"Laisser vide si c'est le destinataire"})),
-        el("div",null,lab("💬 Commentaire"),el("input",{className:"inp",value:form.commentaire||"",onChange:e=>setForm({...form,commentaire:e.target.value}),placeholder:"Transporteur, emplacement…"}))),
+        el("div",null,lab("💬 Commentaire"),el("input",{className:"inp",value:form.commentaire||"",onChange:e=>setForm({...form,commentaire:e.target.value}),placeholder:"Transporteur, emplacement…"})),
+        form.signature&&el("div",null,lab("✍️ Signature à la remise"+(form.signe_le?" — "+new Date(form.signe_le).toLocaleString("fr-FR",{day:"2-digit",month:"2-digit",year:"numeric",hour:"2-digit",minute:"2-digit"}):"")),
+          el("img",{src:form.signature,alt:"Signature",style:{width:"100%",maxHeight:110,objectFit:"contain",background:"#fff",border:"1px solid var(--border)",borderRadius:8}}))),
       el("div",{style:{display:"flex",gap:8,marginTop:18,flexWrap:"wrap"}},
         el("button",{type:"button",className:"btn btn-primary",style:{flex:1,justifyContent:"center",fontWeight:700},onClick:enregistrer},form.id?"Enregistrer":"📦 Enregistrer le colis"),
         form.id&&el("button",{type:"button",className:"btn",onClick:()=>dupliquer(form),title:"Nouveau colis pour la même personne, avec un nouveau numéro"},"⧉ Dupliquer"),
@@ -8403,6 +8620,7 @@ function VueColis({showToast,addLog,badges}){
       el("div",{style:{fontSize:13,color:"var(--text2)",marginBottom:14}},"Destinataire : "+((retrait.c.prenom||"")+" "+(retrait.c.nom||"")).trim()),
       lab("🙋 Récupéré par une autre personne ?"),
       el("input",{className:"inp",autoFocus:true,value:retrait.par,onChange:e=>setRetrait({...retrait,par:e.target.value}),onKeyDown:e=>{if(e.key==="Enter")confirmerRetrait();},placeholder:"Nom de la personne — laisser vide si c'est le destinataire"}),
+      el("div",{style:{marginTop:14}},lab("✍️ Signature de la personne qui récupère"),el(PadSignature,{onChange:sig=>setRetrait(r=>r?{...r,sig}:r)})),
       el("div",{style:{display:"flex",gap:8,marginTop:16}},
         el("button",{type:"button",className:"btn btn-success",style:{flex:1,justifyContent:"center",fontWeight:700},onClick:confirmerRetrait},"Confirmer"),
         el("button",{type:"button",className:"btn",onClick:()=>setRetrait(null)},"Annuler"))));
