@@ -834,7 +834,7 @@ async function sendFssEmail(toEmail,fiche,ccEmail){
           +blocLienAppli(fiche.id)+"\n"
           +"Cordialement,\n"+(window._mailSignature||SIGNATURE_MAIL);})(),
     });
-    console.log("Email envoyé à",toEmail);
+    console.log("Email envoyé à",toEmail);noterMailAppli("field_support",toEmail);
   }catch(e){console.error("EmailJS error:",e);}
 }
 const PERM_WRITE='write',PERM_READ='read',PERM_NONE='none';
@@ -1005,7 +1005,7 @@ function TestMailsBox({showToast,settings}){
     const liste=mailsDeTest(settings);let ok=0,err="";setEtat("Envoi en cours…");
     for(let i=0;i<liste.length;i++){const [sujet,message]=liste[i];
       if(i>0)await new Promise(r=>setTimeout(r,1500));   // EmailJS refuse plus d'un envoi par seconde
-      try{await window.emailjs.send(EMAILJS_SERVICE,EMAILJS_TEMPLATE,{to_email:to,cc_email:"",sujet,message},{publicKey:EMAILJS_KEY});ok++;}
+      try{await window.emailjs.send(EMAILJS_SERVICE,EMAILJS_TEMPLATE,{to_email:to,cc_email:"",sujet,message},{publicKey:EMAILJS_KEY});ok++;noterMailAppli("test",to);}
       catch(e){console.error("Test mail",e);err=(e&&(e.status||""))+" "+(e&&(e.text||e.message)||String(e));}
       setEtat("Envoi en cours… "+ok+"/"+liste.length);
     }
@@ -2031,6 +2031,8 @@ function VueCollaborateurs({badges,casiers,setBadges,setCasiers,showToast,wdCach
     }
     setShowForm(false);setEditing(null);
   };
+  const[showDbl,setShowDbl]=React.useState(false);
+  const nbDbl=React.useMemo(()=>groupesDoublons(badges).length,[badges]);
   const archiver=async id=>{
     if(!confirm("Archiver ce collaborateur ?"))return;
     const b=badges.find(x=>x.id===id);
@@ -2068,7 +2070,9 @@ function VueCollaborateurs({badges,casiers,setBadges,setCasiers,showToast,wdCach
           ))
         )
       ),
-      React.createElement(Btn,{onClick:()=>{setForm(empty);setEditing(null);setShowForm(!showForm);},color:C.blue},"+ Nouveau collaborateur")
+      nbDbl>0&&React.createElement(Btn,{onClick:()=>setShowDbl(true),color:C.orange,variant:"outline"},"🔁 Doublons ("+nbDbl+")"),
+      React.createElement(Btn,{onClick:()=>{setForm(empty);setEditing(null);setShowForm(!showForm);},color:C.blue},"+ Nouveau collaborateur"),
+      showDbl&&React.createElement(FenetreDoublons,{badges,setBadges,onClose:()=>setShowDbl(false),showToast,addLog})
     ),
     // Modal formulaire
     showForm&&React.createElement("div",{style:{position:"fixed",inset:0,background:"rgba(0,0,0,.5)",zIndex:1000,display:"flex",alignItems:"center",justifyContent:"center",padding:16},onClick:e=>{if(e.target===e.currentTarget){setShowForm(false);setEditing(null);}}},
@@ -3452,6 +3456,103 @@ function VueFieldSupport({fssData,setFssData,showToast,addLog,badges,casiers,set
 }
 
 // ════════════════ SETTINGS MODAL ════════════════
+
+// ════════════════ QUOTA EMAILJS : mails envoyés ce mois-ci ════════════════
+const QUOTA_MAILS=200;
+function noterMailAppli(type,dest){try{if(sb)Promise.resolve(sb.from("lp24_mails_appli").insert({type,destinataire:String(dest||"")})).catch(()=>{});}catch(e){}}
+function CompteurMails({alerteSeule}){
+  const el=React.createElement;const[c,setC]=React.useState(null);const[err,setErr]=React.useState("");
+  React.useEffect(()=>{let ok=true;(async()=>{try{if(!sb)return;const{data,error}=await sb.rpc("lp24_compteur_mails");if(!ok)return;if(error)setErr(error.message||"indisponible");else setC(data);}catch(e){if(ok)setErr("réseau");}})();return()=>{ok=false;};},[]);
+  if(alerteSeule){
+    if(!c||c.total<QUOTA_MAILS*0.8)return null;
+    const plein=c.total>=QUOTA_MAILS;
+    return el("div",{style:{background:plein?"var(--redBg)":"var(--orangeBg)",border:"1px solid "+(plein?"rgba(220,38,38,.35)":"rgba(234,88,12,.35)"),color:plein?"var(--red)":"var(--orange)",borderRadius:12,padding:"10px 14px",fontSize:13,fontWeight:600,marginBottom:12}},
+      (plein?"⛔ Quota EmailJS atteint : ":"⚠️ Quota EmailJS bientôt atteint : ")+c.total+" / "+QUOTA_MAILS+" mails ce mois-ci."+(plein?" Les mails automatiques ne partiront plus jusqu'au mois prochain.":" Au-delà de "+QUOTA_MAILS+", les mails automatiques s'arrêtent."));
+  }
+  const pct=c?Math.min(100,Math.round(c.total/QUOTA_MAILS*100)):0;
+  const col=!c?"var(--text3)":c.total>=QUOTA_MAILS?"var(--red)":c.total>=QUOTA_MAILS*0.8?"var(--orange)":"var(--green)";
+  const ligne=(l,v)=>el("div",{style:{display:"flex",justifyContent:"space-between",fontSize:12,color:"var(--text2)",padding:"2px 0"}},el("span",null,l),el("b",null,v));
+  return el("div",{style:{background:"var(--surface2)",border:"1px solid var(--border)",borderRadius:8,padding:"12px 14px",display:"grid",gap:8}},
+    el("div",{style:{display:"flex",justifyContent:"space-between",alignItems:"baseline"}},
+      el("div",{style:{fontWeight:700,fontSize:13,color:"var(--text)"}},"📊 Mails envoyés ce mois-ci"),
+      c&&el("div",{style:{fontWeight:800,fontSize:18,color:col}},c.total+" / "+QUOTA_MAILS)),
+    err?el("div",{style:{fontSize:12,color:"var(--text3)"}},"Compteur indisponible ("+err+"). Lance le script automatisation/compteur-mails.sql dans Supabase."):
+    !c?el("div",{style:{fontSize:12,color:"var(--text3)"}},"Chargement…"):
+    el(React.Fragment,null,
+      el("div",{style:{height:8,background:"var(--surface3)",borderRadius:999,overflow:"hidden"}},el("div",{style:{width:pct+"%",height:"100%",background:col,borderRadius:999}})),
+      ligne("Arrivées / départs (IT, restaurant)",c.arrivees_departs),ligne("Prêts de badge",c.prets),ligne("Relances badges non rendus",c.relances),ligne("Depuis l'appli (Field Support, tests)",c.appli),
+      el("div",{style:{fontSize:11,color:"var(--text3)"}},"Quota gratuit EmailJS : "+QUOTA_MAILS+" mails par mois. Alerte sur l'Accueil à partir de "+Math.round(QUOTA_MAILS*0.8)+".")));
+}
+
+// ════════════════ DOUBLONS DÉJÀ PRÉSENTS DANS LE TABLEAU ════════════════
+function groupesDoublons(badges){
+  const norm=x=>String(x||"").normalize("NFD").replace(/[̀-ͯ]/g,"").toUpperCase().replace(/[^A-Z0-9]/g,"");
+  const act=(badges||[]).filter(b=>b&&b.statut!=="Archivé");
+  const par={};const find=i=>par[i]===i?i:(par[i]=find(par[i]));const uni=(a,b)=>{par[find(a)]=find(b);};
+  act.forEach((b,i)=>par[i]=i);
+  const idx={};const why={};
+  const add=(k,i,lab)=>{if(!k)return;if(idx[k]!==undefined){uni(i,idx[k]);why[k]=lab;}else idx[k]=i;};
+  act.forEach((b,i)=>{const n=norm(b.nom),pr=norm(b.prenom);
+    if(n&&pr)add("N:"+[n,pr].sort().join("|"),i,"même nom et prénom");
+    const m=String(b.matricule||"").trim();if(m&&m!=="0")add("M:"+m,i,"même matricule");
+    const e=String(b.email||"").trim().toLowerCase();if(e)add("E:"+e,i,"même e-mail");});
+  const g={};act.forEach((b,i)=>{const r=find(i);(g[r]=g[r]||[]).push(b);});
+  return Object.values(g).filter(x=>x.length>1).map(items=>{
+    const raisons=new Set();const n=x=>norm(x);
+    for(let a=0;a<items.length;a++)for(let c=a+1;c<items.length;c++){const A=items[a],B=items[c];
+      if(n(A.nom)&&n(A.prenom)&&[n(A.nom),n(A.prenom)].sort().join()===[n(B.nom),n(B.prenom)].sort().join())raisons.add("même nom et prénom");
+      if(String(A.matricule||"").trim()&&String(A.matricule).trim()!=="0"&&String(A.matricule).trim()===String(B.matricule||"").trim())raisons.add("même matricule");
+      if(String(A.email||"").trim()&&String(A.email).trim().toLowerCase()===String(B.email||"").trim().toLowerCase())raisons.add("même e-mail");}
+    return {items,raisons:[...raisons]};
+  }).sort((a,b)=>String(a.items[0].nom).localeCompare(String(b.items[0].nom)));
+}
+function FenetreDoublons({badges,setBadges,onClose,showToast,addLog}){
+  const el=React.createElement;
+  const groupes=React.useMemo(()=>groupesDoublons(badges),[badges]);
+  const CHAMPS=["matricule","email","serie","zeplug","carte_rechargement","casier","manager","mail_manager","date_entree","date_sortie_prevue","commentaire"];
+  const fd=d=>{const m=String(d||"").match(/^(\d{4})-(\d{2})-(\d{2})/);return m?m[3]+"/"+m[2]+"/"+m[1]:"";};
+  const ecrire=row=>{if(sb)sbFire(sb.from("lp24_badges").upsert(row),"collaborateur");};
+  const archiverUn=b=>{
+    if(!confirm("Archiver la fiche "+b.prenom+" "+b.nom+(b.matricule?" (mat. "+b.matricule+")":"")+" ?"))return;
+    const u={...b,statut:"Archivé",date_archive:todayISO(),commentaire:((b.commentaire||"")+" [archivée : doublon]").trim()};
+    setBadges(p=>p.map(x=>x.id===b.id?u:x));ecrire(u);addLog("Archivage",b.prenom+" "+b.nom+" (doublon)");showToast("🗃️ Fiche archivée");
+  };
+  const fusionner=(garde,groupe)=>{
+    const autres=groupe.items.filter(x=>x.id!==garde.id);
+    const fusion={...garde};const repris=[];
+    CHAMPS.forEach(k=>{if(!String(fusion[k]||"").trim()){const src=autres.find(x=>String(x[k]||"").trim());if(src){fusion[k]=src[k];repris.push(({matricule:"matricule",email:"e-mail",serie:"n° de badge",zeplug:"Zeplug",carte_rechargement:"carte de recharge",casier:"casier",manager:"manager",mail_manager:"e-mail du manager",date_entree:"date d'entrée",date_sortie_prevue:"date de sortie",commentaire:"commentaire"})[k]||k);}}});
+    if(!fusion.badge_donne&&autres.some(x=>x.badge_donne)){fusion.badge_donne=true;}
+    if(!confirm("Garder la fiche de "+garde.prenom+" "+garde.nom+(garde.matricule?" (mat. "+garde.matricule+")":"")+" ?\n\n"+
+      (repris.length?"Elle sera complétée avec : "+repris.join(", ")+".\n":"")+
+      autres.length+" autre(s) fiche(s) seront archivées (rien n'est supprimé, elles restent dans les Archives)."))return;
+    const archives=autres.map(x=>({...x,statut:"Archivé",date_archive:todayISO(),casier:String(x.casier||"")===String(fusion.casier||"")?"":x.casier,
+      commentaire:((x.commentaire||"")+" [fusionnée avec la fiche #"+garde.id+"]").trim()}));
+    setBadges(p=>p.map(x=>x.id===fusion.id?fusion:(archives.find(a=>a.id===x.id)||x)));
+    ecrire(fusion);archives.forEach(ecrire);
+    addLog("Fusion doublons",garde.prenom+" "+garde.nom+" : "+autres.length+" fiche(s) archivée(s)");
+    showToast("✅ Fiches fusionnées — "+autres.length+" archivée(s)");
+  };
+  const cell=(t,st)=>el("div",{style:{fontSize:12,color:"var(--text2)",...st}},t);
+  return el("div",{className:"modal-overlay",onClick:e=>{if(e.target===e.currentTarget)onClose();}},
+    el("div",{className:"modal ios-modal",style:{maxWidth:860,width:"100%",maxHeight:"90vh",display:"flex",flexDirection:"column",padding:0}},
+      el("div",{style:{padding:"18px 22px 12px",borderBottom:"1px solid var(--border)",display:"flex",justifyContent:"space-between",alignItems:"flex-start",gap:12}},
+        el("div",null,el("h3",{style:{fontWeight:800,fontSize:17,color:"var(--text)"}},"🔁 Doublons dans le tableau"),
+          el("div",{style:{fontSize:12,color:"var(--text3)",marginTop:3}},groupes.length?groupes.length+" groupe(s) de fiches qui semblent concerner la même personne (collaborateurs non archivés).":"Aucun doublon trouvé parmi les collaborateurs non archivés.")),
+        el("button",{type:"button",onClick:onClose,className:"btn-icon","aria-label":"Fermer"},"✕")),
+      el("div",{style:{overflowY:"auto",padding:"14px 22px 20px",display:"grid",gap:12}},
+        groupes.length===0&&el("div",{style:{textAlign:"center",padding:30,fontSize:14,color:"var(--green)",fontWeight:700}},"✅ Tableau propre"),
+        groupes.map((g,gi)=>el("div",{key:gi,className:"card",style:{border:"1px solid var(--border)",borderTop:"3px solid var(--orange)",borderRadius:12,padding:"10px 12px"}},
+          el("div",{style:{fontSize:11,fontWeight:700,color:"var(--orange)",textTransform:"uppercase",letterSpacing:".4px",marginBottom:6}},g.raisons.join(" · ")),
+          g.items.map(b=>el("div",{key:b.id,style:{display:"flex",flexWrap:"wrap",alignItems:"center",gap:"4px 12px",padding:"8px 0",borderTop:"1px solid var(--border)"}},
+            el("div",{style:{flex:"1 1 220px",minWidth:0}},
+              el("div",{style:{fontWeight:700,fontSize:14,color:"var(--text)"}},(b.prenom||"")+" "+String(b.nom||"").toUpperCase()+"  ",el("span",{style:{fontSize:11,fontWeight:600,color:"var(--text3)"}},"#"+b.id+" · "+(b.statut||""))),
+              cell([b.matricule?"mat. "+b.matricule:"sans matricule",b.email||"sans e-mail",b.serie?"badge "+b.serie:"",b.casier?"casier "+b.casier:"",b.date_ajout?"ajouté le "+fd(b.date_ajout):""].filter(Boolean).join(" · "),{overflow:"hidden",textOverflow:"ellipsis"})),
+            el("div",{style:{display:"flex",gap:6,flexShrink:0}},
+              el("button",{type:"button",className:"btn btn-primary",style:{fontSize:12,padding:"5px 10px"},onClick:()=>fusionner(b,g)},"✓ Garder celle-ci"),
+              el("button",{type:"button",className:"btn btn-outline",style:{fontSize:12,padding:"5px 10px"},onClick:()=>archiverUn(b)},"🗃️ Archiver"))))))),
+      el("div",{style:{padding:"10px 22px",borderTop:"1px solid var(--border)",fontSize:11,color:"var(--text3)"}},"« Garder celle-ci » complète la fiche choisie avec les informations manquantes des autres, puis archive les autres. Rien n'est supprimé.")));
+}
+
 function SettingsModal({settings,setSettings,showToast,setShowSettings,racineRef,hrRef,hcmRef,importJsonRef,exportExcel,exportJSON,importJSON,badges,setBadges,casiers,wdCache,histo,addLog,canHistorique,canArchives,canHistoriquePret,initialTab}){
   const[tab,setTab]=useState(initialTab||"emails");
   const archivesCount=badges.filter(b=>b.statut==="Archivé").length;
@@ -3518,6 +3619,7 @@ function SettingsModal({settings,setSettings,showToast,setShowSettings,racineRef
             React.createElement("input",{type:"text",value:settings.ccEmails||"",onChange:e=>setSettings(s=>({...s,ccEmails:e.target.value.toUpperCase()})),className:"inp",placeholder:"cc1@ex.fr, cc2@ex.fr"})
           ),
           React.createElement("div",{style:{background:"var(--accentBg)",border:"1px solid rgba(59,130,246,.2)",borderRadius:8,padding:"10px 14px",fontSize:12,color:"var(--accent2)"}},"💡 Mails automatiques : l'IT est prévenue la veille des arrivées et départs, le restaurant le jour même ; la notification Field Support part à l'IT avec le champ « Field Support » en copie. Plusieurs adresses : séparez-les par une virgule ou un point-virgule."),
+          React.createElement(CompteurMails,null),
           React.createElement(TestMailsBox,{showToast,settings})
         ),
         tab==="import"&&React.createElement("div",null,
@@ -4621,7 +4723,7 @@ useEffect(()=>{
         visibleNav.map(n=>React.createElement("button",{key:n.id,onClick:()=>setView(n.id),style:{flex:"none",minWidth:60,background:"transparent",color:view===n.id?"var(--text)":"var(--text3)",border:"none",padding:"8px 6px 4px",fontSize:7,fontWeight:600,cursor:"pointer",display:"flex",flexDirection:"column",alignItems:"center",gap:2,borderTop:view===n.id?"2px solid var(--accent)":"2px solid transparent"}},React.createElement("span",{style:{fontSize:15}},n.icon),n.label))
       )
     ),
-    React.createElement("main",{style:{width:"100%",padding:"16px 20px"}},view==="accueil"&&React.createElement(CarteInstall,{showToast}),view==="accueil"&&React.createElement(CarteNotifs,{showToast}),renderView())
+    React.createElement("main",{style:{width:"100%",padding:"16px 20px"}},view==="accueil"&&React.createElement(CarteInstall,{showToast}),view==="accueil"&&React.createElement(CarteNotifs,{showToast}),view==="accueil"&&!isIT&&React.createElement(CompteurMails,{alerteSeule:true}),renderView())
   );
 }
 
@@ -4822,7 +4924,7 @@ async function sendFssEmail(toEmail,fiche,ccEmail){
           +blocLienAppli(fiche.id)+"\n"
           +"Cordialement,\n"+(window._mailSignature||SIGNATURE_MAIL);})(),
     });
-    console.log("Email envoyé à",toEmail);
+    console.log("Email envoyé à",toEmail);noterMailAppli("field_support",toEmail);
   }catch(e){console.error("EmailJS error:",e);}
 }
 const PERM_WRITE='write',PERM_READ='read',PERM_NONE='none';
@@ -5097,7 +5199,7 @@ function TestMailsBox({showToast,settings}){
     const liste=mailsDeTest(settings);let ok=0,err="";setEtat("Envoi en cours…");
     for(let i=0;i<liste.length;i++){const [sujet,message]=liste[i];
       if(i>0)await new Promise(r=>setTimeout(r,1500));   // EmailJS refuse plus d'un envoi par seconde
-      try{await window.emailjs.send(EMAILJS_SERVICE,EMAILJS_TEMPLATE,{to_email:to,cc_email:"",sujet,message},{publicKey:EMAILJS_KEY});ok++;}
+      try{await window.emailjs.send(EMAILJS_SERVICE,EMAILJS_TEMPLATE,{to_email:to,cc_email:"",sujet,message},{publicKey:EMAILJS_KEY});ok++;noterMailAppli("test",to);}
       catch(e){console.error("Test mail",e);err=(e&&(e.status||""))+" "+(e&&(e.text||e.message)||String(e));}
       setEtat("Envoi en cours… "+ok+"/"+liste.length);
     }
@@ -6110,6 +6212,8 @@ function VueCollaborateurs({badges,casiers,setBadges,setCasiers,showToast,wdCach
     }
     setShowForm(false);setEditing(null);
   };
+  const[showDbl,setShowDbl]=React.useState(false);
+  const nbDbl=React.useMemo(()=>groupesDoublons(badges).length,[badges]);
   const archiver=async id=>{
     if(!confirm("Archiver ce collaborateur ?"))return;
     const b=badges.find(x=>x.id===id);
@@ -6223,7 +6327,9 @@ function VueCollaborateurs({badges,casiers,setBadges,setCasiers,showToast,wdCach
       ),
       React.createElement("div",{style:{display:"flex",gap:14,alignItems:"center"}},
         React.createElement("button",{type:"button",className:"ios-link hide-m",onClick:()=>setTableMode(!tableMode)},tableMode?"Fiches":"Tableau"),
-        React.createElement(Btn,{onClick:()=>{setForm(empty);setEditing(null);setShowForm(!showForm);},color:C.blue},"+ Nouveau collaborateur"))
+        nbDbl>0&&React.createElement(Btn,{onClick:()=>setShowDbl(true),color:C.orange,variant:"outline"},"🔁 Doublons ("+nbDbl+")"),
+      React.createElement(Btn,{onClick:()=>{setForm(empty);setEditing(null);setShowForm(!showForm);},color:C.blue},"+ Nouveau collaborateur"),
+      showDbl&&React.createElement(FenetreDoublons,{badges,setBadges,onClose:()=>setShowDbl(false),showToast,addLog}))
     ),
     // Modal formulaire
     showForm&&React.createElement("div",{className:"ios-overlay",style:{position:"fixed",inset:0,background:"rgba(0,0,0,.5)",zIndex:1000,display:"flex",alignItems:"center",justifyContent:"center",padding:16},onClick:e=>{if(e.target===e.currentTarget){setShowForm(false);setEditing(null);}}},
@@ -7648,6 +7754,103 @@ function VueFieldSupport({fssData,setFssData,showToast,addLog,badges,casiers,set
 }
 
 // ════════════════ SETTINGS MODAL ════════════════
+
+// ════════════════ QUOTA EMAILJS : mails envoyés ce mois-ci ════════════════
+const QUOTA_MAILS=200;
+function noterMailAppli(type,dest){try{if(sb)Promise.resolve(sb.from("lp24_mails_appli").insert({type,destinataire:String(dest||"")})).catch(()=>{});}catch(e){}}
+function CompteurMails({alerteSeule}){
+  const el=React.createElement;const[c,setC]=React.useState(null);const[err,setErr]=React.useState("");
+  React.useEffect(()=>{let ok=true;(async()=>{try{if(!sb)return;const{data,error}=await sb.rpc("lp24_compteur_mails");if(!ok)return;if(error)setErr(error.message||"indisponible");else setC(data);}catch(e){if(ok)setErr("réseau");}})();return()=>{ok=false;};},[]);
+  if(alerteSeule){
+    if(!c||c.total<QUOTA_MAILS*0.8)return null;
+    const plein=c.total>=QUOTA_MAILS;
+    return el("div",{style:{background:plein?"var(--redBg)":"var(--orangeBg)",border:"1px solid "+(plein?"rgba(220,38,38,.35)":"rgba(234,88,12,.35)"),color:plein?"var(--red)":"var(--orange)",borderRadius:12,padding:"10px 14px",fontSize:13,fontWeight:600,marginBottom:12}},
+      (plein?"⛔ Quota EmailJS atteint : ":"⚠️ Quota EmailJS bientôt atteint : ")+c.total+" / "+QUOTA_MAILS+" mails ce mois-ci."+(plein?" Les mails automatiques ne partiront plus jusqu'au mois prochain.":" Au-delà de "+QUOTA_MAILS+", les mails automatiques s'arrêtent."));
+  }
+  const pct=c?Math.min(100,Math.round(c.total/QUOTA_MAILS*100)):0;
+  const col=!c?"var(--text3)":c.total>=QUOTA_MAILS?"var(--red)":c.total>=QUOTA_MAILS*0.8?"var(--orange)":"var(--green)";
+  const ligne=(l,v)=>el("div",{style:{display:"flex",justifyContent:"space-between",fontSize:12,color:"var(--text2)",padding:"2px 0"}},el("span",null,l),el("b",null,v));
+  return el("div",{style:{background:"var(--surface2)",border:"1px solid var(--border)",borderRadius:8,padding:"12px 14px",display:"grid",gap:8}},
+    el("div",{style:{display:"flex",justifyContent:"space-between",alignItems:"baseline"}},
+      el("div",{style:{fontWeight:700,fontSize:13,color:"var(--text)"}},"📊 Mails envoyés ce mois-ci"),
+      c&&el("div",{style:{fontWeight:800,fontSize:18,color:col}},c.total+" / "+QUOTA_MAILS)),
+    err?el("div",{style:{fontSize:12,color:"var(--text3)"}},"Compteur indisponible ("+err+"). Lance le script automatisation/compteur-mails.sql dans Supabase."):
+    !c?el("div",{style:{fontSize:12,color:"var(--text3)"}},"Chargement…"):
+    el(React.Fragment,null,
+      el("div",{style:{height:8,background:"var(--surface3)",borderRadius:999,overflow:"hidden"}},el("div",{style:{width:pct+"%",height:"100%",background:col,borderRadius:999}})),
+      ligne("Arrivées / départs (IT, restaurant)",c.arrivees_departs),ligne("Prêts de badge",c.prets),ligne("Relances badges non rendus",c.relances),ligne("Depuis l'appli (Field Support, tests)",c.appli),
+      el("div",{style:{fontSize:11,color:"var(--text3)"}},"Quota gratuit EmailJS : "+QUOTA_MAILS+" mails par mois. Alerte sur l'Accueil à partir de "+Math.round(QUOTA_MAILS*0.8)+".")));
+}
+
+// ════════════════ DOUBLONS DÉJÀ PRÉSENTS DANS LE TABLEAU ════════════════
+function groupesDoublons(badges){
+  const norm=x=>String(x||"").normalize("NFD").replace(/[̀-ͯ]/g,"").toUpperCase().replace(/[^A-Z0-9]/g,"");
+  const act=(badges||[]).filter(b=>b&&b.statut!=="Archivé");
+  const par={};const find=i=>par[i]===i?i:(par[i]=find(par[i]));const uni=(a,b)=>{par[find(a)]=find(b);};
+  act.forEach((b,i)=>par[i]=i);
+  const idx={};const why={};
+  const add=(k,i,lab)=>{if(!k)return;if(idx[k]!==undefined){uni(i,idx[k]);why[k]=lab;}else idx[k]=i;};
+  act.forEach((b,i)=>{const n=norm(b.nom),pr=norm(b.prenom);
+    if(n&&pr)add("N:"+[n,pr].sort().join("|"),i,"même nom et prénom");
+    const m=String(b.matricule||"").trim();if(m&&m!=="0")add("M:"+m,i,"même matricule");
+    const e=String(b.email||"").trim().toLowerCase();if(e)add("E:"+e,i,"même e-mail");});
+  const g={};act.forEach((b,i)=>{const r=find(i);(g[r]=g[r]||[]).push(b);});
+  return Object.values(g).filter(x=>x.length>1).map(items=>{
+    const raisons=new Set();const n=x=>norm(x);
+    for(let a=0;a<items.length;a++)for(let c=a+1;c<items.length;c++){const A=items[a],B=items[c];
+      if(n(A.nom)&&n(A.prenom)&&[n(A.nom),n(A.prenom)].sort().join()===[n(B.nom),n(B.prenom)].sort().join())raisons.add("même nom et prénom");
+      if(String(A.matricule||"").trim()&&String(A.matricule).trim()!=="0"&&String(A.matricule).trim()===String(B.matricule||"").trim())raisons.add("même matricule");
+      if(String(A.email||"").trim()&&String(A.email).trim().toLowerCase()===String(B.email||"").trim().toLowerCase())raisons.add("même e-mail");}
+    return {items,raisons:[...raisons]};
+  }).sort((a,b)=>String(a.items[0].nom).localeCompare(String(b.items[0].nom)));
+}
+function FenetreDoublons({badges,setBadges,onClose,showToast,addLog}){
+  const el=React.createElement;
+  const groupes=React.useMemo(()=>groupesDoublons(badges),[badges]);
+  const CHAMPS=["matricule","email","serie","zeplug","carte_rechargement","casier","manager","mail_manager","date_entree","date_sortie_prevue","commentaire"];
+  const fd=d=>{const m=String(d||"").match(/^(\d{4})-(\d{2})-(\d{2})/);return m?m[3]+"/"+m[2]+"/"+m[1]:"";};
+  const ecrire=row=>{if(sb)sbFire(sb.from("lp24_badges").upsert(row),"collaborateur");};
+  const archiverUn=b=>{
+    if(!confirm("Archiver la fiche "+b.prenom+" "+b.nom+(b.matricule?" (mat. "+b.matricule+")":"")+" ?"))return;
+    const u={...b,statut:"Archivé",date_archive:todayISO(),commentaire:((b.commentaire||"")+" [archivée : doublon]").trim()};
+    setBadges(p=>p.map(x=>x.id===b.id?u:x));ecrire(u);addLog("Archivage",b.prenom+" "+b.nom+" (doublon)");showToast("🗃️ Fiche archivée");
+  };
+  const fusionner=(garde,groupe)=>{
+    const autres=groupe.items.filter(x=>x.id!==garde.id);
+    const fusion={...garde};const repris=[];
+    CHAMPS.forEach(k=>{if(!String(fusion[k]||"").trim()){const src=autres.find(x=>String(x[k]||"").trim());if(src){fusion[k]=src[k];repris.push(({matricule:"matricule",email:"e-mail",serie:"n° de badge",zeplug:"Zeplug",carte_rechargement:"carte de recharge",casier:"casier",manager:"manager",mail_manager:"e-mail du manager",date_entree:"date d'entrée",date_sortie_prevue:"date de sortie",commentaire:"commentaire"})[k]||k);}}});
+    if(!fusion.badge_donne&&autres.some(x=>x.badge_donne)){fusion.badge_donne=true;}
+    if(!confirm("Garder la fiche de "+garde.prenom+" "+garde.nom+(garde.matricule?" (mat. "+garde.matricule+")":"")+" ?\n\n"+
+      (repris.length?"Elle sera complétée avec : "+repris.join(", ")+".\n":"")+
+      autres.length+" autre(s) fiche(s) seront archivées (rien n'est supprimé, elles restent dans les Archives)."))return;
+    const archives=autres.map(x=>({...x,statut:"Archivé",date_archive:todayISO(),casier:String(x.casier||"")===String(fusion.casier||"")?"":x.casier,
+      commentaire:((x.commentaire||"")+" [fusionnée avec la fiche #"+garde.id+"]").trim()}));
+    setBadges(p=>p.map(x=>x.id===fusion.id?fusion:(archives.find(a=>a.id===x.id)||x)));
+    ecrire(fusion);archives.forEach(ecrire);
+    addLog("Fusion doublons",garde.prenom+" "+garde.nom+" : "+autres.length+" fiche(s) archivée(s)");
+    showToast("✅ Fiches fusionnées — "+autres.length+" archivée(s)");
+  };
+  const cell=(t,st)=>el("div",{style:{fontSize:12,color:"var(--text2)",...st}},t);
+  return el("div",{className:"modal-overlay",onClick:e=>{if(e.target===e.currentTarget)onClose();}},
+    el("div",{className:"modal ios-modal",style:{maxWidth:860,width:"100%",maxHeight:"90vh",display:"flex",flexDirection:"column",padding:0}},
+      el("div",{style:{padding:"18px 22px 12px",borderBottom:"1px solid var(--border)",display:"flex",justifyContent:"space-between",alignItems:"flex-start",gap:12}},
+        el("div",null,el("h3",{style:{fontWeight:800,fontSize:17,color:"var(--text)"}},"🔁 Doublons dans le tableau"),
+          el("div",{style:{fontSize:12,color:"var(--text3)",marginTop:3}},groupes.length?groupes.length+" groupe(s) de fiches qui semblent concerner la même personne (collaborateurs non archivés).":"Aucun doublon trouvé parmi les collaborateurs non archivés.")),
+        el("button",{type:"button",onClick:onClose,className:"btn-icon","aria-label":"Fermer"},"✕")),
+      el("div",{style:{overflowY:"auto",padding:"14px 22px 20px",display:"grid",gap:12}},
+        groupes.length===0&&el("div",{style:{textAlign:"center",padding:30,fontSize:14,color:"var(--green)",fontWeight:700}},"✅ Tableau propre"),
+        groupes.map((g,gi)=>el("div",{key:gi,className:"card",style:{border:"1px solid var(--border)",borderTop:"3px solid var(--orange)",borderRadius:12,padding:"10px 12px"}},
+          el("div",{style:{fontSize:11,fontWeight:700,color:"var(--orange)",textTransform:"uppercase",letterSpacing:".4px",marginBottom:6}},g.raisons.join(" · ")),
+          g.items.map(b=>el("div",{key:b.id,style:{display:"flex",flexWrap:"wrap",alignItems:"center",gap:"4px 12px",padding:"8px 0",borderTop:"1px solid var(--border)"}},
+            el("div",{style:{flex:"1 1 220px",minWidth:0}},
+              el("div",{style:{fontWeight:700,fontSize:14,color:"var(--text)"}},(b.prenom||"")+" "+String(b.nom||"").toUpperCase()+"  ",el("span",{style:{fontSize:11,fontWeight:600,color:"var(--text3)"}},"#"+b.id+" · "+(b.statut||""))),
+              cell([b.matricule?"mat. "+b.matricule:"sans matricule",b.email||"sans e-mail",b.serie?"badge "+b.serie:"",b.casier?"casier "+b.casier:"",b.date_ajout?"ajouté le "+fd(b.date_ajout):""].filter(Boolean).join(" · "),{overflow:"hidden",textOverflow:"ellipsis"})),
+            el("div",{style:{display:"flex",gap:6,flexShrink:0}},
+              el("button",{type:"button",className:"btn btn-primary",style:{fontSize:12,padding:"5px 10px"},onClick:()=>fusionner(b,g)},"✓ Garder celle-ci"),
+              el("button",{type:"button",className:"btn btn-outline",style:{fontSize:12,padding:"5px 10px"},onClick:()=>archiverUn(b)},"🗃️ Archiver"))))))),
+      el("div",{style:{padding:"10px 22px",borderTop:"1px solid var(--border)",fontSize:11,color:"var(--text3)"}},"« Garder celle-ci » complète la fiche choisie avec les informations manquantes des autres, puis archive les autres. Rien n'est supprimé.")));
+}
+
 function SettingsModal({settings,setSettings,showToast,setShowSettings,racineRef,hrRef,hcmRef,importJsonRef,exportExcel,exportJSON,importJSON,badges,setBadges,casiers,wdCache,histo,addLog,canHistorique,canArchives,canHistoriquePret,initialTab}){
   const[tab,setTab]=useState(initialTab||"emails");
   const archivesCount=badges.filter(b=>b.statut==="Archivé").length;
@@ -7714,6 +7917,7 @@ function SettingsModal({settings,setSettings,showToast,setShowSettings,racineRef
             React.createElement("input",{type:"text",value:settings.ccEmails||"",onChange:e=>setSettings(s=>({...s,ccEmails:e.target.value.toUpperCase()})),className:"inp",placeholder:"cc1@ex.fr, cc2@ex.fr"})
           ),
           React.createElement("div",{style:{background:"var(--accentBg)",border:"1px solid rgba(59,130,246,.2)",borderRadius:8,padding:"10px 14px",fontSize:12,color:"var(--accent2)"}},"💡 Mails automatiques : l'IT est prévenue la veille des arrivées et départs, le restaurant le jour même ; la notification Field Support part à l'IT avec le champ « Field Support » en copie. Plusieurs adresses : séparez-les par une virgule ou un point-virgule."),
+          React.createElement(CompteurMails,null),
           React.createElement(TestMailsBox,{showToast,settings})
         ),
         tab==="import"&&React.createElement("div",null,
@@ -8833,7 +9037,7 @@ useEffect(()=>{
       !isIT&&{label:"Réglages",icon:"settings",onClick:()=>setShowSettings(true)},
       session&&{label:"Déconnexion",icon:"logout",danger:true,onClick:logout}
     ]}),
-    React.createElement("main",{style:{width:"100%",padding:"16px 20px"}},view==="accueil"&&React.createElement(CarteInstall,{showToast}),view==="accueil"&&React.createElement(CarteNotifs,{showToast}),renderView())
+    React.createElement("main",{style:{width:"100%",padding:"16px 20px"}},view==="accueil"&&React.createElement(CarteInstall,{showToast}),view==="accueil"&&React.createElement(CarteNotifs,{showToast}),view==="accueil"&&!isIT&&React.createElement(CompteurMails,{alerteSeule:true}),renderView())
   );
 }
 
