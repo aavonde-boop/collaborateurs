@@ -1974,6 +1974,7 @@ function VueCollaborateurs({badges,casiers,setBadges,setCasiers,showToast,wdCach
   // actif n'a déjà ce casier. Renvoie false si l'utilisateur annule.
   const checkCasierLibre=async(newC,selfId)=>{
     if(!newC)return true;
+    {const L=await titulairesCasier(newC,badges,selfId);if(L.length)return confirm("⚠️ Le casier "+newC+" est déjà attribué à "+L.map(b=>b.prenom+" "+b.nom).join(", ")+".\nL'attribuer quand même ?");return true;}
     let other=null;
     if(sb){try{const{data}=await sb.from("lp24_badges").select("id,nom,prenom,statut,casier").eq("casier",newC);other=(data||[]).find(b=>b.statut!=="Archivé"&&b.id!==selfId)||null;}catch(e){}}
     if(!other)other=badges.find(b=>b.statut!=="Archivé"&&b.casier===newC&&b.id!==selfId)||null;
@@ -2294,6 +2295,9 @@ function VueCasiers({casiers,badges,setCasiers,setBadges,showToast,addLog,setVie
     let nf={...form};
     if(sel)nf={...nf,statut:"Occupé",occupant:((sel.nom||"")+" "+(sel.prenom||"")).trim(),matricule:String(sel.matricule||"")};
     else if(titulaire||nf.statut!=="Occupé"||!String(nf.occupant||"").trim())nf={...nf,occupant:"",matricule:""};
+    if(sel){const L=await titulairesCasier(nf.numero,badges,sel.id);const autres=L.filter(b=>!titulaire||String(b.id)!==String(titulaire.id));
+      if(autres.length&&!confirm("⚠️ D'après la base, le casier "+nf.numero+" est déjà attribué à "+autres.map(b=>b.prenom+" "+b.nom).join(", ")+".\n\nL'attribuer quand même à "+sel.prenom+" "+sel.nom+" ? (le casier sera retiré de leur fiche)"))return;
+      if(autres.length){const chg0=autres.map(b=>({...(badges.find(x=>String(x.id)===String(b.id))||b),casier:""}));setBadges(prev=>prev.map(b=>chg0.find(x=>String(x.id)===String(b.id))||b));chg0.forEach(x=>{if(sb&&typeof x.id==="number")sbFire(sb.from("lp24_badges").update({casier:""}).eq("id",x.id),"collaborateur");});}}
     const ok=await save(nf);if(!ok)return;
     const num=String(nf.numero||"").trim();const chg=[];
     if(titulaire&&(!sel||sel.id!==titulaire.id))chg.push({...titulaire,casier:""});
@@ -2305,6 +2309,8 @@ function VueCasiers({casiers,badges,setCasiers,setBadges,showToast,addLog,setVie
       showToast("✅ Casier "+num+" attribué à "+sel.prenom+" "+sel.nom+(sel.casier&&casierKey(sel.casier)!==casierKey(num)?" — son ancien casier "+sel.casier+" passe « à vider »":""));}
     else if(titulaire){addLog("Casier retiré",num+" (était à "+titulaire.prenom+" "+titulaire.nom+")");showToast("Casier "+num+" retiré de la fiche de "+titulaire.prenom+" "+titulaire.nom);}
   };
+  const[enBase,setEnBase]=useState(null);const[showCtrl,setShowCtrl]=useState(false);
+  useEffect(()=>{setEnBase(null);if(!showForm||!form||!form.numero)return;let ok=true;titulairesCasier(form.numero,badges,null).then(L=>{if(ok)setEnBase(L);});return()=>{ok=false;};},[showForm,editing]);
   const lireForm=()=>form;
   const save=async(fx)=>{const form=(fx&&fx.numero!==undefined)?fx:lireForm();
     if(!form.numero.trim())return;
@@ -2444,6 +2450,7 @@ function VueCasiers({casiers,badges,setCasiers,setBadges,showToast,addLog,setVie
       ),
       React.createElement("div",{style:{display:"flex",gap:8}},
         React.createElement(Btn,{onClick:()=>setViewMode(v=>v==="grille"?"liste":"grille"),variant:"outline",color:C.gray,style:{fontSize:12}},viewMode==="grille"?"☰ Liste":"⊞ Grille"),
+        React.createElement(Btn,{onClick:()=>setShowCtrl(true),variant:"outline",color:C.orange,style:{fontSize:12}},"🔎 Contrôle"),showCtrl&&React.createElement(FenetreControleCasiers,{badges,casiers,onClose:()=>setShowCtrl(false),ouvrirCasier:c=>{setShowCtrl(false);setForm({...c});setEditing(c.id);setShowForm(true);}}),
         React.createElement(Btn,{onClick:()=>{setForm(empty);setEditing(null);setShowForm(!showForm);},color:C.purple},"+ Nouveau casier")
       )
     ),
@@ -2452,6 +2459,10 @@ function VueCasiers({casiers,badges,setCasiers,setBadges,showToast,addLog,setVie
       React.createElement("div",{style:{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:14}},
         React.createElement("div",{style:{fontSize:18,fontWeight:800,color:"var(--text)"}},editing?"🔐 Casier "+(form.numero||""):"🔐 Nouveau casier"),
         React.createElement("button",{type:"button",onClick:()=>{setShowForm(false);setEditing(null);},className:"btn-icon","aria-label":"Fermer"},"✕")),
+      enBase&&(()=>{const loc=titulaire?String(titulaire.id):"";const autres=enBase.filter(b=>String(b.id)!==loc);
+        if(!autres.length&&!(enBase.length===0&&titulaire))return null;
+        return React.createElement("div",{style:{background:"var(--redBg)",border:"1px solid rgba(220,38,38,.3)",color:"var(--red)",borderRadius:8,padding:"8px 12px",fontSize:12,fontWeight:600,marginBottom:10}},
+          autres.length?"⚠️ Ce casier est"+(titulaire?" aussi":"")+" attribué à "+autres.map(b=>b.prenom+" "+String(b.nom||"").toUpperCase()).join(", ")+(titulaire?" (en plus de "+titulaire.prenom+" "+String(titulaire.nom||"").toUpperCase()+")":"")+". Choisis la bonne personne puis enregistre : le casier sera retiré des autres fiches.":"⚠️ L'écran n'était pas à jour : ce casier n'est plus attribué dans la base.");})(),
       React.createElement("div",{style:{marginBottom:10}},
         React.createElement(Lbl,null,"👤 Attribué à"),
         React.createElement("select",{className:"inp",value:quiSel,onChange:e=>setQui(e.target.value),style:{width:"100%",cursor:"pointer"}},
@@ -3791,6 +3802,43 @@ function synchroWorkday(badges,wdList){
 }
 // Cherche une colonne par son intitulé (fichiers Workday dont les en-têtes varient)
 function champWD(o,re,excl){const k=Object.keys(o||{}).find(h=>re.test(h)&&!(excl&&excl.test(h)));return k?o[k]:"";}
+
+
+// ════════════════ CASIERS : qui a vraiment ce casier ? (lu dans la base au moment de l'attribution) ════════════════
+// « PA210 », « PA 210 », « pa-0210 » = même casier. Les fiches archivées ne comptent pas.
+async function titulairesCasier(numero,badgesLocaux,saufId){
+  const k=casierKey(numero);if(!k)return [];
+  let L=null;
+  if(sb){try{const r=await sb.from("lp24_badges").select("id,nom,prenom,statut,casier").not("casier","is",null);if(!r.error)L=r.data||[];}catch(e){}}
+  if(!L)L=badgesLocaux||[];
+  return L.filter(b=>b&&b.statut!=="Archivé"&&String(b.casier||"").trim()&&casierKey(b.casier)===k&&String(b.id)!==String(saufId));
+}
+function FenetreControleCasiers({badges,casiers,onClose,ouvrirCasier}){
+  const el=React.createElement;
+  const actifs=(badges||[]).filter(b=>b.statut!=="Archivé"&&String(b.casier||"").trim());
+  const parK={};actifs.forEach(b=>{const k=casierKey(b.casier);(parK[k]=parK[k]||[]).push(b);});
+  const inv={};(casiers||[]).forEach(c=>{inv[casierKey(c.numero)]=c;});
+  const doubles=Object.keys(parK).filter(k=>parK[k].length>1).map(k=>({k,c:inv[k],L:parK[k]}));
+  const inconnus=actifs.filter(b=>!inv[casierKey(b.casier)]);
+  const ecrits=actifs.filter(b=>inv[casierKey(b.casier)]&&String(b.casier).trim()!==String(inv[casierKey(b.casier)].numero).trim());
+  const nom=b=>((b.prenom||"")+" "+String(b.nom||"").toUpperCase()).trim();
+  const bloc=(titre,coul,items,vide)=>el("div",{style:{marginBottom:14}},
+    el("div",{style:{fontSize:11,fontWeight:700,color:coul,textTransform:"uppercase",letterSpacing:".5px",marginBottom:6}},titre+" · "+items.length),
+    items.length?el("div",{style:{border:"1px solid var(--border)",borderRadius:10,overflow:"hidden"}},items):el("div",{style:{fontSize:12,color:"var(--green)",fontWeight:600}},vide));
+  return el("div",{className:"modal-overlay modal-centre",onClick:e=>{if(e.target===e.currentTarget)onClose();}},
+    el("div",{className:"modal ios-modal",style:{width:"100%",maxWidth:620,maxHeight:"90vh",overflowY:"auto",padding:"20px 22px",borderTop:"4px solid "+C.orange}},
+      el("div",{style:{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:6}},
+        el("div",{style:{fontSize:18,fontWeight:800,color:"var(--text)"}},"🔎 Contrôle des casiers"),
+        el("button",{type:"button",className:"btn-icon",onClick:onClose,"aria-label":"Fermer"},"✕")),
+      el("div",{style:{fontSize:12,color:"var(--text3)",marginBottom:14}},"Vérifie les fiches des collaborateurs actifs. Clique sur un casier pour le corriger."),
+      bloc("Casier attribué à plusieurs personnes","var(--red)",doubles.map(d=>el("div",{key:d.k,onClick:()=>d.c&&ouvrirCasier(d.c),style:{padding:"9px 12px",borderTop:"1px solid var(--border)",cursor:d.c?"pointer":"default"}},
+        el("div",{style:{fontWeight:700,fontSize:14}},"🔐 "+(d.c?d.c.numero:d.L[0].casier)),
+        el("div",{style:{fontSize:12,color:"var(--text2)"}},d.L.map(nom).join(" · ")))),"✅ Aucun casier en double"),
+      bloc("Casier inconnu dans la liste des casiers","var(--orange)",inconnus.map(b=>el("div",{key:b.id,style:{padding:"9px 12px",borderTop:"1px solid var(--border)"}},
+        el("div",{style:{fontWeight:700,fontSize:14}},nom(b)),
+        el("div",{style:{fontSize:12,color:"var(--text2)"}},"Sa fiche indique le casier « "+b.casier+" », qui n'existe pas dans l'onglet Casiers (faute de frappe ou casier à créer)."))),"✅ Tous les casiers des fiches existent"),
+      ecrits.length>0&&bloc("Numéro écrit différemment (reconnu quand même)","var(--text3)",ecrits.map(b=>el("div",{key:b.id,style:{padding:"9px 12px",borderTop:"1px solid var(--border)",fontSize:12,color:"var(--text2)"}},nom(b)+" : « "+b.casier+" » = casier "+inv[casierKey(b.casier)].numero)),"")));
+}
 
 function SettingsModal({settings,setSettings,showToast,setShowSettings,racineRef,hrRef,hcmRef,importJsonRef,exportExcel,exportJSON,importJSON,badges,setBadges,casiers,wdCache,histo,addLog,canHistorique,canArchives,canHistoriquePret,initialTab}){
   const[tab,setTab]=useState(initialTab||"emails");
@@ -6430,6 +6478,7 @@ function VueCollaborateurs({badges,casiers,setBadges,setCasiers,showToast,wdCach
   // actif n'a déjà ce casier. Renvoie false si l'utilisateur annule.
   const checkCasierLibre=async(newC,selfId)=>{
     if(!newC)return true;
+    {const L=await titulairesCasier(newC,badges,selfId);if(L.length)return confirm("⚠️ Le casier "+newC+" est déjà attribué à "+L.map(b=>b.prenom+" "+b.nom).join(", ")+".\nL'attribuer quand même ?");return true;}
     let other=null;
     if(sb){try{const{data}=await sb.from("lp24_badges").select("id,nom,prenom,statut,casier").eq("casier",newC);other=(data||[]).find(b=>b.statut!=="Archivé"&&b.id!==selfId)||null;}catch(e){}}
     if(!other)other=badges.find(b=>b.statut!=="Archivé"&&b.casier===newC&&b.id!==selfId)||null;
@@ -6805,6 +6854,9 @@ function VueCasiers({casiers,badges,setCasiers,setBadges,showToast,addLog,setVie
     let nf={...form};
     if(sel)nf={...nf,statut:"Occupé",occupant:((sel.nom||"")+" "+(sel.prenom||"")).trim(),matricule:String(sel.matricule||"")};
     else if(titulaire||nf.statut!=="Occupé"||!String(nf.occupant||"").trim())nf={...nf,occupant:"",matricule:""};
+    if(sel){const L=await titulairesCasier(nf.numero,badges,sel.id);const autres=L.filter(b=>!titulaire||String(b.id)!==String(titulaire.id));
+      if(autres.length&&!confirm("⚠️ D'après la base, le casier "+nf.numero+" est déjà attribué à "+autres.map(b=>b.prenom+" "+b.nom).join(", ")+".\n\nL'attribuer quand même à "+sel.prenom+" "+sel.nom+" ? (le casier sera retiré de leur fiche)"))return;
+      if(autres.length){const chg0=autres.map(b=>({...(badges.find(x=>String(x.id)===String(b.id))||b),casier:""}));setBadges(prev=>prev.map(b=>chg0.find(x=>String(x.id)===String(b.id))||b));chg0.forEach(x=>{if(sb&&typeof x.id==="number")sbFire(sb.from("lp24_badges").update({casier:""}).eq("id",x.id),"collaborateur");});}}
     const ok=await save(nf);if(!ok)return;
     const num=String(nf.numero||"").trim();const chg=[];
     if(titulaire&&(!sel||sel.id!==titulaire.id))chg.push({...titulaire,casier:""});
@@ -6816,6 +6868,8 @@ function VueCasiers({casiers,badges,setCasiers,setBadges,showToast,addLog,setVie
       showToast("✅ Casier "+num+" attribué à "+sel.prenom+" "+sel.nom+(sel.casier&&casierKey(sel.casier)!==casierKey(num)?" — son ancien casier "+sel.casier+" passe « à vider »":""));}
     else if(titulaire){addLog("Casier retiré",num+" (était à "+titulaire.prenom+" "+titulaire.nom+")");showToast("Casier "+num+" retiré de la fiche de "+titulaire.prenom+" "+titulaire.nom);}
   };
+  const[enBase,setEnBase]=useState(null);const[showCtrl,setShowCtrl]=useState(false);
+  useEffect(()=>{setEnBase(null);if(!showForm||!form||!form.numero)return;let ok=true;titulairesCasier(form.numero,badges,null).then(L=>{if(ok)setEnBase(L);});return()=>{ok=false;};},[showForm,editing]);
   const lireForm=()=>form;
   const save=async(fx)=>{const form=(fx&&fx.numero!==undefined)?fx:lireForm();
     if(!form.numero.trim())return;
@@ -6987,6 +7041,7 @@ function VueCasiers({casiers,badges,setCasiers,setBadges,showToast,addLog,setVie
     React.createElement("div",{className:"ios-head"},
       React.createElement("div",{className:"ios-navbtns"},
         React.createElement("button",{type:"button",className:"ios-link",onClick:()=>setViewMode(v=>v==="grille"?"liste":"grille")},viewMode==="grille"?"Liste":"Grille"),
+        React.createElement("button",{type:"button",className:"ios-link",onClick:()=>setShowCtrl(true)},"🔎 Contrôle"),showCtrl&&React.createElement(FenetreControleCasiers,{badges,casiers,onClose:()=>setShowCtrl(false),ouvrirCasier:c=>{setShowCtrl(false);setForm({...c});setEditing(c.id);setShowForm(true);}}),
         React.createElement("button",{type:"button",className:"ios-link ios-plus",onClick:()=>{setForm(empty);setEditing(null);setShowForm(!showForm);},"aria-label":"Nouveau casier",title:"Nouveau casier"},"+")
       ),
       React.createElement("h1",{className:"ios-large"},"🔐 Casiers"),
@@ -7004,6 +7059,10 @@ function VueCasiers({casiers,badges,setCasiers,setBadges,showToast,addLog,setVie
       React.createElement("div",{style:{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:14}},
         React.createElement("div",{style:{fontSize:18,fontWeight:800,color:"var(--text)"}},editing?"🔐 Casier "+(form.numero||""):"🔐 Nouveau casier"),
         React.createElement("button",{type:"button",onClick:()=>{setShowForm(false);setEditing(null);},className:"btn-icon","aria-label":"Fermer"},"✕")),
+      enBase&&(()=>{const loc=titulaire?String(titulaire.id):"";const autres=enBase.filter(b=>String(b.id)!==loc);
+        if(!autres.length&&!(enBase.length===0&&titulaire))return null;
+        return React.createElement("div",{style:{background:"var(--redBg)",border:"1px solid rgba(220,38,38,.3)",color:"var(--red)",borderRadius:8,padding:"8px 12px",fontSize:12,fontWeight:600,marginBottom:10}},
+          autres.length?"⚠️ Ce casier est"+(titulaire?" aussi":"")+" attribué à "+autres.map(b=>b.prenom+" "+String(b.nom||"").toUpperCase()).join(", ")+(titulaire?" (en plus de "+titulaire.prenom+" "+String(titulaire.nom||"").toUpperCase()+")":"")+". Choisis la bonne personne puis enregistre : le casier sera retiré des autres fiches.":"⚠️ L'écran n'était pas à jour : ce casier n'est plus attribué dans la base.");})(),
       React.createElement("div",{style:{marginBottom:10}},
         React.createElement(Lbl,null,"👤 Attribué à"),
         React.createElement("select",{className:"inp",value:quiSel,onChange:e=>setQui(e.target.value),style:{width:"100%",cursor:"pointer"}},
@@ -8364,6 +8423,43 @@ function synchroWorkday(badges,wdList){
 }
 // Cherche une colonne par son intitulé (fichiers Workday dont les en-têtes varient)
 function champWD(o,re,excl){const k=Object.keys(o||{}).find(h=>re.test(h)&&!(excl&&excl.test(h)));return k?o[k]:"";}
+
+
+// ════════════════ CASIERS : qui a vraiment ce casier ? (lu dans la base au moment de l'attribution) ════════════════
+// « PA210 », « PA 210 », « pa-0210 » = même casier. Les fiches archivées ne comptent pas.
+async function titulairesCasier(numero,badgesLocaux,saufId){
+  const k=casierKey(numero);if(!k)return [];
+  let L=null;
+  if(sb){try{const r=await sb.from("lp24_badges").select("id,nom,prenom,statut,casier").not("casier","is",null);if(!r.error)L=r.data||[];}catch(e){}}
+  if(!L)L=badgesLocaux||[];
+  return L.filter(b=>b&&b.statut!=="Archivé"&&String(b.casier||"").trim()&&casierKey(b.casier)===k&&String(b.id)!==String(saufId));
+}
+function FenetreControleCasiers({badges,casiers,onClose,ouvrirCasier}){
+  const el=React.createElement;
+  const actifs=(badges||[]).filter(b=>b.statut!=="Archivé"&&String(b.casier||"").trim());
+  const parK={};actifs.forEach(b=>{const k=casierKey(b.casier);(parK[k]=parK[k]||[]).push(b);});
+  const inv={};(casiers||[]).forEach(c=>{inv[casierKey(c.numero)]=c;});
+  const doubles=Object.keys(parK).filter(k=>parK[k].length>1).map(k=>({k,c:inv[k],L:parK[k]}));
+  const inconnus=actifs.filter(b=>!inv[casierKey(b.casier)]);
+  const ecrits=actifs.filter(b=>inv[casierKey(b.casier)]&&String(b.casier).trim()!==String(inv[casierKey(b.casier)].numero).trim());
+  const nom=b=>((b.prenom||"")+" "+String(b.nom||"").toUpperCase()).trim();
+  const bloc=(titre,coul,items,vide)=>el("div",{style:{marginBottom:14}},
+    el("div",{style:{fontSize:11,fontWeight:700,color:coul,textTransform:"uppercase",letterSpacing:".5px",marginBottom:6}},titre+" · "+items.length),
+    items.length?el("div",{style:{border:"1px solid var(--border)",borderRadius:10,overflow:"hidden"}},items):el("div",{style:{fontSize:12,color:"var(--green)",fontWeight:600}},vide));
+  return el("div",{className:"modal-overlay modal-centre",onClick:e=>{if(e.target===e.currentTarget)onClose();}},
+    el("div",{className:"modal ios-modal",style:{width:"100%",maxWidth:620,maxHeight:"90vh",overflowY:"auto",padding:"20px 22px",borderTop:"4px solid "+C.orange}},
+      el("div",{style:{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:6}},
+        el("div",{style:{fontSize:18,fontWeight:800,color:"var(--text)"}},"🔎 Contrôle des casiers"),
+        el("button",{type:"button",className:"btn-icon",onClick:onClose,"aria-label":"Fermer"},"✕")),
+      el("div",{style:{fontSize:12,color:"var(--text3)",marginBottom:14}},"Vérifie les fiches des collaborateurs actifs. Clique sur un casier pour le corriger."),
+      bloc("Casier attribué à plusieurs personnes","var(--red)",doubles.map(d=>el("div",{key:d.k,onClick:()=>d.c&&ouvrirCasier(d.c),style:{padding:"9px 12px",borderTop:"1px solid var(--border)",cursor:d.c?"pointer":"default"}},
+        el("div",{style:{fontWeight:700,fontSize:14}},"🔐 "+(d.c?d.c.numero:d.L[0].casier)),
+        el("div",{style:{fontSize:12,color:"var(--text2)"}},d.L.map(nom).join(" · ")))),"✅ Aucun casier en double"),
+      bloc("Casier inconnu dans la liste des casiers","var(--orange)",inconnus.map(b=>el("div",{key:b.id,style:{padding:"9px 12px",borderTop:"1px solid var(--border)"}},
+        el("div",{style:{fontWeight:700,fontSize:14}},nom(b)),
+        el("div",{style:{fontSize:12,color:"var(--text2)"}},"Sa fiche indique le casier « "+b.casier+" », qui n'existe pas dans l'onglet Casiers (faute de frappe ou casier à créer)."))),"✅ Tous les casiers des fiches existent"),
+      ecrits.length>0&&bloc("Numéro écrit différemment (reconnu quand même)","var(--text3)",ecrits.map(b=>el("div",{key:b.id,style:{padding:"9px 12px",borderTop:"1px solid var(--border)",fontSize:12,color:"var(--text2)"}},nom(b)+" : « "+b.casier+" » = casier "+inv[casierKey(b.casier)].numero)),"")));
+}
 
 function SettingsModal({settings,setSettings,showToast,setShowSettings,racineRef,hrRef,hcmRef,importJsonRef,exportExcel,exportJSON,importJSON,badges,setBadges,casiers,wdCache,histo,addLog,canHistorique,canArchives,canHistoriquePret,initialTab}){
   const[tab,setTab]=useState(initialTab||"emails");
