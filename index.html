@@ -2483,7 +2483,8 @@ function VueCasiers({casiers,badges,setCasiers,setBadges,showToast,addLog,setVie
       ),
       React.createElement("div",{style:{display:"flex",gap:8,flexWrap:"wrap",marginTop:6}},React.createElement(Btn,{onClick:enregistrerCasier,color:C.purple},"💾 Enregistrer"),React.createElement(Btn,{onClick:()=>{setShowForm(false);setEditing(null);},variant:"outline",color:C.gray},"Annuler"),
         editing&&(()=>{const c=casiers.find(x=>x.id===editing);return c&&isAVider(c)?React.createElement(Btn,{onClick:()=>{viderCasier(c);setShowForm(false);setEditing(null);},variant:"outline",color:C.orange},"🧹 Vider"):null;})(),
-        editing&&React.createElement(Btn,{onClick:()=>del(editing),variant:"outline",color:C.red,style:{marginLeft:"auto"}},"🗑️ Supprimer"))
+        editing&&React.createElement(Btn,{onClick:()=>del(editing),variant:"outline",color:C.red,style:{marginLeft:"auto"}},"🗑️ Supprimer")),
+      editing&&form.numero&&React.createElement(HistoriqueCasier,{key:editing,numero:form.numero})
     )),
     React.createElement(Card,{style:{marginBottom:12,padding:12}},
       React.createElement("div",{style:{display:"flex",gap:10,flexWrap:"wrap",alignItems:"center"}},
@@ -3845,6 +3846,31 @@ function FenetreControleCasiers({badges,casiers,onClose,ouvrirCasier}){
         el("div",{style:{fontWeight:700,fontSize:14}},nom(b)),
         el("div",{style:{fontSize:12,color:"var(--text2)"}},"Sa fiche indique le casier « "+b.casier+" », qui n'existe pas dans l'onglet Casiers (faute de frappe ou casier à créer)."))),"✅ Tous les casiers des fiches existent"),
       ecrits.length>0&&bloc("Numéro écrit différemment (reconnu quand même)","var(--text3)",ecrits.map(b=>el("div",{key:b.id,style:{padding:"9px 12px",borderTop:"1px solid var(--border)",fontSize:12,color:"var(--text2)"}},nom(b)+" : « "+b.casier+" » = casier "+inv[casierKey(b.casier)].numero)),"")));
+}
+
+
+// ════════════════ CASIERS : historique d'un casier (journal en base + anciennes lignes de l'Historique) ════════════════
+function HistoriqueCasier({numero}){
+  const el=React.createElement;const[lignes,setLignes]=React.useState(null);const[actif,setActif]=React.useState(true);
+  React.useEffect(()=>{let ok=true;(async()=>{const k=casierKey(numero);let J=[],H=[],act=true;
+    try{const r=await sb.from("lp24_casiers_journal").select("action,personne,par,le").eq("casier",k).order("le",{ascending:false}).limit(60);if(r.error)act=false;else J=(r.data||[]).map(x=>({le:x.le,action:x.action,personne:x.personne,par:x.par}));}catch(e){act=false;}
+    try{const r=await sb.from("historique").select("action,detail,user_email,ts").ilike("detail","%"+numero+"%").order("ts",{ascending:false}).limit(40);
+      if(!r.error){const re=new RegExp("(^|[^A-Z0-9])"+String(numero).replace(/[^A-Za-z0-9]/g,"")+"([^0-9]|$)","i");
+        const debut=J.length?J[J.length-1].le:null;
+        H=(r.data||[]).filter(x=>re.test(String(x.detail||"").replace(/\s+/g,""))||re.test(String(x.detail||""))).filter(x=>!debut||x.ts<debut).map(x=>({le:x.ts,action:x.action,personne:x.detail,par:x.user_email,ancien:true}));}}catch(e){}
+    if(ok){setActif(act);setLignes([...J,...H].sort((a,b)=>String(b.le).localeCompare(String(a.le))));}})();return()=>{ok=false;};},[numero]);
+  const dt=d=>{try{return new Date(d).toLocaleString("fr-FR",{day:"2-digit",month:"2-digit",year:"numeric",hour:"2-digit",minute:"2-digit"});}catch(e){return "";}};
+  const coul=a=>/Attribué/.test(a)?"var(--green)":/Retiré|Vidé|archivé|supprim/i.test(a)?"var(--red)":"var(--text)";
+  return el("div",{style:{border:"1px solid var(--border)",borderRadius:10,padding:"10px 12px",background:"var(--surface2)",marginTop:12}},
+    el("div",{style:{fontSize:11,fontWeight:700,color:"var(--text2)",textTransform:"uppercase",letterSpacing:".4px",marginBottom:6}},"🕐 Historique du casier"),
+    !lignes?el("div",{style:{fontSize:12,color:"var(--text3)"}},"Chargement…"):
+    el(React.Fragment,null,
+      !actif&&el("div",{style:{fontSize:11,color:"var(--orange)",marginBottom:6}},"Suivi détaillé pas encore activé (script casiers-historique.sql à lancer dans Supabase). Ci-dessous : ce que l'Historique de l'appli a noté."),
+      lignes.length===0?el("div",{style:{fontSize:12,color:"var(--text3)"}},"Aucun événement enregistré pour ce casier."):
+      el("div",{style:{maxHeight:220,overflowY:"auto"}},lignes.map((l,i)=>el("div",{key:i,style:{display:"flex",gap:8,fontSize:12,padding:"5px 0",borderTop:i?"1px solid var(--border)":"none",alignItems:"baseline"}},
+        el("span",{style:{color:"var(--text3)",whiteSpace:"nowrap",flexShrink:0}},dt(l.le)),
+        el("span",{style:{flex:1,minWidth:0}},el("b",{style:{color:coul(l.action)}},l.action),l.personne?el("span",{style:{color:"var(--text2)"}}," — "+l.personne):null,
+          l.par&&l.par!=="système"&&l.par!=="automatique"?el("div",{style:{color:"var(--text3)",fontSize:11,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}},"par "+l.par):null))))));
 }
 
 function SettingsModal({settings,setSettings,showToast,setShowSettings,racineRef,hrRef,hcmRef,importJsonRef,exportExcel,exportJSON,importJSON,badges,setBadges,casiers,wdCache,histo,addLog,canHistorique,canArchives,canHistoriquePret,initialTab}){
@@ -7090,7 +7116,8 @@ function VueCasiers({casiers,badges,setCasiers,setBadges,showToast,addLog,setVie
       ),
       React.createElement("div",{style:{display:"flex",gap:8,flexWrap:"wrap",marginTop:6}},React.createElement(Btn,{onClick:enregistrerCasier,color:C.purple},"💾 Enregistrer"),React.createElement(Btn,{onClick:()=>{setShowForm(false);setEditing(null);},variant:"outline",color:C.gray},"Annuler"),
         editing&&(()=>{const c=casiers.find(x=>x.id===editing);return c&&isAVider(c)?React.createElement(Btn,{onClick:()=>{viderCasier(c);setShowForm(false);setEditing(null);},variant:"outline",color:C.orange},"🧹 Vider"):null;})(),
-        editing&&React.createElement(Btn,{onClick:()=>del(editing),variant:"outline",color:C.red,style:{marginLeft:"auto"}},"🗑️ Supprimer"))
+        editing&&React.createElement(Btn,{onClick:()=>del(editing),variant:"outline",color:C.red,style:{marginLeft:"auto"}},"🗑️ Supprimer")),
+      editing&&form.numero&&React.createElement(HistoriqueCasier,{key:editing,numero:form.numero})
     )),
     viewMode==="grille"?React.createElement("div",null,zonesGrid):iosList,
     sheet&&React.createElement(IosSheet,sheet)
@@ -8473,6 +8500,31 @@ function FenetreControleCasiers({badges,casiers,onClose,ouvrirCasier}){
         el("div",{style:{fontWeight:700,fontSize:14}},nom(b)),
         el("div",{style:{fontSize:12,color:"var(--text2)"}},"Sa fiche indique le casier « "+b.casier+" », qui n'existe pas dans l'onglet Casiers (faute de frappe ou casier à créer)."))),"✅ Tous les casiers des fiches existent"),
       ecrits.length>0&&bloc("Numéro écrit différemment (reconnu quand même)","var(--text3)",ecrits.map(b=>el("div",{key:b.id,style:{padding:"9px 12px",borderTop:"1px solid var(--border)",fontSize:12,color:"var(--text2)"}},nom(b)+" : « "+b.casier+" » = casier "+inv[casierKey(b.casier)].numero)),"")));
+}
+
+
+// ════════════════ CASIERS : historique d'un casier (journal en base + anciennes lignes de l'Historique) ════════════════
+function HistoriqueCasier({numero}){
+  const el=React.createElement;const[lignes,setLignes]=React.useState(null);const[actif,setActif]=React.useState(true);
+  React.useEffect(()=>{let ok=true;(async()=>{const k=casierKey(numero);let J=[],H=[],act=true;
+    try{const r=await sb.from("lp24_casiers_journal").select("action,personne,par,le").eq("casier",k).order("le",{ascending:false}).limit(60);if(r.error)act=false;else J=(r.data||[]).map(x=>({le:x.le,action:x.action,personne:x.personne,par:x.par}));}catch(e){act=false;}
+    try{const r=await sb.from("historique").select("action,detail,user_email,ts").ilike("detail","%"+numero+"%").order("ts",{ascending:false}).limit(40);
+      if(!r.error){const re=new RegExp("(^|[^A-Z0-9])"+String(numero).replace(/[^A-Za-z0-9]/g,"")+"([^0-9]|$)","i");
+        const debut=J.length?J[J.length-1].le:null;
+        H=(r.data||[]).filter(x=>re.test(String(x.detail||"").replace(/\s+/g,""))||re.test(String(x.detail||""))).filter(x=>!debut||x.ts<debut).map(x=>({le:x.ts,action:x.action,personne:x.detail,par:x.user_email,ancien:true}));}}catch(e){}
+    if(ok){setActif(act);setLignes([...J,...H].sort((a,b)=>String(b.le).localeCompare(String(a.le))));}})();return()=>{ok=false;};},[numero]);
+  const dt=d=>{try{return new Date(d).toLocaleString("fr-FR",{day:"2-digit",month:"2-digit",year:"numeric",hour:"2-digit",minute:"2-digit"});}catch(e){return "";}};
+  const coul=a=>/Attribué/.test(a)?"var(--green)":/Retiré|Vidé|archivé|supprim/i.test(a)?"var(--red)":"var(--text)";
+  return el("div",{style:{border:"1px solid var(--border)",borderRadius:10,padding:"10px 12px",background:"var(--surface2)",marginTop:12}},
+    el("div",{style:{fontSize:11,fontWeight:700,color:"var(--text2)",textTransform:"uppercase",letterSpacing:".4px",marginBottom:6}},"🕐 Historique du casier"),
+    !lignes?el("div",{style:{fontSize:12,color:"var(--text3)"}},"Chargement…"):
+    el(React.Fragment,null,
+      !actif&&el("div",{style:{fontSize:11,color:"var(--orange)",marginBottom:6}},"Suivi détaillé pas encore activé (script casiers-historique.sql à lancer dans Supabase). Ci-dessous : ce que l'Historique de l'appli a noté."),
+      lignes.length===0?el("div",{style:{fontSize:12,color:"var(--text3)"}},"Aucun événement enregistré pour ce casier."):
+      el("div",{style:{maxHeight:220,overflowY:"auto"}},lignes.map((l,i)=>el("div",{key:i,style:{display:"flex",gap:8,fontSize:12,padding:"5px 0",borderTop:i?"1px solid var(--border)":"none",alignItems:"baseline"}},
+        el("span",{style:{color:"var(--text3)",whiteSpace:"nowrap",flexShrink:0}},dt(l.le)),
+        el("span",{style:{flex:1,minWidth:0}},el("b",{style:{color:coul(l.action)}},l.action),l.personne?el("span",{style:{color:"var(--text2)"}}," — "+l.personne):null,
+          l.par&&l.par!=="système"&&l.par!=="automatique"?el("div",{style:{color:"var(--text3)",fontSize:11,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}},"par "+l.par):null))))));
 }
 
 function SettingsModal({settings,setSettings,showToast,setShowSettings,racineRef,hrRef,hcmRef,importJsonRef,exportExcel,exportJSON,importJSON,badges,setBadges,casiers,wdCache,histo,addLog,canHistorique,canArchives,canHistoriquePret,initialTab}){
