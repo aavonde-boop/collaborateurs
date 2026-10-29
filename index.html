@@ -777,12 +777,10 @@ function sbFire(q,label){
 function trouverDoublons(badges,f,exceptId){
   const norm=x=>String(x||"").normalize("NFD").replace(/[\u0300-\u036f]/g,"").toUpperCase().replace(/[^A-Z0-9]/g,"");
   const n=norm(f&&f.nom),pr=norm(f&&f.prenom),m=String((f&&f.matricule)||"").trim(),e=String((f&&f.email)||"").trim().toLowerCase();
-  if(!n&&!m&&!e)return [];
+  if(!n||!pr)return [];
   return (badges||[]).filter(b=>b&&b.id!==exceptId).map(b=>{const r=[];
     if(n&&pr&&norm(b.nom)===n&&norm(b.prenom)===pr)r.push("même nom et prénom");
     else if(n&&pr&&norm(b.nom)===pr&&norm(b.prenom)===n)r.push("nom et prénom inversés");
-    if(m&&m!=="0"&&String(b.matricule||"").trim()===m)r.push("même matricule");
-    if(e&&String(b.email||"").trim().toLowerCase()===e)r.push("même e-mail");
     return r.length?{b,r}:null;}).filter(Boolean);
 }
 function texteDoublons(d){return d.slice(0,5).map(({b,r})=>"• "+((b.prenom||"")+" "+(b.nom||"")).trim()+" — "+(b.statut||"")+(b.matricule?" · mat. "+b.matricule:"")+(b.casier?" · casier "+b.casier:"")+" ("+r.join(", ")+")").join("\n")+(d.length>5?"\n…":"");}
@@ -3558,15 +3556,13 @@ function groupesDoublons(badges){
   const add=(k,i,lab)=>{if(!k)return;if(idx[k]!==undefined){uni(i,idx[k]);why[k]=lab;}else idx[k]=i;};
   act.forEach((b,i)=>{const n=norm(b.nom),pr=norm(b.prenom);
     if(n&&pr)add("N:"+[n,pr].sort().join("|"),i,"même nom et prénom");
-    const m=String(b.matricule||"").trim();if(m&&m!=="0")add("M:"+m,i,"même matricule");
-    const e=String(b.email||"").trim().toLowerCase();if(e)add("E:"+e,i,"même e-mail");});
+  });
   const g={};act.forEach((b,i)=>{const r=find(i);(g[r]=g[r]||[]).push(b);});
   return Object.values(g).filter(x=>x.length>1).map(items=>{
     const raisons=new Set();const n=x=>norm(x);
     for(let a=0;a<items.length;a++)for(let c=a+1;c<items.length;c++){const A=items[a],B=items[c];
       if(n(A.nom)&&n(A.prenom)&&[n(A.nom),n(A.prenom)].sort().join()===[n(B.nom),n(B.prenom)].sort().join())raisons.add("même nom et prénom");
-      if(String(A.matricule||"").trim()&&String(A.matricule).trim()!=="0"&&String(A.matricule).trim()===String(B.matricule||"").trim())raisons.add("même matricule");
-      if(String(A.email||"").trim()&&String(A.email).trim().toLowerCase()===String(B.email||"").trim().toLowerCase())raisons.add("même e-mail");}
+      }
     return {items,raisons:[...raisons]};
   }).sort((a,b)=>String(a.items[0].nom).localeCompare(String(b.items[0].nom)));
 }
@@ -5223,12 +5219,10 @@ function sbFire(q,label){
 function trouverDoublons(badges,f,exceptId){
   const norm=x=>String(x||"").normalize("NFD").replace(/[\u0300-\u036f]/g,"").toUpperCase().replace(/[^A-Z0-9]/g,"");
   const n=norm(f&&f.nom),pr=norm(f&&f.prenom),m=String((f&&f.matricule)||"").trim(),e=String((f&&f.email)||"").trim().toLowerCase();
-  if(!n&&!m&&!e)return [];
+  if(!n||!pr)return [];
   return (badges||[]).filter(b=>b&&b.id!==exceptId).map(b=>{const r=[];
     if(n&&pr&&norm(b.nom)===n&&norm(b.prenom)===pr)r.push("même nom et prénom");
     else if(n&&pr&&norm(b.nom)===pr&&norm(b.prenom)===n)r.push("nom et prénom inversés");
-    if(m&&m!=="0"&&String(b.matricule||"").trim()===m)r.push("même matricule");
-    if(e&&String(b.email||"").trim().toLowerCase()===e)r.push("même e-mail");
     return r.length?{b,r}:null;}).filter(Boolean);
 }
 function texteDoublons(d){return d.slice(0,5).map(({b,r})=>"• "+((b.prenom||"")+" "+(b.nom||"")).trim()+" — "+(b.statut||"")+(b.matricule?" · mat. "+b.matricule:"")+(b.casier?" · casier "+b.casier:"")+" ("+r.join(", ")+")").join("\n")+(d.length>5?"\n…":"");}
@@ -8212,15 +8206,13 @@ function groupesDoublons(badges){
   const add=(k,i,lab)=>{if(!k)return;if(idx[k]!==undefined){uni(i,idx[k]);why[k]=lab;}else idx[k]=i;};
   act.forEach((b,i)=>{const n=norm(b.nom),pr=norm(b.prenom);
     if(n&&pr)add("N:"+[n,pr].sort().join("|"),i,"même nom et prénom");
-    const m=String(b.matricule||"").trim();if(m&&m!=="0")add("M:"+m,i,"même matricule");
-    const e=String(b.email||"").trim().toLowerCase();if(e)add("E:"+e,i,"même e-mail");});
+  });
   const g={};act.forEach((b,i)=>{const r=find(i);(g[r]=g[r]||[]).push(b);});
   return Object.values(g).filter(x=>x.length>1).map(items=>{
     const raisons=new Set();const n=x=>norm(x);
     for(let a=0;a<items.length;a++)for(let c=a+1;c<items.length;c++){const A=items[a],B=items[c];
       if(n(A.nom)&&n(A.prenom)&&[n(A.nom),n(A.prenom)].sort().join()===[n(B.nom),n(B.prenom)].sort().join())raisons.add("même nom et prénom");
-      if(String(A.matricule||"").trim()&&String(A.matricule).trim()!=="0"&&String(A.matricule).trim()===String(B.matricule||"").trim())raisons.add("même matricule");
-      if(String(A.email||"").trim()&&String(A.email).trim().toLowerCase()===String(B.email||"").trim().toLowerCase())raisons.add("même e-mail");}
+      }
     return {items,raisons:[...raisons]};
   }).sort((a,b)=>String(a.items[0].nom).localeCompare(String(b.items[0].nom)));
 }
