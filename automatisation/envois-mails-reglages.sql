@@ -165,6 +165,9 @@ begin
     select * from public.badges_pret x
      where x.statut in ('prete','empruntee')
        and x.pret_le <= now() - interval '24 hours'
+       -- Date de retour indiquée : pas de rappel avant le lendemain de cette date
+       and not (left(coalesce(x.date_retour_prevu::text, ''), 10) ~ '^\d{4}-\d{2}-\d{2}$'
+                and left(x.date_retour_prevu::text, 10)::date >= current_date)
        and trim(coalesce(x.email_emprunteur,'')) ~ '^[^@\s]+@[^@\s]+\.[^@\s]+$'
        and not exists (select 1 from public.lp24_relances_pret m
                         where m.badge_id = x.id and m.pret_le = x.pret_le and m.jour = current_date)
