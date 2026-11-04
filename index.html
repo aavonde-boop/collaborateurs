@@ -812,6 +812,7 @@ try{if(window.emailjs)window.emailjs.init({publicKey:EMAILJS_KEY});}catch(e){}
 
 async function sendFssEmail(toEmail,fiche,ccEmail){
   if(!window.emailjs||!toEmail)return;
+  {const c=window._envoisMails||{};if(c.envoiMails===false||c.envoiFSS===false){console.log("Notification Field Support non envoyée (coupée dans les Réglages)");return;}}
   try{
     await window.emailjs.send(EMAILJS_SERVICE,EMAILJS_TEMPLATE,{
       to_email:String(toEmail).replace(/\s*;\s*/g,","),
@@ -859,7 +860,7 @@ function texteDepartResto(modele,b){
   if(t.indexOf("07.85.42.37.24")<0)t=t.replace(/\s+$/,"").replace(/Cordialement\.?$/,"Cordialement,")+"\n"+SIGNATURE_MAIL;
   return t;
 }
-// ── Réglages → Modèles : textes des mails automatiques (lus par la base au moment de l'envoi) ──
+// ── Réglages → Textes des mails : textes des mails automatiques (lus par la base au moment de l'envoi) ──
 function EditeurTextesMails({settings,setSettings,showToast}){
   const champs=[
     ["autoSignature","Signature","{signature} dans les textes ci-dessous",3],
@@ -875,7 +876,7 @@ function EditeurTextesMails({settings,setSettings,showToast}){
   ];
   return React.createElement("div",{style:{display:"grid",gap:14}},
     React.createElement("div",{style:{background:"var(--accentBg)",border:"1px solid var(--border)",borderRadius:8,padding:"10px 14px",fontSize:12,color:"var(--text2)"}},
-      "Textes des mails envoyés automatiquement. Modifiez-les ici : le prochain mail part avec le nouveau texte (enregistrement automatique). Les mots entre accolades, comme {nom}, sont remplacés au moment de l'envoi. Vérifiez le rendu avec « Envoyer les tests » dans l'onglet Emails."),
+      "Textes des mails (automatiques et boutons ✉️ de l'Accueil). Modifiez-les ici : le prochain mail part avec le nouveau texte (enregistrement automatique). Les mots entre accolades, comme {nom}, sont remplacés au moment de l'envoi. Vérifiez le rendu avec « Envoyer les tests » dans l'onglet Adresses e-mail."),
     champs.map(([cle,titre,vars,rows])=>{
       const val=texteMail(settings,cle), modifie=val!==TEXTES_MAIL_DEFAUT[cle];
       return React.createElement("div",{key:cle},
@@ -889,7 +890,7 @@ function EditeurTextesMails({settings,setSettings,showToast}){
     }));
 }
 // ── Réglages : envoi des mails types sur une adresse de test (même modèle EmailJS que les envois automatiques) ──
-// ── Textes des mails automatiques (modifiables dans Réglages → Modèles ; identiques aux textes d'origine de la base) ──
+// ── Textes des mails automatiques (modifiables dans Réglages → Textes des mails ; identiques aux textes d'origine de la base) ──
 // ── Lien vers l'appli dans les mails IT (logo + bouton) ──
 var URL_APPLI=(function(){try{if(/github\.io$/.test(location.hostname))return location.origin+location.pathname.replace(/[^/]*$/,"");}catch(e){}return "https://aavonde-boop.github.io/collaborateurs/";})();
 function blocLienAppli(id){
@@ -1262,7 +1263,7 @@ function parseRacineAsync(file,badges,setBadges,setCasiers,showToast,setLoading,
         if(wsCS){const cas=XLSX.utils.sheet_to_json(wsCS,{header:1,defval:""});for(let i=0;i<cas.length;i++){const r=cas[i];if(!r||r.length<2)continue;const num=getVal(r[2]);if(num==="Numéro"||num.startsWith("Zone")||num.length<3)continue;const occupant=getVal(r[1]);const commentaire=getVal(r[4]);newCasiers.push({id:cid++,numero:num,zone:num.substring(0,2).toUpperCase(),occupant,matricule:"",statut:occupant?"Occupé":"Libre",commentaire});}}
       }else{alert("Format non reconnu. Attendu : 'LP 24' (v1) ou 'Badges Actifs' (v2).");setLoading(false);return;}
       if(!newBadges.length){alert("Aucun collaborateur trouvé.");setLoading(false);return;}
-      // Doublons badge
+      // Badges en double
       const serieCount={};newBadges.forEach(b=>{if(b.serie)serieCount[b.serie]=(serieCount[b.serie]||0)+1;});
       const doublons=Object.entries(serieCount).filter(([,c])=>c>1).map(([s])=>s);
       const archives=badges.filter(b=>b.statut==="Archivé");
@@ -1366,8 +1367,10 @@ function VueAccueil({badges,casiers,setView,wdCache,setBadges,setCasiers,showToa
   const toggleDC=id=>setDepartChecks(p=>({...p,[id]:!p[id]}));
   const enrDep=()=>{
     if(!nomDep.trim()&&!prenomDep.trim()){showToast("⚠️ Saisissez nom ou prénom","err");return;}
-    const c=badges.find(b=>(b.nom.toLowerCase().includes(nomDep.toLowerCase())||!nomDep)&&(b.prenom.toLowerCase().includes(prenomDep.toLowerCase())||!prenomDep)&&b.statut!=="Archivé");
-    if(!c){showToast("⚠️ Collaborateur introuvable","err");return;}
+    const cands=memePersonne(badges.filter(b=>b.statut!=="Archivé"),nomDep||prenomDep,nomDep?prenomDep:"");
+    if(cands.length>1){showToast(prenomDep.trim()?"⚠️ "+cands.length+" fiches au nom de "+cands[0].prenom+" "+cands[0].nom+" (doublon) : fais le départ depuis la bonne fiche dans Collaborateurs":"⚠️ Plusieurs collaborateurs portent ce nom : saisis aussi le prénom","err");return;}
+    const c=(foundDep&&foundDep.id&&badges.find(b=>b.id===foundDep.id))||cands[0];
+    if(!c){showToast("⚠️ Collaborateur introuvable : nom et prénom exacts","err");return;}
     const u={...c,date_sortie_prevue:dateDep||today,from_accueil:true};
     setBadges(p=>p.map(b=>b.id===c.id?u:b));
     if(sb)(async()=>{try{await sb.from("lp24_badges").upsert(u);}catch(e){}})();
@@ -1393,8 +1396,10 @@ function VueAccueil({badges,casiers,setView,wdCache,setBadges,setCasiers,showToa
   const wdClear=()=>{setFoundArr(null);setNomArr("");setPrenomArr("");setManagerArr("");setDateArr("");setWdQuery("");};
   const enrArr=()=>{
     if(!nomArr.trim()&&!prenomArr.trim()){showToast("⚠️ Saisissez nom ou prénom","err");return;}
-    const wd=wdCache?Object.values(wdCache).find(w=>(w.nom.includes(nomArr.toUpperCase())||!nomArr)&&(w.prenom.toLowerCase().includes(prenomArr.toLowerCase())||!prenomArr)):null;
-    const ex=badges.find(b=>(b.nom.toLowerCase().includes(nomArr.toLowerCase())||!nomArr)&&(b.prenom.toLowerCase().includes(prenomArr.toLowerCase())||!prenomArr)&&b.statut!=="Archivé");
+    const wdL=foundArr?[foundArr]:memePersonne(wdCache?Object.values(wdCache):[],nomArr,prenomArr);
+    const wd=wdL.length===1&&String(prenomArr||foundArr&&foundArr.prenom||"").trim()?wdL[0]:null;
+    const ex=prenomArr.trim()?memePersonne(badges.filter(b=>b.statut!=="Archivé"),nomArr,prenomArr)[0]:null;
+    if(!prenomArr.trim()&&!foundArr){showToast("⚠️ Saisis aussi le prénom","err");return;}
     if(ex){showToast("⚠️ Déjà dans le tableau : "+((ex.prenom||"")+" "+(ex.nom||"")).trim()+(ex.matricule?" (mat. "+ex.matricule+")":"")+(ex.statut?" — "+ex.statut:"")+" : pas de doublon créé","err");return;}
     const nb={id:"tmp_"+Date.now(),nom:wd?wd.nom:nomArr.toUpperCase(),prenom:wd?wd.prenom:prenomArr,matricule:wd?wd.matricule:"",email:wd?wd.email:"",serie:"",zeplug:"",carte_rechargement:"",casier:"",manager:managerArr||wd?.manager||"",mail_manager:wd?.mailMgr||"",statut:"Actif",badge_donne:true,date_entree:dateArr||wd?.hireDate||"",date_sortie_prevue:"",date_archive:"",commentaire:"",date_ajout:todayISO(),etiquette_imprimee:false,from_accueil:true};
     setBadges(p=>[...p,nb]);
@@ -1680,7 +1685,7 @@ function VueAccueil({badges,casiers,setView,wdCache,setBadges,setCasiers,showToa
       React.createElement(KPI,{label:"Arrivées",sub:"cette semaine",value:arrSemaine.length,color:C.green,onClick:()=>setModal("arrSemaine")}),
       React.createElement(KPI,{label:"Départs",sub:"cette semaine",value:depSemaine.length,color:C.red,onClick:()=>setModal("depSemaine")}),
       React.createElement(KPI,{label:"Field Support",value:fssATraiter,sub:"à traiter",color:C.cyan,onClick:()=>setModal("fss")}),
-      React.createElement(KPI,{label:"Doublons badge",value:doublonsBadges.length,color:C.orange,onClick:()=>setModal("doublons")})
+      React.createElement(KPI,{label:"Badges en double",value:doublonsBadges.length,color:C.orange,onClick:()=>setModal("doublons")})
     ),
 
     // ══════════════ Graphiques : répartition par zone + tendance effectifs + SLA Field Support ══════════════
@@ -1823,8 +1828,8 @@ function VueAccueil({badges,casiers,setView,wdCache,setBadges,setCasiers,showToa
       ),
       React.createElement("div",{className:"mvt-actions"},
         React.createElement("button",{className:"btn-main",onClick:enrArr},"Enregistrer"),
-        React.createElement("button",{className:"btn-ghost",title:"Mail IT arrivée",onClick:()=>{const it=(settings&&settings.itEmail)||"";if(!it){showToast("⚠️ Email IT non configuré","err");return;}const wd=wdCache?Object.values(wdCache).find(w=>(norm(w.nom).includes(norm(nomArr))||!nomArr)&&(norm(w.prenom).includes(norm(prenomArr))||!prenomArr)):null;const data={nom:wd?wd.nom:nomArr.toUpperCase()||"NC",prenom:wd?wd.prenom:prenomArr||"NC",matricule:wd?wd.matricule:"NC",email:wd?wd.email:"NC",date_entree:dateArr||wd?.hireDate||"NC",manager:managerArr||wd?.manager||"NC",mail_manager:wd?.mailMgr||"NC"};const cc=encodeURIComponent((settings&&settings.ccEmails)||"");window.open("mailto:"+encodeURIComponent(it)+(cc?"?cc="+cc:"")+"?subject="+encodeURIComponent("Arrivée — "+data.prenom+" "+data.nom)+"&body="+encodeURIComponent(buildBody(settings.bodyArriveeIT||"Arrivée de {prenom} {nom} — Date : {date_entree}",data)));}},"✉️ IT"),
-        React.createElement("button",{className:"btn-ghost",title:"Mail Restaurant arrivée",onClick:()=>{const to=encodeURIComponent((settings&&settings.restaurantEmail)||"");const wd=wdCache?Object.values(wdCache).find(w=>(norm(w.nom).includes(norm(nomArr))||!nomArr)&&(norm(w.prenom).includes(norm(prenomArr))||!prenomArr)):null;const data={nom:wd?wd.nom:nomArr.toUpperCase()||"NC",prenom:wd?wd.prenom:prenomArr||"NC",matricule:wd?wd.matricule:"NC",email:wd?wd.email:"NC",date_entree:dateArr||wd?.hireDate||"NC",manager:managerArr||wd?.manager||"NC",mail_manager:wd?.mailMgr||"NC"};window.open("mailto:"+to+"?subject="+encodeURIComponent("Arrivée — "+data.prenom+" "+data.nom)+"&body="+encodeURIComponent(buildBody(settings.bodyArriveeResto||"Arrivée de {prenom} {nom}",data)));}},"🍽️")
+        React.createElement("button",{className:"btn-ghost",title:"Mail IT arrivée",onClick:()=>{const it=(settings&&settings.itEmail)||"";if(!it){showToast("⚠️ Email IT non configuré","err");return;}const wd=foundArr||memePersonne(wdCache?Object.values(wdCache):[],nomArr,prenomArr)[0]||null;const data={nom:wd?wd.nom:nomArr.toUpperCase()||"NC",prenom:wd?wd.prenom:prenomArr||"NC",matricule:wd?wd.matricule:"NC",email:wd?wd.email:"NC",date_entree:dateArr||wd?.hireDate||"NC",manager:managerArr||wd?.manager||"NC",mail_manager:wd?.mailMgr||"NC"};const cc=encodeURIComponent((settings&&settings.ccEmails)||"");window.open("mailto:"+encodeURIComponent(it)+"?"+(cc?"cc="+cc+"&":"")+"subject="+encodeURIComponent("Arrivée — "+data.prenom+" "+data.nom)+"&body="+encodeURIComponent(texteManuel(settings,"autoITArrivee",data)));}},"✉️ IT"),
+        React.createElement("button",{className:"btn-ghost",title:"Mail Restaurant arrivée",onClick:()=>{const to=encodeURIComponent((settings&&settings.restaurantEmail)||"");const wd=foundArr||memePersonne(wdCache?Object.values(wdCache):[],nomArr,prenomArr)[0]||null;const data={nom:wd?wd.nom:nomArr.toUpperCase()||"NC",prenom:wd?wd.prenom:prenomArr||"NC",matricule:wd?wd.matricule:"NC",email:wd?wd.email:"NC",date_entree:dateArr||wd?.hireDate||"NC",manager:managerArr||wd?.manager||"NC",mail_manager:wd?.mailMgr||"NC"};window.open("mailto:"+to+"?subject="+encodeURIComponent("Arrivée — "+data.prenom+" "+data.nom)+"&body="+encodeURIComponent(texteManuel(settings,"autoRestoArrivee",data)));}},"🍽️")
       )
     ),
 
@@ -1844,8 +1849,8 @@ function VueAccueil({badges,casiers,setView,wdCache,setBadges,setCasiers,showToa
       ),
       React.createElement("button",{className:"btn-depart",onClick:enrDep},"Enregistrer le départ"),
       React.createElement("div",{className:"mvt-actions",style:{marginTop:8}},
-        React.createElement("button",{className:"btn-ghost",style:{flex:1,justifyContent:"center"},title:"Mail IT départ",onClick:()=>{const it=(settings&&settings.itEmail)||"";if(!it){showToast("⚠️ Email IT non configuré","err");return;}const b=badges.find(x=>(x.nom.toLowerCase().includes(nomDep.toLowerCase())||!nomDep)&&(x.prenom.toLowerCase().includes(prenomDep.toLowerCase())||!prenomDep)&&x.statut!=="Archivé");const data=b?{...b,date_sortie_prevue:dateDep||b.date_sortie_prevue||"NC"}:{nom:nomDep.toUpperCase(),prenom:prenomDep,matricule:"NC",serie:"NC",date_sortie_prevue:dateDep||"NC",manager:"NC",mail_manager:"NC"};const cc=encodeURIComponent((settings&&settings.ccEmails)||"");window.open("mailto:"+encodeURIComponent(it)+(cc?"?cc="+cc:"")+"?subject="+encodeURIComponent("Départ — "+data.prenom+" "+data.nom)+"&body="+encodeURIComponent(buildBody(settings.bodyDepartIT||"Départ de {prenom} {nom} — Date : {date_sortie_prevue}",data)));}},"✉️ IT"),
-        React.createElement("button",{className:"btn-ghost",style:{flex:1,justifyContent:"center"},title:"Mail Restaurant départ",onClick:()=>{const to=encodeURIComponent((settings&&settings.restaurantEmail)||"");const b=badges.find(x=>(x.nom.toLowerCase().includes(nomDep.toLowerCase())||!nomDep)&&(x.prenom.toLowerCase().includes(prenomDep.toLowerCase())||!prenomDep)&&x.statut!=="Archivé");if(!b){showToast("⚠️ Collaborateur introuvable","err");return;}window.open("mailto:"+to+"?subject="+encodeURIComponent("Départ — "+b.prenom+" "+b.nom)+"&body="+encodeURIComponent(buildBody(settings.bodyDepartResto||"Départ de {prenom} {nom}",b)));}},"🍽️")
+        React.createElement("button",{className:"btn-ghost",style:{flex:1,justifyContent:"center"},title:"Mail IT départ",onClick:()=>{const it=(settings&&settings.itEmail)||"";if(!it){showToast("⚠️ Email IT non configuré","err");return;}const b=memePersonne(badges.filter(x=>x.statut!=="Archivé"),nomDep||prenomDep,nomDep?prenomDep:"")[0];const data=b?{...b,date_sortie_prevue:dateDep||b.date_sortie_prevue||"NC"}:{nom:nomDep.toUpperCase(),prenom:prenomDep,matricule:"NC",serie:"NC",date_sortie_prevue:dateDep||"NC",manager:"NC",mail_manager:"NC"};const cc=encodeURIComponent((settings&&settings.ccEmails)||"");window.open("mailto:"+encodeURIComponent(it)+"?"+(cc?"cc="+cc+"&":"")+"subject="+encodeURIComponent("Départ — "+data.prenom+" "+data.nom)+"&body="+encodeURIComponent(texteManuel(settings,"autoITDepart",data)));}},"✉️ IT"),
+        React.createElement("button",{className:"btn-ghost",style:{flex:1,justifyContent:"center"},title:"Mail Restaurant départ",onClick:()=>{const to=encodeURIComponent((settings&&settings.restaurantEmail)||"");const b=memePersonne(badges.filter(x=>x.statut!=="Archivé"),nomDep||prenomDep,nomDep?prenomDep:"")[0];if(!b){showToast("⚠️ Collaborateur introuvable","err");return;}window.open("mailto:"+to+"?subject="+encodeURIComponent("Départ — "+b.prenom+" "+b.nom)+"&body="+encodeURIComponent(texteManuel(settings,"autoRestoDepart",b)));}},"🍽️")
       )
     ),
 
@@ -1865,7 +1870,8 @@ function VueAccueil({badges,casiers,setView,wdCache,setBadges,setCasiers,showToa
             React.createElement("div",{style:{fontSize:13,marginBottom:8,color:C.green,fontWeight:700}},"✅ "+wdAutoUpdateMeta.count+" fiche(s) complétée(s) automatiquement"+(wdAutoUpdateMeta.date?" — "+fmtDT(wdAutoUpdateMeta.date):"")),
             (wdAutoUpdateMeta.noms||[]).map((n,i)=>React.createElement("div",{key:"wdn"+i,style:{padding:"6px 4px",borderBottom:"1px solid var(--border)",fontSize:13,fontWeight:600}},n))
           ),
-      React.createElement("button",{onClick:()=>{closeModal();if(!isIT)openDonnees();},className:"btn btn-outline",style:{marginTop:10}},"Aller à Données / Import →")
+      !isIT&&React.createElement(EcartsWorkday,{badges,wdCache,setBadges,addLog,showToast}),
+      React.createElement("button",{onClick:()=>{closeModal();if(!isIT)openDonnees();},className:"btn btn-outline",style:{marginTop:10}},"Aller à Import / Export →")
     ),
 
     modal==="completer"&&React.createElement(AccueilModal,{title:"Fiches à compléter",icon:"⚠️",onClose:closeModal},
@@ -2051,7 +2057,7 @@ function VueCollaborateurs({badges,casiers,setBadges,setCasiers,showToast,wdCach
   };
   const casLibres=casiers.filter(c=>c.statut==="Libre"||(editing&&c.numero===form.casier));
   const restEmail=settings?.restaurantEmail||"";const ccEmails=settings?.ccEmails||"";
-  const mailArrivee=b=>{const to=encodeURIComponent(restEmail);const cc=encodeURIComponent(ccEmails);const s=encodeURIComponent("Nouvelle arrivée — "+b.prenom+" "+b.nom);const c=encodeURIComponent("Bonjour,\n\nNous vous informons de l'arrivée d'un nouveau collaborateur accédant au restaurant d'entreprise :\n\nNom : "+b.nom+"\nPrénom : "+b.prenom+"\nAdresse e-mail : "+(b.email||"Non renseigné")+"\nN° de badge : "+(b.serie||"Non attribué")+"\n\nMerci de bien vouloir l'ajouter à vos systèmes.\n\nCordialement,\nService RH");window.open("mailto:"+to+"?subject="+s+"&body="+c+(cc?"&cc="+cc:""));};
+  const mailArrivee=b=>{const to=encodeURIComponent(restEmail);const cc=encodeURIComponent(ccEmails);const s=encodeURIComponent("Nouvelle arrivée — "+b.prenom+" "+b.nom);const c=encodeURIComponent("Bonjour,\n\nNous vous informons de l'arrivée d'un nouveau collaborateur accédant au restaurant d'entreprise :\n\nNom : "+b.nom+"\nPrénom : "+b.prenom+"\nAdresse e-mail : "+(b.email||"Non renseigné")+"\nN° de badge : "+(b.serie||"Non attribué")+"\n\nMerci de bien vouloir l'ajouter à vos systèmes.\n\nCordialement,\n"+(window._mailSignature||SIGNATURE_MAIL));window.open("mailto:"+to+"?subject="+s+"&body="+c+(cc?"&cc="+cc:""));};
   const mailDepart=b=>{const to=encodeURIComponent(restEmail);const cc=encodeURIComponent(ccEmails);const s=encodeURIComponent("Départ collaborateur — "+b.prenom+" "+b.nom);const c=encodeURIComponent(texteDepartResto(settings&&settings.bodyDepartResto,b));window.open("mailto:"+to+"?subject="+s+"&body="+c+(cc?"&cc="+cc:""));};
   return React.createElement("div",null,
     React.createElement(PageHero,{icone:"👥",titre:"Collaborateurs",sousTitre:filtered.length+" affiché(s) sur "+badges.filter(b=>b.statut!=="Archivé").length+" · "+badges.filter(b=>b.statut==="À récupérer").length+" à récupérer"}),
@@ -3748,8 +3754,8 @@ function calculerNotifications({badges,fssData,prets,colis,quota}){
     else if(c.statut==="prevenu"&&c.prevenu_le&&jours(c.prevenu_le)>=3)L.push({id:"colis-"+c.id+"-attente",cat:"Colis",icone:"📦",titre:"Colis "+n+" pas encore récupéré",raison:qui+" a été prévenu le "+fr(c.prevenu_le)+" ("+jours(c.prevenu_le)+" jours) et n'est pas venu le chercher.",vue:"colis"});});
   const fss=(fssData||[]).filter(f=>!f.cloture&&f.statut==="A traiter").length;
   if(fss)L.push({id:"fss-"+fss,cat:"À traiter",icone:"📋",titre:fss+" fiche"+(fss>1?"s":"")+" Field Support à traiter",raison:"Fiches non clôturées au statut « À traiter » (c'est le chiffre rouge sur l'onglet Field Support).",vue:"field_support"});
-  const acomp=(badges||[]).filter(b=>b.statut==="Actif"&&(!String(b.matricule||"").trim()||String(b.matricule).trim()==="0"||!String(b.serie||"").trim())).length;
-  if(acomp)L.push({id:"acomp-"+acomp,cat:"À traiter",icone:"⚠️",titre:acomp+" fiche"+(acomp>1?"s":"")+" à compléter",raison:"Collaborateurs actifs sans matricule ou sans numéro de badge.",vue:"collaborateurs"});
+  const acomp=(badges||[]).filter(aCompleter).length;
+  if(acomp)L.push({id:"acomp-"+acomp,cat:"À traiter",icone:"⚠️",titre:acomp+" fiche"+(acomp>1?"s":"")+" à compléter",raison:"Collaborateurs non archivés sans matricule ou sans numéro de badge (même chiffre que la carte de l'Accueil).",vue:"collaborateurs"});
   if(quota&&quota.total>=QUOTA_MAILS*0.8)L.push({id:"quota-"+Math.floor(quota.total/10),cat:"À traiter",icone:"📧",titre:"Quota mails : "+quota.total+" / "+QUOTA_MAILS,raison:quota.total>=QUOTA_MAILS?"Quota EmailJS atteint : les mails automatiques ne partent plus jusqu'au mois prochain.":"Plus de 80 % du quota EmailJS du mois est utilisé.",vue:"accueil"});
   return L;
 }
@@ -3760,7 +3766,7 @@ function VueNotifications({items,supprimer,toutSupprimer,restaurer,nbSupprimees,
     (typeof PageHero==="function"?el(PageHero,{icone:"🔔",titre:"Notifications",sousTitre:items.length?items.length+" en cours":"rien à signaler"}):el("h1",null,"🔔 Notifications"));
   return el("div",{className:"anim-in"},titre,
     el("div",{style:{display:"flex",gap:8,flexWrap:"wrap",alignItems:"center",marginBottom:12}},
-      el("div",{style:{fontSize:12,color:"var(--text3)",flex:"1 1 240px"}},"Le chiffre sur l'icône de l'appli = le nombre de notifications ci-dessous. Une notification supprimée revient seulement si la situation change."),
+      el("div",{style:{fontSize:12,color:"var(--text3)",flex:"1 1 240px"}},"Le chiffre sur l'icône de l'appli = le nombre de notifications ci-dessous. Une notification supprimée revient seulement si la situation change. Les suppressions suivent ton compte (ordinateur et téléphone)."),
       items.length>0&&el("button",{type:"button",className:"btn btn-outline",style:{fontSize:12},onClick:()=>{if(confirm("Supprimer les "+items.length+" notifications ?"))toutSupprimer();}},"🧹 Tout supprimer"),
       nbSupprimees>0&&el("button",{type:"button",className:"btn",style:{fontSize:12},onClick:restaurer},"↩️ Réafficher les supprimées ("+nbSupprimees+")")),
     items.length===0&&el("div",{className:"card",style:{textAlign:"center",padding:40,border:"1px solid var(--border)",borderRadius:12}},el("div",{style:{fontSize:34}},"✅"),el("div",{style:{fontWeight:700,marginTop:6,color:"var(--text)"}},"Aucune notification"),el("div",{style:{fontSize:12,color:"var(--text3)",marginTop:4}},"Tout est à jour.")),
@@ -3869,6 +3875,71 @@ function HistoriqueCasier({numero}){
           l.par&&l.par!=="système"&&l.par!=="automatique"?el("div",{style:{color:"var(--text3)",fontSize:11,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}},"par "+l.par):null))))));
 }
 
+
+// ════════════════ RÉGLAGES : envois de mails (interrupteurs) ════════════════
+// Absent = activé. Les envois automatiques de la base lisent les mêmes réglages (script envois-mails-reglages.sql).
+function EnvoisMails({settings,setSettings,showToast}){
+  const el=React.createElement;const on=k=>settings[k]!==false;const tous=on("envoiMails");
+  const basculer=(k,lab)=>{const v=!on(k);setSettings(st=>({...st,[k]:v}));showToast((v?"✅ Activé : ":"⏸️ Coupé : ")+lab);};
+  const ligne=(k,lab,sous,dis)=>el("label",{key:k,style:{display:"flex",alignItems:"center",gap:12,padding:"9px 2px",borderTop:"1px solid var(--border)",cursor:dis?"default":"pointer",opacity:dis?.45:1}},
+    el("div",{style:{flex:1,minWidth:0}},el("div",{style:{fontWeight:600,fontSize:13,color:"var(--text)"}},lab),sous&&el("div",{style:{fontSize:11,color:"var(--text3)"}},sous)),
+    el("span",{style:{position:"relative",width:42,height:24,borderRadius:999,background:on(k)&&!dis?"var(--green)":"var(--border2)",transition:"background .15s",flexShrink:0}},
+      el("span",{style:{position:"absolute",top:2,left:on(k)?20:2,width:20,height:20,borderRadius:"50%",background:"#fff",boxShadow:"0 1px 3px rgba(0,0,0,.25)",transition:"left .15s"}})),
+    el("input",{type:"checkbox",checked:on(k),disabled:dis,onChange:()=>basculer(k,lab),style:{position:"absolute",opacity:0,width:0,height:0}}));
+  return el("div",{style:{background:"var(--surface2)",border:"1px solid var(--border)",borderLeft:"4px solid "+(tous?"var(--green)":"var(--red)"),borderRadius:8,padding:"10px 14px"}},
+    el("div",{style:{fontWeight:700,fontSize:13,color:"var(--text)",marginBottom:4}},"📨 Envois de mails"+(tous?"":" — tous coupés")),
+    ligne("envoiMails","Tous les mails","Interrupteur général : coupé, aucun mail ne part (automatique ou depuis l'appli)",false),
+    ligne("envoiIT","IT — arrivées et départs","Mail automatique la veille",!tous),
+    ligne("envoiResto","Restaurant — arrivées et départs","Mail automatique le jour même",!tous),
+    ligne("envoiFSS","Field Support — notification à l'IT","À chaque nouvelle fiche Field Support",!tous),
+    ligne("envoiPret","Badge de prêt — mail au moment du prêt","Avec les horaires de l'accueil",!tous),
+    ligne("envoiRappel","Badge de prêt — rappels","Chaque matin tant que le badge n'est pas rendu",!tous),
+    el("div",{style:{fontSize:11,color:"var(--text3)",marginTop:6}},"Les mails « Envoyer les tests » partent toujours. Un mail coupé n'est pas rattrapé plus tard, sauf une arrivée encore à venir."));
+}
+
+
+// ════════════════ COHÉRENCE ════════════════
+// Une seule règle « fiche à compléter » : collaborateur non archivé sans matricule ou sans n° de badge.
+function aCompleter(b){return b&&b.statut!=="Archivé"&&(!String(b.matricule||"").trim()||String(b.matricule).trim()==="0"||!String(b.serie||"").trim());}
+// Personne par nom + prénom exacts (accents, majuscules, ordre ignorés). Liste vide si rien ou si le prénom manque.
+function memePersonne(liste,nom,prenom){
+  const n=x=>String(x||"").normalize("NFD").replace(/[̀-ͯ]/g,"").toUpperCase().replace(/[^A-Z0-9]/g,"");
+  const a=n(nom),b=n(prenom);if(!a)return [];
+  return (liste||[]).filter(x=>{const xn=n(x.nom),xp=n(x.prenom);return b?((xn===a&&xp===b)||(xn===b&&xp===a)):xn===a;});
+}
+// Mails manuels de l'Accueil : mêmes textes (et même signature) que les mails automatiques
+function texteManuel(settings,cle,b){
+  const fr=d=>{const m=String(d||"").match(/^(\d{4})-(\d{2})-(\d{2})/);return m?m[3]+"/"+m[2]+"/"+m[1]:"";};
+  const cap=x=>String(x||"").toLowerCase().replace(/(^|[\s-])(\S)/g,(m,a,c)=>a+c.toUpperCase());
+  const dep=/Depart$/.test(cle);
+  return remplirModele(texteMail(settings,cle),{nom:String(b.nom||"").toUpperCase(),prenom:cap(b.prenom),date:fr(dep?b.date_sortie_prevue:b.date_entree)||fr(new Date().toISOString()),
+    manager:b.manager&&b.manager!=="NC"?b.manager:"Non renseigné",badge:b.serie||"Non attribué",email:b.email&&b.email!=="NC"?b.email:"Non renseignée",signature:texteMail(settings,"autoSignature")});
+}
+// Écarts entre les fiches et Workday (même matricule) : rien n'est changé sans ton accord
+function EcartsWorkday({badges,wdCache,setBadges,addLog,showToast}){
+  const el=React.createElement;
+  const nn=x=>String(x||"").normalize("NFD").replace(/[̀-ͯ]/g,"").toUpperCase().replace(/[^A-Z0-9@.]/g,"");
+  const L=React.useMemo(()=>{const out=[];if(!wdCache)return out;
+    (badges||[]).forEach(b=>{if(b.statut==="Archivé")return;const m=String(b.matricule||"").trim();const w=m&&m!=="0"&&wdCache[m];if(!w)return;
+      const champs=[["email","e-mail",String(w.email||"").toLowerCase()],["date_entree","date d'entrée",String(w.hireDate||"").slice(0,10)],["manager","manager",w.manager],["mail_manager","e-mail du manager",String(w.mailMgr||"").toLowerCase()]];
+      champs.forEach(([k,lab,v])=>{const f=String(b[k]||"").trim();v=String(v||"").trim();if(f&&v&&nn(k==="date_entree"?f.slice(0,10):f)!==nn(v))out.push({id:b.id,nom:((b.prenom||"")+" "+String(b.nom||"").toUpperCase()).trim(),k,lab,f,v});});});
+    return out;},[badges,wdCache]);
+  const fr=x=>{const m=String(x||"").match(/^(\d{4})-(\d{2})-(\d{2})/);return m?m[3]+"/"+m[2]+"/"+m[1]:x;};
+  const prendre=liste=>{const par={};liste.forEach(e=>{(par[e.id]=par[e.id]||{})[e.k]=e.v;});
+    setBadges(prev=>prev.map(b=>par[b.id]?{...b,...par[b.id]}:b));
+    addLog("Sync Workday",liste.length+" information(s) reprise(s) de Workday — "+[...new Set(liste.map(e=>e.nom))].slice(0,5).join(", "));
+    showToast("✅ "+liste.length+" information(s) mise(s) à jour depuis Workday");};
+  if(!L.length)return el("div",{style:{fontSize:12,color:"var(--text3)",padding:"8px 4px"}},"✅ Aucune différence entre les fiches et Workday.");
+  return el("div",{style:{marginTop:12,border:"1px solid var(--border)",borderRadius:10,overflow:"hidden"}},
+    el("div",{style:{display:"flex",alignItems:"center",gap:8,padding:"8px 12px",background:"var(--orangeBg)"}},
+      el("div",{style:{flex:1,fontSize:12,fontWeight:700,color:"var(--orange)"}},"⚠️ "+L.length+" différence(s) avec Workday — la fiche n'est pas modifiée sans ton accord"),
+      el("button",{type:"button",className:"btn btn-outline",style:{fontSize:11,padding:"3px 8px"},onClick:()=>{if(confirm("Reprendre les "+L.length+" information(s) de Workday ?"))prendre(L);}},"Tout prendre")),
+    el("div",{style:{maxHeight:260,overflowY:"auto"}},L.map((e,i)=>el("div",{key:i,style:{display:"flex",alignItems:"center",gap:8,padding:"7px 12px",borderTop:"1px solid var(--border)",fontSize:12}},
+      el("div",{style:{flex:1,minWidth:0}},el("b",null,e.nom),el("span",{style:{color:"var(--text3)"}}," · "+e.lab),
+        el("div",{style:{color:"var(--text2)",overflow:"hidden",textOverflow:"ellipsis"}},"Fiche : "+fr(e.f)+"  →  Workday : "+fr(e.v))),
+      el("button",{type:"button",className:"btn",style:{fontSize:11,padding:"3px 8px",flexShrink:0},onClick:()=>prendre([e])},"Prendre Workday")))));
+}
+
 function SettingsModal({settings,setSettings,showToast,setShowSettings,racineRef,hrRef,hcmRef,importJsonRef,exportExcel,exportJSON,importJSON,badges,setBadges,casiers,wdCache,histo,addLog,canHistorique,canArchives,canHistoriquePret,initialTab}){
   const[tab,setTab]=useState(initialTab||"emails");
   const archivesCount=badges.filter(b=>b.statut==="Archivé").length;
@@ -3917,6 +3988,7 @@ function SettingsModal({settings,setSettings,showToast,setShowSettings,racineRef
           React.createElement(CarteInstall,{showToast,toujours:true}),
           React.createElement(CarteNotifs,{showToast,toujours:true})),
         tab==="emails"&&React.createElement("div",{style:{display:"grid",gap:14}},
+          React.createElement(EnvoisMails,{settings,setSettings,showToast}),
           React.createElement("div",null,
             React.createElement(Lbl,null,"Email restaurant"),
             React.createElement("input",{type:"email",value:settings.restaurantEmail||"",onChange:e=>setSettings(s=>({...s,restaurantEmail:e.target.value.toUpperCase()})),className:"inp",placeholder:"restaurant@exemple.fr"})
@@ -3986,7 +4058,7 @@ function SettingsModal({settings,setSettings,showToast,setShowSettings,racineRef
         ),
         tab==="templates"&&React.createElement("div",{style:{display:"grid",gap:14}},
           React.createElement(EditeurTextesMails,{settings,setSettings,showToast}),
-          React.createElement("details",{style:{border:"1px solid var(--border)",borderRadius:8,padding:"10px 14px"}},
+          false&&React.createElement("details",{style:{border:"1px solid var(--border)",borderRadius:8,padding:"10px 14px"}},
             React.createElement("summary",{style:{cursor:"pointer",fontWeight:600,fontSize:13,color:"var(--text2)"}},"Mails manuels (boutons de l'Accueil)"),
             React.createElement("div",{style:{display:"grid",gap:14,marginTop:12}},
           React.createElement("div",{style:{background:"var(--surface2)",border:"1px solid var(--border)",borderRadius:8,padding:"10px 14px",fontSize:11,color:"var(--text3)",marginBottom:4}},"Variables disponibles : {nom} {prenom} {matricule} {email} {date_entree} {date_sortie_prevue} {serie} {manager} {mail_manager}"),
@@ -4649,6 +4721,7 @@ function App(){
 
   // ── Exposer fssEmail pour EmailJS ──
   useEffect(()=>{window._fssNotifEmail=settings.fssEmail||"";},[settings.fssEmail]);
+  useEffect(()=>{window._envoisMails={envoiMails:settings.envoiMails,envoiFSS:settings.envoiFSS};},[settings.envoiMails,settings.envoiFSS]);
   useEffect(()=>{window._mailSignature=texteMail(settings,"autoSignature");},[settings.autoSignature]);
   useEffect(()=>{window._mailIT=settings.itEmail||"";},[settings.itEmail]);
   // ── Pastille + notifications des arrivées / départs du jour ──
@@ -4955,9 +5028,13 @@ useEffect(()=>{
     if(ok)setNotifExtra(n);})();return()=>{ok=false;};},[unlocked,tickNotif,view]);
   const notifsToutes=useMemo(()=>calculerNotifications({badges,fssData,prets:notifExtra.prets,colis:notifExtra.colis,quota:notifExtra.quota}),[badges,fssData,notifExtra]);
   const notifs=useMemo(()=>notifsToutes.filter(x=>!notifSupp[x.id]),[notifsToutes,notifSupp]);
-  const supprimerNotif=id=>setNotifSupp(o=>{const n={...o,[id]:Date.now()};enregistrerSupprimees(n);return n;});
-  const toutSupprimerNotifs=()=>setNotifSupp(o=>{const n={...o};notifs.forEach(x=>{n[x.id]=Date.now();});enregistrerSupprimees(n);return n;});
-  const restaurerNotifs=()=>{setNotifSupp({});enregistrerSupprimees({});};
+  const cleNS="notifsSupp:"+String((session&&session.email)||"moi").toLowerCase();
+  const partagerNS=n=>{if(settingsReadyRef.current)setSettings(st=>({...st,[cleNS]:n}));};
+  useEffect(()=>{const srv=settings&&settings[cleNS];if(!srv||typeof srv!=="object")return;
+    setNotifSupp(o=>{const nouv=Object.keys(srv).filter(k=>!o[k]);if(!nouv.length)return o;const n={...o};nouv.forEach(k=>{n[k]=srv[k];});enregistrerSupprimees(n);return n;});},[settings&&settings[cleNS]]);
+  const supprimerNotif=id=>setNotifSupp(o=>{const n={...o,[id]:Date.now()};enregistrerSupprimees(n);partagerNS(n);return n;});
+  const toutSupprimerNotifs=()=>setNotifSupp(o=>{const n={...o};notifs.forEach(x=>{n[x.id]=Date.now();});enregistrerSupprimees(n);partagerNS(n);return n;});
+  const restaurerNotifs=()=>{setNotifSupp({});enregistrerSupprimees({});if(settingsReadyRef.current)setSettings(st=>{const n={...st};delete n[cleNS];return n;});};
   useEffect(()=>{if(unlocked)majPastille(notifs.length);},[notifs.length,unlocked]);
   const nav=[
     {id:"accueil",label:"Accueil",icon:"🏠"},
@@ -5019,7 +5096,7 @@ useEffect(()=>{
   const dbDot=React.createElement("div",{style:{display:"flex",alignItems:"center",gap:5,fontSize:11,color:"var(--text3)"}},React.createElement("span",{className:"save-dot"+(saving?" saving":""),title:saving?"Sauvegarde...":"Sauvegardé"}),saving?"Sync...":dbStatus==="ok"?"✓":"Hors ligne");
 
   const toolbarButtons=React.createElement("div",{style:{display:"flex",gap:8,alignItems:"center"}},
-    !isIT&&React.createElement("button",{title:"Paramètres & Import/Export",className:"btn-icon",onClick:()=>setShowSettings(true),style:{position:"relative"}},"⚙️"),
+    !isIT&&React.createElement("button",{title:"Réglages",className:"btn-icon",onClick:()=>setShowSettings(true),style:{position:"relative"}},"⚙️"),
     session&&React.createElement("span",{style:{fontSize:11,color:"var(--text3)",marginLeft:2}},session.label),
     session&&React.createElement("button",{title:"Déconnexion",onClick:logout,style:{background:"var(--redBg)",border:"1px solid rgba(220,38,38,.2)",color:"var(--red)",borderRadius:6,padding:"3px 8px",fontSize:11,cursor:"pointer"}},"⏻"),
     dbDot
@@ -5254,6 +5331,7 @@ try{if(window.emailjs)window.emailjs.init({publicKey:EMAILJS_KEY});}catch(e){}
 
 async function sendFssEmail(toEmail,fiche,ccEmail){
   if(!window.emailjs||!toEmail)return;
+  {const c=window._envoisMails||{};if(c.envoiMails===false||c.envoiFSS===false){console.log("Notification Field Support non envoyée (coupée dans les Réglages)");return;}}
   try{
     await window.emailjs.send(EMAILJS_SERVICE,EMAILJS_TEMPLATE,{
       to_email:String(toEmail).replace(/\s*;\s*/g,","),
@@ -5405,7 +5483,7 @@ function IosIndex({letters,prefix}){
       ALL.map(L=>React.createElement("span",{key:L,className:letters.has(L)?"":"off"},L))),
     cur&&React.createElement("div",{className:"ios-idx-bubble"},cur));
 }
-// ── Réglages → Modèles : textes des mails automatiques (lus par la base au moment de l'envoi) ──
+// ── Réglages → Textes des mails : textes des mails automatiques (lus par la base au moment de l'envoi) ──
 function EditeurTextesMails({settings,setSettings,showToast}){
   const champs=[
     ["autoSignature","Signature","{signature} dans les textes ci-dessous",3],
@@ -5421,7 +5499,7 @@ function EditeurTextesMails({settings,setSettings,showToast}){
   ];
   return React.createElement("div",{style:{display:"grid",gap:14}},
     React.createElement("div",{style:{background:"var(--accentBg)",border:"1px solid var(--border)",borderRadius:8,padding:"10px 14px",fontSize:12,color:"var(--text2)"}},
-      "Textes des mails envoyés automatiquement. Modifiez-les ici : le prochain mail part avec le nouveau texte (enregistrement automatique). Les mots entre accolades, comme {nom}, sont remplacés au moment de l'envoi. Vérifiez le rendu avec « Envoyer les tests » dans l'onglet Emails."),
+      "Textes des mails (automatiques et boutons ✉️ de l'Accueil). Modifiez-les ici : le prochain mail part avec le nouveau texte (enregistrement automatique). Les mots entre accolades, comme {nom}, sont remplacés au moment de l'envoi. Vérifiez le rendu avec « Envoyer les tests » dans l'onglet Adresses e-mail."),
     champs.map(([cle,titre,vars,rows])=>{
       const val=texteMail(settings,cle), modifie=val!==TEXTES_MAIL_DEFAUT[cle];
       return React.createElement("div",{key:cle},
@@ -5435,7 +5513,7 @@ function EditeurTextesMails({settings,setSettings,showToast}){
     }));
 }
 // ── Réglages : envoi des mails types sur une adresse de test (même modèle EmailJS que les envois automatiques) ──
-// ── Textes des mails automatiques (modifiables dans Réglages → Modèles ; identiques aux textes d'origine de la base) ──
+// ── Textes des mails automatiques (modifiables dans Réglages → Textes des mails ; identiques aux textes d'origine de la base) ──
 // ── Lien vers l'appli dans les mails IT (logo + bouton) ──
 var URL_APPLI=(function(){try{if(/github\.io$/.test(location.hostname))return location.origin+location.pathname.replace(/[^/]*$/,"");}catch(e){}return "https://aavonde-boop.github.io/collaborateurs/";})();
 function blocLienAppli(id){
@@ -5808,7 +5886,7 @@ function parseRacineAsync(file,badges,setBadges,setCasiers,showToast,setLoading,
         if(wsCS){const cas=XLSX.utils.sheet_to_json(wsCS,{header:1,defval:""});for(let i=0;i<cas.length;i++){const r=cas[i];if(!r||r.length<2)continue;const num=getVal(r[2]);if(num==="Numéro"||num.startsWith("Zone")||num.length<3)continue;const occupant=getVal(r[1]);const commentaire=getVal(r[4]);newCasiers.push({id:cid++,numero:num,zone:num.substring(0,2).toUpperCase(),occupant,matricule:"",statut:occupant?"Occupé":"Libre",commentaire});}}
       }else{alert("Format non reconnu. Attendu : 'LP 24' (v1) ou 'Badges Actifs' (v2).");setLoading(false);return;}
       if(!newBadges.length){alert("Aucun collaborateur trouvé.");setLoading(false);return;}
-      // Doublons badge
+      // Badges en double
       const serieCount={};newBadges.forEach(b=>{if(b.serie)serieCount[b.serie]=(serieCount[b.serie]||0)+1;});
       const doublons=Object.entries(serieCount).filter(([,c])=>c>1).map(([s])=>s);
       const archives=badges.filter(b=>b.statut==="Archivé");
@@ -5912,8 +5990,10 @@ function VueAccueil({badges,casiers,setView,wdCache,setBadges,setCasiers,showToa
   const toggleDC=id=>setDepartChecks(p=>({...p,[id]:!p[id]}));
   const enrDep=()=>{
     if(!nomDep.trim()&&!prenomDep.trim()){showToast("⚠️ Saisissez nom ou prénom","err");return;}
-    const c=badges.find(b=>(b.nom.toLowerCase().includes(nomDep.toLowerCase())||!nomDep)&&(b.prenom.toLowerCase().includes(prenomDep.toLowerCase())||!prenomDep)&&b.statut!=="Archivé");
-    if(!c){showToast("⚠️ Collaborateur introuvable","err");return;}
+    const cands=memePersonne(badges.filter(b=>b.statut!=="Archivé"),nomDep||prenomDep,nomDep?prenomDep:"");
+    if(cands.length>1){showToast(prenomDep.trim()?"⚠️ "+cands.length+" fiches au nom de "+cands[0].prenom+" "+cands[0].nom+" (doublon) : fais le départ depuis la bonne fiche dans Collaborateurs":"⚠️ Plusieurs collaborateurs portent ce nom : saisis aussi le prénom","err");return;}
+    const c=(foundDep&&foundDep.id&&badges.find(b=>b.id===foundDep.id))||cands[0];
+    if(!c){showToast("⚠️ Collaborateur introuvable : nom et prénom exacts","err");return;}
     const u={...c,date_sortie_prevue:dateDep||today,from_accueil:true};
     setBadges(p=>p.map(b=>b.id===c.id?u:b));
     if(sb)(async()=>{try{await sb.from("lp24_badges").upsert(u);}catch(e){}})();
@@ -5939,8 +6019,10 @@ function VueAccueil({badges,casiers,setView,wdCache,setBadges,setCasiers,showToa
   const wdClear=()=>{setFoundArr(null);setNomArr("");setPrenomArr("");setManagerArr("");setDateArr("");setWdQuery("");};
   const enrArr=()=>{
     if(!nomArr.trim()&&!prenomArr.trim()){showToast("⚠️ Saisissez nom ou prénom","err");return;}
-    const wd=wdCache?Object.values(wdCache).find(w=>(w.nom.includes(nomArr.toUpperCase())||!nomArr)&&(w.prenom.toLowerCase().includes(prenomArr.toLowerCase())||!prenomArr)):null;
-    const ex=badges.find(b=>(b.nom.toLowerCase().includes(nomArr.toLowerCase())||!nomArr)&&(b.prenom.toLowerCase().includes(prenomArr.toLowerCase())||!prenomArr)&&b.statut!=="Archivé");
+    const wdL=foundArr?[foundArr]:memePersonne(wdCache?Object.values(wdCache):[],nomArr,prenomArr);
+    const wd=wdL.length===1&&String(prenomArr||foundArr&&foundArr.prenom||"").trim()?wdL[0]:null;
+    const ex=prenomArr.trim()?memePersonne(badges.filter(b=>b.statut!=="Archivé"),nomArr,prenomArr)[0]:null;
+    if(!prenomArr.trim()&&!foundArr){showToast("⚠️ Saisis aussi le prénom","err");return;}
     if(ex){showToast("⚠️ Déjà dans le tableau : "+((ex.prenom||"")+" "+(ex.nom||"")).trim()+(ex.matricule?" (mat. "+ex.matricule+")":"")+(ex.statut?" — "+ex.statut:"")+" : pas de doublon créé","err");return;}
     const nb={id:"tmp_"+Date.now(),nom:wd?wd.nom:nomArr.toUpperCase(),prenom:wd?wd.prenom:prenomArr,matricule:wd?wd.matricule:"",email:wd?wd.email:"",serie:"",zeplug:"",carte_rechargement:"",casier:"",manager:managerArr||wd?.manager||"",mail_manager:wd?.mailMgr||"",statut:"Actif",badge_donne:true,date_entree:dateArr||wd?.hireDate||"",date_sortie_prevue:"",date_archive:"",commentaire:"",date_ajout:todayISO(),etiquette_imprimee:false,from_accueil:true};
     setBadges(p=>[...p,nb]);
@@ -6215,7 +6297,7 @@ function VueAccueil({badges,casiers,setView,wdCache,setBadges,setCasiers,showToa
       React.createElement(KPI,{label:"Arrivées",sub:"cette semaine",value:arrSemaine.length,color:C.green,onClick:()=>setModal("arrSemaine")}),
       React.createElement(KPI,{label:"Départs",sub:"cette semaine",value:depSemaine.length,color:C.red,onClick:()=>setModal("depSemaine")}),
       React.createElement(KPI,{label:"Field Support",value:fssATraiter,sub:"à traiter",color:C.cyan,onClick:()=>setModal("fss")}),
-      React.createElement(KPI,{label:"Doublons badge",value:doublonsBadges.length,color:C.orange,onClick:()=>setModal("doublons")})
+      React.createElement(KPI,{label:"Badges en double",value:doublonsBadges.length,color:C.orange,onClick:()=>setModal("doublons")})
     ),
 
     // ══════════════ Graphiques : répartition par zone + tendance effectifs + SLA Field Support ══════════════
@@ -6356,8 +6438,8 @@ function VueAccueil({badges,casiers,setView,wdCache,setBadges,setCasiers,showToa
       ),
       React.createElement("div",{className:"mvt-actions"},
         React.createElement("button",{className:"btn-main",onClick:enrArr},"Enregistrer"),
-        React.createElement("button",{className:"btn-ghost",title:"Mail IT arrivée",onClick:()=>{const it=(settings&&settings.itEmail)||"";if(!it){showToast("⚠️ Email IT non configuré","err");return;}const wd=wdCache?Object.values(wdCache).find(w=>(norm(w.nom).includes(norm(nomArr))||!nomArr)&&(norm(w.prenom).includes(norm(prenomArr))||!prenomArr)):null;const data={nom:wd?wd.nom:nomArr.toUpperCase()||"NC",prenom:wd?wd.prenom:prenomArr||"NC",matricule:wd?wd.matricule:"NC",email:wd?wd.email:"NC",date_entree:dateArr||wd?.hireDate||"NC",manager:managerArr||wd?.manager||"NC",mail_manager:wd?.mailMgr||"NC"};const cc=encodeURIComponent((settings&&settings.ccEmails)||"");window.open("mailto:"+encodeURIComponent(it)+(cc?"?cc="+cc:"")+"?subject="+encodeURIComponent("Arrivée — "+data.prenom+" "+data.nom)+"&body="+encodeURIComponent(buildBody(settings.bodyArriveeIT||"Arrivée de {prenom} {nom} — Date : {date_entree}",data)));}},"✉️ IT"),
-        React.createElement("button",{className:"btn-ghost",title:"Mail Restaurant arrivée",onClick:()=>{const to=encodeURIComponent((settings&&settings.restaurantEmail)||"");const wd=wdCache?Object.values(wdCache).find(w=>(norm(w.nom).includes(norm(nomArr))||!nomArr)&&(norm(w.prenom).includes(norm(prenomArr))||!prenomArr)):null;const data={nom:wd?wd.nom:nomArr.toUpperCase()||"NC",prenom:wd?wd.prenom:prenomArr||"NC",matricule:wd?wd.matricule:"NC",email:wd?wd.email:"NC",date_entree:dateArr||wd?.hireDate||"NC",manager:managerArr||wd?.manager||"NC",mail_manager:wd?.mailMgr||"NC"};window.open("mailto:"+to+"?subject="+encodeURIComponent("Arrivée — "+data.prenom+" "+data.nom)+"&body="+encodeURIComponent(buildBody(settings.bodyArriveeResto||"Arrivée de {prenom} {nom}",data)));}},"🍽️")
+        React.createElement("button",{className:"btn-ghost",title:"Mail IT arrivée",onClick:()=>{const it=(settings&&settings.itEmail)||"";if(!it){showToast("⚠️ Email IT non configuré","err");return;}const wd=foundArr||memePersonne(wdCache?Object.values(wdCache):[],nomArr,prenomArr)[0]||null;const data={nom:wd?wd.nom:nomArr.toUpperCase()||"NC",prenom:wd?wd.prenom:prenomArr||"NC",matricule:wd?wd.matricule:"NC",email:wd?wd.email:"NC",date_entree:dateArr||wd?.hireDate||"NC",manager:managerArr||wd?.manager||"NC",mail_manager:wd?.mailMgr||"NC"};const cc=encodeURIComponent((settings&&settings.ccEmails)||"");window.open("mailto:"+encodeURIComponent(it)+"?"+(cc?"cc="+cc+"&":"")+"subject="+encodeURIComponent("Arrivée — "+data.prenom+" "+data.nom)+"&body="+encodeURIComponent(texteManuel(settings,"autoITArrivee",data)));}},"✉️ IT"),
+        React.createElement("button",{className:"btn-ghost",title:"Mail Restaurant arrivée",onClick:()=>{const to=encodeURIComponent((settings&&settings.restaurantEmail)||"");const wd=foundArr||memePersonne(wdCache?Object.values(wdCache):[],nomArr,prenomArr)[0]||null;const data={nom:wd?wd.nom:nomArr.toUpperCase()||"NC",prenom:wd?wd.prenom:prenomArr||"NC",matricule:wd?wd.matricule:"NC",email:wd?wd.email:"NC",date_entree:dateArr||wd?.hireDate||"NC",manager:managerArr||wd?.manager||"NC",mail_manager:wd?.mailMgr||"NC"};window.open("mailto:"+to+"?subject="+encodeURIComponent("Arrivée — "+data.prenom+" "+data.nom)+"&body="+encodeURIComponent(texteManuel(settings,"autoRestoArrivee",data)));}},"🍽️")
       )
     ),
 
@@ -6377,8 +6459,8 @@ function VueAccueil({badges,casiers,setView,wdCache,setBadges,setCasiers,showToa
       ),
       React.createElement("button",{className:"btn-depart",onClick:enrDep},"Enregistrer le départ"),
       React.createElement("div",{className:"mvt-actions",style:{marginTop:8}},
-        React.createElement("button",{className:"btn-ghost",style:{flex:1,justifyContent:"center"},title:"Mail IT départ",onClick:()=>{const it=(settings&&settings.itEmail)||"";if(!it){showToast("⚠️ Email IT non configuré","err");return;}const b=badges.find(x=>(x.nom.toLowerCase().includes(nomDep.toLowerCase())||!nomDep)&&(x.prenom.toLowerCase().includes(prenomDep.toLowerCase())||!prenomDep)&&x.statut!=="Archivé");const data=b?{...b,date_sortie_prevue:dateDep||b.date_sortie_prevue||"NC"}:{nom:nomDep.toUpperCase(),prenom:prenomDep,matricule:"NC",serie:"NC",date_sortie_prevue:dateDep||"NC",manager:"NC",mail_manager:"NC"};const cc=encodeURIComponent((settings&&settings.ccEmails)||"");window.open("mailto:"+encodeURIComponent(it)+(cc?"?cc="+cc:"")+"?subject="+encodeURIComponent("Départ — "+data.prenom+" "+data.nom)+"&body="+encodeURIComponent(buildBody(settings.bodyDepartIT||"Départ de {prenom} {nom} — Date : {date_sortie_prevue}",data)));}},"✉️ IT"),
-        React.createElement("button",{className:"btn-ghost",style:{flex:1,justifyContent:"center"},title:"Mail Restaurant départ",onClick:()=>{const to=encodeURIComponent((settings&&settings.restaurantEmail)||"");const b=badges.find(x=>(x.nom.toLowerCase().includes(nomDep.toLowerCase())||!nomDep)&&(x.prenom.toLowerCase().includes(prenomDep.toLowerCase())||!prenomDep)&&x.statut!=="Archivé");if(!b){showToast("⚠️ Collaborateur introuvable","err");return;}window.open("mailto:"+to+"?subject="+encodeURIComponent("Départ — "+b.prenom+" "+b.nom)+"&body="+encodeURIComponent(buildBody(settings.bodyDepartResto||"Départ de {prenom} {nom}",b)));}},"🍽️")
+        React.createElement("button",{className:"btn-ghost",style:{flex:1,justifyContent:"center"},title:"Mail IT départ",onClick:()=>{const it=(settings&&settings.itEmail)||"";if(!it){showToast("⚠️ Email IT non configuré","err");return;}const b=memePersonne(badges.filter(x=>x.statut!=="Archivé"),nomDep||prenomDep,nomDep?prenomDep:"")[0];const data=b?{...b,date_sortie_prevue:dateDep||b.date_sortie_prevue||"NC"}:{nom:nomDep.toUpperCase(),prenom:prenomDep,matricule:"NC",serie:"NC",date_sortie_prevue:dateDep||"NC",manager:"NC",mail_manager:"NC"};const cc=encodeURIComponent((settings&&settings.ccEmails)||"");window.open("mailto:"+encodeURIComponent(it)+"?"+(cc?"cc="+cc+"&":"")+"subject="+encodeURIComponent("Départ — "+data.prenom+" "+data.nom)+"&body="+encodeURIComponent(texteManuel(settings,"autoITDepart",data)));}},"✉️ IT"),
+        React.createElement("button",{className:"btn-ghost",style:{flex:1,justifyContent:"center"},title:"Mail Restaurant départ",onClick:()=>{const to=encodeURIComponent((settings&&settings.restaurantEmail)||"");const b=memePersonne(badges.filter(x=>x.statut!=="Archivé"),nomDep||prenomDep,nomDep?prenomDep:"")[0];if(!b){showToast("⚠️ Collaborateur introuvable","err");return;}window.open("mailto:"+to+"?subject="+encodeURIComponent("Départ — "+b.prenom+" "+b.nom)+"&body="+encodeURIComponent(texteManuel(settings,"autoRestoDepart",b)));}},"🍽️")
       )
     ),
 
@@ -6398,7 +6480,8 @@ function VueAccueil({badges,casiers,setView,wdCache,setBadges,setCasiers,showToa
             React.createElement("div",{style:{fontSize:13,marginBottom:8,color:C.green,fontWeight:700}},"✅ "+wdAutoUpdateMeta.count+" fiche(s) complétée(s) automatiquement"+(wdAutoUpdateMeta.date?" — "+fmtDT(wdAutoUpdateMeta.date):"")),
             (wdAutoUpdateMeta.noms||[]).map((n,i)=>React.createElement("div",{key:"wdn"+i,style:{padding:"6px 4px",borderBottom:"1px solid var(--border)",fontSize:13,fontWeight:600}},n))
           ),
-      React.createElement("button",{onClick:()=>{closeModal();if(!isIT)openDonnees();},className:"btn btn-outline",style:{marginTop:10}},"Aller à Données / Import →")
+      !isIT&&React.createElement(EcartsWorkday,{badges,wdCache,setBadges,addLog,showToast}),
+      React.createElement("button",{onClick:()=>{closeModal();if(!isIT)openDonnees();},className:"btn btn-outline",style:{marginTop:10}},"Aller à Import / Export →")
     ),
 
     modal==="completer"&&React.createElement(AccueilModal,{title:"Fiches à compléter",icon:"⚠️",onClose:closeModal},
@@ -6584,7 +6667,7 @@ function VueCollaborateurs({badges,casiers,setBadges,setCasiers,showToast,wdCach
   };
   const casLibres=casiers.filter(c=>c.statut==="Libre"||(editing&&c.numero===form.casier));
   const restEmail=settings?.restaurantEmail||"";const ccEmails=settings?.ccEmails||"";
-  const mailArrivee=b=>{const to=encodeURIComponent(restEmail);const cc=encodeURIComponent(ccEmails);const s=encodeURIComponent("Nouvelle arrivée — "+b.prenom+" "+b.nom);const c=encodeURIComponent("Bonjour,\n\nNous vous informons de l'arrivée d'un nouveau collaborateur accédant au restaurant d'entreprise :\n\nNom : "+b.nom+"\nPrénom : "+b.prenom+"\nAdresse e-mail : "+(b.email||"Non renseigné")+"\nN° de badge : "+(b.serie||"Non attribué")+"\n\nMerci de bien vouloir l'ajouter à vos systèmes.\n\nCordialement,\nService RH");window.open("mailto:"+to+"?subject="+s+"&body="+c+(cc?"&cc="+cc:""));};
+  const mailArrivee=b=>{const to=encodeURIComponent(restEmail);const cc=encodeURIComponent(ccEmails);const s=encodeURIComponent("Nouvelle arrivée — "+b.prenom+" "+b.nom);const c=encodeURIComponent("Bonjour,\n\nNous vous informons de l'arrivée d'un nouveau collaborateur accédant au restaurant d'entreprise :\n\nNom : "+b.nom+"\nPrénom : "+b.prenom+"\nAdresse e-mail : "+(b.email||"Non renseigné")+"\nN° de badge : "+(b.serie||"Non attribué")+"\n\nMerci de bien vouloir l'ajouter à vos systèmes.\n\nCordialement,\n"+(window._mailSignature||SIGNATURE_MAIL));window.open("mailto:"+to+"?subject="+s+"&body="+c+(cc?"&cc="+cc:""));};
   const mailDepart=b=>{const to=encodeURIComponent(restEmail);const cc=encodeURIComponent(ccEmails);const s=encodeURIComponent("Départ collaborateur — "+b.prenom+" "+b.nom);const c=encodeURIComponent(texteDepartResto(settings&&settings.bodyDepartResto,b));window.open("mailto:"+to+"?subject="+s+"&body="+c+(cc?"&cc="+cc:""));};
   // ══ Vue « Contacts » : uniquement de l'affichage ; les actions appellent les fonctions existantes ══
   const openEditB=b=>{const f={...b,carte_rechargement:b.carte_rechargement||""};setForm(f);setEditing(b.id);setShowForm(true);if(wdCache&&(!b.matricule||!b.email||!b.manager)){const n=b.nom.toUpperCase();const p=b.prenom.toLowerCase();const match=Object.values(wdCache).find(w=>{const wn=w.nom.toUpperCase();const wp=w.prenom.toLowerCase();return(wn.includes(n)||n.includes(wn))&&(wp.includes(p)||p.includes(wp));});if(match){setTimeout(()=>setForm(prev=>({...prev,matricule:prev.matricule||match.matricule||"",email:prev.email||match.email||"",manager:prev.manager||match.manager||"",mail_manager:prev.mail_manager||match.mailMgr||"",date_entree:prev.date_entree||match.hireDate||""})),50);}}};
@@ -8398,8 +8481,8 @@ function calculerNotifications({badges,fssData,prets,colis,quota}){
     else if(c.statut==="prevenu"&&c.prevenu_le&&jours(c.prevenu_le)>=3)L.push({id:"colis-"+c.id+"-attente",cat:"Colis",icone:"📦",titre:"Colis "+n+" pas encore récupéré",raison:qui+" a été prévenu le "+fr(c.prevenu_le)+" ("+jours(c.prevenu_le)+" jours) et n'est pas venu le chercher.",vue:"colis"});});
   const fss=(fssData||[]).filter(f=>!f.cloture&&f.statut==="A traiter").length;
   if(fss)L.push({id:"fss-"+fss,cat:"À traiter",icone:"📋",titre:fss+" fiche"+(fss>1?"s":"")+" Field Support à traiter",raison:"Fiches non clôturées au statut « À traiter » (c'est le chiffre rouge sur l'onglet Field Support).",vue:"field_support"});
-  const acomp=(badges||[]).filter(b=>b.statut==="Actif"&&(!String(b.matricule||"").trim()||String(b.matricule).trim()==="0"||!String(b.serie||"").trim())).length;
-  if(acomp)L.push({id:"acomp-"+acomp,cat:"À traiter",icone:"⚠️",titre:acomp+" fiche"+(acomp>1?"s":"")+" à compléter",raison:"Collaborateurs actifs sans matricule ou sans numéro de badge.",vue:"collaborateurs"});
+  const acomp=(badges||[]).filter(aCompleter).length;
+  if(acomp)L.push({id:"acomp-"+acomp,cat:"À traiter",icone:"⚠️",titre:acomp+" fiche"+(acomp>1?"s":"")+" à compléter",raison:"Collaborateurs non archivés sans matricule ou sans numéro de badge (même chiffre que la carte de l'Accueil).",vue:"collaborateurs"});
   if(quota&&quota.total>=QUOTA_MAILS*0.8)L.push({id:"quota-"+Math.floor(quota.total/10),cat:"À traiter",icone:"📧",titre:"Quota mails : "+quota.total+" / "+QUOTA_MAILS,raison:quota.total>=QUOTA_MAILS?"Quota EmailJS atteint : les mails automatiques ne partent plus jusqu'au mois prochain.":"Plus de 80 % du quota EmailJS du mois est utilisé.",vue:"accueil"});
   return L;
 }
@@ -8410,7 +8493,7 @@ function VueNotifications({items,supprimer,toutSupprimer,restaurer,nbSupprimees,
     (typeof PageHero==="function"?el(PageHero,{icone:"🔔",titre:"Notifications",sousTitre:items.length?items.length+" en cours":"rien à signaler"}):el("h1",null,"🔔 Notifications"));
   return el("div",{className:"anim-in"},titre,
     el("div",{style:{display:"flex",gap:8,flexWrap:"wrap",alignItems:"center",marginBottom:12}},
-      el("div",{style:{fontSize:12,color:"var(--text3)",flex:"1 1 240px"}},"Le chiffre sur l'icône de l'appli = le nombre de notifications ci-dessous. Une notification supprimée revient seulement si la situation change."),
+      el("div",{style:{fontSize:12,color:"var(--text3)",flex:"1 1 240px"}},"Le chiffre sur l'icône de l'appli = le nombre de notifications ci-dessous. Une notification supprimée revient seulement si la situation change. Les suppressions suivent ton compte (ordinateur et téléphone)."),
       items.length>0&&el("button",{type:"button",className:"btn btn-outline",style:{fontSize:12},onClick:()=>{if(confirm("Supprimer les "+items.length+" notifications ?"))toutSupprimer();}},"🧹 Tout supprimer"),
       nbSupprimees>0&&el("button",{type:"button",className:"btn",style:{fontSize:12},onClick:restaurer},"↩️ Réafficher les supprimées ("+nbSupprimees+")")),
     items.length===0&&el("div",{className:"card",style:{textAlign:"center",padding:40,border:"1px solid var(--border)",borderRadius:12}},el("div",{style:{fontSize:34}},"✅"),el("div",{style:{fontWeight:700,marginTop:6,color:"var(--text)"}},"Aucune notification"),el("div",{style:{fontSize:12,color:"var(--text3)",marginTop:4}},"Tout est à jour.")),
@@ -8519,6 +8602,71 @@ function HistoriqueCasier({numero}){
           l.par&&l.par!=="système"&&l.par!=="automatique"?el("div",{style:{color:"var(--text3)",fontSize:11,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}},"par "+l.par):null))))));
 }
 
+
+// ════════════════ RÉGLAGES : envois de mails (interrupteurs) ════════════════
+// Absent = activé. Les envois automatiques de la base lisent les mêmes réglages (script envois-mails-reglages.sql).
+function EnvoisMails({settings,setSettings,showToast}){
+  const el=React.createElement;const on=k=>settings[k]!==false;const tous=on("envoiMails");
+  const basculer=(k,lab)=>{const v=!on(k);setSettings(st=>({...st,[k]:v}));showToast((v?"✅ Activé : ":"⏸️ Coupé : ")+lab);};
+  const ligne=(k,lab,sous,dis)=>el("label",{key:k,style:{display:"flex",alignItems:"center",gap:12,padding:"9px 2px",borderTop:"1px solid var(--border)",cursor:dis?"default":"pointer",opacity:dis?.45:1}},
+    el("div",{style:{flex:1,minWidth:0}},el("div",{style:{fontWeight:600,fontSize:13,color:"var(--text)"}},lab),sous&&el("div",{style:{fontSize:11,color:"var(--text3)"}},sous)),
+    el("span",{style:{position:"relative",width:42,height:24,borderRadius:999,background:on(k)&&!dis?"var(--green)":"var(--border2)",transition:"background .15s",flexShrink:0}},
+      el("span",{style:{position:"absolute",top:2,left:on(k)?20:2,width:20,height:20,borderRadius:"50%",background:"#fff",boxShadow:"0 1px 3px rgba(0,0,0,.25)",transition:"left .15s"}})),
+    el("input",{type:"checkbox",checked:on(k),disabled:dis,onChange:()=>basculer(k,lab),style:{position:"absolute",opacity:0,width:0,height:0}}));
+  return el("div",{style:{background:"var(--surface2)",border:"1px solid var(--border)",borderLeft:"4px solid "+(tous?"var(--green)":"var(--red)"),borderRadius:8,padding:"10px 14px"}},
+    el("div",{style:{fontWeight:700,fontSize:13,color:"var(--text)",marginBottom:4}},"📨 Envois de mails"+(tous?"":" — tous coupés")),
+    ligne("envoiMails","Tous les mails","Interrupteur général : coupé, aucun mail ne part (automatique ou depuis l'appli)",false),
+    ligne("envoiIT","IT — arrivées et départs","Mail automatique la veille",!tous),
+    ligne("envoiResto","Restaurant — arrivées et départs","Mail automatique le jour même",!tous),
+    ligne("envoiFSS","Field Support — notification à l'IT","À chaque nouvelle fiche Field Support",!tous),
+    ligne("envoiPret","Badge de prêt — mail au moment du prêt","Avec les horaires de l'accueil",!tous),
+    ligne("envoiRappel","Badge de prêt — rappels","Chaque matin tant que le badge n'est pas rendu",!tous),
+    el("div",{style:{fontSize:11,color:"var(--text3)",marginTop:6}},"Les mails « Envoyer les tests » partent toujours. Un mail coupé n'est pas rattrapé plus tard, sauf une arrivée encore à venir."));
+}
+
+
+// ════════════════ COHÉRENCE ════════════════
+// Une seule règle « fiche à compléter » : collaborateur non archivé sans matricule ou sans n° de badge.
+function aCompleter(b){return b&&b.statut!=="Archivé"&&(!String(b.matricule||"").trim()||String(b.matricule).trim()==="0"||!String(b.serie||"").trim());}
+// Personne par nom + prénom exacts (accents, majuscules, ordre ignorés). Liste vide si rien ou si le prénom manque.
+function memePersonne(liste,nom,prenom){
+  const n=x=>String(x||"").normalize("NFD").replace(/[̀-ͯ]/g,"").toUpperCase().replace(/[^A-Z0-9]/g,"");
+  const a=n(nom),b=n(prenom);if(!a)return [];
+  return (liste||[]).filter(x=>{const xn=n(x.nom),xp=n(x.prenom);return b?((xn===a&&xp===b)||(xn===b&&xp===a)):xn===a;});
+}
+// Mails manuels de l'Accueil : mêmes textes (et même signature) que les mails automatiques
+function texteManuel(settings,cle,b){
+  const fr=d=>{const m=String(d||"").match(/^(\d{4})-(\d{2})-(\d{2})/);return m?m[3]+"/"+m[2]+"/"+m[1]:"";};
+  const cap=x=>String(x||"").toLowerCase().replace(/(^|[\s-])(\S)/g,(m,a,c)=>a+c.toUpperCase());
+  const dep=/Depart$/.test(cle);
+  return remplirModele(texteMail(settings,cle),{nom:String(b.nom||"").toUpperCase(),prenom:cap(b.prenom),date:fr(dep?b.date_sortie_prevue:b.date_entree)||fr(new Date().toISOString()),
+    manager:b.manager&&b.manager!=="NC"?b.manager:"Non renseigné",badge:b.serie||"Non attribué",email:b.email&&b.email!=="NC"?b.email:"Non renseignée",signature:texteMail(settings,"autoSignature")});
+}
+// Écarts entre les fiches et Workday (même matricule) : rien n'est changé sans ton accord
+function EcartsWorkday({badges,wdCache,setBadges,addLog,showToast}){
+  const el=React.createElement;
+  const nn=x=>String(x||"").normalize("NFD").replace(/[̀-ͯ]/g,"").toUpperCase().replace(/[^A-Z0-9@.]/g,"");
+  const L=React.useMemo(()=>{const out=[];if(!wdCache)return out;
+    (badges||[]).forEach(b=>{if(b.statut==="Archivé")return;const m=String(b.matricule||"").trim();const w=m&&m!=="0"&&wdCache[m];if(!w)return;
+      const champs=[["email","e-mail",String(w.email||"").toLowerCase()],["date_entree","date d'entrée",String(w.hireDate||"").slice(0,10)],["manager","manager",w.manager],["mail_manager","e-mail du manager",String(w.mailMgr||"").toLowerCase()]];
+      champs.forEach(([k,lab,v])=>{const f=String(b[k]||"").trim();v=String(v||"").trim();if(f&&v&&nn(k==="date_entree"?f.slice(0,10):f)!==nn(v))out.push({id:b.id,nom:((b.prenom||"")+" "+String(b.nom||"").toUpperCase()).trim(),k,lab,f,v});});});
+    return out;},[badges,wdCache]);
+  const fr=x=>{const m=String(x||"").match(/^(\d{4})-(\d{2})-(\d{2})/);return m?m[3]+"/"+m[2]+"/"+m[1]:x;};
+  const prendre=liste=>{const par={};liste.forEach(e=>{(par[e.id]=par[e.id]||{})[e.k]=e.v;});
+    setBadges(prev=>prev.map(b=>par[b.id]?{...b,...par[b.id]}:b));
+    addLog("Sync Workday",liste.length+" information(s) reprise(s) de Workday — "+[...new Set(liste.map(e=>e.nom))].slice(0,5).join(", "));
+    showToast("✅ "+liste.length+" information(s) mise(s) à jour depuis Workday");};
+  if(!L.length)return el("div",{style:{fontSize:12,color:"var(--text3)",padding:"8px 4px"}},"✅ Aucune différence entre les fiches et Workday.");
+  return el("div",{style:{marginTop:12,border:"1px solid var(--border)",borderRadius:10,overflow:"hidden"}},
+    el("div",{style:{display:"flex",alignItems:"center",gap:8,padding:"8px 12px",background:"var(--orangeBg)"}},
+      el("div",{style:{flex:1,fontSize:12,fontWeight:700,color:"var(--orange)"}},"⚠️ "+L.length+" différence(s) avec Workday — la fiche n'est pas modifiée sans ton accord"),
+      el("button",{type:"button",className:"btn btn-outline",style:{fontSize:11,padding:"3px 8px"},onClick:()=>{if(confirm("Reprendre les "+L.length+" information(s) de Workday ?"))prendre(L);}},"Tout prendre")),
+    el("div",{style:{maxHeight:260,overflowY:"auto"}},L.map((e,i)=>el("div",{key:i,style:{display:"flex",alignItems:"center",gap:8,padding:"7px 12px",borderTop:"1px solid var(--border)",fontSize:12}},
+      el("div",{style:{flex:1,minWidth:0}},el("b",null,e.nom),el("span",{style:{color:"var(--text3)"}}," · "+e.lab),
+        el("div",{style:{color:"var(--text2)",overflow:"hidden",textOverflow:"ellipsis"}},"Fiche : "+fr(e.f)+"  →  Workday : "+fr(e.v))),
+      el("button",{type:"button",className:"btn",style:{fontSize:11,padding:"3px 8px",flexShrink:0},onClick:()=>prendre([e])},"Prendre Workday")))));
+}
+
 function SettingsModal({settings,setSettings,showToast,setShowSettings,racineRef,hrRef,hcmRef,importJsonRef,exportExcel,exportJSON,importJSON,badges,setBadges,casiers,wdCache,histo,addLog,canHistorique,canArchives,canHistoriquePret,initialTab}){
   const[tab,setTab]=useState(initialTab||"emails");
   const archivesCount=badges.filter(b=>b.statut==="Archivé").length;
@@ -8567,6 +8715,7 @@ function SettingsModal({settings,setSettings,showToast,setShowSettings,racineRef
           React.createElement(CarteInstall,{showToast,toujours:true}),
           React.createElement(CarteNotifs,{showToast,toujours:true})),
         tab==="emails"&&React.createElement("div",{style:{display:"grid",gap:14}},
+          React.createElement(EnvoisMails,{settings,setSettings,showToast}),
           React.createElement("div",null,
             React.createElement(Lbl,null,"Email restaurant"),
             React.createElement("input",{type:"email",value:settings.restaurantEmail||"",onChange:e=>setSettings(s=>({...s,restaurantEmail:e.target.value.toUpperCase()})),className:"inp",placeholder:"restaurant@exemple.fr"})
@@ -8636,7 +8785,7 @@ function SettingsModal({settings,setSettings,showToast,setShowSettings,racineRef
         ),
         tab==="templates"&&React.createElement("div",{style:{display:"grid",gap:14}},
           React.createElement(EditeurTextesMails,{settings,setSettings,showToast}),
-          React.createElement("details",{style:{border:"1px solid var(--border)",borderRadius:8,padding:"10px 14px"}},
+          false&&React.createElement("details",{style:{border:"1px solid var(--border)",borderRadius:8,padding:"10px 14px"}},
             React.createElement("summary",{style:{cursor:"pointer",fontWeight:600,fontSize:13,color:"var(--text2)"}},"Mails manuels (boutons de l'Accueil)"),
             React.createElement("div",{style:{display:"grid",gap:14,marginTop:12}},
           React.createElement("div",{style:{background:"var(--surface2)",border:"1px solid var(--border)",borderRadius:8,padding:"10px 14px",fontSize:11,color:"var(--text3)",marginBottom:4}},"Variables disponibles : {nom} {prenom} {matricule} {email} {date_entree} {date_sortie_prevue} {serie} {manager} {mail_manager}"),
@@ -9306,6 +9455,7 @@ function App(){
 
   // ── Exposer fssEmail pour EmailJS ──
   useEffect(()=>{window._fssNotifEmail=settings.fssEmail||"";},[settings.fssEmail]);
+  useEffect(()=>{window._envoisMails={envoiMails:settings.envoiMails,envoiFSS:settings.envoiFSS};},[settings.envoiMails,settings.envoiFSS]);
   useEffect(()=>{window._mailSignature=texteMail(settings,"autoSignature");},[settings.autoSignature]);
   useEffect(()=>{window._mailIT=settings.itEmail||"";},[settings.itEmail]);
   // ── Pastille + notifications des arrivées / départs du jour ──
@@ -9612,9 +9762,13 @@ useEffect(()=>{
     if(ok)setNotifExtra(n);})();return()=>{ok=false;};},[unlocked,tickNotif,view]);
   const notifsToutes=useMemo(()=>calculerNotifications({badges,fssData,prets:notifExtra.prets,colis:notifExtra.colis,quota:notifExtra.quota}),[badges,fssData,notifExtra]);
   const notifs=useMemo(()=>notifsToutes.filter(x=>!notifSupp[x.id]),[notifsToutes,notifSupp]);
-  const supprimerNotif=id=>setNotifSupp(o=>{const n={...o,[id]:Date.now()};enregistrerSupprimees(n);return n;});
-  const toutSupprimerNotifs=()=>setNotifSupp(o=>{const n={...o};notifs.forEach(x=>{n[x.id]=Date.now();});enregistrerSupprimees(n);return n;});
-  const restaurerNotifs=()=>{setNotifSupp({});enregistrerSupprimees({});};
+  const cleNS="notifsSupp:"+String((session&&session.email)||"moi").toLowerCase();
+  const partagerNS=n=>{if(settingsReadyRef.current)setSettings(st=>({...st,[cleNS]:n}));};
+  useEffect(()=>{const srv=settings&&settings[cleNS];if(!srv||typeof srv!=="object")return;
+    setNotifSupp(o=>{const nouv=Object.keys(srv).filter(k=>!o[k]);if(!nouv.length)return o;const n={...o};nouv.forEach(k=>{n[k]=srv[k];});enregistrerSupprimees(n);return n;});},[settings&&settings[cleNS]]);
+  const supprimerNotif=id=>setNotifSupp(o=>{const n={...o,[id]:Date.now()};enregistrerSupprimees(n);partagerNS(n);return n;});
+  const toutSupprimerNotifs=()=>setNotifSupp(o=>{const n={...o};notifs.forEach(x=>{n[x.id]=Date.now();});enregistrerSupprimees(n);partagerNS(n);return n;});
+  const restaurerNotifs=()=>{setNotifSupp({});enregistrerSupprimees({});if(settingsReadyRef.current)setSettings(st=>{const n={...st};delete n[cleNS];return n;});};
   useEffect(()=>{if(unlocked)majPastille(notifs.length);},[notifs.length,unlocked]);
   const nav=[
     {id:"accueil",label:"Accueil",icon:"🏠"},
@@ -9677,7 +9831,7 @@ useEffect(()=>{
   const dbDot=React.createElement("div",{style:{display:"flex",alignItems:"center",gap:5,fontSize:11,color:"var(--text3)"}},React.createElement("span",{className:"save-dot"+(saving?" saving":""),title:saving?"Sauvegarde...":"Sauvegardé"}),saving?"Sync...":dbStatus==="ok"?"✓":"Hors ligne");
 
   const toolbarButtons=React.createElement("div",{style:{display:"flex",gap:8,alignItems:"center"}},
-    !isIT&&React.createElement("button",{title:"Paramètres & Import/Export",className:"btn-icon",onClick:()=>setShowSettings(true),style:{position:"relative"}},"⚙️"),
+    !isIT&&React.createElement("button",{title:"Réglages",className:"btn-icon",onClick:()=>setShowSettings(true),style:{position:"relative"}},"⚙️"),
     session&&React.createElement("span",{style:{fontSize:11,color:"var(--text3)",marginLeft:2}},session.label),
     session&&React.createElement("button",{title:"Déconnexion",onClick:logout,style:{background:"var(--redBg)",border:"1px solid rgba(220,38,38,.2)",color:"var(--red)",borderRadius:6,padding:"3px 8px",fontSize:11,cursor:"pointer"}},"⏻"),
     dbDot
