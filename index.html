@@ -870,7 +870,7 @@ function EditeurTextesMails({settings,setSettings,showToast}){
     ["autoRestoArrivee","Restaurant — arrivée (le jour même)","{nom} {prenom} {date} {email} {badge} {signature}",8],
     ["autoRestoDepart","Restaurant — départ (le jour même)","{nom} {prenom} {date} {email} {badge} {signature}",8],
     ["autoPret","Badge de prêt — au moment du prêt","{emprunteur} {code} {badge_nom} {date_pret} {ligne_retour} {horaires} {signature}",10],
-    ["autoRappel","Badge de prêt — rappel après 24 h","{emprunteur} {code} {badge_nom} {date_pret} {horaires} {signature}",9],
+    ["autoRappel","Badge de prêt — rappel (lendemain de la date de retour, ou après 24 h)","{emprunteur} {code} {badge_nom} {date_pret} {ligne_retour} {horaires} {signature}",9],
     ["bienvenueSujet","Mail de bienvenue — objet","{prenom} {nom}",1],
     ["bienvenueCorps","Mail de bienvenue — texte (le bouton de la fiche ouvre ce mail dans ta messagerie, tu y joins sa photo)","{prenom} {nom} {badge} {casier} {manager} {date} {horaires} {signature}",14],
   ];
@@ -981,7 +981,7 @@ var TEXTES_MAIL_DEFAUT={
   autoRestoArrivee:"Bonjour,\n\nNous vous informons de l'arrivée d'un nouveau collaborateur :\n\nNom : {nom}\nPrénom : {prenom}\nDate d'arrivée : {date}\nAdresse e-mail : {email}\nNuméro de badge : {badge}\n\nMerci de bien vouloir l'ajouter à vos systèmes.\n\nCordialement,\n{signature}",
   autoRestoDepart:"Bonjour,\n\nNous vous informons du départ du collaborateur suivant :\n\nNom : {nom}\nPrénom : {prenom}\nDate de départ : {date}\nAdresse e-mail : {email}\nNuméro de badge : {badge}\n\nMerci de bien vouloir le retirer de vos systèmes.\n\nCordialement,\n{signature}",
   autoPret:"Bonjour {emprunteur},\n\nLe badge de prêt {code} ({badge_nom}) vous a été remis le {date_pret}.\n{ligne_retour}\n\nMerci de le rapporter à l'accueil.\n\n{horaires}\n\nÀ défaut de retour de votre part, des rappels vous seront envoyés jusqu'à confirmation de la restitution du badge.\n\nCordialement,\n{signature}",
-  autoRappel:"Bonjour {emprunteur},\n\nLe badge de prêt {code} ({badge_nom}) vous a été remis le {date_pret} et n'a pas encore été restitué.\n\nMerci de bien vouloir le rapporter à l'accueil dès que possible.\nSi vous l'avez déjà rendu, merci de ne pas tenir compte de ce message.\n\n{horaires}\n\nCordialement,\n{signature}"
+  autoRappel:"Bonjour {emprunteur},\n\nLe badge de prêt {code} ({badge_nom}) vous a été remis le {date_pret} et n'a pas encore été restitué.\n{ligne_retour}\n\nMerci de bien vouloir le rapporter à l'accueil dès que possible.\nSi vous l'avez déjà rendu, merci de ne pas tenir compte de ce message.\n\n{horaires}\n\nCordialement,\n{signature}"
 };
 function texteMail(settings,cle){const v=settings&&settings[cle];return (v!=null&&String(v).trim()!=="")?String(v):TEXTES_MAIL_DEFAUT[cle];}
 function remplirModele(modele,vars){let t=String(modele||"");Object.keys(vars).forEach(k=>{t=t.split("{"+k+"}").join(vars[k]==null?"":String(vars[k]));});
@@ -998,7 +998,7 @@ function mailsDeTest(settings){
     ["[TEST] Départ — Jean DUPONT — "+d(0)+"  (restaurant, le jour même)",remplirModele(T("autoRestoDepart"),{...p,date:d(0)})],
     ["[TEST] Field Support — Jean DUPONT","Bonjour,\n\nUne nouvelle demande Field Support a été enregistrée :\n\nNom : DUPONT\nPrénom : Jean\nSituation : Arrivée\nDate : "+d(5)+"\nManager : LEROY THOMAS\n\n"+blocLienAppli(null)+finFss.replace(/^\n/,"")],
     ["[TEST] Badge de prêt P002 — horaires de l'accueil",remplirModele(T("autoPret"),{emprunteur:"Dupont Jean",code:"P002",badge_nom:"Badge Prêt 2",date_pret:d(0)+" à 09h30",ligne_retour:"Retour prévu : "+d(2),horaires:hor,signature:sig})],
-    ["[TEST] Rappel — badge de prêt P002 à restituer",remplirModele(T("autoRappel"),{emprunteur:"Dupont Jean",code:"P002",badge_nom:"Badge Prêt 2",date_pret:d(-1)+" à 09h30",horaires:hor,signature:sig})],
+    ["[TEST] Rappel — badge de prêt P002 à restituer",remplirModele(T("autoRappel"),{emprunteur:"Dupont Jean",code:"P002",badge_nom:"Badge Prêt 2",date_pret:d(-1)+" à 09h30",ligne_retour:"Retour prévu : "+d(-1),horaires:hor,signature:sig})],
   ];
 }
 function TestMailsBox({showToast,settings}){
@@ -4102,7 +4102,7 @@ function VueBadgesPret({showToast,addLog}){
   const S={
     disponible:{label:"Disponible",color:"#16A34A",bg:"rgba(22,163,74,.12)",border:"rgba(22,163,74,.3)"},
     prete:{label:"Prêtée",color:"#D97706",bg:"rgba(217,119,6,.12)",border:"rgba(217,119,6,.3)"},
-    empruntee:{label:"Empruntée",color:"#DC2626",bg:"rgba(220,38,38,.12)",border:"rgba(220,38,38,.3)"},
+    empruntee:{label:"Prêtée",color:"#D97706",bg:"rgba(217,119,6,.12)",border:"rgba(217,119,6,.3)"},
   };
 
   const fmtDate=d=>d?new Date(d).toLocaleDateString("fr-FR"):"—";
@@ -4140,14 +4140,14 @@ function VueBadgesPret({showToast,addLog}){
   const stats=useMemo(()=>({
     total:badges.length,
     disponibles:badges.filter(b=>b.statut==="disponible").length,
-    pretees:badges.filter(b=>b.statut==="prete").length,
+    pretees:badges.filter(b=>b.statut==="prete"||b.statut==="empruntee").length,
     empruntees:badges.filter(b=>b.statut==="empruntee").length,
   }),[badges]);
 
   const filtered=useMemo(()=>{
     let r=badges;
     if(search.trim()){const q=search.toLowerCase();r=r.filter(b=>b.code.toLowerCase().includes(q)||b.nom.toLowerCase().includes(q)||(b.emprunteur&&b.emprunteur.toLowerCase().includes(q)));}
-    if(filtreStatut)r=r.filter(b=>b.statut===filtreStatut);
+    if(filtreStatut)r=r.filter(b=>filtreStatut==="prete"?(b.statut==="prete"||b.statut==="empruntee"):b.statut===filtreStatut);
     return r;
   },[badges,search,filtreStatut]);
 
@@ -4191,11 +4191,10 @@ function VueBadgesPret({showToast,addLog}){
   }},S[statut]?.label||statut);
 
   // KPI cards
-  const kpis=el("div",{className:"m-grid-2",style:{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:12,marginBottom:24}},
+  const kpis=el("div",{className:"bp-kpis3",style:{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:12,marginBottom:24}},
     [{label:"Total",val:stats.total,color:"#3B82F6",id:""},...[
       {label:"Disponibles",val:stats.disponibles,color:"#16A34A",id:"disponible"},
       {label:"Prêtées",val:stats.pretees,color:"#D97706",id:"prete"},
-      {label:"Empruntées",val:stats.empruntees,color:"#DC2626",id:"empruntee"},
     ]].map(k=>el("div",{className:"kpi-std",key:k.label,onClick:k.id?()=>setFiltreStatut(filtreStatut===k.id?"":k.id):undefined,
       style:{background:"var(--surface)",border:"1px solid "+(filtreStatut===k.id?k.color:"var(--border)"),
         borderTop:"3px solid "+k.color,borderRadius:"var(--radius-lg)",padding:"16px 20px",
@@ -4280,10 +4279,19 @@ function VueBadgesPret({showToast,addLog}){
   );
 
   // Modale
+  const bpOrig=selected&&badges.find(b=>b.id===selected.id);
+  const bpSorti=selected&&(selected.statut==="prete"||selected.statut==="empruntee");
+  const bpModifie=!!(bpSorti&&bpOrig&&["emprunteur","email_emprunteur","date_retour_prevu","commentaire"].some(k=>String(selected[k]||"")!==String(bpOrig[k]||"")));
+  const bpEnregistrer=()=>{
+    if(bpSorti){const u=badges.map(b=>b.id===selected.id?{...b,emprunteur:selected.emprunteur,email_emprunteur:String(selected.email_emprunteur||"").trim(),date_retour_prevu:selected.date_retour_prevu||"",commentaire:selected.commentaire||""}:b);
+      setBadges(u);save(u);if(addLog)addLog("Badge prêt",selected.code+" — modifié"+(selected.date_retour_prevu?" (retour prévu "+fmtDate(selected.date_retour_prevu)+")":""));showToast("💾 "+selected.code+" enregistré");setSelected(null);}
+    else doAction(selected.id,"prete",selected.emprunteur,selected.date_retour_prevu,selected.email_emprunteur||"");
+  };
+  const bpFermer=()=>{if(bpModifie){if(confirm("Enregistrer les changements (date de retour, emprunteur…) ?"))return bpEnregistrer();}setSelected(null);};
   const modal=selected&&el("div",{
     style:{position:"fixed",inset:0,background:"rgba(0,0,0,.45)",zIndex:1000,display:"flex",
       alignItems:"center",justifyContent:"center",padding:16,backdropFilter:"blur(4px)"},
-    onClick:e=>{if(e.target===e.currentTarget)setSelected(null);}},
+    onClick:e=>{if(e.target===e.currentTarget)bpFermer();}},
     el("div",{style:{background:"var(--surface)",border:"1px solid var(--border)",borderRadius:"var(--radius-lg)",
       padding:28,width:"100%",maxWidth:440,boxShadow:"0 24px 60px rgba(0,0,0,.2)"}},
       el("div",{style:{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:20}},
@@ -4292,7 +4300,7 @@ function VueBadgesPret({showToast,addLog}){
           el("div",{style:{fontSize:20,fontWeight:800,color:"var(--text)",display:"flex",alignItems:"center",gap:8}},
             el("span",null,"🪪"),selected.code," — ",selected.nom)
         ),
-        el("button",{onClick:()=>setSelected(null),
+        el("button",{onClick:bpFermer,
           style:{background:"var(--surface3)",border:"none",borderRadius:8,padding:"6px 10px",
             fontSize:18,cursor:"pointer",color:"var(--text3)",lineHeight:1}},
           "×")
@@ -4312,7 +4320,7 @@ function VueBadgesPret({showToast,addLog}){
           el("input",{type:"email",value:selected.email_emprunteur||"",className:"inp",inputMode:"email",autoCapitalize:"none",
             onChange:e=>setSelected({...selected,email_emprunteur:e.target.value.toLowerCase()}),
             placeholder:"Rempli automatiquement si la personne est dans la base"}),
-          el("div",{style:{fontSize:11,color:"var(--text3)",marginTop:5}},"Un rappel part chaque matin si le badge n'est pas rendu après 24 h.")
+          el("div",{style:{fontSize:11,color:"var(--text3)",marginTop:5}},"Rappel chaque matin à partir du lendemain de la date de retour prévue (ou après 24 h si aucune date).")
         ),
         el("div",null,
           el("div",{style:{fontSize:11,fontWeight:600,color:"var(--text2)",marginBottom:6,textTransform:"uppercase",letterSpacing:".4px"}},"📅 Date de retour prévue"),
@@ -4327,9 +4335,9 @@ function VueBadgesPret({showToast,addLog}){
         )
       ),
       el("div",{style:{marginBottom:10}},
-        el("button",{onClick:()=>doAction(selected.id,"prete",selected.emprunteur,selected.date_retour_prevu,selected.email_emprunteur||""),
+        el("button",{onClick:bpEnregistrer,
           className:"btn btn-primary",style:{justifyContent:"center",fontWeight:700,width:"100%"}},
-          "🔑 Marquer Prêtée")
+          bpSorti?"💾 Enregistrer":"🔑 Marquer Prêtée")
       ),
       (selected.statut==="prete"||selected.statut==="empruntee")&&
         el("button",{onClick:()=>doAction(selected.id,"disponible","",""),
@@ -5493,7 +5501,7 @@ function EditeurTextesMails({settings,setSettings,showToast}){
     ["autoRestoArrivee","Restaurant — arrivée (le jour même)","{nom} {prenom} {date} {email} {badge} {signature}",8],
     ["autoRestoDepart","Restaurant — départ (le jour même)","{nom} {prenom} {date} {email} {badge} {signature}",8],
     ["autoPret","Badge de prêt — au moment du prêt","{emprunteur} {code} {badge_nom} {date_pret} {ligne_retour} {horaires} {signature}",10],
-    ["autoRappel","Badge de prêt — rappel après 24 h","{emprunteur} {code} {badge_nom} {date_pret} {horaires} {signature}",9],
+    ["autoRappel","Badge de prêt — rappel (lendemain de la date de retour, ou après 24 h)","{emprunteur} {code} {badge_nom} {date_pret} {ligne_retour} {horaires} {signature}",9],
     ["bienvenueSujet","Mail de bienvenue — objet","{prenom} {nom}",1],
     ["bienvenueCorps","Mail de bienvenue — texte (le bouton de la fiche ouvre ce mail dans ta messagerie, tu y joins sa photo)","{prenom} {nom} {badge} {casier} {manager} {date} {horaires} {signature}",14],
   ];
@@ -5604,7 +5612,7 @@ var TEXTES_MAIL_DEFAUT={
   autoRestoArrivee:"Bonjour,\n\nNous vous informons de l'arrivée d'un nouveau collaborateur :\n\nNom : {nom}\nPrénom : {prenom}\nDate d'arrivée : {date}\nAdresse e-mail : {email}\nNuméro de badge : {badge}\n\nMerci de bien vouloir l'ajouter à vos systèmes.\n\nCordialement,\n{signature}",
   autoRestoDepart:"Bonjour,\n\nNous vous informons du départ du collaborateur suivant :\n\nNom : {nom}\nPrénom : {prenom}\nDate de départ : {date}\nAdresse e-mail : {email}\nNuméro de badge : {badge}\n\nMerci de bien vouloir le retirer de vos systèmes.\n\nCordialement,\n{signature}",
   autoPret:"Bonjour {emprunteur},\n\nLe badge de prêt {code} ({badge_nom}) vous a été remis le {date_pret}.\n{ligne_retour}\n\nMerci de le rapporter à l'accueil.\n\n{horaires}\n\nÀ défaut de retour de votre part, des rappels vous seront envoyés jusqu'à confirmation de la restitution du badge.\n\nCordialement,\n{signature}",
-  autoRappel:"Bonjour {emprunteur},\n\nLe badge de prêt {code} ({badge_nom}) vous a été remis le {date_pret} et n'a pas encore été restitué.\n\nMerci de bien vouloir le rapporter à l'accueil dès que possible.\nSi vous l'avez déjà rendu, merci de ne pas tenir compte de ce message.\n\n{horaires}\n\nCordialement,\n{signature}"
+  autoRappel:"Bonjour {emprunteur},\n\nLe badge de prêt {code} ({badge_nom}) vous a été remis le {date_pret} et n'a pas encore été restitué.\n{ligne_retour}\n\nMerci de bien vouloir le rapporter à l'accueil dès que possible.\nSi vous l'avez déjà rendu, merci de ne pas tenir compte de ce message.\n\n{horaires}\n\nCordialement,\n{signature}"
 };
 function texteMail(settings,cle){const v=settings&&settings[cle];return (v!=null&&String(v).trim()!=="")?String(v):TEXTES_MAIL_DEFAUT[cle];}
 function remplirModele(modele,vars){let t=String(modele||"");Object.keys(vars).forEach(k=>{t=t.split("{"+k+"}").join(vars[k]==null?"":String(vars[k]));});
@@ -5621,7 +5629,7 @@ function mailsDeTest(settings){
     ["[TEST] Départ — Jean DUPONT — "+d(0)+"  (restaurant, le jour même)",remplirModele(T("autoRestoDepart"),{...p,date:d(0)})],
     ["[TEST] Field Support — Jean DUPONT","Bonjour,\n\nUne nouvelle demande Field Support a été enregistrée :\n\nNom : DUPONT\nPrénom : Jean\nSituation : Arrivée\nDate : "+d(5)+"\nManager : LEROY THOMAS\n\n"+blocLienAppli(null)+finFss.replace(/^\n/,"")],
     ["[TEST] Badge de prêt P002 — horaires de l'accueil",remplirModele(T("autoPret"),{emprunteur:"Dupont Jean",code:"P002",badge_nom:"Badge Prêt 2",date_pret:d(0)+" à 09h30",ligne_retour:"Retour prévu : "+d(2),horaires:hor,signature:sig})],
-    ["[TEST] Rappel — badge de prêt P002 à restituer",remplirModele(T("autoRappel"),{emprunteur:"Dupont Jean",code:"P002",badge_nom:"Badge Prêt 2",date_pret:d(-1)+" à 09h30",horaires:hor,signature:sig})],
+    ["[TEST] Rappel — badge de prêt P002 à restituer",remplirModele(T("autoRappel"),{emprunteur:"Dupont Jean",code:"P002",badge_nom:"Badge Prêt 2",date_pret:d(-1)+" à 09h30",ligne_retour:"Retour prévu : "+d(-1),horaires:hor,signature:sig})],
   ];
 }
 function TestMailsBox({showToast,settings}){
@@ -8829,7 +8837,7 @@ function VueBadgesPret({showToast,addLog}){
   const S={
     disponible:{label:"Disponible",color:"#16A34A",bg:"rgba(22,163,74,.12)",border:"rgba(22,163,74,.3)"},
     prete:{label:"Prêtée",color:"#D97706",bg:"rgba(217,119,6,.12)",border:"rgba(217,119,6,.3)"},
-    empruntee:{label:"Empruntée",color:"#DC2626",bg:"rgba(220,38,38,.12)",border:"rgba(220,38,38,.3)"},
+    empruntee:{label:"Prêtée",color:"#D97706",bg:"rgba(217,119,6,.12)",border:"rgba(217,119,6,.3)"},
   };
 
   const fmtDate=d=>d?new Date(d).toLocaleDateString("fr-FR"):"—";
@@ -8869,14 +8877,14 @@ function VueBadgesPret({showToast,addLog}){
   const stats=useMemo(()=>({
     total:badges.length,
     disponibles:badges.filter(b=>b.statut==="disponible").length,
-    pretees:badges.filter(b=>b.statut==="prete").length,
+    pretees:badges.filter(b=>b.statut==="prete"||b.statut==="empruntee").length,
     empruntees:badges.filter(b=>b.statut==="empruntee").length,
   }),[badges]);
 
   const filtered=useMemo(()=>{
     let r=badges;
     if(search.trim()){const q=search.toLowerCase();r=r.filter(b=>b.code.toLowerCase().includes(q)||b.nom.toLowerCase().includes(q)||(b.emprunteur&&b.emprunteur.toLowerCase().includes(q)));}
-    if(filtreStatut)r=r.filter(b=>b.statut===filtreStatut);
+    if(filtreStatut)r=r.filter(b=>filtreStatut==="prete"?(b.statut==="prete"||b.statut==="empruntee"):b.statut===filtreStatut);
     return r;
   },[badges,search,filtreStatut]);
 
@@ -8920,11 +8928,10 @@ function VueBadgesPret({showToast,addLog}){
   }},S[statut]?.label||statut);
 
   // KPI cards
-  const kpis=el("div",{className:"m-grid-2",style:{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:12,marginBottom:24}},
+  const kpis=el("div",{className:"bp-kpis3",style:{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:12,marginBottom:24}},
     [{label:"Total",val:stats.total,color:"#3B82F6",id:""},...[
       {label:"Disponibles",val:stats.disponibles,color:"#16A34A",id:"disponible"},
       {label:"Prêtées",val:stats.pretees,color:"#D97706",id:"prete"},
-      {label:"Empruntées",val:stats.empruntees,color:"#DC2626",id:"empruntee"},
     ]].map(k=>el("div",{key:k.label,onClick:k.id?()=>setFiltreStatut(filtreStatut===k.id?"":k.id):undefined,
       style:{background:"var(--surface)",border:"1px solid var(--border)",borderTop:"2px solid "+k.color,boxShadow:filtreStatut===k.id?"inset 0 0 0 2px "+k.color:"none",borderRadius:"var(--radius-lg)",padding:"16px 20px",
         cursor:k.id?"pointer":"default",transition:"all .15s",textAlign:"center",
@@ -9008,10 +9015,19 @@ function VueBadgesPret({showToast,addLog}){
   );
 
   // Modale
+  const bpOrig=selected&&badges.find(b=>b.id===selected.id);
+  const bpSorti=selected&&(selected.statut==="prete"||selected.statut==="empruntee");
+  const bpModifie=!!(bpSorti&&bpOrig&&["emprunteur","email_emprunteur","date_retour_prevu","commentaire"].some(k=>String(selected[k]||"")!==String(bpOrig[k]||"")));
+  const bpEnregistrer=()=>{
+    if(bpSorti){const u=badges.map(b=>b.id===selected.id?{...b,emprunteur:selected.emprunteur,email_emprunteur:String(selected.email_emprunteur||"").trim(),date_retour_prevu:selected.date_retour_prevu||"",commentaire:selected.commentaire||""}:b);
+      setBadges(u);save(u);if(addLog)addLog("Badge prêt",selected.code+" — modifié"+(selected.date_retour_prevu?" (retour prévu "+fmtDate(selected.date_retour_prevu)+")":""));showToast("💾 "+selected.code+" enregistré");setSelected(null);}
+    else doAction(selected.id,"prete",selected.emprunteur,selected.date_retour_prevu,selected.email_emprunteur||"");
+  };
+  const bpFermer=()=>{if(bpModifie){if(confirm("Enregistrer les changements (date de retour, emprunteur…) ?"))return bpEnregistrer();}setSelected(null);};
   const modal=selected&&el("div",{className:"ios-overlay",
     style:{position:"fixed",inset:0,background:"rgba(0,0,0,.45)",zIndex:1000,display:"flex",
       alignItems:"center",justifyContent:"center",padding:16,backdropFilter:"blur(4px)"},
-    onClick:e=>{if(e.target===e.currentTarget)setSelected(null);}},
+    onClick:e=>{if(e.target===e.currentTarget)bpFermer();}},
     el("div",{className:"ios-modal",style:{background:"var(--surface)",border:"1px solid var(--border)",borderRadius:"var(--radius-lg)",
       padding:28,width:"100%",maxWidth:440,boxShadow:"0 24px 60px rgba(0,0,0,.2)"}},
       el("div",{style:{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:20}},
@@ -9020,7 +9036,7 @@ function VueBadgesPret({showToast,addLog}){
           el("div",{style:{fontSize:20,fontWeight:800,color:"var(--text)",display:"flex",alignItems:"center",gap:8}},
             el("span",null,"🪪"),selected.code," — ",selected.nom)
         ),
-        el("button",{onClick:()=>setSelected(null),
+        el("button",{onClick:bpFermer,
           style:{background:"var(--surface3)",border:"none",borderRadius:8,padding:"6px 10px",
             fontSize:18,cursor:"pointer",color:"var(--text3)",lineHeight:1}},
           "×")
@@ -9040,7 +9056,7 @@ function VueBadgesPret({showToast,addLog}){
           el("input",{type:"email",value:selected.email_emprunteur||"",className:"inp",inputMode:"email",autoCapitalize:"none",
             onChange:e=>setSelected({...selected,email_emprunteur:e.target.value.toLowerCase()}),
             placeholder:"Rempli automatiquement si la personne est dans la base"}),
-          el("div",{style:{fontSize:11,color:"var(--text3)",marginTop:5}},"Un rappel part chaque matin si le badge n'est pas rendu après 24 h.")
+          el("div",{style:{fontSize:11,color:"var(--text3)",marginTop:5}},"Rappel chaque matin à partir du lendemain de la date de retour prévue (ou après 24 h si aucune date).")
         ),
         el("div",null,
           el("div",{style:{fontSize:11,fontWeight:600,color:"var(--text2)",marginBottom:6,textTransform:"uppercase",letterSpacing:".4px"}},"📅 Date de retour prévue"),
@@ -9055,9 +9071,9 @@ function VueBadgesPret({showToast,addLog}){
         )
       ),
       el("div",{style:{marginBottom:10}},
-        el("button",{onClick:()=>doAction(selected.id,"prete",selected.emprunteur,selected.date_retour_prevu,selected.email_emprunteur||""),
+        el("button",{onClick:bpEnregistrer,
           className:"btn btn-primary",style:{justifyContent:"center",fontWeight:700,width:"100%"}},
-          "🔑 Marquer Prêtée")
+          bpSorti?"💾 Enregistrer":"🔑 Marquer Prêtée")
       ),
       (selected.statut==="prete"||selected.statut==="empruntee")&&
         el("button",{onClick:()=>doAction(selected.id,"disponible","",""),
@@ -9066,7 +9082,7 @@ function VueBadgesPret({showToast,addLog}){
     )
   );
 
-  const bpCol={disponible:["#34C759","rgba(52,199,89,.15)"],prete:["#FF9500","rgba(255,149,0,.16)"],empruntee:["#FF3B30","rgba(255,59,48,.12)"]};
+  const bpCol={disponible:["#34C759","rgba(52,199,89,.15)"],prete:["#FF9500","rgba(255,149,0,.16)"],empruntee:["#FF9500","rgba(255,149,0,.16)"]};
   const bpList=el("div",{className:"ios-group"},
     filtered.length===0?el("div",{className:"il-row",style:{cursor:"default",color:"var(--text3)"}},"Aucun badge trouvé")
     :filtered.map(badge=>{const late=badge.date_retour_prevu&&badge.date_retour_prevu<todayISO();const c=bpCol[badge.statut]||["#8E8E93","rgba(142,142,147,.15)"];const lent=badge.statut==="prete"||badge.statut==="empruntee";

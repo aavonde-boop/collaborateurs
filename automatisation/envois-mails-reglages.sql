@@ -16,7 +16,7 @@ language sql immutable as $d$
     when 'autoRestoArrivee' then E'Bonjour,\n\nNous vous informons de l''arrivée d''un nouveau collaborateur :\n\nNom : {nom}\nPrénom : {prenom}\nDate d''arrivée : {date}\nAdresse e-mail : {email}\nNuméro de badge : {badge}\n\nMerci de bien vouloir l''ajouter à vos systèmes.\n\nCordialement,\n{signature}'
     when 'autoRestoDepart'  then E'Bonjour,\n\nNous vous informons du départ du collaborateur suivant :\n\nNom : {nom}\nPrénom : {prenom}\nDate de départ : {date}\nAdresse e-mail : {email}\nNuméro de badge : {badge}\n\nMerci de bien vouloir le retirer de vos systèmes.\n\nCordialement,\n{signature}'
     when 'autoPret'   then E'Bonjour {emprunteur},\n\nLe badge de prêt {code} ({badge_nom}) vous a été remis le {date_pret}.\n{ligne_retour}\n\nMerci de le rapporter à l''accueil.\n\n{horaires}\n\nÀ défaut de retour de votre part, des rappels vous seront envoyés jusqu''à confirmation de la restitution du badge.\n\nCordialement,\n{signature}'
-    when 'autoRappel' then E'Bonjour {emprunteur},\n\nLe badge de prêt {code} ({badge_nom}) vous a été remis le {date_pret} et n''a pas encore été restitué.\n\nMerci de bien vouloir le rapporter à l''accueil dès que possible.\nSi vous l''avez déjà rendu, merci de ne pas tenir compte de ce message.\n\n{horaires}\n\nCordialement,\n{signature}'
+    when 'autoRappel' then E'Bonjour {emprunteur},\n\nLe badge de prêt {code} ({badge_nom}) vous a été remis le {date_pret} et n''a pas encore été restitué.\n{ligne_retour}\n\nMerci de bien vouloir le rapporter à l''accueil dès que possible.\nSi vous l''avez déjà rendu, merci de ne pas tenir compte de ce message.\n\n{horaires}\n\nCordialement,\n{signature}'
   end
 $d$;
 
@@ -152,7 +152,7 @@ $fn$;
 -- ── Rappel quotidien ──
 create or replace function public.envoyer_relances_pret() returns integer
 language plpgsql security definer set search_path = public, extensions as $fn$
-declare cfg record; st jsonb; b record; cc text; msg text; quand text; rid bigint; n int := 0;
+declare cfg record; st jsonb; b record; cc text; msg text; quand text; rid bigint; n int := 0; tpl text; lr text;
 begin
   select * into cfg from public.lp24_mail_config where id = 1;
   if cfg is null or not cfg.actif or cfg.emailjs_private_key like '<<%' then return 0; end if;
@@ -173,9 +173,15 @@ begin
                         where m.badge_id = x.id and m.pret_le = x.pret_le and m.jour = current_date)
   loop
     quand := to_char(b.pret_le at time zone 'Europe/Paris', 'DD/MM/YYYY "à" HH24"h"MI');
-    msg := public.lp24_remplir(public.lp24_texte('autoRappel'), jsonb_build_object(
+    -- Date de retour prévue rappelée dans le mail (ajoutée avant les horaires si le texte personnalisé n'a pas {ligne_retour})
+    lr := case when left(coalesce(b.date_retour_prevu::text, ''), 10) ~ '^\d{4}-\d{2}-\d{2}$'
+               then 'Retour prévu : ' || to_char(left(b.date_retour_prevu::text, 10)::date, 'DD/MM/YYYY') else '' end;
+    tpl := public.lp24_texte('autoRappel');
+    if lr = '' then tpl := replace(tpl, E'\n{ligne_retour}', '');
+    elsif position('{ligne_retour}' in tpl) = 0 then tpl := replace(tpl, '{horaires}', lr || E'\n\n{horaires}'); end if;
+    msg := public.lp24_remplir(tpl, jsonb_build_object(
              'emprunteur', coalesce(initcap(lower(nullif(trim(b.emprunteur::text), ''))), ''),
-             'code', coalesce(b.code::text, ''), 'badge_nom', coalesce(b.nom::text, ''), 'date_pret', quand,
+             'code', coalesce(b.code::text, ''), 'badge_nom', coalesce(b.nom::text, ''), 'date_pret', quand, 'ligne_retour', lr,
              'horaires', public.lp24_texte('autoHoraires'), 'signature', public.lp24_texte('autoSignature')));
     rid := net.http_post(
       url     := 'https://api.emailjs.com/api/v1.0/email/send',

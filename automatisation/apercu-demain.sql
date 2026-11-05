@@ -29,10 +29,13 @@ select '7 h' as heure, m.cible as destinataire,
 union all
 select '8 h', 'Emprunteur', 'Rappel badge de prêt',
        coalesce(p.emprunteur,'') || ' (' || p.code || ')',
-       'prêté le ' || to_char(p.pret_le at time zone 'Europe/Paris','DD/MM/YYYY HH24"h"MI'), '—', p.email_emprunteur
+       'prêté le ' || to_char(p.pret_le at time zone 'Europe/Paris','DD/MM/YYYY HH24"h"MI')
+         || coalesce(' · retour prévu ' || to_char(left(nullif(p.date_retour_prevu::text,''),10)::date,'DD/MM/YYYY'), ''), '—', p.email_emprunteur
   from public.badges_pret p, ref
  where extract(isodow from ref.j) <= 5
    and p.statut in ('prete','empruntee')
    and p.pret_le <= (ref.j + time '08:00') at time zone 'Europe/Paris' - interval '24 hours'
+   and not (left(coalesce(p.date_retour_prevu::text, ''), 10) ~ '^\d{4}-\d{2}-\d{2}$'
+            and left(p.date_retour_prevu::text, 10)::date >= ref.j)   -- pas de rappel avant le lendemain de la date de retour
    and trim(coalesce(p.email_emprunteur,'')) ~ '^[^@\s]+@[^@\s]+\.[^@\s]+$'
 order by 1, 2, 3;
