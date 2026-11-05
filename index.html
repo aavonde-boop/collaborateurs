@@ -1048,7 +1048,7 @@ const findInWD=(wdCache,nom,prenom)=>{if(!wdCache)return null;const n=norm(nom),
 const nxId=arr=>Math.max(0,...arr.map(x=>x.id||0))+1;
 const normDate=s=>{if(!s)return"";const v=String(s).trim();if(!v)return"";if(/^\d{4}-\d{2}-\d{2}/.test(v))return v.slice(0,10);const m1=v.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})/);if(m1)return m1[3]+"-"+m1[2].padStart(2,"0")+"-"+m1[1].padStart(2,"0");if(/^\d{4,5}$/.test(v)){const dt=new Date((parseInt(v)-25569)*86400000);if(!isNaN(dt))return dt.toISOString().slice(0,10);}return v;};
 const fmt=d=>{if(!d)return"—";const iso=normDate(String(d));if(!iso)return"—";const dt=new Date(iso+"T00:00:00");return isNaN(dt.getTime())?String(d):dt.toLocaleDateString("fr-FR");};
-const todayISO=()=>new Date().toISOString().slice(0,10);
+const todayISO=()=>isoLocal(new Date());
 const xlsxDateToISO=n=>{if(!n||isNaN(n))return"";try{return new Date(Math.round((n-25569)*86400*1000)).toISOString().slice(0,10);}catch{return"";}};
 const getWeekKey=d=>{if(!d)return null;const dt=new Date(d+"T00:00:00");const mon=new Date(dt);mon.setDate(dt.getDate()-dt.getDay()+1);const sun=new Date(mon);sun.setDate(mon.getDate()+6);return mon.toLocaleDateString("fr-FR")+" → "+sun.toLocaleDateString("fr-FR");};
 const getNextFriday=()=>{const d=new Date();const day=d.getDay();d.setDate(d.getDate()+(day<=5?5-day:6));return d.toLocaleDateString("fr-FR");};
@@ -1226,6 +1226,15 @@ function parseWDFileAsync(file,type,wdCache,setWdCache,showToast,setLoading){
 }
 
 // ── Parse Racine Commune ──
+
+// Date du jour (et dates calculées) à l'heure française, pas en heure UTC
+function isoLocal(d){d=d||new Date();return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0");}
+// Recherche : accents, majuscules et ordre des mots ignorés (« lea martin » trouve « MARTIN Léa »)
+function chercheTexte(q,...champs){
+  const n=x=>String(x||"").normalize("NFD").replace(/[̀-ͯ]/g,"").toLowerCase();
+  const mots=n(q).split(/\s+/).filter(Boolean);if(!mots.length)return true;
+  const hay=n(champs.join(" "));return mots.every(m=>hay.includes(m));
+}
 function parseRacineAsync(file,badges,setBadges,setCasiers,showToast,setLoading,addLog){
   setLoading(true);
   const reader=new FileReader();
@@ -1266,23 +1275,44 @@ function parseRacineAsync(file,badges,setBadges,setCasiers,showToast,setLoading,
       // Badges en double
       const serieCount={};newBadges.forEach(b=>{if(b.serie)serieCount[b.serie]=(serieCount[b.serie]||0)+1;});
       const doublons=Object.entries(serieCount).filter(([,c])=>c>1).map(([s])=>s);
-      const archives=badges.filter(b=>b.statut==="Archivé");
-      const allBadges=[...newBadges,...archives];
-      setBadges(allBadges);
-      // Dédupliquer les casiers par numéro avant d'enregistrer
-      const casiersMap={};newCasiers.forEach(c=>{if(c.numero)casiersMap[c.numero]=c;});
-      const casiersDedup=Object.values(casiersMap);
-      if(casiersDedup.length)setCasiers(casiersDedup);
-      addLog("Import Racine","Fichier: "+file.name+" — "+newBadges.filter(b=>b.statut==="Actif").length+" actifs, "+newBadges.filter(b=>b.statut==="À récupérer").length+" à récupérer"+(doublons.length?" ⚠️ Doublons: "+doublons.join(", "):""));
-      // ── FIX: await delete avant insert pour éviter les doublons Supabase ──
+      // ── Mise à jour (rien n'est effacé) : même fiche = même matricule, sinon même nom + prénom ──
+      const nz=x=>String(x||"").normalize("NFD").replace(/[̀-ͯ]/g,"").toUpperCase().replace(/[^A-Z0-9]/g,"");
+      const archives=badges.filter(b=>b.statut==="Archivé");const enCours=badges.filter(b=>b.statut!=="Archivé");
+      const byMat={},byNom={};enCours.forEach(b=>{const m=String(b.matricule||"").trim();if(m&&m!=="0")(byMat[m]=byMat[m]||[]).push(b);const k=nz(b.nom)+"|"+nz(b.prenom);(byNom[k]=byNom[k]||[]).push(b);});
+      const pris=new Set();
+      const trouver=n=>{const m=String(n.matricule||"").trim();let c=(m&&m!=="0"&&byMat[m]||[]).find(x=>!pris.has(x.id));if(!c)c=(byNom[nz(n.nom)+"|"+nz(n.prenom)]||[]).find(x=>!pris.has(x.id));return c;};
+      const majs=[],nouveaux=[];
+      newBadges.forEach(n=>{const ex=trouver(n);
+        if(ex){pris.add(ex.id);const u={...ex};["matricule","nom","prenom","email","serie","zeplug","carte_rechargement","casier","manager","mail_manager"].forEach(k=>{if(String(n[k]||"").trim())u[k]=n[k];});
+          u.statut=ex.statut==="À récupérer"?ex.statut:n.statut;if(JSON.stringify(u)!==JSON.stringify(ex))majs.push(u);}
+        else{const{id,...r}=n;nouveaux.push(r);}});
+      const absents=enCours.filter(b=>!pris.has(b.id));
+      const casiersMap={};newCasiers.forEach(c=>{if(c.numero)casiersMap[casierKey(c.numero)]=c;});
+      const casiersFichier=Object.values(casiersMap);
+      if(!confirm("Import Racine — rien n'est effacé :\n\n• "+majs.length+" fiche(s) mise(s) à jour (dates, commentaires et e-mails de l'appli conservés)\n• "+nouveaux.length+" nouvelle(s) fiche(s)\n• "+absents.length+" fiche(s) de l'appli absente(s) du fichier : gardée(s) telles quelles\n• Casiers : complétés avec le fichier, aucun n'est vidé\n\nContinuer ?")){setLoading(false);return;}
       if(sb){
         try{
-          await sb.from("lp24_badges").delete().neq("id",0);
-          const rows=allBadges.map(({id,...r})=>r);if(rows.length)await sb.from("lp24_badges").insert(rows);
-          if(casiersDedup.length){await sb.from("lp24_casiers").delete().neq("id",0);const crows=casiersDedup.map(({id,...r})=>r);if(crows.length)await sb.from("lp24_casiers").insert(crows);}
-        }catch(dbErr){console.error("Erreur sync Supabase:",dbErr);}
+          const paquets=(l,t)=>{const o=[];for(let i=0;i<l.length;i+=t)o.push(l.slice(i,i+t));return o;};
+          for(const ch of paquets(majs,200)){const r=await sb.from("lp24_badges").upsert(ch);if(r&&r.error)throw r.error;}
+          for(const ch of paquets(nouveaux,200)){const r=await sb.from("lp24_badges").insert(ch);if(r&&r.error)throw r.error;}
+          if(casiersFichier.length){
+            const cr=await sb.from("lp24_casiers").select("*");const ex={};(cr.data||[]).forEach(c=>{ex[casierKey(c.numero)]=c;});
+            const upd=[],ins=[];
+            casiersFichier.forEach(c=>{const e=ex[casierKey(c.numero)];
+              if(e){if(String(c.occupant||"").trim()&&!String(e.occupant||"").trim()&&e.statut!=="Hors service")upd.push({...e,occupant:c.occupant,statut:"Occupé"});}
+              else{const{id,...r}=c;ins.push(r);}});
+            if(upd.length){const r=await sb.from("lp24_casiers").upsert(upd);if(r&&r.error)throw r.error;}
+            if(ins.length){const r=await sb.from("lp24_casiers").insert(ins);if(r&&r.error)throw r.error;}
+          }
+          const[bRes,cRes]=await Promise.all([sb.from("lp24_badges").select("*").order("id"),sb.from("lp24_casiers").select("*").order("id")]);
+          if(bRes.data){if(window._snapBadges)window._snapBadges(bRes.data);setBadges(bRes.data);}
+          if(cRes.data)setCasiers(cRes.data);
+        }catch(dbErr){console.error("Erreur import Racine:",dbErr);alert("⚠️ L'import n'a pas pu être enregistré en entier : "+(dbErr&&dbErr.message||dbErr)+"\n\nRien n'a été effacé.");setLoading(false);return;}
+      }else{
+        let nid=nxId(badges)+1;setBadges([...enCours.map(b=>majs.find(u=>u.id===b.id)||b),...nouveaux.map(r=>({...r,id:nid++})),...archives]);
       }
-      showToast("✅ "+newBadges.filter(b=>b.statut==="Actif").length+" actifs · "+newBadges.filter(b=>b.statut==="À récupérer").length+" à récupérer · "+newCasiers.length+" casiers"+(doublons.length?" ⚠️ "+doublons.length+" doublon(s)":""));
+      addLog("Import Racine","Fichier: "+file.name+" — "+majs.length+" mise(s) à jour, "+nouveaux.length+" nouvelle(s), "+absents.length+" conservée(s) hors fichier"+(doublons.length?" ⚠️ Badges en double: "+doublons.join(", "):""));
+      showToast("✅ Import : "+majs.length+" mise(s) à jour · "+nouveaux.length+" nouvelle(s) · rien d'effacé"+(doublons.length?" · ⚠️ "+doublons.length+" badge(s) en double":""));
       setLoading(false);
     }catch(err){alert("Erreur import : "+err.message);setLoading(false);}
   };
@@ -1316,12 +1346,12 @@ function VueAccueil({badges,casiers,setView,wdCache,setBadges,setCasiers,showToa
   const aRecuperer=badges.filter(b=>b.statut==="À récupérer");
   const archives=badges.filter(b=>b.statut==="Archivé");
   const today=todayISO();
-  const aVenir7j=new Date();aVenir7j.setDate(aVenir7j.getDate()+7);const aVenir7jISO=aVenir7j.toISOString().slice(0,10);
+  const aVenir7j=new Date();aVenir7j.setDate(aVenir7j.getDate()+7);const aVenir7jISO=isoLocal(aVenir7j);
   // ── Cette semaine (KPI, 7 jours glissants), séparé Arrivées / Départs ──
   const arrSemaine=useMemo(()=>badges.filter(b=>b.statut!=="Archivé"&&b.date_entree&&b.date_entree>=today&&b.date_entree<=aVenir7jISO).sort((a,b)=>a.date_entree.localeCompare(b.date_entree)),[badges,today,aVenir7jISO]);
   const depSemaine=useMemo(()=>badges.filter(b=>b.statut!=="Archivé"&&b.date_sortie_prevue&&b.date_sortie_prevue>=today&&b.date_sortie_prevue<=aVenir7jISO).sort((a,b)=>a.date_sortie_prevue.localeCompare(b.date_sortie_prevue)),[badges,today,aVenir7jISO]);
   // ── Badges à récupérer en retard (depuis plus de 2 jours) : déclenche la banderole "bravo" / la tâche urgente ──
-  const overdueRecup=useMemo(()=>aRecuperer.filter(b=>b.date_sortie_prevue&&b.date_sortie_prevue<=(()=>{const d=new Date();d.setDate(d.getDate()-2);return d.toISOString().slice(0,10);})()),[aRecuperer]);
+  const overdueRecup=useMemo(()=>aRecuperer.filter(b=>b.date_sortie_prevue&&b.date_sortie_prevue<=(()=>{const d=new Date();d.setDate(d.getDate()-2);return isoLocal(d);})()),[aRecuperer]);
   // ── Futurs collaborateurs sans badge (pas encore donné) ──
   const futursSansBadge=useMemo(()=>badges.filter(b=>b.statut!=="Archivé"&&b.statut!=="À récupérer"&&!b.serie&&!b.badge_donne&&(b.statut==="Futur arrivant"||(b.date_entree&&b.date_entree>=today))).sort((a,b)=>(a.date_entree||"").localeCompare(b.date_entree||"")),[badges,today]);
   // ── Suivi Workday : juste un repère discret en bas de page ──
@@ -1489,7 +1519,7 @@ function VueAccueil({badges,casiers,setView,wdCache,setBadges,setCasiers,showToa
     const pts=[];
     for(let i=6;i>=0;i--){
       const d=new Date();d.setDate(d.getDate()-i);
-      const iso=d.toISOString().slice(0,10);
+      const iso=isoLocal(d);
       pts.push(badges.filter(b=>b.date_ajout&&b.date_ajout<=iso&&(!b.date_archive||b.date_archive>iso)).length);
     }
     return pts;
@@ -1520,7 +1550,7 @@ function VueAccueil({badges,casiers,setView,wdCache,setBadges,setCasiers,showToa
     const days=[];
     for(let i=0;i<7;i++){
       const dd=new Date(mon);dd.setDate(mon.getDate()+i);
-      const iso=dd.toISOString().slice(0,10);
+      const iso=isoLocal(dd);
       days.push({
         iso,dname:names[i],dnum:dd.getDate(),isToday:iso===today,isWeekend:i>=5,
         arrivals:badges.filter(b=>b.statut!=="Archivé"&&b.date_entree===iso),
@@ -1590,7 +1620,7 @@ function VueAccueil({badges,casiers,setView,wdCache,setBadges,setCasiers,showToa
           React.createElement("button",{onClick:()=>{
             const it=settings&&settings.itEmail?settings.itEmail:"";
             if(!it){showToast("⚠️ Email IT non configuré","err");return;}
-            const dem=new Date();dem.setDate(dem.getDate()+1);const dISO=dem.toISOString().slice(0,10);
+            const dem=new Date();dem.setDate(dem.getDate()+1);const dISO=isoLocal(dem);
             const sorties=badges.filter(b=>b.date_sortie_prevue===dISO&&b.statut!=="Archivé");
             const entrees=badges.filter(b=>b.date_entree===dISO&&b.statut!=="Archivé");
             if(!sorties.length&&!entrees.length){showToast("Aucun événement demain");return;}
@@ -1941,7 +1971,7 @@ function VueCollaborateurs({badges,casiers,setBadges,setCasiers,showToast,wdCach
   const[showForm,setShowForm]=useState(false);const[editing,setEditing]=useState(null);
   const[sortCol,setSortCol]=useState("date_ajout");const[sortDir,setSortDir]=useState("desc");
   const _newMats=newMats||new Set();
-  const today=todayISO();const aV7=new Date();aV7.setDate(aV7.getDate()+7);const aV7ISO=aV7.toISOString().slice(0,10);
+  const today=todayISO();const aV7=new Date();aV7.setDate(aV7.getDate()+7);const aV7ISO=isoLocal(aV7);
   const empty={matricule:"",nom:"",prenom:"",email:"",serie:"",zeplug:"",carte_rechargement:"",casier:"",manager:"",mail_manager:"",statut:"Actif",badge_donne:true,date_entree:"",date_sortie_prevue:"",commentaire:"",date_ajout:todayISO(),etiquette_imprimee:false};
   // ── Ouverture ciblée depuis le Rapport (résolution d'incohérence) ──
   useEffect(()=>{
@@ -1966,7 +1996,7 @@ function VueCollaborateurs({badges,casiers,setBadges,setCasiers,showToast,wdCach
       return true;
     });
     const q=search.toLowerCase();
-    if(q)r=r.filter(b=>(b.nom+" "+b.prenom+" "+(b.matricule||"")+" "+(b.serie||"")).toLowerCase().includes(q));
+    if(q)r=r.filter(b=>chercheTexte(q,b.nom,b.prenom,b.matricule,b.serie));
     if(sortCol){r=[...r].sort((a,b2)=>{let av=a[sortCol]||"",bv=b2[sortCol]||"";if(typeof av==="boolean")av=av?1:0;if(typeof bv==="boolean")bv=bv?1:0;const cmp=String(av).localeCompare(String(bv),undefined,{numeric:true});return sortDir==="asc"?cmp:-cmp;});}
     return r;
   },[badges,fStat,search,sortCol,sortDir,_newMats]);
@@ -2287,7 +2317,7 @@ function VueCasiers({casiers,badges,setCasiers,setBadges,showToast,addLog,setVie
     if(fZone&&c.zone!==fZone)return false;
     if(fStat==="a_vider"){if(!isAVider(c))return false;}
     else if(fStat&&c.statut!==fStat)return false;
-    const q=search.toLowerCase();return!q||(c.numero+c.occupant+c.matricule).toLowerCase().includes(q);
+    const q=search;return!String(q||"").trim()||chercheTexte(q,c.numero,c.occupant,c.matricule);
   }),[casiers,fZone,fStat,search,isAVider]);
   const[qui,setQui]=useState(null); // null = personne actuelle du casier
   useEffect(()=>{setQui(null);},[showForm,editing]);
@@ -3194,7 +3224,7 @@ function VueFieldSupport({fssData,setFssData,showToast,addLog,badges,casiers,set
   // ── Filtres ──
   const filtered=useMemo(()=>{
     let r=fssData||[];
-    if(search.trim()){const q=search.toLowerCase();r=r.filter(f=>(f.nom||"").toLowerCase().includes(q)||(f.prenom||"").toLowerCase().includes(q)||(f.manager||"").toLowerCase().includes(q)||(f.lieu||"").toLowerCase().includes(q)||(f.ritm||"").toLowerCase().includes(q)||(f.matPC||"").toLowerCase().includes(q));}
+    if(search.trim()){const q=search.toLowerCase();r=r.filter(f=>chercheTexte(q,f.nom,f.prenom,f.manager,f.lieu,f.ritm,f.matPC));}
     if(filtSit)r=r.filter(f=>f.situation===filtSit);
     if(filtStat)r=r.filter(f=>filtStat==="cloture"?f.cloture:filtStat==="ouvert"?!f.cloture:f.statut===filtStat);
     if(filtDate)r=r.filter(f=>f.dateEvt&&f.dateEvt>=filtDate);
@@ -4106,7 +4136,7 @@ function VueBadgesPret({showToast,addLog}){
   };
 
   const fmtDate=d=>d?new Date(d).toLocaleDateString("fr-FR"):"—";
-  const todayISO=()=>new Date().toISOString().slice(0,10);
+  const todayISO=()=>isoLocal(new Date());
 
   const[badges,setBadges]=useState(INITIAL_BADGES);
   const[search,setSearch]=useState("");
@@ -4146,7 +4176,7 @@ function VueBadgesPret({showToast,addLog}){
 
   const filtered=useMemo(()=>{
     let r=badges;
-    if(search.trim()){const q=search.toLowerCase();r=r.filter(b=>b.code.toLowerCase().includes(q)||b.nom.toLowerCase().includes(q)||(b.emprunteur&&b.emprunteur.toLowerCase().includes(q)));}
+    if(search.trim()){const q=search.toLowerCase();r=r.filter(b=>chercheTexte(q,b.code,b.nom,b.emprunteur,b.email_emprunteur));}
     if(filtreStatut)r=r.filter(b=>filtreStatut==="prete"?(b.statut==="prete"||b.statut==="empruntee"):b.statut===filtreStatut);
     return r;
   },[badges,search,filtreStatut]);
@@ -4701,7 +4731,7 @@ function App(){
   useEffect(()=>{
     if(!unlocked||!badges.length)return;
     const today=todayISO();
-    const j7=new Date();j7.setDate(j7.getDate()+7);const j7ISO=j7.toISOString().slice(0,10);
+    const j7=new Date();j7.setDate(j7.getDate()+7);const j7ISO=isoLocal(j7);
     const versARecuperer=badges.filter(b=>b.statut==="Actif"&&b.date_sortie_prevue&&b.date_sortie_prevue<=j7ISO&&b.date_sortie_prevue>=today);
     const versActif=badges.filter(b=>b.statut==="À récupérer"&&b.date_sortie_prevue&&b.date_sortie_prevue>j7ISO);
     if(!versARecuperer.length&&!versActif.length)return;
@@ -4868,7 +4898,7 @@ function App(){
   useEffect(()=>{window._verifierWorkday=()=>verifierWorkday(null,false);},[verifierWorkday]);
   // Expose file handlers for SettingsModal
   useEffect(()=>{
-    window._handleRacine=(file)=>{parseRacineAsync(file,badges,setBadges,setCasiers,showToast,setLoading,addLog);setShowSettings(false);};
+    window._snapBadges=snapBadges;window._handleRacine=(file)=>{parseRacineAsync(file,badges,setBadges,setCasiers,showToast,setLoading,addLog);setShowSettings(false);};
     window._handleHR=(file,type)=>{parseWDFileAsync(file,type,wdCache,setWdCache,showToast,setLoading);setShowSettings(false);};
     window._onWdImport=(parsed)=>{verifierWorkday([...Object.values(wdCache||{}),...(parsed||[])],false);};
     window._onWdImportMeta=(meta)=>{setSettings(s=>({...s,wdImportMeta:meta}));addLog("Import Workday",meta.count+" ligne(s) — "+(meta.type==="hr"?"HR Data":"Future Hires")+" ("+meta.fileName+")");};
@@ -4963,7 +4993,7 @@ useEffect(()=>{
       try{
         const data=JSON.parse(ev.target.result);
         if(!data.badges&&!data.collaborateurs){alert("Fichier JSON invalide.");return;}
-        if(!confirm("Remplacer toutes les données par ce fichier JSON ?"))return;
+        if(!confirm("Restaurer cette sauvegarde ?\n\nLes fiches reprennent exactement l'état du fichier (mêmes numéros de fiche : les mails déjà envoyés ne repartent pas).\nLes fiches créées après la sauvegarde seront retirées."))return;
         const b=data.badges||data.collaborateurs||[];const c=data.casiers||[];
         const wd=data.wdCache&&Object.keys(data.wdCache).length>0?data.wdCache:null;
         if(wd){setWdCache(wd);if(sb)(async()=>{try{await sb.from("lp24_settings").upsert({id:2,data:JSON.stringify(wd)});}catch(e){}})();}
@@ -4986,21 +5016,22 @@ useEffect(()=>{
             });
             return [...Object.values(byMat),...Object.values(byName)];
           })();
-          // 2. Vider Supabase
-          await sb.from("lp24_badges").delete().neq("id",0);
-          await sb.from("lp24_casiers").delete().neq("id",0);
-          // 3. Insérer sans ID — Supabase génère les vrais IDs
-          if(bDedup.length){
-            const chunkSize=200;
-            for(let i=0;i<bDedup.length;i+=chunkSize){
-              const chunk=bDedup.slice(i,i+chunkSize).map(({id,...r})=>r);
-              await sb.from("lp24_badges").insert(chunk);
-            }
-          }
+          // 2. Écrire la sauvegarde en gardant les numéros de fiche, puis retirer les fiches absentes du fichier
+          const paquets=(l,t)=>{const o=[];for(let i=0;i<l.length;i+=t)o.push(l.slice(i,i+t));return o;};
+          const avecId=bDedup.filter(x=>typeof x.id==="number"),sansId=bDedup.filter(x=>typeof x.id!=="number").map(({id,...r})=>r);
+          const garderB=new Set(avecId.map(x=>x.id));
+          const avantB=((await sb.from("lp24_badges").select("id")).data||[]).map(x=>x.id).filter(id=>!garderB.has(id));
+          for(const ch of paquets(avecId,200)){const r=await sb.from("lp24_badges").upsert(ch);if(r&&r.error)throw r.error;}
+          for(const ch of paquets(sansId,200)){const r=await sb.from("lp24_badges").insert(ch);if(r&&r.error)throw r.error;}
+          for(const ch of paquets(avantB,200)){const r=await sb.from("lp24_badges").delete().in("id",ch);if(r&&r.error)throw r.error;}
           if(c.length){
-            const cMap={};c.forEach(x=>{if(x.numero)cMap[x.numero]=x;});
-            const cDedup=Object.values(cMap).map(({id,...r})=>r);
-            if(cDedup.length)await sb.from("lp24_casiers").insert(cDedup);
+            const cMap={};c.forEach(x=>{if(x.numero)cMap[x.numero]=x;});const cDedup=Object.values(cMap);
+            const cId=cDedup.filter(x=>typeof x.id==="number"),cSans=cDedup.filter(x=>typeof x.id!=="number").map(({id,...r})=>r);
+            const garderC=new Set(cId.map(x=>x.id));
+            const avantC=((await sb.from("lp24_casiers").select("id")).data||[]).map(x=>x.id).filter(id=>!garderC.has(id));
+            if(cId.length){const r=await sb.from("lp24_casiers").upsert(cId);if(r&&r.error)throw r.error;}
+            if(cSans.length){const r=await sb.from("lp24_casiers").insert(cSans);if(r&&r.error)throw r.error;}
+            if(avantC.length){const r=await sb.from("lp24_casiers").delete().in("id",avantC);if(r&&r.error)throw r.error;}
           }
           // 4. Recharger depuis Supabase → vrais IDs numériques, auto-save sûr
           const[bRes,cRes]=await Promise.all([
@@ -5679,7 +5710,7 @@ const findInWD=(wdCache,nom,prenom)=>{if(!wdCache)return null;const n=norm(nom),
 const nxId=arr=>Math.max(0,...arr.map(x=>x.id||0))+1;
 const normDate=s=>{if(!s)return"";const v=String(s).trim();if(!v)return"";if(/^\d{4}-\d{2}-\d{2}/.test(v))return v.slice(0,10);const m1=v.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})/);if(m1)return m1[3]+"-"+m1[2].padStart(2,"0")+"-"+m1[1].padStart(2,"0");if(/^\d{4,5}$/.test(v)){const dt=new Date((parseInt(v)-25569)*86400000);if(!isNaN(dt))return dt.toISOString().slice(0,10);}return v;};
 const fmt=d=>{if(!d)return"—";const iso=normDate(String(d));if(!iso)return"—";const dt=new Date(iso+"T00:00:00");return isNaN(dt.getTime())?String(d):dt.toLocaleDateString("fr-FR");};
-const todayISO=()=>new Date().toISOString().slice(0,10);
+const todayISO=()=>isoLocal(new Date());
 const xlsxDateToISO=n=>{if(!n||isNaN(n))return"";try{return new Date(Math.round((n-25569)*86400*1000)).toISOString().slice(0,10);}catch{return"";}};
 const getWeekKey=d=>{if(!d)return null;const dt=new Date(d+"T00:00:00");const mon=new Date(dt);mon.setDate(dt.getDate()-dt.getDay()+1);const sun=new Date(mon);sun.setDate(mon.getDate()+6);return mon.toLocaleDateString("fr-FR")+" → "+sun.toLocaleDateString("fr-FR");};
 const getNextFriday=()=>{const d=new Date();const day=d.getDay();d.setDate(d.getDate()+(day<=5?5-day:6));return d.toLocaleDateString("fr-FR");};
@@ -5857,6 +5888,15 @@ function parseWDFileAsync(file,type,wdCache,setWdCache,showToast,setLoading){
 }
 
 // ── Parse Racine Commune ──
+
+// Date du jour (et dates calculées) à l'heure française, pas en heure UTC
+function isoLocal(d){d=d||new Date();return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0");}
+// Recherche : accents, majuscules et ordre des mots ignorés (« lea martin » trouve « MARTIN Léa »)
+function chercheTexte(q,...champs){
+  const n=x=>String(x||"").normalize("NFD").replace(/[̀-ͯ]/g,"").toLowerCase();
+  const mots=n(q).split(/\s+/).filter(Boolean);if(!mots.length)return true;
+  const hay=n(champs.join(" "));return mots.every(m=>hay.includes(m));
+}
 function parseRacineAsync(file,badges,setBadges,setCasiers,showToast,setLoading,addLog){
   setLoading(true);
   const reader=new FileReader();
@@ -5897,23 +5937,44 @@ function parseRacineAsync(file,badges,setBadges,setCasiers,showToast,setLoading,
       // Badges en double
       const serieCount={};newBadges.forEach(b=>{if(b.serie)serieCount[b.serie]=(serieCount[b.serie]||0)+1;});
       const doublons=Object.entries(serieCount).filter(([,c])=>c>1).map(([s])=>s);
-      const archives=badges.filter(b=>b.statut==="Archivé");
-      const allBadges=[...newBadges,...archives];
-      setBadges(allBadges);
-      // Dédupliquer les casiers par numéro avant d'enregistrer
-      const casiersMap={};newCasiers.forEach(c=>{if(c.numero)casiersMap[c.numero]=c;});
-      const casiersDedup=Object.values(casiersMap);
-      if(casiersDedup.length)setCasiers(casiersDedup);
-      addLog("Import Racine","Fichier: "+file.name+" — "+newBadges.filter(b=>b.statut==="Actif").length+" actifs, "+newBadges.filter(b=>b.statut==="À récupérer").length+" à récupérer"+(doublons.length?" ⚠️ Doublons: "+doublons.join(", "):""));
-      // ── FIX: await delete avant insert pour éviter les doublons Supabase ──
+      // ── Mise à jour (rien n'est effacé) : même fiche = même matricule, sinon même nom + prénom ──
+      const nz=x=>String(x||"").normalize("NFD").replace(/[̀-ͯ]/g,"").toUpperCase().replace(/[^A-Z0-9]/g,"");
+      const archives=badges.filter(b=>b.statut==="Archivé");const enCours=badges.filter(b=>b.statut!=="Archivé");
+      const byMat={},byNom={};enCours.forEach(b=>{const m=String(b.matricule||"").trim();if(m&&m!=="0")(byMat[m]=byMat[m]||[]).push(b);const k=nz(b.nom)+"|"+nz(b.prenom);(byNom[k]=byNom[k]||[]).push(b);});
+      const pris=new Set();
+      const trouver=n=>{const m=String(n.matricule||"").trim();let c=(m&&m!=="0"&&byMat[m]||[]).find(x=>!pris.has(x.id));if(!c)c=(byNom[nz(n.nom)+"|"+nz(n.prenom)]||[]).find(x=>!pris.has(x.id));return c;};
+      const majs=[],nouveaux=[];
+      newBadges.forEach(n=>{const ex=trouver(n);
+        if(ex){pris.add(ex.id);const u={...ex};["matricule","nom","prenom","email","serie","zeplug","carte_rechargement","casier","manager","mail_manager"].forEach(k=>{if(String(n[k]||"").trim())u[k]=n[k];});
+          u.statut=ex.statut==="À récupérer"?ex.statut:n.statut;if(JSON.stringify(u)!==JSON.stringify(ex))majs.push(u);}
+        else{const{id,...r}=n;nouveaux.push(r);}});
+      const absents=enCours.filter(b=>!pris.has(b.id));
+      const casiersMap={};newCasiers.forEach(c=>{if(c.numero)casiersMap[casierKey(c.numero)]=c;});
+      const casiersFichier=Object.values(casiersMap);
+      if(!confirm("Import Racine — rien n'est effacé :\n\n• "+majs.length+" fiche(s) mise(s) à jour (dates, commentaires et e-mails de l'appli conservés)\n• "+nouveaux.length+" nouvelle(s) fiche(s)\n• "+absents.length+" fiche(s) de l'appli absente(s) du fichier : gardée(s) telles quelles\n• Casiers : complétés avec le fichier, aucun n'est vidé\n\nContinuer ?")){setLoading(false);return;}
       if(sb){
         try{
-          await sb.from("lp24_badges").delete().neq("id",0);
-          const rows=allBadges.map(({id,...r})=>r);if(rows.length)await sb.from("lp24_badges").insert(rows);
-          if(casiersDedup.length){await sb.from("lp24_casiers").delete().neq("id",0);const crows=casiersDedup.map(({id,...r})=>r);if(crows.length)await sb.from("lp24_casiers").insert(crows);}
-        }catch(dbErr){console.error("Erreur sync Supabase:",dbErr);}
+          const paquets=(l,t)=>{const o=[];for(let i=0;i<l.length;i+=t)o.push(l.slice(i,i+t));return o;};
+          for(const ch of paquets(majs,200)){const r=await sb.from("lp24_badges").upsert(ch);if(r&&r.error)throw r.error;}
+          for(const ch of paquets(nouveaux,200)){const r=await sb.from("lp24_badges").insert(ch);if(r&&r.error)throw r.error;}
+          if(casiersFichier.length){
+            const cr=await sb.from("lp24_casiers").select("*");const ex={};(cr.data||[]).forEach(c=>{ex[casierKey(c.numero)]=c;});
+            const upd=[],ins=[];
+            casiersFichier.forEach(c=>{const e=ex[casierKey(c.numero)];
+              if(e){if(String(c.occupant||"").trim()&&!String(e.occupant||"").trim()&&e.statut!=="Hors service")upd.push({...e,occupant:c.occupant,statut:"Occupé"});}
+              else{const{id,...r}=c;ins.push(r);}});
+            if(upd.length){const r=await sb.from("lp24_casiers").upsert(upd);if(r&&r.error)throw r.error;}
+            if(ins.length){const r=await sb.from("lp24_casiers").insert(ins);if(r&&r.error)throw r.error;}
+          }
+          const[bRes,cRes]=await Promise.all([sb.from("lp24_badges").select("*").order("id"),sb.from("lp24_casiers").select("*").order("id")]);
+          if(bRes.data){if(window._snapBadges)window._snapBadges(bRes.data);setBadges(bRes.data);}
+          if(cRes.data)setCasiers(cRes.data);
+        }catch(dbErr){console.error("Erreur import Racine:",dbErr);alert("⚠️ L'import n'a pas pu être enregistré en entier : "+(dbErr&&dbErr.message||dbErr)+"\n\nRien n'a été effacé.");setLoading(false);return;}
+      }else{
+        let nid=nxId(badges)+1;setBadges([...enCours.map(b=>majs.find(u=>u.id===b.id)||b),...nouveaux.map(r=>({...r,id:nid++})),...archives]);
       }
-      showToast("✅ "+newBadges.filter(b=>b.statut==="Actif").length+" actifs · "+newBadges.filter(b=>b.statut==="À récupérer").length+" à récupérer · "+newCasiers.length+" casiers"+(doublons.length?" ⚠️ "+doublons.length+" doublon(s)":""));
+      addLog("Import Racine","Fichier: "+file.name+" — "+majs.length+" mise(s) à jour, "+nouveaux.length+" nouvelle(s), "+absents.length+" conservée(s) hors fichier"+(doublons.length?" ⚠️ Badges en double: "+doublons.join(", "):""));
+      showToast("✅ Import : "+majs.length+" mise(s) à jour · "+nouveaux.length+" nouvelle(s) · rien d'effacé"+(doublons.length?" · ⚠️ "+doublons.length+" badge(s) en double":""));
       setLoading(false);
     }catch(err){alert("Erreur import : "+err.message);setLoading(false);}
   };
@@ -5947,12 +6008,12 @@ function VueAccueil({badges,casiers,setView,wdCache,setBadges,setCasiers,showToa
   const aRecuperer=badges.filter(b=>b.statut==="À récupérer");
   const archives=badges.filter(b=>b.statut==="Archivé");
   const today=todayISO();
-  const aVenir7j=new Date();aVenir7j.setDate(aVenir7j.getDate()+7);const aVenir7jISO=aVenir7j.toISOString().slice(0,10);
+  const aVenir7j=new Date();aVenir7j.setDate(aVenir7j.getDate()+7);const aVenir7jISO=isoLocal(aVenir7j);
   // ── Cette semaine (KPI, 7 jours glissants), séparé Arrivées / Départs ──
   const arrSemaine=useMemo(()=>badges.filter(b=>b.statut!=="Archivé"&&b.date_entree&&b.date_entree>=today&&b.date_entree<=aVenir7jISO).sort((a,b)=>a.date_entree.localeCompare(b.date_entree)),[badges,today,aVenir7jISO]);
   const depSemaine=useMemo(()=>badges.filter(b=>b.statut!=="Archivé"&&b.date_sortie_prevue&&b.date_sortie_prevue>=today&&b.date_sortie_prevue<=aVenir7jISO).sort((a,b)=>a.date_sortie_prevue.localeCompare(b.date_sortie_prevue)),[badges,today,aVenir7jISO]);
   // ── Badges à récupérer en retard (depuis plus de 2 jours) : déclenche la banderole "bravo" / la tâche urgente ──
-  const overdueRecup=useMemo(()=>aRecuperer.filter(b=>b.date_sortie_prevue&&b.date_sortie_prevue<=(()=>{const d=new Date();d.setDate(d.getDate()-2);return d.toISOString().slice(0,10);})()),[aRecuperer]);
+  const overdueRecup=useMemo(()=>aRecuperer.filter(b=>b.date_sortie_prevue&&b.date_sortie_prevue<=(()=>{const d=new Date();d.setDate(d.getDate()-2);return isoLocal(d);})()),[aRecuperer]);
   // ── Futurs collaborateurs sans badge (pas encore donné) ──
   const futursSansBadge=useMemo(()=>badges.filter(b=>b.statut!=="Archivé"&&b.statut!=="À récupérer"&&!b.serie&&!b.badge_donne&&(b.statut==="Futur arrivant"||(b.date_entree&&b.date_entree>=today))).sort((a,b)=>(a.date_entree||"").localeCompare(b.date_entree||"")),[badges,today]);
   // ── Suivi Workday : juste un repère discret en bas de page ──
@@ -6120,7 +6181,7 @@ function VueAccueil({badges,casiers,setView,wdCache,setBadges,setCasiers,showToa
     const pts=[];
     for(let i=6;i>=0;i--){
       const d=new Date();d.setDate(d.getDate()-i);
-      const iso=d.toISOString().slice(0,10);
+      const iso=isoLocal(d);
       pts.push(badges.filter(b=>b.date_ajout&&b.date_ajout<=iso&&(!b.date_archive||b.date_archive>iso)).length);
     }
     return pts;
@@ -6151,7 +6212,7 @@ function VueAccueil({badges,casiers,setView,wdCache,setBadges,setCasiers,showToa
     const days=[];
     for(let i=0;i<7;i++){
       const dd=new Date(mon);dd.setDate(mon.getDate()+i);
-      const iso=dd.toISOString().slice(0,10);
+      const iso=isoLocal(dd);
       days.push({
         iso,dname:names[i],dnum:dd.getDate(),isToday:iso===today,isWeekend:i>=5,
         arrivals:badges.filter(b=>b.statut!=="Archivé"&&b.date_entree===iso),
@@ -6214,7 +6275,7 @@ function VueAccueil({badges,casiers,setView,wdCache,setBadges,setCasiers,showToa
         React.createElement("button",{type:"button",className:"ios-link",onClick:()=>{
             const it=settings&&settings.itEmail?settings.itEmail:"";
             if(!it){showToast("⚠️ Email IT non configuré","err");return;}
-            const dem=new Date();dem.setDate(dem.getDate()+1);const dISO=dem.toISOString().slice(0,10);
+            const dem=new Date();dem.setDate(dem.getDate()+1);const dISO=isoLocal(dem);
             const sorties=badges.filter(b=>b.date_sortie_prevue===dISO&&b.statut!=="Archivé");
             const entrees=badges.filter(b=>b.date_entree===dISO&&b.statut!=="Archivé");
             if(!sorties.length&&!entrees.length){showToast("Aucun événement demain");return;}
@@ -6559,7 +6620,7 @@ function VueCollaborateurs({badges,casiers,setBadges,setCasiers,showToast,wdCach
   const[showForm,setShowForm]=useState(false);const[editing,setEditing]=useState(null);
   const[sortCol,setSortCol]=useState("date_ajout");const[sortDir,setSortDir]=useState("desc");
   const _newMats=newMats||new Set();
-  const today=todayISO();const aV7=new Date();aV7.setDate(aV7.getDate()+7);const aV7ISO=aV7.toISOString().slice(0,10);
+  const today=todayISO();const aV7=new Date();aV7.setDate(aV7.getDate()+7);const aV7ISO=isoLocal(aV7);
   const empty={matricule:"",nom:"",prenom:"",email:"",serie:"",zeplug:"",carte_rechargement:"",casier:"",manager:"",mail_manager:"",statut:"Actif",badge_donne:true,date_entree:"",date_sortie_prevue:"",commentaire:"",date_ajout:todayISO(),etiquette_imprimee:false};
   // ── Ouverture ciblée depuis le Rapport (résolution d'incohérence) ──
   useEffect(()=>{
@@ -6584,7 +6645,7 @@ function VueCollaborateurs({badges,casiers,setBadges,setCasiers,showToast,wdCach
       return true;
     });
     const q=search.toLowerCase();
-    if(q)r=r.filter(b=>(b.nom+" "+b.prenom+" "+(b.matricule||"")+" "+(b.serie||"")).toLowerCase().includes(q));
+    if(q)r=r.filter(b=>chercheTexte(q,b.nom,b.prenom,b.matricule,b.serie));
     if(sortCol){r=[...r].sort((a,b2)=>{let av=a[sortCol]||"",bv=b2[sortCol]||"";if(typeof av==="boolean")av=av?1:0;if(typeof bv==="boolean")bv=bv?1:0;const cmp=String(av).localeCompare(String(bv),undefined,{numeric:true});return sortDir==="asc"?cmp:-cmp;});}
     return r;
   },[badges,fStat,search,sortCol,sortDir,_newMats]);
@@ -6960,7 +7021,7 @@ function VueCasiers({casiers,badges,setCasiers,setBadges,showToast,addLog,setVie
     if(fZone&&c.zone!==fZone)return false;
     if(fStat==="a_vider"){if(!isAVider(c))return false;}
     else if(fStat&&c.statut!==fStat)return false;
-    const q=search.toLowerCase();return!q||(c.numero+c.occupant+c.matricule).toLowerCase().includes(q);
+    const q=search;return!String(q||"").trim()||chercheTexte(q,c.numero,c.occupant,c.matricule);
   }),[casiers,fZone,fStat,search,isAVider]);
   const[qui,setQui]=useState(null); // null = personne actuelle du casier
   useEffect(()=>{setQui(null);},[showForm,editing]);
@@ -7910,7 +7971,7 @@ function VueFieldSupport({fssData,setFssData,showToast,addLog,badges,casiers,set
   // ── Filtres ──
   const filtered=useMemo(()=>{
     let r=fssData||[];
-    if(search.trim()){const q=search.toLowerCase();r=r.filter(f=>(f.nom||"").toLowerCase().includes(q)||(f.prenom||"").toLowerCase().includes(q)||(f.manager||"").toLowerCase().includes(q)||(f.lieu||"").toLowerCase().includes(q)||(f.ritm||"").toLowerCase().includes(q)||(f.matPC||"").toLowerCase().includes(q));}
+    if(search.trim()){const q=search.toLowerCase();r=r.filter(f=>chercheTexte(q,f.nom,f.prenom,f.manager,f.lieu,f.ritm,f.matPC));}
     if(filtSit)r=r.filter(f=>f.situation===filtSit);
     if(filtStat)r=r.filter(f=>filtStat==="cloture"?f.cloture:filtStat==="ouvert"?!f.cloture:f.statut===filtStat);
     if(filtDate)r=r.filter(f=>f.dateEvt&&f.dateEvt>=filtDate);
@@ -8841,7 +8902,7 @@ function VueBadgesPret({showToast,addLog}){
   };
 
   const fmtDate=d=>d?new Date(d).toLocaleDateString("fr-FR"):"—";
-  const todayISO=()=>new Date().toISOString().slice(0,10);
+  const todayISO=()=>isoLocal(new Date());
 
   const[badges,setBadges]=useState(INITIAL_BADGES);
   const[search,setSearch]=useState("");
@@ -8883,7 +8944,7 @@ function VueBadgesPret({showToast,addLog}){
 
   const filtered=useMemo(()=>{
     let r=badges;
-    if(search.trim()){const q=search.toLowerCase();r=r.filter(b=>b.code.toLowerCase().includes(q)||b.nom.toLowerCase().includes(q)||(b.emprunteur&&b.emprunteur.toLowerCase().includes(q)));}
+    if(search.trim()){const q=search.toLowerCase();r=r.filter(b=>chercheTexte(q,b.code,b.nom,b.emprunteur,b.email_emprunteur));}
     if(filtreStatut)r=r.filter(b=>filtreStatut==="prete"?(b.statut==="prete"||b.statut==="empruntee"):b.statut===filtreStatut);
     return r;
   },[badges,search,filtreStatut]);
@@ -9443,7 +9504,7 @@ function App(){
   useEffect(()=>{
     if(!unlocked||!badges.length)return;
     const today=todayISO();
-    const j7=new Date();j7.setDate(j7.getDate()+7);const j7ISO=j7.toISOString().slice(0,10);
+    const j7=new Date();j7.setDate(j7.getDate()+7);const j7ISO=isoLocal(j7);
     const versARecuperer=badges.filter(b=>b.statut==="Actif"&&b.date_sortie_prevue&&b.date_sortie_prevue<=j7ISO&&b.date_sortie_prevue>=today);
     const versActif=badges.filter(b=>b.statut==="À récupérer"&&b.date_sortie_prevue&&b.date_sortie_prevue>j7ISO);
     if(!versARecuperer.length&&!versActif.length)return;
@@ -9610,7 +9671,7 @@ function App(){
   useEffect(()=>{window._verifierWorkday=()=>verifierWorkday(null,false);},[verifierWorkday]);
   // Expose file handlers for SettingsModal
   useEffect(()=>{
-    window._handleRacine=(file)=>{parseRacineAsync(file,badges,setBadges,setCasiers,showToast,setLoading,addLog);setShowSettings(false);};
+    window._snapBadges=snapBadges;window._handleRacine=(file)=>{parseRacineAsync(file,badges,setBadges,setCasiers,showToast,setLoading,addLog);setShowSettings(false);};
     window._handleHR=(file,type)=>{parseWDFileAsync(file,type,wdCache,setWdCache,showToast,setLoading);setShowSettings(false);};
     window._onWdImport=(parsed)=>{verifierWorkday([...Object.values(wdCache||{}),...(parsed||[])],false);};
     window._onWdImportMeta=(meta)=>{setSettings(s=>({...s,wdImportMeta:meta}));addLog("Import Workday",meta.count+" ligne(s) — "+(meta.type==="hr"?"HR Data":"Future Hires")+" ("+meta.fileName+")");};
@@ -9705,7 +9766,7 @@ useEffect(()=>{
       try{
         const data=JSON.parse(ev.target.result);
         if(!data.badges&&!data.collaborateurs){alert("Fichier JSON invalide.");return;}
-        if(!confirm("Remplacer toutes les données par ce fichier JSON ?"))return;
+        if(!confirm("Restaurer cette sauvegarde ?\n\nLes fiches reprennent exactement l'état du fichier (mêmes numéros de fiche : les mails déjà envoyés ne repartent pas).\nLes fiches créées après la sauvegarde seront retirées."))return;
         const b=data.badges||data.collaborateurs||[];const c=data.casiers||[];
         const wd=data.wdCache&&Object.keys(data.wdCache).length>0?data.wdCache:null;
         if(wd){setWdCache(wd);if(sb)(async()=>{try{await sb.from("lp24_settings").upsert({id:2,data:JSON.stringify(wd)});}catch(e){}})();}
@@ -9728,21 +9789,22 @@ useEffect(()=>{
             });
             return [...Object.values(byMat),...Object.values(byName)];
           })();
-          // 2. Vider Supabase
-          await sb.from("lp24_badges").delete().neq("id",0);
-          await sb.from("lp24_casiers").delete().neq("id",0);
-          // 3. Insérer sans ID — Supabase génère les vrais IDs
-          if(bDedup.length){
-            const chunkSize=200;
-            for(let i=0;i<bDedup.length;i+=chunkSize){
-              const chunk=bDedup.slice(i,i+chunkSize).map(({id,...r})=>r);
-              await sb.from("lp24_badges").insert(chunk);
-            }
-          }
+          // 2. Écrire la sauvegarde en gardant les numéros de fiche, puis retirer les fiches absentes du fichier
+          const paquets=(l,t)=>{const o=[];for(let i=0;i<l.length;i+=t)o.push(l.slice(i,i+t));return o;};
+          const avecId=bDedup.filter(x=>typeof x.id==="number"),sansId=bDedup.filter(x=>typeof x.id!=="number").map(({id,...r})=>r);
+          const garderB=new Set(avecId.map(x=>x.id));
+          const avantB=((await sb.from("lp24_badges").select("id")).data||[]).map(x=>x.id).filter(id=>!garderB.has(id));
+          for(const ch of paquets(avecId,200)){const r=await sb.from("lp24_badges").upsert(ch);if(r&&r.error)throw r.error;}
+          for(const ch of paquets(sansId,200)){const r=await sb.from("lp24_badges").insert(ch);if(r&&r.error)throw r.error;}
+          for(const ch of paquets(avantB,200)){const r=await sb.from("lp24_badges").delete().in("id",ch);if(r&&r.error)throw r.error;}
           if(c.length){
-            const cMap={};c.forEach(x=>{if(x.numero)cMap[x.numero]=x;});
-            const cDedup=Object.values(cMap).map(({id,...r})=>r);
-            if(cDedup.length)await sb.from("lp24_casiers").insert(cDedup);
+            const cMap={};c.forEach(x=>{if(x.numero)cMap[x.numero]=x;});const cDedup=Object.values(cMap);
+            const cId=cDedup.filter(x=>typeof x.id==="number"),cSans=cDedup.filter(x=>typeof x.id!=="number").map(({id,...r})=>r);
+            const garderC=new Set(cId.map(x=>x.id));
+            const avantC=((await sb.from("lp24_casiers").select("id")).data||[]).map(x=>x.id).filter(id=>!garderC.has(id));
+            if(cId.length){const r=await sb.from("lp24_casiers").upsert(cId);if(r&&r.error)throw r.error;}
+            if(cSans.length){const r=await sb.from("lp24_casiers").insert(cSans);if(r&&r.error)throw r.error;}
+            if(avantC.length){const r=await sb.from("lp24_casiers").delete().in("id",avantC);if(r&&r.error)throw r.error;}
           }
           // 4. Recharger depuis Supabase → vrais IDs numériques, auto-save sûr
           const[bRes,cRes]=await Promise.all([
