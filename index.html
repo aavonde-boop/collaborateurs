@@ -1358,7 +1358,7 @@ function VueAccueil({badges,casiers,setView,wdCache,setBadges,setCasiers,showToa
   const wdImportMeta=settings&&settings.wdImportMeta;
   const wdAutoUpdateMeta=settings&&settings.wdAutoUpdateMeta;
   const fmtDT=iso=>{if(!iso)return"—";const d=new Date(iso);return isNaN(d.getTime())?"—":d.toLocaleString("fr-FR",{day:"2-digit",month:"2-digit",year:"numeric",hour:"2-digit",minute:"2-digit"});};
-  const actifsSansArch=badges.filter(b=>b.statut!=="Archivé");
+  const actifsSansArch=badges.filter(b=>b.statut!=="Archivé"&&!b.vip);
   const sansMatAvecBadge=actifsSansArch.filter(b=>(!b.matricule||String(b.matricule)==="0")&&b.serie);
   const sansMatSansBadge=actifsSansArch.filter(b=>(!b.matricule||String(b.matricule)==="0")&&!b.serie);
   const avecMatSansBadge=actifsSansArch.filter(b=>b.matricule&&String(b.matricule)!=="0"&&!b.serie);
@@ -2151,7 +2151,10 @@ function VueCollaborateurs({badges,casiers,setBadges,setCasiers,showToast,wdCach
           React.createElement("div",null,React.createElement(Lbl,null,"Manager"),React.createElement(Inp,{value:form.manager,onChange:v=>setForm({...form,manager:v}),placeholder:"auto Workday"})),
           React.createElement("div",null,React.createElement(Lbl,null,"Email Manager"),React.createElement(Inp,{value:form.mail_manager,onChange:v=>setForm({...form,mail_manager:v}),placeholder:"auto Workday"}))
         ),
-        React.createElement("div",{style:{display:"flex",alignItems:"center",gap:10,marginBottom:10}},React.createElement("label",{style:{display:"flex",alignItems:"center",gap:8,cursor:"pointer",fontSize:13,fontWeight:600}},React.createElement("input",{type:"checkbox",checked:!!form.badge_donne,onChange:e=>setForm({...form,badge_donne:e.target.checked}),style:{width:16,height:16,accentColor:"#00B050"}}),React.createElement("span",{style:{color:form.badge_donne?"#00B050":"#6B7280"}},form.badge_donne?"✅ Badge remis":"Badge non remis"))),
+        React.createElement("div",{style:{display:"flex",alignItems:"center",gap:10,marginBottom:10}},React.createElement("label",{style:{display:"flex",alignItems:"center",gap:8,cursor:"pointer",fontSize:13,fontWeight:600}},React.createElement("input",{type:"checkbox",checked:!!form.badge_donne,onChange:e=>setForm({...form,badge_donne:e.target.checked}),style:{width:16,height:16,accentColor:"#00B050"}}),React.createElement("span",{style:{color:form.badge_donne?"#00B050":"#6B7280"}},form.badge_donne?"✅ Badge remis":"Badge non remis")),
+          React.createElement("label",{title:"Visiteur / VIP : aucun mail automatique (IT, restaurant) et pas dans les fiches à compléter",style:{display:"flex",alignItems:"center",gap:8,cursor:"pointer",fontSize:13,fontWeight:600,marginLeft:12}},
+            React.createElement("input",{type:"checkbox",checked:!!form.vip,onChange:e=>setForm({...form,vip:e.target.checked}),style:{width:16,height:16,accentColor:"#7C3AED"}}),
+            React.createElement("span",{style:{color:form.vip?"#7C3AED":"#6B7280"}},form.vip?"⭐ VIP — pas de mails automatiques":"VIP (pas de mails automatiques)"))),
         React.createElement("div",{style:{display:"flex",gap:8}},
           React.createElement(Btn,{onClick:save,color:C.blue},"💾 Enregistrer"),
           React.createElement(Btn,{onClick:()=>{setShowForm(false);setEditing(null);},variant:"outline",color:C.gray},"Annuler")
@@ -2205,7 +2208,7 @@ function VueCollaborateurs({badges,casiers,setBadges,setCasiers,showToast,wdCach
             const zone=b.casier?b.casier.substring(0,2):"";const zcol=ZONES_COLORS[zone]||"#6B7280";
             const sortieProche=b.date_sortie_prevue&&b.date_sortie_prevue<=aV7ISO&&b.date_sortie_prevue>=today;
             const sortiePassee=b.date_sortie_prevue&&b.date_sortie_prevue<today&&b.statut==="Actif";
-            const isVIP=b.statut==="Badge VIP";const isPret=b.statut==="Badge prêt";
+            const isVIP=b.statut==="Badge VIP"||!!b.vip;const isPret=b.statut==="Badge prêt";
             const isNewMat=_newMats.has(b.id);
             const isNewCollab=b.from_accueil&&!b.serie;
             const bg=isNewCollab?"rgba(234,88,12,.08)":isNewMat?"rgba(59,130,246,.12)":b.statut==="Archivé"?"#F5F5F5":b.statut==="À récupérer"?C.redBg:sortiePassee?"#FFF3CD":sortieProche?"#FFFBEB":isVIP?"#F5F3FF":isPret?"#EFF6FF":i%2===0?"#fff":"#F9FAFB";
@@ -2215,7 +2218,7 @@ function VueCollaborateurs({badges,casiers,setBadges,setCasiers,showToast,wdCach
                 isNewMat?React.createElement("span",{title:"Nouveau matricule Workday",style:{background:C.blue,color:"#fff",borderRadius:4,padding:"1px 4px",fontSize:8,fontWeight:700}},"NEW"):i+1
               ),
               React.createElement("td",{style:{padding:"5px 5px",fontWeight:700,color:C.blue,fontSize:10}},!hasM?React.createElement("span",{style:{color:"#E74C3C",fontWeight:700,fontSize:9}},"NC"):b.matricule),
-              React.createElement("td",{style:{padding:"5px 5px",fontWeight:600,fontSize:11}},b.nom||"—"),
+              React.createElement("td",{style:{padding:"5px 5px",fontWeight:600,fontSize:11}},b.nom||"—",b.vip&&React.createElement("span",{title:"VIP : pas de mails automatiques",style:{marginLeft:5,background:"#EDE9FE",color:"#7C3AED",borderRadius:4,padding:"0 4px",fontSize:9,fontWeight:700}},"⭐ VIP")),
               React.createElement("td",{style:{padding:"5px 5px",fontSize:11}},b.prenom||"—"),
               React.createElement("td",{style:{padding:"5px 5px",fontSize:9,color:"#6B7280",maxWidth:120,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}},b.email||"—"),
               React.createElement("td",{style:{padding:"5px 5px"}},hasB?React.createElement("span",null,React.createElement("code",{style:{background:doublon?"#FEF3C7":"#F3F4F6",color:doublon?"#92400E":"inherit",padding:"1px 4px",borderRadius:3,fontSize:9,border:doublon?"1px solid #F59E0B":"none"}},b.serie),doublon&&React.createElement("span",{title:"Badge attribué à plusieurs !",style:{marginLeft:2,color:"#F59E0B",fontSize:10}},"⚠️")):"—"),
@@ -3930,7 +3933,7 @@ function EnvoisMails({settings,setSettings,showToast}){
 
 // ════════════════ COHÉRENCE ════════════════
 // Une seule règle « fiche à compléter » : collaborateur non archivé sans matricule ou sans n° de badge.
-function aCompleter(b){return b&&b.statut!=="Archivé"&&(!String(b.matricule||"").trim()||String(b.matricule).trim()==="0"||!String(b.serie||"").trim());}
+function aCompleter(b){return b&&b.statut!=="Archivé"&&!b.vip&&(!String(b.matricule||"").trim()||String(b.matricule).trim()==="0"||!String(b.serie||"").trim());}
 // Personne par nom + prénom exacts (accents, majuscules, ordre ignorés). Liste vide si rien ou si le prénom manque.
 function memePersonne(liste,nom,prenom){
   const n=x=>String(x||"").normalize("NFD").replace(/[̀-ͯ]/g,"").toUpperCase().replace(/[^A-Z0-9]/g,"");
@@ -5184,7 +5187,7 @@ useEffect(()=>{
       React.createElement("div",{style:{display:"flex",alignItems:"center",gap:1,flex:1,overflow:"hidden"}},
         visibleNav.map(n=>React.createElement("button",{key:n.id,onClick:()=>setView(n.id),className:"nav-item"+(view===n.id?" active":""),style:{fontSize:11,padding:"5px 8px",flexShrink:0}},
           n.icon," ",n.label,
-          n.id==="field_support"&&fssOpenCount>0&&React.createElement("span",{style:{background:"var(--red)",color:"#fff",borderRadius:999,fontSize:8,fontWeight:700,padding:"1px 4px",marginLeft:2}},fssOpenCount)
+          false&&React.createElement("span",{style:{background:"var(--red)",color:"#fff",borderRadius:999,fontSize:8,fontWeight:700,padding:"1px 4px",marginLeft:2}},fssOpenCount)
         ))
       ),
       React.createElement("div",{style:{marginLeft:8,flexShrink:0}},toolbarButtons)
@@ -6020,7 +6023,7 @@ function VueAccueil({badges,casiers,setView,wdCache,setBadges,setCasiers,showToa
   const wdImportMeta=settings&&settings.wdImportMeta;
   const wdAutoUpdateMeta=settings&&settings.wdAutoUpdateMeta;
   const fmtDT=iso=>{if(!iso)return"—";const d=new Date(iso);return isNaN(d.getTime())?"—":d.toLocaleString("fr-FR",{day:"2-digit",month:"2-digit",year:"numeric",hour:"2-digit",minute:"2-digit"});};
-  const actifsSansArch=badges.filter(b=>b.statut!=="Archivé");
+  const actifsSansArch=badges.filter(b=>b.statut!=="Archivé"&&!b.vip);
   const sansMatAvecBadge=actifsSansArch.filter(b=>(!b.matricule||String(b.matricule)==="0")&&b.serie);
   const sansMatSansBadge=actifsSansArch.filter(b=>(!b.matricule||String(b.matricule)==="0")&&!b.serie);
   const avecMatSansBadge=actifsSansArch.filter(b=>b.matricule&&String(b.matricule)!=="0"&&!b.serie);
@@ -6799,6 +6802,7 @@ function VueCollaborateurs({badges,casiers,setBadges,setCasiers,showToast,wdCach
       React.createElement("div",{style:{minWidth:0,flex:1}},
         React.createElement("div",{className:"ct-nm"},ctCap(b.prenom)+" ",React.createElement("b",null,String(b.nom||"").toUpperCase()),
           b.statut!=="Actif"&&React.createElement("span",{className:"ct-pill",style:{background:statCol+"22",color:statCol}},b.statut),
+          b.vip&&React.createElement("span",{className:"ct-pill",style:{background:"#EDE9FE",color:"#7C3AED"}},"⭐ VIP"),
           !hasM&&b.statut!=="Archivé"&&React.createElement("span",{className:"ct-pill",style:{background:"rgba(255,149,0,.16)",color:"#C93400"}},"sans matricule"),
           isNew&&React.createElement("span",{className:"ct-pill",style:{background:"rgba(255,149,0,.16)",color:"#C93400"}},"nouveau")),
         React.createElement("div",{className:"ct-sb"},(b.casier?"Casier "+b.casier:"Pas de casier")+(b.serie?" · badge "+b.serie:""))));
@@ -6876,7 +6880,10 @@ function VueCollaborateurs({badges,casiers,setBadges,setCasiers,showToast,wdCach
           React.createElement("div",null,React.createElement(Lbl,null,"Manager"),React.createElement(Inp,{value:form.manager,onChange:v=>setForm({...form,manager:v}),placeholder:"auto Workday"})),
           React.createElement("div",null,React.createElement(Lbl,null,"Email Manager"),React.createElement(Inp,{value:form.mail_manager,onChange:v=>setForm({...form,mail_manager:v}),placeholder:"auto Workday"}))
         ),
-        React.createElement("div",{style:{display:"flex",alignItems:"center",gap:10,marginBottom:10}},React.createElement("label",{style:{display:"flex",alignItems:"center",gap:8,cursor:"pointer",fontSize:13,fontWeight:600}},React.createElement("input",{type:"checkbox",checked:!!form.badge_donne,onChange:e=>setForm({...form,badge_donne:e.target.checked}),style:{width:16,height:16,accentColor:"#00B050"}}),React.createElement("span",{style:{color:form.badge_donne?"#00B050":"#6B7280"}},form.badge_donne?"✅ Badge remis":"Badge non remis"))),
+        React.createElement("div",{style:{display:"flex",alignItems:"center",gap:10,marginBottom:10}},React.createElement("label",{style:{display:"flex",alignItems:"center",gap:8,cursor:"pointer",fontSize:13,fontWeight:600}},React.createElement("input",{type:"checkbox",checked:!!form.badge_donne,onChange:e=>setForm({...form,badge_donne:e.target.checked}),style:{width:16,height:16,accentColor:"#00B050"}}),React.createElement("span",{style:{color:form.badge_donne?"#00B050":"#6B7280"}},form.badge_donne?"✅ Badge remis":"Badge non remis")),
+          React.createElement("label",{title:"Visiteur / VIP : aucun mail automatique (IT, restaurant) et pas dans les fiches à compléter",style:{display:"flex",alignItems:"center",gap:8,cursor:"pointer",fontSize:13,fontWeight:600,marginLeft:12}},
+            React.createElement("input",{type:"checkbox",checked:!!form.vip,onChange:e=>setForm({...form,vip:e.target.checked}),style:{width:16,height:16,accentColor:"#7C3AED"}}),
+            React.createElement("span",{style:{color:form.vip?"#7C3AED":"#6B7280"}},form.vip?"⭐ VIP — pas de mails automatiques":"VIP (pas de mails automatiques)"))),
         React.createElement("div",{style:{display:"flex",gap:8}},
           React.createElement(Btn,{onClick:save,color:C.blue},"💾 Enregistrer"),
           React.createElement(Btn,{onClick:()=>{setShowForm(false);setEditing(null);},variant:"outline",color:C.gray},"Annuler")
@@ -6930,7 +6937,7 @@ function VueCollaborateurs({badges,casiers,setBadges,setCasiers,showToast,wdCach
             const zone=b.casier?b.casier.substring(0,2):"";const zcol=ZONES_COLORS[zone]||"#6B7280";
             const sortieProche=b.date_sortie_prevue&&b.date_sortie_prevue<=aV7ISO&&b.date_sortie_prevue>=today;
             const sortiePassee=b.date_sortie_prevue&&b.date_sortie_prevue<today&&b.statut==="Actif";
-            const isVIP=b.statut==="Badge VIP";const isPret=b.statut==="Badge prêt";
+            const isVIP=b.statut==="Badge VIP"||!!b.vip;const isPret=b.statut==="Badge prêt";
             const isNewMat=_newMats.has(b.id);
             const isNewCollab=b.from_accueil&&!b.serie;
             const bg=isNewCollab?"rgba(234,88,12,.08)":isNewMat?"rgba(59,130,246,.12)":b.statut==="Archivé"?"#F5F5F5":b.statut==="À récupérer"?C.redBg:sortiePassee?"#FFF3CD":sortieProche?"#FFFBEB":isVIP?"#F5F3FF":isPret?"#EFF6FF":i%2===0?"#fff":"#F9FAFB";
@@ -6940,7 +6947,7 @@ function VueCollaborateurs({badges,casiers,setBadges,setCasiers,showToast,wdCach
                 isNewMat?React.createElement("span",{title:"Nouveau matricule Workday",style:{background:C.blue,color:"#fff",borderRadius:4,padding:"1px 4px",fontSize:8,fontWeight:700}},"NEW"):i+1
               ),
               React.createElement("td",{style:{padding:"5px 5px",fontWeight:700,color:C.blue,fontSize:10}},!hasM?React.createElement("span",{style:{color:"#E74C3C",fontWeight:700,fontSize:9}},"NC"):b.matricule),
-              React.createElement("td",{style:{padding:"5px 5px",fontWeight:600,fontSize:11}},b.nom||"—"),
+              React.createElement("td",{style:{padding:"5px 5px",fontWeight:600,fontSize:11}},b.nom||"—",b.vip&&React.createElement("span",{title:"VIP : pas de mails automatiques",style:{marginLeft:5,background:"#EDE9FE",color:"#7C3AED",borderRadius:4,padding:"0 4px",fontSize:9,fontWeight:700}},"⭐ VIP")),
               React.createElement("td",{style:{padding:"5px 5px",fontSize:11}},b.prenom||"—"),
               React.createElement("td",{style:{padding:"5px 5px",fontSize:9,color:"#6B7280",maxWidth:120,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}},b.email||"—"),
               React.createElement("td",{style:{padding:"5px 5px"}},hasB?React.createElement("span",null,React.createElement("code",{style:{background:doublon?"#FEF3C7":"#F3F4F6",color:doublon?"#92400E":"inherit",padding:"1px 4px",borderRadius:3,fontSize:9,border:doublon?"1px solid #F59E0B":"none"}},b.serie),doublon&&React.createElement("span",{title:"Badge attribué à plusieurs !",style:{marginLeft:2,color:"#F59E0B",fontSize:10}},"⚠️")):"—"),
@@ -8696,7 +8703,7 @@ function EnvoisMails({settings,setSettings,showToast}){
 
 // ════════════════ COHÉRENCE ════════════════
 // Une seule règle « fiche à compléter » : collaborateur non archivé sans matricule ou sans n° de badge.
-function aCompleter(b){return b&&b.statut!=="Archivé"&&(!String(b.matricule||"").trim()||String(b.matricule).trim()==="0"||!String(b.serie||"").trim());}
+function aCompleter(b){return b&&b.statut!=="Archivé"&&!b.vip&&(!String(b.matricule||"").trim()||String(b.matricule).trim()==="0"||!String(b.serie||"").trim());}
 // Personne par nom + prénom exacts (accents, majuscules, ordre ignorés). Liste vide si rien ou si le prénom manque.
 function memePersonne(liste,nom,prenom){
   const n=x=>String(x||"").normalize("NFD").replace(/[̀-ͯ]/g,"").toUpperCase().replace(/[^A-Z0-9]/g,"");
@@ -9956,7 +9963,7 @@ useEffect(()=>{
       React.createElement("div",{style:{display:"flex",alignItems:"center",gap:1,flex:1,overflow:"hidden"}},
         visibleNav.map(n=>React.createElement("button",{key:n.id,onClick:()=>setView(n.id),className:"nav-item"+(view===n.id?" active":""),style:{fontSize:11,padding:"5px 8px",flexShrink:0}},
           React.createElement(IosIcon,{id:n.id,size:17,filled:view===n.id}),n.label,
-          n.id==="field_support"&&fssOpenCount>0&&React.createElement("span",{style:{background:"var(--red)",color:"#fff",borderRadius:999,fontSize:8,fontWeight:700,padding:"1px 4px",marginLeft:2}},fssOpenCount)
+          false&&React.createElement("span",{style:{background:"var(--red)",color:"#fff",borderRadius:999,fontSize:8,fontWeight:700,padding:"1px 4px",marginLeft:2}},fssOpenCount)
         ))
       ),
       React.createElement("div",{style:{marginLeft:8,flexShrink:0}},toolbarButtons)
@@ -9966,7 +9973,7 @@ useEffect(()=>{
         mainTabs.map(n=>React.createElement("button",{key:n.id,type:"button",onClick:()=>setView(n.id),className:"ios-tab"+(view===n.id?" on":""),"aria-label":n.label},
           React.createElement(IosIcon,{id:n.id,filled:view===n.id}),
           React.createElement("span",{className:"tlbl"},n.id==="field_support"?"Field Support":n.label),
-          n.id==="field_support"&&fssOpenCount>0&&React.createElement("span",{className:"tb"},fssOpenCount))),
+          false&&React.createElement("span",{className:"tb"},fssOpenCount))),
         React.createElement("button",{type:"button",onClick:()=>setShowMore(true),className:"ios-tab"+(moreTabs.some(n=>n.id===view)?" on":""),"aria-label":"Plus"},
           React.createElement(IosIcon,{id:"more"}),React.createElement("span",{className:"tlbl"},"Plus"))
       )

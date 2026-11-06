@@ -6,6 +6,9 @@
 -- ════════════════════════════════════════════════════════════════════
 
 -- Textes d'origine (utilisés si le champ est vide dans l'appli)
+-- Case « VIP » sur la fiche collaborateur
+alter table public.lp24_badges add column if not exists vip boolean not null default false;
+
 create or replace function public.lp24_texte_defaut(cle text) returns text
 language sql immutable as $d$
   select case cle
@@ -80,6 +83,7 @@ begin
       continue when d - t.avance > current_date or d < cfg.depuis;
       continue when (not t.arr) and d < current_date - 7;
       continue when t.arr and d < current_date;
+      continue when coalesce(b.vip, false) or b.statut = 'Badge VIP';   -- VIP / visiteur : pas de mails automatiques
       -- Pas de 2e mail à l'IT si une fiche « Demande IT » existe déjà pour cette personne (le mail est parti avec la fiche)
       continue when t.cible = 'it' and coalesce(st->>'envoiFSS', 'true') <> 'false' and exists (
         select 1 from public.lp24_fss f
