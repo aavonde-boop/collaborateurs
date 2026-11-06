@@ -1896,7 +1896,7 @@ function VueAccueil({badges,casiers,setView,wdCache,setBadges,setCasiers,showToa
         React.createElement("button",{className:"btn-main",onClick:enrArr},"Enregistrer"),
         React.createElement("button",{className:"btn-ghost",title:"Mail IT arrivée",onClick:()=>{const it=(settings&&settings.itEmail)||"";if(!it){showToast("⚠️ Email IT non configuré","err");return;}const wd=foundArr||memePersonne(wdCache?Object.values(wdCache):[],nomArr,prenomArr)[0]||null;const data={nom:wd?wd.nom:nomArr.toUpperCase()||"NC",prenom:wd?wd.prenom:prenomArr||"NC",matricule:wd?wd.matricule:"NC",email:wd?wd.email:"NC",date_entree:dateArr||wd?.hireDate||"NC",manager:managerArr||wd?.manager||"NC",mail_manager:wd?.mailMgr||"NC"};const cc=encodeURIComponent((settings&&settings.ccEmails)||"");window.open("mailto:"+encodeURIComponent(it)+"?"+(cc?"cc="+cc+"&":"")+"subject="+encodeURIComponent("Arrivée — "+data.prenom+" "+data.nom)+"&body="+encodeURIComponent(texteManuel(settings,"autoITArrivee",data)));}},"✉️ IT"),
         React.createElement("button",{className:"btn-ghost",title:"Mail Restaurant arrivée",onClick:()=>{const to=encodeURIComponent((settings&&settings.restaurantEmail)||"");const wd=foundArr||memePersonne(wdCache?Object.values(wdCache):[],nomArr,prenomArr)[0]||null;const data={nom:wd?wd.nom:nomArr.toUpperCase()||"NC",prenom:wd?wd.prenom:prenomArr||"NC",matricule:wd?wd.matricule:"NC",email:wd?wd.email:"NC",date_entree:dateArr||wd?.hireDate||"NC",manager:managerArr||wd?.manager||"NC",mail_manager:wd?.mailMgr||"NC"};window.open("mailto:"+to+"?subject="+encodeURIComponent("Arrivée — "+data.prenom+" "+data.nom)+"&body="+encodeURIComponent(texteManuel(settings,"autoRestoArrivee",data)));}},"🍽️")
-      )
+      ),React.createElement(NoteAide,null,"Crée la fiche et une fiche Field Support (mail à l'IT tout de suite). Mail au restaurant le jour de l'arrivée. ✉️ / 🍽️ : ouvre un mail que tu envoies toi-même.")
     ),
 
     modal==="depart"&&React.createElement(AccueilModal,{title:"Départ",icon:"🔴",onClose:closeModal,maxWidth:460},
@@ -1913,7 +1913,7 @@ function VueAccueil({badges,casiers,setView,wdCache,setBadges,setCasiers,showToa
           React.createElement("div",{className:"dc-txt"},s.label)
         ))
       ),
-      React.createElement("button",{className:"btn-depart",onClick:enrDep},"Enregistrer le départ"),
+      React.createElement("button",{className:"btn-depart",onClick:enrDep},"Enregistrer le départ"),React.createElement(NoteAide,{style:{marginBottom:6}},"Note la date de sortie et crée une fiche Field Support (mail à l'IT tout de suite). Mail au restaurant le jour du départ."),
       React.createElement("div",{className:"mvt-actions",style:{marginTop:8}},
         React.createElement("button",{className:"btn-ghost",style:{flex:1,justifyContent:"center"},title:"Mail IT départ",onClick:()=>{const it=(settings&&settings.itEmail)||"";if(!it){showToast("⚠️ Email IT non configuré","err");return;}const b=memePersonne(badges.filter(x=>x.statut!=="Archivé"),nomDep||prenomDep,nomDep?prenomDep:"")[0];const data=b?{...b,date_sortie_prevue:dateDep||b.date_sortie_prevue||"NC"}:{nom:nomDep.toUpperCase(),prenom:prenomDep,matricule:"NC",serie:"NC",date_sortie_prevue:dateDep||"NC",manager:"NC",mail_manager:"NC"};const cc=encodeURIComponent((settings&&settings.ccEmails)||"");window.open("mailto:"+encodeURIComponent(it)+"?"+(cc?"cc="+cc+"&":"")+"subject="+encodeURIComponent("Départ — "+data.prenom+" "+data.nom)+"&body="+encodeURIComponent(texteManuel(settings,"autoITDepart",data)));}},"✉️ IT"),
         React.createElement("button",{className:"btn-ghost",style:{flex:1,justifyContent:"center"},title:"Mail Restaurant départ",onClick:()=>{const to=encodeURIComponent((settings&&settings.restaurantEmail)||"");const b=memePersonne(badges.filter(x=>x.statut!=="Archivé"),nomDep||prenomDep,nomDep?prenomDep:"")[0];if(!b){showToast("⚠️ Collaborateur introuvable","err");return;}window.open("mailto:"+to+"?subject="+encodeURIComponent("Départ — "+b.prenom+" "+b.nom)+"&body="+encodeURIComponent(texteManuel(settings,"autoRestoDepart",b)));}},"🍽️")
@@ -2195,7 +2195,7 @@ function VueCollaborateurs({badges,casiers,setBadges,setCasiers,showToast,wdCach
         React.createElement("div",{style:{display:"flex",gap:8}},
           React.createElement(Btn,{onClick:save,color:C.blue},"💾 Enregistrer"),
           React.createElement(Btn,{onClick:()=>{setShowForm(false);setEditing(null);},variant:"outline",color:C.gray},"Annuler")
-        )
+        ),React.createElement(NoteAide,{style:{width:"100%"}},form.vip?"Fiche VIP : aucun mail automatique.":"Nouvelle date d'entrée ou de sortie : mail à l'IT la veille et au restaurant le jour même (une fenêtre te le confirme avant).")
       )
     ),
     // Filtres
@@ -2557,7 +2557,7 @@ function VueCasiers({casiers,badges,setCasiers,setBadges,showToast,addLog,setVie
       ),
       React.createElement("div",{style:{display:"flex",gap:8,flexWrap:"wrap",marginTop:6}},React.createElement(Btn,{onClick:enregistrerCasier,color:C.purple},"💾 Enregistrer"),React.createElement(Btn,{onClick:()=>{setShowForm(false);setEditing(null);},variant:"outline",color:C.gray},"Annuler"),
         editing&&(()=>{const c=casiers.find(x=>x.id===editing);return c&&isAVider(c)?React.createElement(Btn,{onClick:()=>{viderCasier(c);setShowForm(false);setEditing(null);},variant:"outline",color:C.orange},"🧹 Vider"):null;})(),
-        editing&&React.createElement(Btn,{onClick:()=>del(editing),variant:"outline",color:C.red,style:{marginLeft:"auto"}},"🗑️ Supprimer")),
+        editing&&React.createElement(Btn,{onClick:()=>del(editing),variant:"outline",color:C.red,style:{marginLeft:"auto"}},"🗑️ Supprimer")),React.createElement(NoteAide,null,"Met aussi à jour le casier sur la fiche du collaborateur et l'écrit dans l'historique du casier."),
       editing&&form.numero&&React.createElement(HistoriqueCasier,{key:editing,numero:form.numero})
     )),
     React.createElement(Card,{style:{marginBottom:12,padding:12}},
@@ -4010,6 +4010,67 @@ function EcartsWorkday({badges,wdCache,setBadges,addLog,showToast}){
       el("button",{type:"button",className:"btn",style:{fontSize:11,padding:"3px 8px",flexShrink:0},onClick:()=>prendre([e])},"Prendre Workday")))));
 }
 
+
+// ════════════════ AIDE ════════════════
+// Petite note grise sous un bouton : ce qui va se passer
+function NoteAide({children,style}){return React.createElement("div",{className:"note-aide",style:{fontSize:11.5,lineHeight:1.4,color:"var(--text3,#64748B)",marginTop:6,...style}},"ℹ️ ",children);}
+const AIDE_SECTIONS=[
+  {id:"accueil",t:"🏠 Accueil",l:["Tableau de bord : arrivées et départs de la semaine, fiches à compléter, badges à récupérer. Clique sur une carte pour voir la liste.",
+    "Arrivée : crée la fiche du collaborateur et une fiche Field Support (mail à l'IT tout de suite). Le restaurant reçoit un mail le jour de l'arrivée.",
+    "Départ : note la date de sortie et crée une fiche Field Support (mail à l'IT tout de suite). Le restaurant reçoit un mail le jour du départ.",
+    "Boutons ✉️ IT et 🍽️ : ouvrent un mail dans ta messagerie, que tu envoies toi-même.",
+    "Avant d'enregistrer, une fenêtre te dit quels mails vont partir : Annuler pour revenir."]},
+  {id:"field_support",t:"📋 Field Support",l:["Les demandes au service IT (PC, accès…) pour chaque arrivée et chaque départ.","Ouvre une fiche pour la suivre ; clôture-la quand le matériel est remis ou récupéré."]},
+  {id:"collaborateurs",t:"👥 Collaborateurs",l:["Toutes les fiches. Clique sur une ligne pour la modifier.",
+    "Ajouter ou changer une date d'entrée ou de sortie programme les mails à l'IT (la veille) et au restaurant (le jour même).",
+    "Case ⭐ VIP : aucun mail automatique pour cette personne, et elle n'apparaît pas dans les fiches à compléter.",
+    "📡 Vérifier avec Workday : complète les e-mails, managers, dates d'entrée et matricules depuis le dernier fichier Workday.",
+    "🔁 Doublons : même nom et même prénom. « Garder celle-ci » complète la bonne fiche et archive les autres (rien n'est supprimé).",
+    "✉️ Mail de bienvenue : ouvre un mail pour le nouvel arrivant, tu y joins sa photo et tu l'envoies."]},
+  {id:"casiers",t:"🔐 Casiers",l:["Clique sur un casier : attribue-le à quelqu'un (liste déroulante), marque-le « Occupé (sans nom) » ou libère-le.",
+    "L'enregistrement met aussi à jour le casier sur la fiche du collaborateur, et l'écrit dans l'historique du casier.",
+    "🔎 Contrôle : repère les casiers attribués à deux personnes et les fiches qui ne correspondent pas."]},
+  {id:"badges_pret",t:"🪪 Badges de prêt",l:["🔑 Marquer Prêtée : l'emprunteur reçoit tout de suite un mail de prêt (si son e-mail est renseigné).",
+    "S'il ne rend pas le badge : un rappel chaque matin du lundi au vendredi, à partir du lendemain de la date de retour (ou après 24 h sans date).",
+    "Badge déjà prêté : « 💾 Enregistrer » garde la nouvelle date de retour, sans nouveau mail de prêt.",
+    "✅ Retour : le badge redevient disponible et les rappels s'arrêtent."]},
+  {id:"colis",t:"📦 Colis",l:["Enregistre chaque colis reçu (tu peux photographier l'étiquette pour remplir le nom). Aucun mail n'est envoyé automatiquement.",
+    "Préviens le destinataire, puis clique « 📣 Prévenu ». À la remise, fais-le signer : la signature et l'historique sont gardés."]},
+  {id:"rapport",t:"📊 Rapport",l:["Les arrivées, départs et badges à venir, sur une seule page."]},
+  {id:"impression",t:"🏷️ Étiquettes",l:["Prépare et imprime les étiquettes des badges."]},
+  {id:"notifications",t:"🔔 Notifications",l:["Tout ce qui demande ton attention. Le chiffre sur l'icône de l'appli = le nombre de notifications.",
+    "Supprime une notification quand c'est réglé : elle disparaît aussi sur ton téléphone, et ne revient que si la situation change."]},
+  {id:"_reglages",t:"⚙️ Réglages (roue dentée)",l:["Adresses e-mail (IT, restaurant, copie), textes des mails, interrupteurs pour couper les envois, comptes et import / export.",
+    "Import « Racine Commune » : met à jour les fiches sans rien effacer, et te montre un résumé avant."]}
+];
+function VueAide({canAccess,peutReglages}){
+  const el=React.createElement;
+  const secs=AIDE_SECTIONS.filter(x=>x.id==="_reglages"?peutReglages:(!canAccess||canAccess(x.id)));
+  const voitMails=!canAccess||canAccess("accueil")||canAccess("collaborateurs");
+  const L=[["Arrivée ou départ enregistré à l'Accueil","IT (fiche Field Support)","Tout de suite"],
+    ["Date d'entrée","IT","La veille vers 6 h — pas si une fiche Field Support existe déjà"],
+    ["Date d'entrée","Restaurant","Le jour même vers 6 h"],
+    ["Date de sortie","IT","La veille vers 6 h — pas si une fiche Field Support existe déjà"],
+    ["Date de sortie","Restaurant","Le jour même vers 6 h"],
+    ["Badge de prêt sorti","L'emprunteur","Tout de suite"],
+    ["Badge de prêt non rendu","L'emprunteur","Chaque matin (lun.–ven.) à partir du lendemain de la date de retour"],
+    ["Mail de bienvenue, boutons ✉️ et 🍽️","—","Jamais automatique : le mail s'ouvre et tu l'envoies toi-même"]];
+  const td={padding:"8px 10px",borderTop:"1px solid var(--border)",fontSize:12.5,verticalAlign:"top"};
+  const carte=(k,titre,...enfants)=>el("div",{key:k,className:"card",style:{background:"var(--surface)",border:"1px solid var(--border)",borderRadius:12,padding:"14px 16px",marginBottom:12}},
+    el("div",{style:{fontSize:15,fontWeight:800,marginBottom:8}},titre),...enfants);
+  return el("div",null,
+    typeof PageHero!=="undefined"?el(PageHero,{icone:"❓",titre:"Aide",sousTitre:"ce que fait chaque partie de l'application"}):el("div",{style:{margin:"4px 2px 14px"}},el("div",{style:{fontSize:28,fontWeight:800}},"❓ Aide"),el("div",{style:{fontSize:13,color:"var(--text3)"}},"Ce que fait chaque partie de l'application")),
+    voitMails&&carte("mails","📧 Quels mails partent, et quand",
+      window.innerWidth<700?el("div",null,L.map((r,i)=>el("div",{key:i,style:{padding:"8px 0",borderTop:i?"1px solid var(--border)":"none"}},
+          el("div",{style:{fontSize:13.5,fontWeight:700}},r[0]),
+          el("div",{style:{fontSize:13,color:"var(--text2)"}},(r[1]!=="—"?"→ "+r[1]+" · ":"")+r[2])))):
+      el("div",{style:{overflowX:"auto"}},el("table",{style:{width:"100%",borderCollapse:"collapse"}},
+        el("thead",null,el("tr",null,["Ce que tu enregistres","Qui reçoit","Quand"].map(h=>el("th",{key:h,style:{textAlign:"left",fontSize:11,color:"var(--text3)",textTransform:"uppercase",padding:"4px 10px"}},h)))),
+        el("tbody",null,L.map((r,i)=>el("tr",{key:i},r.map((c,j)=>el("td",{key:j,style:{...td,fontWeight:j===0?600:400}},c))))))),
+      el("div",{style:{fontSize:12,color:"var(--text3)",marginTop:8,lineHeight:1.45}},"Pas de mail automatique pour une fiche ⭐ VIP, ni quand l'envoi est coupé dans les Réglages. Un mail déjà parti ne repart pas si tu changes la date. Avant chaque enregistrement qui envoie un mail, une fenêtre te le dit.")),
+    secs.map(x=>carte(x.id,x.t,el("ul",{style:{margin:0,paddingLeft:18}},x.l.map((t,i)=>el("li",{key:i,style:{fontSize:13,lineHeight:1.5,marginBottom:4,color:"var(--text2)"}},t))))));
+}
+
 function SettingsModal({settings,setSettings,showToast,setShowSettings,racineRef,hrRef,hcmRef,importJsonRef,exportExcel,exportJSON,importJSON,badges,setBadges,casiers,wdCache,histo,addLog,canHistorique,canArchives,canHistoriquePret,initialTab}){
   const[tab,setTab]=useState(initialTab||"emails");
   const archivesCount=badges.filter(b=>b.statut==="Archivé").length;
@@ -4408,7 +4469,7 @@ function VueBadgesPret({showToast,addLog}){
       el("div",{style:{marginBottom:10}},
         el("button",{onClick:bpEnregistrer,
           className:"btn btn-primary",style:{justifyContent:"center",fontWeight:700,width:"100%"}},
-          bpSorti?"💾 Enregistrer":"🔑 Marquer Prêtée")
+          bpSorti?"💾 Enregistrer":"🔑 Marquer Prêtée"),el(NoteAide,null,bpSorti?"Enregistre les changements, sans nouveau mail de prêt. Les rappels suivent la date de retour.":"L'emprunteur reçoit tout de suite un mail de prêt (si son e-mail est renseigné), puis un rappel chaque matin s'il ne rend pas le badge après la date de retour.")
       ),
       (selected.statut==="prete"||selected.statut==="empruntee")&&
         el("button",{onClick:()=>doAction(selected.id,"disponible","",""),
@@ -4566,7 +4627,7 @@ function VueColis({showToast,addLog,badges}){
         el("button",{type:"button",className:"btn btn-primary",style:{flex:1,justifyContent:"center",fontWeight:700},onClick:enregistrer},form.id?"Enregistrer":"📦 Enregistrer le colis"),
         form.id&&el("button",{type:"button",className:"btn",onClick:()=>dupliquer(form),title:"Nouveau colis pour la même personne, avec un nouveau numéro"},"⧉ Dupliquer"),
         form.id&&!(form.statut==="recupere"||form.signature)&&el("button",{type:"button",className:"btn btn-danger",onClick:()=>supprimer(form)},"Supprimer"),
-        form.id&&(form.statut==="recupere"||form.signature)&&el("div",{style:{width:"100%",fontSize:11,color:"var(--text3)",textAlign:"center"}},"Colis remis : conservé avec sa signature et son historique, il ne peut pas être supprimé."))));
+        form.id&&(form.statut==="recupere"||form.signature)&&el("div",{style:{width:"100%",fontSize:11,color:"var(--text3)",textAlign:"center"}},"Colis remis : conservé avec sa signature et son historique, il ne peut pas être supprimé.")),el(NoteAide,{style:{width:"100%",marginTop:0}},"Aucun mail automatique : préviens le destinataire, puis clique « 📣 Prévenu ».")));
   const fenRetrait=retrait&&el("div",{style:{position:"fixed",inset:0,background:"rgba(0,0,0,.45)",zIndex:1001,display:"flex",alignItems:"center",justifyContent:"center",padding:16,backdropFilter:"blur(4px)"},onClick:e=>{if(e.target===e.currentTarget)setRetrait(null);}},
     el("div",{style:{background:"var(--surface)",border:"1px solid var(--border)",borderRadius:"var(--radius-lg)",padding:22,width:"100%",maxWidth:400,boxShadow:"0 24px 60px rgba(0,0,0,.2)"}},
       el("div",{style:{fontSize:18,fontWeight:800,marginBottom:4}},"✅ Colis "+num(retrait.c.numero)+" récupéré"),
@@ -5128,11 +5189,13 @@ useEffect(()=>{
     {id:"badges_pret",label:"Badges Prêt",icon:"🪪"},
     {id:"colis",label:"Colis",icon:"📦"},
     {id:"notifications",label:"Notifications"+(notifs.length?" ("+notifs.length+")":""),icon:"🔔"},
+    {id:"aide",label:"Aide",icon:"❓"},
   ];
   const archivesCount=badges.filter(b=>b.statut==="Archivé").length;
   const histoCount=histo.length;
   const fssOpenCount=fssData.filter(f=>!f.cloture&&f.statut!=="Terminée").length;
   const canAccess=useCallback(viewId=>{
+    if(viewId==="aide")return true;
     // Rôle badge : accès exclusif à badges_pret
     if(session&&session.role==="badge")return viewId==="badges_pret"||viewId==="historique_pret"||viewId==="colis";
     // Autres rôles : pas accès à badges_pret
@@ -5165,6 +5228,7 @@ useEffect(()=>{
       case "rapport": return React.createElement(VueRapport,{badges,fssData,setBadges,setFssData,showToast,addLog,setView,setPendingOpen});
       case "impression": return React.createElement(VueImpression,{badges});
       case "badges_pret": return React.createElement(VueBadgesPret,{showToast,addLog});
+      case "aide": return React.createElement(VueAide,{canAccess,peutReglages:!isIT&&!isBadgeOnly});
       case "notifications": return React.createElement(VueNotifications,{items:notifs,supprimer:supprimerNotif,toutSupprimer:toutSupprimerNotifs,restaurer:restaurerNotifs,nbSupprimees:notifsToutes.length-notifs.length,setView});
       case "colis": return React.createElement(VueColis,{showToast,addLog,badges});
       default: return null;
@@ -5186,7 +5250,7 @@ useEffect(()=>{
 
   // ── Rôle badge : interface dédiée Badges de Prêt + Historique ──
   if(isBadge){
-    const badgeView=view==="historique_pret"?"historique_pret":view==="colis"?"colis":"badges_pret";
+    const badgeView=view==="historique_pret"?"historique_pret":view==="colis"?"colis":view==="aide"?"aide":"badges_pret";
     return React.createElement("div",{style:{minHeight:"100vh",background:"var(--bg)"}},
       toast&&React.createElement("div",{className:"toast-anim",style:{position:"fixed",top:20,left:"50%",transform:"translateX(-50%)",zIndex:9999,background:toast.type==="err"?"#7F1D1D":"#14532D",border:"1px solid "+(toast.type==="err"?"rgba(220,38,38,.3)":"rgba(22,163,74,.3)"),color:"#fff",padding:"12px 24px",borderRadius:12,fontSize:13,fontWeight:700,boxShadow:"0 4px 24px rgba(0,0,0,.12)",whiteSpace:"nowrap",pointerEvents:"none"}},toast.msg),
       React.createElement("nav",{style:{background:"var(--surface)",borderBottom:"1px solid var(--border)",padding:"0 20px",display:"flex",alignItems:"center",justifyContent:"space-between",height:48,position:"sticky",top:0,zIndex:500}},
@@ -5198,7 +5262,7 @@ useEffect(()=>{
           React.createElement("div",{style:{display:"flex",gap:4}},
             React.createElement("button",{onClick:()=>setView("badges_pret"),className:"nav-item"+(badgeView==="badges_pret"?" active":""),style:{fontSize:12,padding:"5px 10px"}},"🪪 Badges"),
             React.createElement("button",{onClick:()=>setView("historique_pret"),className:"nav-item"+(badgeView==="historique_pret"?" active":""),style:{fontSize:12,padding:"5px 10px"}},"🕐 Historique"),
-            React.createElement("button",{onClick:()=>setView("colis"),className:"nav-item"+(badgeView==="colis"?" active":""),style:{fontSize:12,padding:"5px 10px"}},"📦 Colis")
+            React.createElement("button",{onClick:()=>setView("colis"),className:"nav-item"+(badgeView==="colis"?" active":""),style:{fontSize:12,padding:"5px 10px"}},"📦 Colis"),React.createElement("button",{onClick:()=>setView("aide"),className:"nav-item"+(badgeView==="aide"?" active":""),style:{fontSize:12,padding:"5px 10px"}},"❓ Aide")
           )
         ),
         React.createElement("div",{style:{display:"flex",alignItems:"center",gap:8}},
@@ -5207,6 +5271,7 @@ useEffect(()=>{
         )
       ),
       React.createElement("main",{style:{maxWidth:1400,margin:"0 auto",padding:"16px 20px"}},
+        badgeView==="aide"?React.createElement(VueAide,{canAccess,peutReglages:false}):
         badgeView==="colis"?React.createElement(VueColis,{showToast,addLog,badges}):
         badgeView==="historique_pret"
           ?React.createElement(VueHistoriquePret,null)
@@ -6588,7 +6653,7 @@ function VueAccueil({badges,casiers,setView,wdCache,setBadges,setCasiers,showToa
         React.createElement("button",{className:"btn-main",onClick:enrArr},"Enregistrer"),
         React.createElement("button",{className:"btn-ghost",title:"Mail IT arrivée",onClick:()=>{const it=(settings&&settings.itEmail)||"";if(!it){showToast("⚠️ Email IT non configuré","err");return;}const wd=foundArr||memePersonne(wdCache?Object.values(wdCache):[],nomArr,prenomArr)[0]||null;const data={nom:wd?wd.nom:nomArr.toUpperCase()||"NC",prenom:wd?wd.prenom:prenomArr||"NC",matricule:wd?wd.matricule:"NC",email:wd?wd.email:"NC",date_entree:dateArr||wd?.hireDate||"NC",manager:managerArr||wd?.manager||"NC",mail_manager:wd?.mailMgr||"NC"};const cc=encodeURIComponent((settings&&settings.ccEmails)||"");window.open("mailto:"+encodeURIComponent(it)+"?"+(cc?"cc="+cc+"&":"")+"subject="+encodeURIComponent("Arrivée — "+data.prenom+" "+data.nom)+"&body="+encodeURIComponent(texteManuel(settings,"autoITArrivee",data)));}},"✉️ IT"),
         React.createElement("button",{className:"btn-ghost",title:"Mail Restaurant arrivée",onClick:()=>{const to=encodeURIComponent((settings&&settings.restaurantEmail)||"");const wd=foundArr||memePersonne(wdCache?Object.values(wdCache):[],nomArr,prenomArr)[0]||null;const data={nom:wd?wd.nom:nomArr.toUpperCase()||"NC",prenom:wd?wd.prenom:prenomArr||"NC",matricule:wd?wd.matricule:"NC",email:wd?wd.email:"NC",date_entree:dateArr||wd?.hireDate||"NC",manager:managerArr||wd?.manager||"NC",mail_manager:wd?.mailMgr||"NC"};window.open("mailto:"+to+"?subject="+encodeURIComponent("Arrivée — "+data.prenom+" "+data.nom)+"&body="+encodeURIComponent(texteManuel(settings,"autoRestoArrivee",data)));}},"🍽️")
-      )
+      ),React.createElement(NoteAide,null,"Crée la fiche et une fiche Field Support (mail à l'IT tout de suite). Mail au restaurant le jour de l'arrivée. ✉️ / 🍽️ : ouvre un mail que tu envoies toi-même.")
     ),
 
     modal==="depart"&&React.createElement(AccueilModal,{title:"Départ",icon:"🔴",onClose:closeModal,maxWidth:460},
@@ -6605,7 +6670,7 @@ function VueAccueil({badges,casiers,setView,wdCache,setBadges,setCasiers,showToa
           React.createElement("div",{className:"dc-txt"},s.label)
         ))
       ),
-      React.createElement("button",{className:"btn-depart",onClick:enrDep},"Enregistrer le départ"),
+      React.createElement("button",{className:"btn-depart",onClick:enrDep},"Enregistrer le départ"),React.createElement(NoteAide,{style:{marginBottom:6}},"Note la date de sortie et crée une fiche Field Support (mail à l'IT tout de suite). Mail au restaurant le jour du départ."),
       React.createElement("div",{className:"mvt-actions",style:{marginTop:8}},
         React.createElement("button",{className:"btn-ghost",style:{flex:1,justifyContent:"center"},title:"Mail IT départ",onClick:()=>{const it=(settings&&settings.itEmail)||"";if(!it){showToast("⚠️ Email IT non configuré","err");return;}const b=memePersonne(badges.filter(x=>x.statut!=="Archivé"),nomDep||prenomDep,nomDep?prenomDep:"")[0];const data=b?{...b,date_sortie_prevue:dateDep||b.date_sortie_prevue||"NC"}:{nom:nomDep.toUpperCase(),prenom:prenomDep,matricule:"NC",serie:"NC",date_sortie_prevue:dateDep||"NC",manager:"NC",mail_manager:"NC"};const cc=encodeURIComponent((settings&&settings.ccEmails)||"");window.open("mailto:"+encodeURIComponent(it)+"?"+(cc?"cc="+cc+"&":"")+"subject="+encodeURIComponent("Départ — "+data.prenom+" "+data.nom)+"&body="+encodeURIComponent(texteManuel(settings,"autoITDepart",data)));}},"✉️ IT"),
         React.createElement("button",{className:"btn-ghost",style:{flex:1,justifyContent:"center"},title:"Mail Restaurant départ",onClick:()=>{const to=encodeURIComponent((settings&&settings.restaurantEmail)||"");const b=memePersonne(badges.filter(x=>x.statut!=="Archivé"),nomDep||prenomDep,nomDep?prenomDep:"")[0];if(!b){showToast("⚠️ Collaborateur introuvable","err");return;}window.open("mailto:"+to+"?subject="+encodeURIComponent("Départ — "+b.prenom+" "+b.nom)+"&body="+encodeURIComponent(texteManuel(settings,"autoRestoDepart",b)));}},"🍽️")
@@ -6964,7 +7029,7 @@ function VueCollaborateurs({badges,casiers,setBadges,setCasiers,showToast,wdCach
         React.createElement("div",{style:{display:"flex",gap:8}},
           React.createElement(Btn,{onClick:save,color:C.blue},"💾 Enregistrer"),
           React.createElement(Btn,{onClick:()=>{setShowForm(false);setEditing(null);},variant:"outline",color:C.gray},"Annuler")
-        )
+        ),React.createElement(NoteAide,{style:{width:"100%"}},form.vip?"Fiche VIP : aucun mail automatique.":"Nouvelle date d'entrée ou de sortie : mail à l'IT la veille et au restaurant le jour même (une fenêtre te le confirme avant).")
       )
     ),
     // Filtres
@@ -7346,7 +7411,7 @@ function VueCasiers({casiers,badges,setCasiers,setBadges,showToast,addLog,setVie
       ),
       React.createElement("div",{style:{display:"flex",gap:8,flexWrap:"wrap",marginTop:6}},React.createElement(Btn,{onClick:enregistrerCasier,color:C.purple},"💾 Enregistrer"),React.createElement(Btn,{onClick:()=>{setShowForm(false);setEditing(null);},variant:"outline",color:C.gray},"Annuler"),
         editing&&(()=>{const c=casiers.find(x=>x.id===editing);return c&&isAVider(c)?React.createElement(Btn,{onClick:()=>{viderCasier(c);setShowForm(false);setEditing(null);},variant:"outline",color:C.orange},"🧹 Vider"):null;})(),
-        editing&&React.createElement(Btn,{onClick:()=>del(editing),variant:"outline",color:C.red,style:{marginLeft:"auto"}},"🗑️ Supprimer")),
+        editing&&React.createElement(Btn,{onClick:()=>del(editing),variant:"outline",color:C.red,style:{marginLeft:"auto"}},"🗑️ Supprimer")),React.createElement(NoteAide,null,"Met aussi à jour le casier sur la fiche du collaborateur et l'écrit dans l'historique du casier."),
       editing&&form.numero&&React.createElement(HistoriqueCasier,{key:editing,numero:form.numero})
     )),
     viewMode==="grille"?React.createElement("div",null,zonesGrid):iosList,
@@ -8820,6 +8885,67 @@ function EcartsWorkday({badges,wdCache,setBadges,addLog,showToast}){
       el("button",{type:"button",className:"btn",style:{fontSize:11,padding:"3px 8px",flexShrink:0},onClick:()=>prendre([e])},"Prendre Workday")))));
 }
 
+
+// ════════════════ AIDE ════════════════
+// Petite note grise sous un bouton : ce qui va se passer
+function NoteAide({children,style}){return React.createElement("div",{className:"note-aide",style:{fontSize:11.5,lineHeight:1.4,color:"var(--text3,#64748B)",marginTop:6,...style}},"ℹ️ ",children);}
+const AIDE_SECTIONS=[
+  {id:"accueil",t:"🏠 Accueil",l:["Tableau de bord : arrivées et départs de la semaine, fiches à compléter, badges à récupérer. Clique sur une carte pour voir la liste.",
+    "Arrivée : crée la fiche du collaborateur et une fiche Field Support (mail à l'IT tout de suite). Le restaurant reçoit un mail le jour de l'arrivée.",
+    "Départ : note la date de sortie et crée une fiche Field Support (mail à l'IT tout de suite). Le restaurant reçoit un mail le jour du départ.",
+    "Boutons ✉️ IT et 🍽️ : ouvrent un mail dans ta messagerie, que tu envoies toi-même.",
+    "Avant d'enregistrer, une fenêtre te dit quels mails vont partir : Annuler pour revenir."]},
+  {id:"field_support",t:"📋 Field Support",l:["Les demandes au service IT (PC, accès…) pour chaque arrivée et chaque départ.","Ouvre une fiche pour la suivre ; clôture-la quand le matériel est remis ou récupéré."]},
+  {id:"collaborateurs",t:"👥 Collaborateurs",l:["Toutes les fiches. Clique sur une ligne pour la modifier.",
+    "Ajouter ou changer une date d'entrée ou de sortie programme les mails à l'IT (la veille) et au restaurant (le jour même).",
+    "Case ⭐ VIP : aucun mail automatique pour cette personne, et elle n'apparaît pas dans les fiches à compléter.",
+    "📡 Vérifier avec Workday : complète les e-mails, managers, dates d'entrée et matricules depuis le dernier fichier Workday.",
+    "🔁 Doublons : même nom et même prénom. « Garder celle-ci » complète la bonne fiche et archive les autres (rien n'est supprimé).",
+    "✉️ Mail de bienvenue : ouvre un mail pour le nouvel arrivant, tu y joins sa photo et tu l'envoies."]},
+  {id:"casiers",t:"🔐 Casiers",l:["Clique sur un casier : attribue-le à quelqu'un (liste déroulante), marque-le « Occupé (sans nom) » ou libère-le.",
+    "L'enregistrement met aussi à jour le casier sur la fiche du collaborateur, et l'écrit dans l'historique du casier.",
+    "🔎 Contrôle : repère les casiers attribués à deux personnes et les fiches qui ne correspondent pas."]},
+  {id:"badges_pret",t:"🪪 Badges de prêt",l:["🔑 Marquer Prêtée : l'emprunteur reçoit tout de suite un mail de prêt (si son e-mail est renseigné).",
+    "S'il ne rend pas le badge : un rappel chaque matin du lundi au vendredi, à partir du lendemain de la date de retour (ou après 24 h sans date).",
+    "Badge déjà prêté : « 💾 Enregistrer » garde la nouvelle date de retour, sans nouveau mail de prêt.",
+    "✅ Retour : le badge redevient disponible et les rappels s'arrêtent."]},
+  {id:"colis",t:"📦 Colis",l:["Enregistre chaque colis reçu (tu peux photographier l'étiquette pour remplir le nom). Aucun mail n'est envoyé automatiquement.",
+    "Préviens le destinataire, puis clique « 📣 Prévenu ». À la remise, fais-le signer : la signature et l'historique sont gardés."]},
+  {id:"rapport",t:"📊 Rapport",l:["Les arrivées, départs et badges à venir, sur une seule page."]},
+  {id:"impression",t:"🏷️ Étiquettes",l:["Prépare et imprime les étiquettes des badges."]},
+  {id:"notifications",t:"🔔 Notifications",l:["Tout ce qui demande ton attention. Le chiffre sur l'icône de l'appli = le nombre de notifications.",
+    "Supprime une notification quand c'est réglé : elle disparaît aussi sur ton téléphone, et ne revient que si la situation change."]},
+  {id:"_reglages",t:"⚙️ Réglages (roue dentée)",l:["Adresses e-mail (IT, restaurant, copie), textes des mails, interrupteurs pour couper les envois, comptes et import / export.",
+    "Import « Racine Commune » : met à jour les fiches sans rien effacer, et te montre un résumé avant."]}
+];
+function VueAide({canAccess,peutReglages}){
+  const el=React.createElement;
+  const secs=AIDE_SECTIONS.filter(x=>x.id==="_reglages"?peutReglages:(!canAccess||canAccess(x.id)));
+  const voitMails=!canAccess||canAccess("accueil")||canAccess("collaborateurs");
+  const L=[["Arrivée ou départ enregistré à l'Accueil","IT (fiche Field Support)","Tout de suite"],
+    ["Date d'entrée","IT","La veille vers 6 h — pas si une fiche Field Support existe déjà"],
+    ["Date d'entrée","Restaurant","Le jour même vers 6 h"],
+    ["Date de sortie","IT","La veille vers 6 h — pas si une fiche Field Support existe déjà"],
+    ["Date de sortie","Restaurant","Le jour même vers 6 h"],
+    ["Badge de prêt sorti","L'emprunteur","Tout de suite"],
+    ["Badge de prêt non rendu","L'emprunteur","Chaque matin (lun.–ven.) à partir du lendemain de la date de retour"],
+    ["Mail de bienvenue, boutons ✉️ et 🍽️","—","Jamais automatique : le mail s'ouvre et tu l'envoies toi-même"]];
+  const td={padding:"8px 10px",borderTop:"1px solid var(--border)",fontSize:12.5,verticalAlign:"top"};
+  const carte=(k,titre,...enfants)=>el("div",{key:k,className:"card",style:{background:"var(--surface)",border:"1px solid var(--border)",borderRadius:12,padding:"14px 16px",marginBottom:12}},
+    el("div",{style:{fontSize:15,fontWeight:800,marginBottom:8}},titre),...enfants);
+  return el("div",null,
+    typeof PageHero!=="undefined"?el(PageHero,{icone:"❓",titre:"Aide",sousTitre:"ce que fait chaque partie de l'application"}):el("div",{style:{margin:"4px 2px 14px"}},el("div",{style:{fontSize:28,fontWeight:800}},"❓ Aide"),el("div",{style:{fontSize:13,color:"var(--text3)"}},"Ce que fait chaque partie de l'application")),
+    voitMails&&carte("mails","📧 Quels mails partent, et quand",
+      window.innerWidth<700?el("div",null,L.map((r,i)=>el("div",{key:i,style:{padding:"8px 0",borderTop:i?"1px solid var(--border)":"none"}},
+          el("div",{style:{fontSize:13.5,fontWeight:700}},r[0]),
+          el("div",{style:{fontSize:13,color:"var(--text2)"}},(r[1]!=="—"?"→ "+r[1]+" · ":"")+r[2])))):
+      el("div",{style:{overflowX:"auto"}},el("table",{style:{width:"100%",borderCollapse:"collapse"}},
+        el("thead",null,el("tr",null,["Ce que tu enregistres","Qui reçoit","Quand"].map(h=>el("th",{key:h,style:{textAlign:"left",fontSize:11,color:"var(--text3)",textTransform:"uppercase",padding:"4px 10px"}},h)))),
+        el("tbody",null,L.map((r,i)=>el("tr",{key:i},r.map((c,j)=>el("td",{key:j,style:{...td,fontWeight:j===0?600:400}},c))))))),
+      el("div",{style:{fontSize:12,color:"var(--text3)",marginTop:8,lineHeight:1.45}},"Pas de mail automatique pour une fiche ⭐ VIP, ni quand l'envoi est coupé dans les Réglages. Un mail déjà parti ne repart pas si tu changes la date. Avant chaque enregistrement qui envoie un mail, une fenêtre te le dit.")),
+    secs.map(x=>carte(x.id,x.t,el("ul",{style:{margin:0,paddingLeft:18}},x.l.map((t,i)=>el("li",{key:i,style:{fontSize:13,lineHeight:1.5,marginBottom:4,color:"var(--text2)"}},t))))));
+}
+
 function SettingsModal({settings,setSettings,showToast,setShowSettings,racineRef,hrRef,hcmRef,importJsonRef,exportExcel,exportJSON,importJSON,badges,setBadges,casiers,wdCache,histo,addLog,canHistorique,canArchives,canHistoriquePret,initialTab}){
   const[tab,setTab]=useState(initialTab||"emails");
   const archivesCount=badges.filter(b=>b.statut==="Archivé").length;
@@ -9219,7 +9345,7 @@ function VueBadgesPret({showToast,addLog}){
       el("div",{style:{marginBottom:10}},
         el("button",{onClick:bpEnregistrer,
           className:"btn btn-primary",style:{justifyContent:"center",fontWeight:700,width:"100%"}},
-          bpSorti?"💾 Enregistrer":"🔑 Marquer Prêtée")
+          bpSorti?"💾 Enregistrer":"🔑 Marquer Prêtée"),el(NoteAide,null,bpSorti?"Enregistre les changements, sans nouveau mail de prêt. Les rappels suivent la date de retour.":"L'emprunteur reçoit tout de suite un mail de prêt (si son e-mail est renseigné), puis un rappel chaque matin s'il ne rend pas le badge après la date de retour.")
       ),
       (selected.statut==="prete"||selected.statut==="empruntee")&&
         el("button",{onClick:()=>doAction(selected.id,"disponible","",""),
@@ -9393,7 +9519,7 @@ function VueColis({showToast,addLog,badges}){
         el("button",{type:"button",className:"btn btn-primary",style:{flex:1,justifyContent:"center",fontWeight:700},onClick:enregistrer},form.id?"Enregistrer":"📦 Enregistrer le colis"),
         form.id&&el("button",{type:"button",className:"btn",onClick:()=>dupliquer(form),title:"Nouveau colis pour la même personne, avec un nouveau numéro"},"⧉ Dupliquer"),
         form.id&&!(form.statut==="recupere"||form.signature)&&el("button",{type:"button",className:"btn btn-danger",onClick:()=>supprimer(form)},"Supprimer"),
-        form.id&&(form.statut==="recupere"||form.signature)&&el("div",{style:{width:"100%",fontSize:11,color:"var(--text3)",textAlign:"center"}},"Colis remis : conservé avec sa signature et son historique, il ne peut pas être supprimé."))));
+        form.id&&(form.statut==="recupere"||form.signature)&&el("div",{style:{width:"100%",fontSize:11,color:"var(--text3)",textAlign:"center"}},"Colis remis : conservé avec sa signature et son historique, il ne peut pas être supprimé.")),el(NoteAide,{style:{width:"100%",marginTop:0}},"Aucun mail automatique : préviens le destinataire, puis clique « 📣 Prévenu ».")));
   const fenRetrait=retrait&&el("div",{style:{position:"fixed",inset:0,background:"rgba(0,0,0,.45)",zIndex:1001,display:"flex",alignItems:"center",justifyContent:"center",padding:16,backdropFilter:"blur(4px)"},onClick:e=>{if(e.target===e.currentTarget)setRetrait(null);}},
     el("div",{style:{background:"var(--surface)",border:"1px solid var(--border)",borderRadius:"var(--radius-lg)",padding:22,width:"100%",maxWidth:400,boxShadow:"0 24px 60px rgba(0,0,0,.2)"}},
       el("div",{style:{fontSize:18,fontWeight:800,marginBottom:4}},"✅ Colis "+num(retrait.c.numero)+" récupéré"),
@@ -9945,11 +10071,13 @@ useEffect(()=>{
     {id:"badges_pret",label:"Badges Prêt",icon:"🪪"},
     {id:"colis",label:"Colis",icon:"📦"},
     {id:"notifications",label:"Notifications"+(notifs.length?" ("+notifs.length+")":""),icon:"🔔"},
+    {id:"aide",label:"Aide",icon:"❓"},
   ];
   const archivesCount=badges.filter(b=>b.statut==="Archivé").length;
   const histoCount=histo.length;
   const fssOpenCount=fssData.filter(f=>!f.cloture&&f.statut!=="Terminée").length;
   const canAccess=useCallback(viewId=>{
+    if(viewId==="aide")return true;
     // Rôle badge : accès exclusif à badges_pret
     if(session&&session.role==="badge")return viewId==="badges_pret"||viewId==="historique_pret"||viewId==="colis";
     // Autres rôles : pas accès à badges_pret
@@ -9983,6 +10111,7 @@ useEffect(()=>{
       case "rapport": return React.createElement(VueRapport,{badges,fssData,setBadges,setFssData,showToast,addLog,setView,setPendingOpen});
       case "impression": return React.createElement(VueImpression,{badges});
       case "badges_pret": return React.createElement(VueBadgesPret,{showToast,addLog});
+      case "aide": return React.createElement(VueAide,{canAccess,peutReglages:!isIT&&!isBadgeOnly});
       case "notifications": return React.createElement(VueNotifications,{items:notifs,supprimer:supprimerNotif,toutSupprimer:toutSupprimerNotifs,restaurer:restaurerNotifs,nbSupprimees:notifsToutes.length-notifs.length,setView});
       case "colis": return React.createElement(VueColis,{showToast,addLog,badges});
       default: return null;
@@ -10004,7 +10133,7 @@ useEffect(()=>{
 
   // ── Rôle badge : interface dédiée Badges de Prêt + Historique ──
   if(isBadge){
-    const badgeView=view==="historique_pret"?"historique_pret":view==="colis"?"colis":"badges_pret";
+    const badgeView=view==="historique_pret"?"historique_pret":view==="colis"?"colis":view==="aide"?"aide":"badges_pret";
     return React.createElement("div",{style:{minHeight:"100vh",background:"var(--bg)"}},
       toast&&React.createElement("div",{className:"toast-anim",style:{position:"fixed",top:20,left:"50%",transform:"translateX(-50%)",zIndex:9999,background:toast.type==="err"?"#7F1D1D":"#14532D",border:"1px solid "+(toast.type==="err"?"rgba(220,38,38,.3)":"rgba(22,163,74,.3)"),color:"#fff",padding:"12px 24px",borderRadius:12,fontSize:13,fontWeight:700,boxShadow:"0 4px 24px rgba(0,0,0,.12)",whiteSpace:"nowrap",pointerEvents:"none"}},toast.msg),
       React.createElement("nav",{className:"ios-topbar",style:{background:"var(--surface)",borderBottom:"1px solid var(--border)",padding:"0 16px",display:"flex",alignItems:"center",justifyContent:"space-between",height:48,position:"sticky",top:0,zIndex:500}},
@@ -10015,7 +10144,7 @@ useEffect(()=>{
           React.createElement("div",{style:{display:"flex",gap:4}},
             React.createElement("button",{onClick:()=>setView("badges_pret"),className:"nav-item"+(badgeView==="badges_pret"?" active":""),style:{fontSize:12,padding:"5px 10px"}},"🪪 Badges"),
             React.createElement("button",{onClick:()=>setView("historique_pret"),className:"nav-item"+(badgeView==="historique_pret"?" active":""),style:{fontSize:12,padding:"5px 10px"}},"🕐 Historique"),
-            React.createElement("button",{onClick:()=>setView("colis"),className:"nav-item"+(badgeView==="colis"?" active":""),style:{fontSize:12,padding:"5px 10px"}},"📦 Colis")
+            React.createElement("button",{onClick:()=>setView("colis"),className:"nav-item"+(badgeView==="colis"?" active":""),style:{fontSize:12,padding:"5px 10px"}},"📦 Colis"),React.createElement("button",{onClick:()=>setView("aide"),className:"nav-item"+(badgeView==="aide"?" active":""),style:{fontSize:12,padding:"5px 10px"}},"❓ Aide")
           )
         ),
         React.createElement("div",{style:{display:"flex",alignItems:"center",gap:8}},
@@ -10024,6 +10153,7 @@ useEffect(()=>{
         )
       ),
       React.createElement("main",{style:{maxWidth:1400,margin:"0 auto",padding:"16px 20px"}},
+        badgeView==="aide"?React.createElement(VueAide,{canAccess,peutReglages:false}):
         badgeView==="colis"?React.createElement(VueColis,{showToast,addLog,badges}):
         badgeView==="historique_pret"
           ?React.createElement(VueHistoriquePret,null)
