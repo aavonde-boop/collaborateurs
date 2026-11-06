@@ -1235,6 +1235,40 @@ function chercheTexte(q,...champs){
   const mots=n(q).split(/\s+/).filter(Boolean);if(!mots.length)return true;
   const hay=n(champs.join(" "));return mots.every(m=>hay.includes(m));
 }
+
+// ════════════════ ANNONCE DES MAILS ════════════════
+// Liste les mails que l'enregistrement va déclencher (mêmes règles que les envois automatiques de Supabase,
+// passage chaque matin vers 6 h : IT la veille, restaurant le jour même).
+function mailsAnnonces({apres,avant,fss,pret}){
+  const st=window._reglages||{};const L=[];
+  if(st.envoiMails===false)return L;
+  const auj=isoLocal(new Date());const prochain=new Date().getHours()<6?auj:isoLocal(new Date(Date.now()+864e5));
+  const dec=(iso,j)=>isoLocal(new Date(new Date(iso+"T12:00:00").getTime()+j*864e5));
+  const fr=iso=>new Date(iso+"T12:00:00").toLocaleDateString("fr-FR",{weekday:"short",day:"2-digit",month:"2-digit"});
+  const ok=x=>/^\d{4}-\d{2}-\d{2}/.test(String(x||""));
+  const qui=b=>(String(b.prenom||"").toLowerCase().replace(/(^|[\s-])(\S)/g,(m,x,c)=>x+c.toUpperCase())+" "+String(b.nom||"").toUpperCase()).trim();
+  const ouvre=iso=>{let d=iso;while([0,6].includes(new Date(d+"T12:00:00").getDay()))d=dec(d,1);return d;};
+  const it=String(st.itEmail||"").trim(),resto=String(st.restaurantEmail||"").trim();
+  if(fss&&st.envoiFSS!==false&&(window._mailIT||window._fssNotifEmail))L.push("• Maintenant : mail Field Support ("+fss.toLowerCase()+" de "+qui(apres)+") à "+(window._mailIT||window._fssNotifEmail));
+  if(pret){if(st.envoiPret!==false&&String(pret.email||"").trim())L.push("• Maintenant : mail de prêt du badge "+pret.code+" à "+pret.email);
+    if(st.envoiRappel!==false&&String(pret.email||"").trim())L.push("• Puis un rappel chaque matin s'il n'est pas rendu"+(ok(pret.retour)?", à partir du "+fr(ouvre(dec(pret.retour.slice(0,10),1))):" (après 24 h)"));}
+  if(apres&&!apres.vip&&apres.statut!=="Badge VIP"&&apres.statut!=="Archivé"){
+    const fssExiste=sit=>st.envoiFSS!==false&&(fss===sit||(window._fssData||[]).some(f=>String(f.nom||"").trim().toUpperCase()===String(apres.nom||"").trim().toUpperCase()&&String(f.prenom||"").trim().toLowerCase()===String(apres.prenom||"").trim().toLowerCase()&&f.situation===sit));
+    [["date_entree","Arrivée",true],["date_sortie_prevue","Départ",false]].forEach(([k,sit,arr])=>{
+      const d=ok(apres[k])?String(apres[k]).slice(0,10):"";if(!d)return;
+      const d0=avant&&ok(avant[k])?String(avant[k]).slice(0,10):"";if(d0===d)return;
+      if(d0&&dec(d0,-1)<=auj)return; // le mail de l'ancienne date est déjà parti : il ne repart pas
+      [["IT",-1,it,st.envoiIT],["Restaurant",0,resto,st.envoiResto]].forEach(([cible,av,dest,on])=>{
+        if(on===false||!dest)return;if(cible==="IT"&&fssExiste(sit))return;
+        let quand=dec(d,av);if(quand<prochain)quand=prochain;
+        if(arr?quand>d:quand>dec(d,7))return;
+        L.push("• "+(quand===auj?"Ce matin":fr(quand)+" vers 6 h")+" : mail "+cible+" ("+sit.toLowerCase()+" de "+qui(apres)+" le "+fr(d)+") à "+dest);});
+    });
+  }
+  return L;
+}
+function confirmerMails(L){if(!L||!L.length)return true;
+  return confirm("📧 Cet enregistrement va envoyer :\n\n"+L.join("\n")+"\n\nOK pour enregistrer · Annuler pour revenir");}
 function parseRacineAsync(file,badges,setBadges,setCasiers,showToast,setLoading,addLog){
   setLoading(true);
   const reader=new FileReader();
@@ -1402,6 +1436,7 @@ function VueAccueil({badges,casiers,setView,wdCache,setBadges,setCasiers,showToa
     const c=(foundDep&&foundDep.id&&badges.find(b=>b.id===foundDep.id))||cands[0];
     if(!c){showToast("⚠️ Collaborateur introuvable : nom et prénom exacts","err");return;}
     const u={...c,date_sortie_prevue:dateDep||today,from_accueil:true};
+    if(!confirmerMails(mailsAnnonces({apres:u,avant:c,fss:"Départ"})))return;
     setBadges(p=>p.map(b=>b.id===c.id?u:b));
     if(sb)(async()=>{try{await sb.from("lp24_badges").upsert(u);}catch(e){}})();
     addLog("Départ","Date sortie : "+c.prenom+" "+c.nom+(dateDep?" → "+dateDep:""));
@@ -1432,6 +1467,7 @@ function VueAccueil({badges,casiers,setView,wdCache,setBadges,setCasiers,showToa
     if(!prenomArr.trim()&&!foundArr){showToast("⚠️ Saisis aussi le prénom","err");return;}
     if(ex){showToast("⚠️ Déjà dans le tableau : "+((ex.prenom||"")+" "+(ex.nom||"")).trim()+(ex.matricule?" (mat. "+ex.matricule+")":"")+(ex.statut?" — "+ex.statut:"")+" : pas de doublon créé","err");return;}
     const nb={id:"tmp_"+Date.now(),nom:wd?wd.nom:nomArr.toUpperCase(),prenom:wd?wd.prenom:prenomArr,matricule:wd?wd.matricule:"",email:wd?wd.email:"",serie:"",zeplug:"",carte_rechargement:"",casier:"",manager:managerArr||wd?.manager||"",mail_manager:wd?.mailMgr||"",statut:"Actif",badge_donne:true,date_entree:dateArr||wd?.hireDate||"",date_sortie_prevue:"",date_archive:"",commentaire:"",date_ajout:todayISO(),etiquette_imprimee:false,from_accueil:true};
+    if(!confirmerMails(mailsAnnonces({apres:nb,avant:null,fss:"Arrivée"})))return;
     setBadges(p=>[...p,nb]);
     if(sb){const{id,...row}=nb;sbFire(sb.from("lp24_badges").insert(row).select("id").single(),"collaborateur").then(r=>{if(!r){setBadges(p=>p.filter(x=>x!==nb));return;}if(r&&r.data&&r.data.id!=null&&r.data.id!==nb.id)setBadges(p=>p.map(x=>x===nb||(x.id===nb.id&&x.nom===nb.nom)?{...x,id:r.data.id}:x));});}
     addLog("Arrivée",(wd?"Workday":"Manuel")+" : "+nb.prenom+" "+nb.nom);
@@ -2049,6 +2085,7 @@ function VueCollaborateurs({badges,casiers,setBadges,setCasiers,showToast,wdCach
     if(!form.nom.trim())return;
     if(form.serie){const autre=badges.find(b=>b.serie===form.serie&&b.id!==editing&&b.statut!=="Archivé");if(autre&&!confirm("⚠️ Badge N°"+form.serie+" déjà attribué à "+autre.prenom+" "+autre.nom+".\nContinuer ?"))return;}
     {const prevC=editing?(badges.find(b=>b.id===editing)||{}).casier:"";if(form.casier&&form.casier!==prevC&&!(await checkCasierLibre(form.casier,editing)))return;}
+    if(!confirmerMails(mailsAnnonces({apres:editing?{...(badges.find(b=>b.id===editing)||{}),...form}:form,avant:editing?badges.find(b=>b.id===editing):null})))return;
     if(editing){
       const old=badges.find(b=>b.id===editing);const updated={...old,...form};
       setBadges(p=>p.map(b=>b.id===editing?updated:b));
@@ -4186,6 +4223,7 @@ function VueBadgesPret({showToast,addLog}){
 
   const doAction=(badgeId,newStatut,emprunteur,dateRetour,emailEmp)=>{
     const old=badges.find(b=>b.id===badgeId);
+    if(newStatut==="prete"&&old&&old.statut!=="prete"&&old.statut!=="empruntee"&&!confirmerMails(mailsAnnonces({pret:{code:old.code,email:String(emailEmp||"").trim(),retour:dateRetour||""}})))return;
     const now=todayISO();
     const updated=badges.map(b=>{
       if(b.id!==badgeId)return b;
@@ -4763,6 +4801,8 @@ function App(){
   // ── Exposer fssEmail pour EmailJS ──
   useEffect(()=>{window._fssNotifEmail=settings.fssEmail||"";},[settings.fssEmail]);
   useEffect(()=>{window._envoisMails={envoiMails:settings.envoiMails,envoiFSS:settings.envoiFSS};},[settings.envoiMails,settings.envoiFSS]);
+  useEffect(()=>{window._reglages=settings;},[settings]);
+  useEffect(()=>{window._fssData=fssData;},[fssData]);
   useEffect(()=>{window._mailSignature=texteMail(settings,"autoSignature");},[settings.autoSignature]);
   useEffect(()=>{window._mailIT=settings.itEmail||"";},[settings.itEmail]);
   // ── Pastille + notifications des arrivées / départs du jour ──
@@ -5900,6 +5940,40 @@ function chercheTexte(q,...champs){
   const mots=n(q).split(/\s+/).filter(Boolean);if(!mots.length)return true;
   const hay=n(champs.join(" "));return mots.every(m=>hay.includes(m));
 }
+
+// ════════════════ ANNONCE DES MAILS ════════════════
+// Liste les mails que l'enregistrement va déclencher (mêmes règles que les envois automatiques de Supabase,
+// passage chaque matin vers 6 h : IT la veille, restaurant le jour même).
+function mailsAnnonces({apres,avant,fss,pret}){
+  const st=window._reglages||{};const L=[];
+  if(st.envoiMails===false)return L;
+  const auj=isoLocal(new Date());const prochain=new Date().getHours()<6?auj:isoLocal(new Date(Date.now()+864e5));
+  const dec=(iso,j)=>isoLocal(new Date(new Date(iso+"T12:00:00").getTime()+j*864e5));
+  const fr=iso=>new Date(iso+"T12:00:00").toLocaleDateString("fr-FR",{weekday:"short",day:"2-digit",month:"2-digit"});
+  const ok=x=>/^\d{4}-\d{2}-\d{2}/.test(String(x||""));
+  const qui=b=>(String(b.prenom||"").toLowerCase().replace(/(^|[\s-])(\S)/g,(m,x,c)=>x+c.toUpperCase())+" "+String(b.nom||"").toUpperCase()).trim();
+  const ouvre=iso=>{let d=iso;while([0,6].includes(new Date(d+"T12:00:00").getDay()))d=dec(d,1);return d;};
+  const it=String(st.itEmail||"").trim(),resto=String(st.restaurantEmail||"").trim();
+  if(fss&&st.envoiFSS!==false&&(window._mailIT||window._fssNotifEmail))L.push("• Maintenant : mail Field Support ("+fss.toLowerCase()+" de "+qui(apres)+") à "+(window._mailIT||window._fssNotifEmail));
+  if(pret){if(st.envoiPret!==false&&String(pret.email||"").trim())L.push("• Maintenant : mail de prêt du badge "+pret.code+" à "+pret.email);
+    if(st.envoiRappel!==false&&String(pret.email||"").trim())L.push("• Puis un rappel chaque matin s'il n'est pas rendu"+(ok(pret.retour)?", à partir du "+fr(ouvre(dec(pret.retour.slice(0,10),1))):" (après 24 h)"));}
+  if(apres&&!apres.vip&&apres.statut!=="Badge VIP"&&apres.statut!=="Archivé"){
+    const fssExiste=sit=>st.envoiFSS!==false&&(fss===sit||(window._fssData||[]).some(f=>String(f.nom||"").trim().toUpperCase()===String(apres.nom||"").trim().toUpperCase()&&String(f.prenom||"").trim().toLowerCase()===String(apres.prenom||"").trim().toLowerCase()&&f.situation===sit));
+    [["date_entree","Arrivée",true],["date_sortie_prevue","Départ",false]].forEach(([k,sit,arr])=>{
+      const d=ok(apres[k])?String(apres[k]).slice(0,10):"";if(!d)return;
+      const d0=avant&&ok(avant[k])?String(avant[k]).slice(0,10):"";if(d0===d)return;
+      if(d0&&dec(d0,-1)<=auj)return; // le mail de l'ancienne date est déjà parti : il ne repart pas
+      [["IT",-1,it,st.envoiIT],["Restaurant",0,resto,st.envoiResto]].forEach(([cible,av,dest,on])=>{
+        if(on===false||!dest)return;if(cible==="IT"&&fssExiste(sit))return;
+        let quand=dec(d,av);if(quand<prochain)quand=prochain;
+        if(arr?quand>d:quand>dec(d,7))return;
+        L.push("• "+(quand===auj?"Ce matin":fr(quand)+" vers 6 h")+" : mail "+cible+" ("+sit.toLowerCase()+" de "+qui(apres)+" le "+fr(d)+") à "+dest);});
+    });
+  }
+  return L;
+}
+function confirmerMails(L){if(!L||!L.length)return true;
+  return confirm("📧 Cet enregistrement va envoyer :\n\n"+L.join("\n")+"\n\nOK pour enregistrer · Annuler pour revenir");}
 function parseRacineAsync(file,badges,setBadges,setCasiers,showToast,setLoading,addLog){
   setLoading(true);
   const reader=new FileReader();
@@ -6067,6 +6141,7 @@ function VueAccueil({badges,casiers,setView,wdCache,setBadges,setCasiers,showToa
     const c=(foundDep&&foundDep.id&&badges.find(b=>b.id===foundDep.id))||cands[0];
     if(!c){showToast("⚠️ Collaborateur introuvable : nom et prénom exacts","err");return;}
     const u={...c,date_sortie_prevue:dateDep||today,from_accueil:true};
+    if(!confirmerMails(mailsAnnonces({apres:u,avant:c,fss:"Départ"})))return;
     setBadges(p=>p.map(b=>b.id===c.id?u:b));
     if(sb)(async()=>{try{await sb.from("lp24_badges").upsert(u);}catch(e){}})();
     addLog("Départ","Date sortie : "+c.prenom+" "+c.nom+(dateDep?" → "+dateDep:""));
@@ -6097,6 +6172,7 @@ function VueAccueil({badges,casiers,setView,wdCache,setBadges,setCasiers,showToa
     if(!prenomArr.trim()&&!foundArr){showToast("⚠️ Saisis aussi le prénom","err");return;}
     if(ex){showToast("⚠️ Déjà dans le tableau : "+((ex.prenom||"")+" "+(ex.nom||"")).trim()+(ex.matricule?" (mat. "+ex.matricule+")":"")+(ex.statut?" — "+ex.statut:"")+" : pas de doublon créé","err");return;}
     const nb={id:"tmp_"+Date.now(),nom:wd?wd.nom:nomArr.toUpperCase(),prenom:wd?wd.prenom:prenomArr,matricule:wd?wd.matricule:"",email:wd?wd.email:"",serie:"",zeplug:"",carte_rechargement:"",casier:"",manager:managerArr||wd?.manager||"",mail_manager:wd?.mailMgr||"",statut:"Actif",badge_donne:true,date_entree:dateArr||wd?.hireDate||"",date_sortie_prevue:"",date_archive:"",commentaire:"",date_ajout:todayISO(),etiquette_imprimee:false,from_accueil:true};
+    if(!confirmerMails(mailsAnnonces({apres:nb,avant:null,fss:"Arrivée"})))return;
     setBadges(p=>[...p,nb]);
     if(sb){const{id,...row}=nb;sbFire(sb.from("lp24_badges").insert(row).select("id").single(),"collaborateur").then(r=>{if(!r){setBadges(p=>p.filter(x=>x!==nb));return;}if(r&&r.data&&r.data.id!=null&&r.data.id!==nb.id)setBadges(p=>p.map(x=>x===nb||(x.id===nb.id&&x.nom===nb.nom)?{...x,id:r.data.id}:x));});}
     addLog("Arrivée",(wd?"Workday":"Manuel")+" : "+nb.prenom+" "+nb.nom);
@@ -6701,6 +6777,7 @@ function VueCollaborateurs({badges,casiers,setBadges,setCasiers,showToast,wdCach
     if(!form.nom.trim())return;
     if(form.serie){const autre=badges.find(b=>b.serie===form.serie&&b.id!==editing&&b.statut!=="Archivé");if(autre&&!confirm("⚠️ Badge N°"+form.serie+" déjà attribué à "+autre.prenom+" "+autre.nom+".\nContinuer ?"))return;}
     {const prevC=editing?(badges.find(b=>b.id===editing)||{}).casier:"";if(form.casier&&form.casier!==prevC&&!(await checkCasierLibre(form.casier,editing)))return;}
+    if(!confirmerMails(mailsAnnonces({apres:editing?{...(badges.find(b=>b.id===editing)||{}),...form}:form,avant:editing?badges.find(b=>b.id===editing):null})))return;
     if(editing){
       const old=badges.find(b=>b.id===editing);const updated={...old,...form};
       setBadges(p=>p.map(b=>b.id===editing?updated:b));
@@ -8958,6 +9035,7 @@ function VueBadgesPret({showToast,addLog}){
 
   const doAction=(badgeId,newStatut,emprunteur,dateRetour,emailEmp)=>{
     const old=badges.find(b=>b.id===badgeId);
+    if(newStatut==="prete"&&old&&old.statut!=="prete"&&old.statut!=="empruntee"&&!confirmerMails(mailsAnnonces({pret:{code:old.code,email:String(emailEmp||"").trim(),retour:dateRetour||""}})))return;
     const now=todayISO();
     const updated=badges.map(b=>{
       if(b.id!==badgeId)return b;
@@ -9540,6 +9618,8 @@ function App(){
   // ── Exposer fssEmail pour EmailJS ──
   useEffect(()=>{window._fssNotifEmail=settings.fssEmail||"";},[settings.fssEmail]);
   useEffect(()=>{window._envoisMails={envoiMails:settings.envoiMails,envoiFSS:settings.envoiFSS};},[settings.envoiMails,settings.envoiFSS]);
+  useEffect(()=>{window._reglages=settings;},[settings]);
+  useEffect(()=>{window._fssData=fssData;},[fssData]);
   useEffect(()=>{window._mailSignature=texteMail(settings,"autoSignature");},[settings.autoSignature]);
   useEffect(()=>{window._mailIT=settings.itEmail||"";},[settings.itEmail]);
   // ── Pastille + notifications des arrivées / départs du jour ──
