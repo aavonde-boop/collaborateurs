@@ -2938,9 +2938,6 @@ function VueImpression({badges,settings,setSettings}){
     const d=String(b.date_entree||"").slice(0,10);return /^\d{4}-\d{2}-\d{2}$/.test(d)&&d>=ilYa30j;};
   const listeAImprimer=useMemo(()=>badges.filter(aImprimer),[badges,settings&&settings.etiqImprimees]);
   const filtered=useMemo(()=>search.trim()?badges.filter(b=>b.statut!=="Archivé"&&chercheTexte(search,b.nom,b.prenom,b.matricule,b.serie)):listeAImprimer,[badges,search,listeAImprimer]);
-  // au départ, les étiquettes à imprimer sont cochées
-  const initSel=useRef(false);
-  useEffect(()=>{if(!initSel.current&&listeAImprimer.length){initSel.current=true;setSelected(new Set(listeAImprimer.map(b=>b.id)));}},[listeAImprimer.length]);
   const[aConfirmer,setAConfirmer]=useState(null);
   const marquerImprimees=liste=>{if(!setSettings)return;setSettings(st=>{const m={...(st.etiqImprimees||{})};liste.forEach(b=>{if(typeof b.id==="number")m[b.id]=sig(b);});return{...st,etiqImprimees:m};});
     setSelected(new Set());setAConfirmer(null);};
@@ -7809,9 +7806,6 @@ function VueImpression({badges,settings,setSettings}){
     const d=String(b.date_entree||"").slice(0,10);return /^\d{4}-\d{2}-\d{2}$/.test(d)&&d>=ilYa30j;};
   const listeAImprimer=useMemo(()=>badges.filter(aImprimer),[badges,settings&&settings.etiqImprimees]);
   const filtered=useMemo(()=>search.trim()?badges.filter(b=>b.statut!=="Archivé"&&chercheTexte(search,b.nom,b.prenom,b.matricule,b.serie)):listeAImprimer,[badges,search,listeAImprimer]);
-  // au départ, les étiquettes à imprimer sont cochées
-  const initSel=useRef(false);
-  useEffect(()=>{if(!initSel.current&&listeAImprimer.length){initSel.current=true;setSelected(new Set(listeAImprimer.map(b=>b.id)));}},[listeAImprimer.length]);
   const[aConfirmer,setAConfirmer]=useState(null);
   const marquerImprimees=liste=>{if(!setSettings)return;setSettings(st=>{const m={...(st.etiqImprimees||{})};liste.forEach(b=>{if(typeof b.id==="number")m[b.id]=sig(b);});return{...st,etiqImprimees:m};});
     setSelected(new Set());setAConfirmer(null);};
