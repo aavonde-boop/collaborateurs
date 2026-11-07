@@ -760,6 +760,102 @@
   html:not(.ios-ui) .kpi-std>div:first-child{font-size:28px!important;font-weight:800!important;line-height:1!important;}
   html:not(.ios-ui) .kpi-std>div:nth-child(2){font-size:11px!important;font-weight:600!important;margin-top:4px!important;}
 </style>
+<style id="moderne">
+:root{--bg:#F6F7F9;--border:#E6E9EE;--radius-lg:16px;--text3:#6B7280;}
+body{letter-spacing:-.006em;-webkit-font-smoothing:antialiased}
+/* Titres de page : plus de bandeau bleu marine, un titre simple et aéré */
+.hero{background:transparent!important;color:var(--text)!important;padding:10px 2px 6px!important;border-radius:0!important;box-shadow:none!important;margin-bottom:8px!important}
+.hero h1{font-size:28px!important;font-weight:800!important;letter-spacing:-.03em!important;color:var(--text)!important;margin-bottom:2px!important}
+.hero .greet{color:var(--text3)!important;font-size:13.5px!important;font-weight:500}
+.hero .anniv-line{color:#B45309!important}
+.hero-search-wrap input{background:var(--surface)!important;border:1px solid var(--border)!important;color:var(--text)!important;box-shadow:0 1px 2px rgba(16,24,40,.05)}
+.hero-search-wrap input::placeholder,.hero-search-wrap .ic{color:var(--text3)!important}
+.hero-actions .btn,.hero-actions button{color:var(--text)!important;background:var(--surface)!important;border:1px solid var(--border)!important;box-shadow:0 1px 2px rgba(16,24,40,.05)}
+.hero-actions .btn-primary{background:var(--accent2)!important;color:#fff!important;border-color:transparent!important}
+/* Bascule Collaborateur / N° de badge de l'Accueil */
+.hero .search-tab{background:var(--surface)!important;color:var(--text2)!important;border:1px solid var(--border)!important}
+.hero .search-tab.active{background:var(--text)!important;color:var(--surface)!important;border-color:var(--text)!important}
+/* Cartes et compteurs : plus légers */
+.card,.kpi-card{box-shadow:0 1px 2px rgba(16,24,40,.04),0 2px 6px rgba(16,24,40,.04)!important}
+/* Tableaux : en-têtes discrets, lignes aérées, survol */
+table thead th{background:transparent!important;color:var(--text3)!important;font-size:11px!important;font-weight:700!important;letter-spacing:.05em;border-bottom:1px solid var(--border)!important}
+table tbody tr{background:var(--surface)!important;transition:background .12s}
+table tbody tr:hover{background:var(--surface2)!important}
+table tbody td{border-bottom:1px solid var(--border)}
+/* Barre du haut et menu */
+.desktop-nav{background:rgba(255,255,255,.85)!important;backdrop-filter:saturate(1.6) blur(10px);-webkit-backdrop-filter:saturate(1.6) blur(10px);height:56px!important;box-shadow:none!important}
+body.dark .desktop-nav{background:rgba(20,27,46,.85)!important}
+.nav-item{border-radius:10px!important;padding:7px 11px!important;font-size:13px!important;font-weight:600!important;color:var(--text2)!important;gap:7px!important;border:1px solid transparent!important}
+.nav-item:hover{background:var(--surface2)!important;color:var(--text)!important}
+.nav-item.active{background:var(--surface)!important;color:var(--text)!important;border-color:var(--border)!important;box-shadow:0 1px 2px rgba(16,24,40,.08)!important}
+.nav-item.active .ico-nav{color:var(--accent2)}
+.btn,.btn-icon,.inp,input,select,textarea{border-radius:10px!important}
+.btn-icon{display:inline-flex!important;align-items:center;gap:6px}
+.ico-nav{display:inline-block;flex-shrink:0;vertical-align:-3px}
+/* iPhone : même titre clair à la place du bandeau */
+.ios-head,.cc-top{background:transparent!important;color:var(--text)!important;padding:4px 2px 6px!important;box-shadow:none!important}
+.ios-head h1.ios-large,.cc-top h1{color:var(--text)!important;letter-spacing:-.03em}
+.ios-head .ios-sub,.ios-head p,.ios-head h1.ios-large+.ios-sub,body .ios-head .ios-sub,.cc-top p{color:var(--text3)!important;opacity:1!important}
+.ios-head .ios-link{background:var(--surface)!important;border:1px solid var(--border)!important;color:var(--text)!important}
+.ios-head .ios-seg{background:var(--surface2)!important}
+.ios-head .ios-seg-btn{color:var(--text2)!important}
+.ios-head .ios-seg-btn.on{background:var(--surface)!important;color:var(--text)!important;box-shadow:0 1px 3px rgba(16,24,40,.12)}
+.ios-head .ios-search{background:var(--surface)!important;border:1px solid var(--border)!important}
+.ios-head .ios-search input{color:var(--text)!important}
+/* iPhone : barre du bas */
+.ios-tab .ico-nav{width:24px;height:24px}
+.ios-tab.active .ico-nav,.ios-tab[aria-selected="true"] .ico-nav{color:var(--accent2)}
+</style>
+<style id="look">
+.nav-links>*{display:none!important}
+.burger{display:inline-flex;align-items:center;justify-content:center;width:38px;height:38px;border-radius:10px;border:1px solid var(--border);background:var(--surface);cursor:pointer;color:var(--text);margin-right:10px}
+.burger:hover{background:var(--surface2)}
+.titre-page{display:flex;align-items:center;gap:8px;font-weight:800;font-size:16px;letter-spacing:-.02em;color:var(--text)}
+.ml-fond{position:fixed;inset:0;background:rgba(15,23,42,.35);z-index:2000;animation:mlf .15s ease}
+@keyframes mlf{from{opacity:0}to{opacity:1}}@keyframes mls{from{transform:translateX(-100%)}to{transform:none}}
+.ml{position:absolute;left:0;top:0;bottom:0;width:272px;background:#0F172A;color:#CBD5E1;padding:16px 14px;display:flex;flex-direction:column;gap:2px;overflow-y:auto;animation:mls .2s ease;box-shadow:12px 0 40px rgba(0,0,0,.25)}
+.ml-brand{display:flex;align-items:center;gap:10px;padding:4px 6px 16px;color:#fff;font-weight:800;font-size:15px}
+.ml-logo{width:32px;height:32px;border-radius:9px;background:linear-gradient(135deg,#3B82F6,#7C3AED);display:grid;place-items:center;font-size:15px}
+.ml-x{margin-left:auto;background:rgba(255,255,255,.08);border:none;color:#CBD5E1;border-radius:8px;width:28px;height:28px;cursor:pointer}
+.ml-sec{font-size:10.5px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:#64748B;padding:14px 10px 6px}
+.ml-it{display:flex;align-items:center;gap:11px;padding:9px 10px;border-radius:9px;font-weight:600;font-size:13.5px;color:#CBD5E1;background:none;border:none;cursor:pointer;text-align:left;font-family:inherit;width:100%}
+.ml-it:hover{background:rgba(255,255,255,.06);color:#fff}.ml-it.on{background:rgba(255,255,255,.12);color:#fff}
+.ml-n{margin-left:auto;background:rgba(255,255,255,.14);color:#E2E8F0;font-size:11px;border-radius:999px;padding:1px 8px}
+.ml-me{display:flex;align-items:center;gap:10px;padding:12px 8px 4px;margin-top:8px;border-top:1px solid rgba(255,255,255,.08)}
+.ml-me b{color:#fff;font-size:13px;display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.ml-me span{font-size:11.5px;color:#94A3B8}
+.avatar{display:inline-grid;place-items:center;border-radius:50%;color:#fff;font-weight:800;flex-shrink:0;letter-spacing:.01em;line-height:1}
+.cell-nom{display:flex;align-items:center;gap:9px}
+.ct-av{color:#fff!important}
+/* Aujourd'hui */
+.auj{margin-bottom:18px}
+.auj-kpis{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:14px;margin-bottom:16px}
+.auj-kpi{position:relative;text-align:left;background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:14px 16px;cursor:pointer;font-family:inherit;color:var(--text);box-shadow:0 1px 2px rgba(16,24,40,.04),0 4px 14px rgba(16,24,40,.04);overflow:hidden;min-height:104px}
+.auj-kpi:hover{border-color:#C7D2FE}
+.auj-l{font-size:12.5px;color:var(--text3);font-weight:600}.auj-v{font-size:30px;font-weight:800;letter-spacing:-.03em;margin-top:2px}.auj-d{font-size:12px;font-weight:700;min-height:16px}
+.auj-kpi .courbe{position:absolute;right:12px;bottom:12px}
+.auj-frise{background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:16px 18px;box-shadow:0 1px 2px rgba(16,24,40,.04),0 4px 14px rgba(16,24,40,.04)}
+.auj-h{font-size:15.5px;font-weight:800;letter-spacing:-.02em;margin-bottom:10px}.auj-h small{font-weight:600;color:var(--text3);font-size:12.5px}
+.auj-vide{color:var(--text3);font-size:13px;padding:6px 0}
+.auj-ev{display:flex;align-items:center;gap:12px;padding:10px 12px;border:1px solid var(--border);border-radius:12px;margin-bottom:8px;cursor:pointer;background:var(--surface)}
+.auj-ev:hover{background:var(--surface2)}
+.auj-dot{width:10px;height:10px;border-radius:50%;flex-shrink:0}
+.auj-t{font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:.04em}.auj-n{font-weight:800;font-size:14.5px}.auj-s{color:var(--text3);font-size:12.5px}
+.auj-chips{display:flex;gap:6px;flex-wrap:wrap;margin-top:6px}.auj-go{color:var(--text3);font-size:22px}
+.auj-plus{color:var(--text3);font-size:12.5px;padding-top:4px}
+.chip{display:inline-flex;align-items:center;font-size:11.5px;font-weight:700;border-radius:999px;padding:3px 9px;white-space:nowrap}
+.chip-g{background:#E9F7EF;color:#16A34A}.chip-o{background:#FFF1E7;color:#EA580C}.chip-r{background:#FDECEC;color:#DC2626}.chip-b{background:#EEF3FF;color:#2563EB}.chip-v{background:#F3EEFF;color:#7C3AED}.chip-n{background:var(--surface2);color:var(--text2)}
+@media(max-width:900px){.auj-kpis{grid-template-columns:repeat(2,minmax(0,1fr))}.auj-kpi .courbe{width:70px}}
+/* iPhone : titres de page sans bandeau */
+html body main h1.ios-large,html body.dark main h1.ios-large{background:none!important;color:var(--text)!important;font-size:30px!important;letter-spacing:-.03em!important;padding:6px 2px 2px!important;border-radius:0!important}
+html body main h1.ios-large+.ios-sub,html body.dark main h1.ios-large+.ios-sub{background:none!important;color:var(--text3)!important;padding:0 2px 12px!important;border-radius:0!important}
+html body main h1.ios-large>span{background:var(--surface2)!important;color:var(--text2)!important}
+html body.dark .ios-head,html body.dark .cc-top{background:transparent!important}
+@media(max-width:700px){.auj-kpi .courbe{top:12px;bottom:auto;right:10px;width:64px;height:26px}.auj-kpi{min-height:96px}}
+/* Fiche collaborateur : panneau sur le côté droit */
+.panneau-fond{justify-content:flex-end!important;align-items:stretch!important;padding:0!important;background:rgba(15,23,42,.3)!important}
+.panneau-fond>.panneau{max-width:620px!important;width:100%!important;max-height:none!important;height:100vh;border-radius:18px 0 0 18px!important;border-top:none!important;animation:pan .2s ease;padding:26px 28px!important}
+@keyframes pan{from{transform:translateX(40px);opacity:.4}to{transform:none;opacity:1}}
+</style>
 </head>
 <body>
 <div id="root"></div>
@@ -1368,7 +1464,7 @@ function parseMSListsCSV(text){
 function buildBody(template, data){
   return (template||"").replace(/\{(\w+)\}/g, (_,k)=>data[k]||"NC");
 }
-function VueAccueil({badges,casiers,setView,wdCache,setBadges,setCasiers,showToast,addLog,settings,fssData,setFssData,isIT,histo,openHistorique,openDonnees,pendingOpen,setPendingOpen}){
+function VueAccueil({notifExtra,badges,casiers,setView,wdCache,setBadges,setCasiers,showToast,addLog,settings,fssData,setFssData,isIT,histo,openHistorique,openDonnees,pendingOpen,setPendingOpen}){
   // ── Ouvre directement la fiche d'un collaborateur depuis l'accueil (au lieu de juste changer d'onglet) ──
   const openCollab=b=>{
     if(isIT)return;
@@ -1647,8 +1743,8 @@ function VueAccueil({badges,casiers,setView,wdCache,setBadges,setCasiers,showToa
     React.createElement("div",{className:"hero",style:{marginBottom:12}},
       React.createElement("div",{className:"hero-top"},
         React.createElement("div",null,
-          React.createElement("h1",null,greeting+" 👋"),
-          React.createElement("p",{className:"greet"},dateLongStr+" · "+clockStr+" — Prochain rapport : "+getNextFriday()),
+          React.createElement("h1",null,"Aujourd'hui"),
+          React.createElement("p",{className:"greet"},greeting+" · "+dateLongStr+" · "+clockStr+" — Prochain rapport : "+getNextFriday()),
           anniversaire.length>0&&React.createElement("p",{className:"anniv-line"},"🎂 Anniversaire d'arrivée : "+anniversaire.map(b=>b.prenom+" "+b.nom).join(", "))
         ),
         React.createElement("div",{className:"hero-actions"},
@@ -1686,6 +1782,7 @@ function VueAccueil({badges,casiers,setView,wdCache,setBadges,setCasiers,showToa
         )
       )
     ),
+    React.createElement(BlocAujourdhui,{badges,extra:notifExtra,setView}),
 
     // ══════════════ 1) NOUVEAUTÉS — ce qui a été saisi / importé / à compléter, en un coup d'œil ══════════════
     React.createElement("div",{className:"news-grid",style:{marginBottom:10}},
@@ -2155,8 +2252,11 @@ function VueCollaborateurs({badges,casiers,setBadges,setCasiers,showToast,wdCach
       showDbl&&React.createElement(FenetreDoublons,{badges,setBadges,onClose:()=>setShowDbl(false),showToast,addLog})
     ),
     // Modal formulaire
-    showForm&&React.createElement("div",{style:{position:"fixed",inset:0,background:"rgba(0,0,0,.5)",zIndex:1000,display:"flex",alignItems:"center",justifyContent:"center",padding:16},onClick:e=>{if(e.target===e.currentTarget){setShowForm(false);setEditing(null);}}},
-      React.createElement("div",{style:{background:"#fff",borderRadius:14,boxShadow:"0 8px 40px rgba(0,0,0,.25)",padding:24,width:"100%",maxWidth:820,maxHeight:"90vh",overflowY:"auto",borderTop:"4px solid "+C.blue}},
+    showForm&&React.createElement("div",{className:"panneau-fond",style:{position:"fixed",inset:0,background:"rgba(0,0,0,.5)",zIndex:1000,display:"flex",alignItems:"center",justifyContent:"center",padding:16},onClick:e=>{if(e.target===e.currentTarget){setShowForm(false);setEditing(null);}}},
+      React.createElement("div",{className:"panneau",style:{background:"var(--surface)",borderRadius:14,boxShadow:"0 8px 40px rgba(0,0,0,.25)",padding:24,width:"100%",maxWidth:820,maxHeight:"90vh",overflowY:"auto",borderTop:"4px solid "+C.blue}},
+        editing&&React.createElement("div",{style:{display:"flex",alignItems:"center",gap:14,marginBottom:14}},React.createElement(Avatar,{prenom:form.prenom,nom:form.nom,size:56}),
+          React.createElement("div",null,React.createElement("div",{style:{fontSize:22,fontWeight:800,letterSpacing:"-.02em"}},String(form.prenom||"").toLowerCase().replace(/(^|[\s-])(\S)/g,(m,x,c)=>x+c.toUpperCase())+" "+String(form.nom||"").toUpperCase()),
+            React.createElement("div",{style:{color:"var(--text3)",fontSize:13}},[form.matricule&&"Matricule "+form.matricule,form.serie&&"Badge "+form.serie,form.casier&&"Casier "+form.casier].filter(Boolean).join(" · ")||"Fiche à compléter"))),
         React.createElement("div",{style:{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:12}},
           React.createElement("h3",{style:{fontWeight:700,color:C.blue,fontSize:16}},editing?"✏️ Modifier le collaborateur":"+ Nouveau collaborateur"),
           React.createElement("button",{onClick:()=>{setShowForm(false);setEditing(null);},style:{background:"none",border:"none",fontSize:22,cursor:"pointer",color:"#9CA3AF"}},"×")
@@ -2255,7 +2355,7 @@ function VueCollaborateurs({badges,casiers,setBadges,setCasiers,showToast,wdCach
                 isNewMat?React.createElement("span",{title:"Nouveau matricule Workday",style:{background:C.blue,color:"#fff",borderRadius:4,padding:"1px 4px",fontSize:8,fontWeight:700}},"NEW"):i+1
               ),
               React.createElement("td",{style:{padding:"5px 5px",fontWeight:700,color:C.blue,fontSize:10}},!hasM?React.createElement("span",{style:{color:"#E74C3C",fontWeight:700,fontSize:9}},"NC"):b.matricule),
-              React.createElement("td",{style:{padding:"5px 5px",fontWeight:600,fontSize:11}},b.nom||"—",b.vip&&React.createElement("span",{title:"VIP : pas de mails automatiques",style:{marginLeft:5,background:"#EDE9FE",color:"#7C3AED",borderRadius:4,padding:"0 4px",fontSize:9,fontWeight:700}},"⭐ VIP")),
+              React.createElement("td",{style:{padding:"5px 5px",fontWeight:600,fontSize:11}},React.createElement("span",{className:"cell-nom"},React.createElement(Avatar,{prenom:b.prenom,nom:b.nom,size:26}),b.nom||"—"),b.vip&&React.createElement("span",{title:"VIP : pas de mails automatiques",style:{marginLeft:5,background:"#EDE9FE",color:"#7C3AED",borderRadius:4,padding:"0 4px",fontSize:9,fontWeight:700}},"⭐ VIP")),
               React.createElement("td",{style:{padding:"5px 5px",fontSize:11}},b.prenom||"—"),
               React.createElement("td",{style:{padding:"5px 5px",fontSize:9,color:"#6B7280",maxWidth:120,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}},b.email||"—"),
               React.createElement("td",{style:{padding:"5px 5px"}},hasB?React.createElement("span",null,React.createElement("code",{style:{background:doublon?"#FEF3C7":"#F3F4F6",color:doublon?"#92400E":"inherit",padding:"1px 4px",borderRadius:3,fontSize:9,border:doublon?"1px solid #F59E0B":"none"}},b.serie),doublon&&React.createElement("span",{title:"Badge attribué à plusieurs !",style:{marginLeft:2,color:"#F59E0B",fontSize:10}},"⚠️")):"—"),
@@ -4113,6 +4213,112 @@ function VueGestionAccueil({onglet,setView,canAccess,showToast,addLog,badges}){
     voitColis&&el("div",{ref:refColis,style:{marginTop:voitPret?32:0,scrollMarginTop:70}},el(GaLignes,{cle:"colis"},el(VueColis,{showToast,addLog,badges}))));
 }
 
+
+// Icônes dessinées du menu (trait fin, couleur du texte)
+const ICONES_NAV={
+  accueil:'<path d="M3 10.5 12 3l9 7.5"/><path d="M5 9.5V21h14V9.5"/><path d="M10 21v-6h4v6"/>',
+  field_support:'<rect x="5" y="4" width="14" height="17" rx="2"/><path d="M9 4h6v3H9z"/><path d="M9 12h6M9 16h4"/>',
+  collaborateurs:'<circle cx="9" cy="8" r="3.2"/><path d="M3 20c0-3.3 2.7-6 6-6s6 2.7 6 6"/><circle cx="17" cy="9" r="2.6"/><path d="M15.5 14.2c3 .2 5.5 2.6 5.5 5.8"/>',
+  casiers:'<rect x="4" y="3" width="16" height="18" rx="2"/><path d="M12 3v18M8 10v2M16 10v2"/>',
+  rapport:'<path d="M4 20V10M10 20V4M16 20v-7M22 20H2"/>',
+  impression:'<path d="M3 12V4a1 1 0 0 1 1-1h8l9 9-9 9-9-9z"/><circle cx="7.5" cy="7.5" r="1.5"/>',
+  gestion_accueil:'<path d="M4 18h16"/><path d="M6 18a6 6 0 0 1 12 0"/><path d="M12 9V7M10 7h4"/>',
+  badges_pret:'<rect x="3" y="6" width="18" height="12" rx="2"/><circle cx="8.5" cy="12" r="2"/><path d="M13 10.5h5M13 13.5h3"/>',
+  colis:'<path d="M21 8 12 3 3 8v8l9 5 9-5z"/><path d="M3 8l9 5 9-5M12 13v8"/>',
+  notifications:'<path d="M6 16V11a6 6 0 0 1 12 0v5l1.5 2h-15z"/><path d="M10 20a2 2 0 0 0 4 0"/>',
+  aide:'<circle cx="12" cy="12" r="9"/><path d="M9.5 9.5a2.5 2.5 0 1 1 3.5 2.3c-.6.3-1 .8-1 1.5V14"/><circle cx="12" cy="17.2" r=".6" fill="currentColor"/>',
+  settings:'<circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/>',
+  logout:'<path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><path d="M16 17l5-5-5-5M21 12H9"/>'
+};
+function IconeNav({id,size=17}){const d=ICONES_NAV[id];if(!d)return null;
+  return React.createElement("svg",{className:"ico-nav",width:size,height:size,viewBox:"0 0 24 24",fill:"none",stroke:"currentColor",strokeWidth:1.8,strokeLinecap:"round",strokeLinejoin:"round","aria-hidden":true,dangerouslySetInnerHTML:{__html:d}});}
+
+
+// ════════════════ NOUVEAU LOOK ════════════════
+const AV_COULEURS=["#2563EB","#7C3AED","#DB2777","#EA580C","#0891B2","#16A34A","#CA8A04","#4F46E5","#0D9488","#BE123C"];
+function couleurAvatar(t){t=String(t||"");let h=0;for(let i=0;i<t.length;i++)h=(h*31+t.charCodeAt(i))>>>0;return AV_COULEURS[h%AV_COULEURS.length];}
+function initiales(prenom,nom){const a=String(prenom||"").trim(),b=String(nom||"").trim();return ((a[0]||"")+(b[0]||"")).toUpperCase()||"?";}
+function Avatar({prenom,nom,size=30}){return React.createElement("span",{className:"avatar",style:{width:size,height:size,fontSize:Math.round(size*.38),background:couleurAvatar(String(prenom||"")+" "+String(nom||""))}},initiales(prenom,nom));}
+// Petite courbe des compteurs
+function Courbe({vals,col,w=104,h=34}){if(!vals||vals.length<2)return null;const mx=Math.max(...vals),mn=Math.min(...vals);
+  const pts=vals.map((v,i)=>[i*w/(vals.length-1),h-2-(v-mn)/((mx-mn)||1)*(h-6)]);const d="M"+pts.map(p=>p[0].toFixed(1)+","+p[1].toFixed(1)).join(" L");
+  return React.createElement("svg",{className:"courbe",width:w,height:h,viewBox:"0 0 "+w+" "+h},React.createElement("path",{d:d+" L"+w+","+h+" L0,"+h+" Z",fill:col,opacity:.12}),React.createElement("path",{d,fill:"none",stroke:col,strokeWidth:2,strokeLinecap:"round",strokeLinejoin:"round"}));}
+// ── Menu caché (☰) ──
+const MENU_SECTIONS=[["",["accueil"]],["Personnes",["collaborateurs","field_support"]],["Lieux",["casiers"]],["Accueil physique",["gestion_accueil"]],["Outils",["impression","rapport"]]];
+function MenuLateral({visibleNav,navActif,setView,onClose,session,notifs,ouvrirReglages,peutReglages}){
+  const el=React.createElement;
+  useEffect(()=>{const k=e=>{if(e.key==="Escape")onClose();};window.addEventListener("keydown",k);return()=>window.removeEventListener("keydown",k);},[]);
+  const ids=(visibleNav||[]).map(n=>n.id);const pris=new Set();
+  const sections=MENU_SECTIONS.map(([t,l])=>[t,l.filter(id=>ids.includes(id))]).filter(x=>x[1].length);sections.forEach(x=>x[1].forEach(id=>pris.add(id)));
+  const autres=ids.filter(id=>!pris.has(id));if(autres.length)sections.push(["Autres",autres]);
+  const lab=id=>{const n=(visibleNav||[]).find(x=>x.id===id);return n?n.label:id;};
+  const item=(id,label,onClick,actif,compte)=>el("button",{key:id,type:"button",className:"ml-it"+(actif?" on":""),onClick},
+    el(IconeNav,{id,size:18}),el("span",null,label),compte?el("span",{className:"ml-n"},compte):null);
+  const aller=id=>{setView(id);onClose();};
+  const qui=String((session&&(session.label||session.email))||"").trim();
+  return el("div",{className:"ml-fond no-print",onClick:e=>{if(e.target===e.currentTarget)onClose();}},
+    el("aside",{className:"ml"},
+      el("div",{className:"ml-brand"},el("span",{className:"ml-logo"},"🛎️"),el("span",null,"Services généraux"),el("button",{type:"button",className:"ml-x",onClick:onClose,title:"Fermer"},"✕")),
+      sections.map(([t,l],i)=>el(React.Fragment,{key:i},t?el("div",{className:"ml-sec"},t):null,
+        l.map(id=>item(id,lab(id),()=>aller(id),navActif(id))),
+        i===0&&ids.includes("notifications")===false&&notifs!==null?item("notifications","Notifications",()=>aller("notifications"),false,notifs||null):null)),
+      el("div",{style:{flex:1}}),
+      el("div",{className:"ml-sec"},"Application"),
+      peutReglages&&item("settings","Réglages",()=>{onClose();ouvrirReglages();},false),
+      item("aide","Aide",()=>aller("aide"),false),
+      qui&&el("div",{className:"ml-me"},el(Avatar,{prenom:qui.split(/[\s@.]/)[0],nom:qui.split(/[\s@.]/)[1]||"",size:34}),el("div",{style:{minWidth:0}},el("b",null,qui),el("span",null,"Connecté")))));
+}
+// ── Page « Aujourd'hui » : compteurs avec courbe + frise de la journée ──
+function BlocAujourdhui({badges,extra,setView}){
+  const el=React.createElement;
+  const auj=isoLocal(new Date());
+  const j=n=>isoLocal(new Date(Date.now()+n*864e5));
+  const fr=iso=>{const m=String(iso||"").match(/^(\d{4})-(\d{2})-(\d{2})/);return m?m[3]+"/"+m[2]:"";};
+  const hh=t=>{const d=new Date(t);return isNaN(d)?"":String(d.getHours()).padStart(2,"0")+":"+String(d.getMinutes()).padStart(2,"0");};
+  const cap=x=>String(x||"").toLowerCase().replace(/(^|[\s-])(\S)/g,(m,a,c)=>a+c.toUpperCase());
+  const enCours=(badges||[]).filter(b=>b.statut!=="Archivé");
+  const d10=x=>String(x||"").slice(0,10);
+  // séries des 8 dernières semaines
+  const sem=k=>[7,6,5,4,3,2,1,0].map(w=>{const a=j(-7*(w+1)+1),b=j(-7*w);return k(a,b);});
+  const arrSem=sem((a,b)=>(badges||[]).filter(x=>{const d=d10(x.date_entree);return d>=a&&d<=b;}).length);
+  const actifsSem=sem((a,b)=>enCours.filter(x=>!x.date_entree||d10(x.date_entree)<=b).length);
+  const colis=(extra&&extra.colis)||[],prets=(extra&&extra.prets)||[];
+  const colisSem=sem((a,b)=>colis.filter(c=>{const d=d10(c.recu_le);return d>=a&&d<=b;}).length);
+  const arr30=(badges||[]).filter(x=>{const d=d10(x.date_entree);return d>j(-30)&&d<=auj;}).length;
+  const pretsRetard=prets.filter(x=>x.date_retour_prevu&&d10(x.date_retour_prevu)<auj).length;
+  const colisVieux=colis.filter(c=>c.recu_le&&d10(c.recu_le)<=j(-5)).length;
+  const K=[["Collaborateurs actifs",enCours.length,"",actifsSem,"#2563EB","collaborateurs"],
+    ["Arrivées · 30 jours",arr30,"",arrSem,"#16A34A","collaborateurs"],
+    ["Colis en attente",colis.length,colisVieux?colisVieux+" depuis plus de 5 j":"",colisSem,"#EA580C","gestion_accueil"],
+    ["Badges de prêt sortis",prets.length,pretsRetard?pretsRetard+" en retard":"",null,"#DC2626","gestion_accueil"]];
+  // frise
+  const ev=[];
+  enCours.filter(b=>d10(b.date_entree)===auj).forEach(b=>ev.push({o:1,t:"Arrivée",c:"#16A34A",p:b.prenom,n:b.nom,sub:b.manager&&b.manager!=="NC"?"Manager "+b.manager:"",chips:[b.serie?["Badge "+b.serie,"g"]:["Pas de badge","o"],b.casier?["Casier "+b.casier,"v"]:["Pas de casier","n"]],go:"collaborateurs"}));
+  colis.forEach(c=>ev.push({o:2,h:hh(c.recu_le),t:"Colis #"+String(c.numero||0).padStart(3,"0")+(c.statut==="recu"?" à prévenir":" en attente"),c:"#EA580C",p:c.prenom,n:c.nom,sub:"Reçu le "+fr(c.recu_le),chips:[c.statut==="recu"?["À prévenir","o"]:["Prévenu le "+fr(c.prevenu_le),"b"]],go:"colis"}));
+  prets.forEach(x=>{const r=d10(x.date_retour_prevu);const w=String(x.emprunteur||"?").trim().split(/\s+/);ev.push({o:3,t:"Badge de prêt "+(x.code||""),c:"#2563EB",p:w.slice(1).join(" "),n:w[0],sub:r?"Retour prévu le "+fr(r):"Pas de date de retour",chips:[r&&r<auj?["En retard","r"]:r===auj?["Retour aujourd'hui","b"]:["Prêté","n"]],go:"badges_pret"});});
+  enCours.filter(b=>d10(b.date_sortie_prevue)===auj).forEach(b=>ev.push({o:4,t:"Départ",c:"#DC2626",p:b.prenom,n:b.nom,sub:"Dernier jour",chips:[b.serie?["Badge "+b.serie+" à récupérer","r"]:null,b.casier?["Casier "+b.casier+" à vider","r"]:null].filter(Boolean),go:"collaborateurs"}));
+  ev.sort((a,b)=>a.o-b.o);
+  const vus=ev.slice(0,8);
+  const chip=([t,k],i)=>el("span",{key:i,className:"chip chip-"+k},t);
+  return el("div",{className:"auj"},
+    el("div",{className:"auj-kpis"},K.map(([l,v,d,ser,col,go],i)=>el("button",{key:i,type:"button",className:"auj-kpi",onClick:()=>setView(go)},
+      el("div",{className:"auj-l"},l),el("div",{className:"auj-v"},v),d?el("div",{className:"auj-d",style:{color:col}},d):el("div",{className:"auj-d"}," "),
+      el(Courbe,{vals:ser,col})))),
+    el("div",{className:"auj-frise"},
+      el("div",{className:"auj-h"},"Votre journée",el("small",null,ev.length?" · "+ev.length+" élément"+(ev.length>1?"s":""):" · rien de prévu")),
+      !ev.length&&el("div",{className:"auj-vide"},"Aucune arrivée, aucun départ, aucun colis ni badge de prêt en cours aujourd'hui."),
+      vus.map((e,i)=>el("div",{key:i,className:"auj-ev",onClick:()=>setView(e.go)},
+        el("div",{className:"auj-dot",style:{background:e.c,boxShadow:"0 0 0 4px "+e.c+"22"}}),
+        el(Avatar,{prenom:e.p,nom:e.n,size:36}),
+        el("div",{style:{flex:1,minWidth:0}},
+          el("div",{className:"auj-t",style:{color:e.c}},(e.h?e.h+" · ":"")+e.t),
+          el("div",{className:"auj-n"},cap(e.p)+(e.p?" ":"")+String(e.n||"").toUpperCase()),
+          e.sub&&el("div",{className:"auj-s"},e.sub),
+          el("div",{className:"auj-chips"},e.chips.map(chip))),
+        el("span",{className:"auj-go"},"›"))),
+      ev.length>vus.length&&el("div",{className:"auj-plus"},"+ "+(ev.length-vus.length)+" autre(s) — voir les notifications")));
+}
+
 function SettingsModal({settings,setSettings,showToast,setShowSettings,racineRef,hrRef,hcmRef,importJsonRef,exportExcel,exportJSON,importJSON,badges,setBadges,casiers,wdCache,histo,addLog,canHistorique,canArchives,canHistoriquePret,initialTab}){
   const[tab,setTab]=useState(initialTab||"emails");
   const archivesCount=badges.filter(b=>b.statut==="Archivé").length;
@@ -5223,7 +5429,7 @@ useEffect(()=>{
   const restaurerNotifs=()=>{setNotifSupp({});enregistrerSupprimees({});if(settingsReadyRef.current)setSettings(st=>{const n={...st};delete n[cleNS];return n;});};
   useEffect(()=>{if(unlocked)majPastille(notifs.length);},[notifs.length,unlocked]);
   const nav=[
-    {id:"accueil",label:"Accueil",icon:"🏠"},
+    {id:"accueil",label:"Aujourd'hui",icon:"🏠"},
     {id:"field_support",label:"Field Support",icon:"📋"},
     {id:"collaborateurs",label:"Collaborateurs",icon:"👥"},
     {id:"casiers",label:"Casiers",icon:"🔐"},
@@ -5252,6 +5458,7 @@ useEffect(()=>{
   const isBadge=session&&session.role==="badge";
   const visibleNav=nav.filter(n=>canAccess(n.id));
   useEffect(()=>{const f=()=>setView("aide");window.addEventListener("ouvrir-aide",f);return()=>window.removeEventListener("ouvrir-aide",f);},[]);
+  const[menuOuvert,setMenuOuvert]=useState(false);
   const navActif=id=>view===id||(id==="gestion_accueil"&&(view==="badges_pret"||view==="colis"));
   // Lien « Consulter la fiche » d'un mail : ouvrir Field Support puis la fiche, une fois connecté et les fiches chargées
   useEffect(()=>{
@@ -5264,7 +5471,7 @@ useEffect(()=>{
     if(!canAccess(view)){return React.createElement("div",{style:{textAlign:"center",padding:80}},React.createElement("div",{style:{fontSize:48,marginBottom:12}},"🔒"),React.createElement("div",{style:{fontWeight:700,fontSize:18,color:"#0F172A",marginBottom:8}},"Accès refusé"),React.createElement("div",{style:{color:"#6B7280"}},"Vous n'avez pas accès à cette section."));}
     const props={badges,casiers:casiersEff,setBadges,setCasiers,showToast,wdCache,addLog,setView,settings,setSettings};
     switch(view){
-      case "accueil": return React.createElement(VueAccueil,{...props,fssData,setFssData,isIT,histo,openHistorique:()=>openSettingsTab("historique"),openDonnees:()=>openSettingsTab("import"),pendingOpen,setPendingOpen});
+      case "accueil": return React.createElement(VueAccueil,{...props,notifExtra,fssData,setFssData,isIT,histo,openHistorique:()=>openSettingsTab("historique"),openDonnees:()=>openSettingsTab("import"),pendingOpen,setPendingOpen});
       case "field_support": return React.createElement(VueFieldSupport,{fssData,setFssData,showToast,addLog,badges,casiers:casiersEff,setBadges,setCasiers,wdCache,settings,pendingOpen,setPendingOpen});
       case "collaborateurs": return React.createElement(VueCollaborateurs,{...props,newMats,setNewMats,pendingOpen,setPendingOpen});
       case "casiers": return React.createElement(VueCasiers,props);
@@ -5284,8 +5491,8 @@ useEffect(()=>{
   const dbDot=React.createElement("div",{style:{display:"flex",alignItems:"center",gap:5,fontSize:11,color:"var(--text3)"}},React.createElement("span",{className:"save-dot"+(saving?" saving":""),title:saving?"Sauvegarde...":"Sauvegardé"}),saving?"Sync...":dbStatus==="ok"?"✓":"Hors ligne");
 
   const toolbarButtons=React.createElement("div",{style:{display:"flex",gap:8,alignItems:"center"}},
-    canAccess("notifications")&&React.createElement("button",{title:"Notifications",className:"btn-icon",onClick:()=>setView("notifications"),style:{position:"relative",gap:5,display:"inline-flex",alignItems:"center",fontWeight:700,background:view==="notifications"?"#EFF6FF":undefined,borderColor:view==="notifications"?"#BFDBFE":undefined}},"🔔",notifs.length?React.createElement("span",{style:{color:"var(--text2)"}},notifs.length):null),
-    !isIT&&React.createElement("button",{title:"Réglages",className:"btn-icon",onClick:()=>setShowSettings(true),style:{position:"relative"}},"⚙️"),
+    canAccess("notifications")&&React.createElement("button",{title:"Notifications",className:"btn-icon",onClick:()=>setView("notifications"),style:{position:"relative",gap:5,display:"inline-flex",alignItems:"center",fontWeight:700,background:view==="notifications"?"#EFF6FF":undefined,borderColor:view==="notifications"?"#BFDBFE":undefined}},React.createElement(IconeNav,{id:"notifications",size:18}),notifs.length?React.createElement("span",{style:{color:"var(--text2)"}},notifs.length):null),
+    !isIT&&React.createElement("button",{title:"Réglages",className:"btn-icon",onClick:()=>setShowSettings(true),style:{position:"relative"}},React.createElement(IconeNav,{id:"settings",size:18})),
     session&&React.createElement("span",{style:{fontSize:11,color:"var(--text3)",marginLeft:2}},session.label),
     session&&React.createElement("button",{title:"Déconnexion",onClick:logout,style:{background:"var(--redBg)",border:"1px solid rgba(220,38,38,.2)",color:"var(--red)",borderRadius:6,padding:"3px 8px",fontSize:11,cursor:"pointer"}},"⏻"),
     dbDot
@@ -5327,14 +5534,15 @@ useEffect(()=>{
     loading&&React.createElement("div",{style:{position:"fixed",inset:0,background:"rgba(30,40,60,.45)",zIndex:9998,display:"flex",alignItems:"center",justifyContent:"center"}},React.createElement("div",{style:{background:"var(--surface)",border:"1px solid var(--border)",borderRadius:14,padding:"24px 36px",fontSize:15,fontWeight:700,color:"var(--text)"}},"⏳ Chargement en cours...")),
     toast&&React.createElement("div",{className:"toast-anim",style:{position:"fixed",top:20,left:"50%",transform:"translateX(-50%)",zIndex:9999,background:toast.type==="err"?"#7F1D1D":"#14532D",border:"1px solid "+(toast.type==="err"?"rgba(220,38,38,.3)":"rgba(22,163,74,.3)"),color:"#fff",padding:"12px 24px",borderRadius:12,fontSize:13,fontWeight:700,boxShadow:"0 4px 24px rgba(0,0,0,.12)",whiteSpace:"nowrap",pointerEvents:"none"}},toast.msg),
     showSettings&&!isIT&&React.createElement(SettingsModal,{settings,setSettings,showToast,setShowSettings,racineRef,hrRef,hcmRef,importJsonRef,exportExcel,exportJSON,importJSON,badges,setBadges,casiers,wdCache,histo,addLog,canHistorique:canAccess("historique"),canArchives:canAccess("archives"),canHistoriquePret:canAccess("historique_pret"),initialTab:settingsInitialTab}),
+    menuOuvert&&React.createElement(MenuLateral,{visibleNav,navActif,setView,onClose:()=>setMenuOuvert(false),session,notifs:canAccess("notifications")?notifs.length:null,ouvrirReglages:()=>setShowSettings(true),peutReglages:!isIT}),
     React.createElement("nav",{className:"desktop-nav no-print",style:{background:"var(--surface)",borderBottom:"1px solid var(--border)",padding:"0 12px",display:"flex",alignItems:"center",gap:2,height:48,position:"sticky",top:0,zIndex:500,boxShadow:"0 1px 0 var(--border)",overflow:"hidden"}},
-      React.createElement("div",{style:{display:"flex",alignItems:"center",gap:6,marginRight:10,paddingRight:10,borderRight:"1px solid var(--border)",flexShrink:0}},
-        React.createElement("span",{style:{fontSize:16}},"👥"),
-        React.createElement("span",{style:{color:"var(--text)",fontWeight:700,fontSize:12,whiteSpace:"nowrap"}},"Collaborateurs")
+      React.createElement("div",{style:{display:"flex",alignItems:"center",flexShrink:0}},
+        React.createElement("button",{type:"button",className:"burger",title:"Menu",onClick:()=>setMenuOuvert(true)},React.createElement("svg",{width:20,height:20,viewBox:"0 0 24 24",fill:"none",stroke:"currentColor",strokeWidth:2,strokeLinecap:"round"},React.createElement("path",{d:"M4 7h16M4 12h16M4 17h16"}))),
+        React.createElement("span",{className:"titre-page"},(()=>{const n=nav.find(x=>navActif(x.id));const id=n?n.id:view;const l=n?n.label:view==="notifications"?"Notifications":view==="aide"?"Aide":"";return [React.createElement(IconeNav,{key:"i",id,size:18}),l];})())
       ),
-      React.createElement("div",{style:{display:"flex",alignItems:"center",gap:1,flex:1,overflow:"hidden"}},
+      React.createElement("div",{className:"nav-links",style:{display:"flex",alignItems:"center",gap:1,flex:1,overflow:"hidden"}},
         visibleNav.map(n=>React.createElement("button",{key:n.id,onClick:()=>setView(n.id),className:"nav-item"+(navActif(n.id)?" active":""),style:{fontSize:11,padding:"5px 8px",flexShrink:0}},
-          n.icon," ",n.label,
+          ICONES_NAV[n.id]?React.createElement(IconeNav,{id:n.id}):n.icon,ICONES_NAV[n.id]?"":" ",n.label,
           false&&React.createElement("span",{style:{background:"var(--red)",color:"#fff",borderRadius:999,fontSize:8,fontWeight:700,padding:"1px 4px",marginLeft:2}},fssOpenCount)
         ))
       ),
@@ -5599,6 +5807,7 @@ const IOS_F7={"accueil":[["0 0 56 56","<path d=\"M 12.6251 52.6445 L 43.3986 52.
 const PC_EMO={gestion_accueil:"🛎️",aide:"❓",notifications:"🔔",accueil:"🏠",field_support:"📋",collaborateurs:"👥",casiers:"🔐",rapport:"📊",impression:"🏷️",badges_pret:"🪪",colis:"📦",settings:"⚙️",logout:"🚪",
   download:"📥",edit:"✏️",trash:"🗑️",vider:"🧹",refresh:"🔄",mail:"✉️",print:"🖨️",eye:"👁️",copy:"📄",clock:"🕐",person:"👤"};
 function IosIcon({id,size=26,filled=false,color}){
+  if(typeof ICONES_NAV!=="undefined"&&ICONES_NAV[id])return React.createElement(IconeNav,{id,size:Math.round(size*.92)});
   if(PC_EMO[id])return React.createElement("span",{className:"ios-ico pc-emo","aria-hidden":true,style:{fontSize:Math.round(size*.8),lineHeight:1,display:"inline-flex",alignItems:"center",justifyContent:"center",width:size,height:size,flexShrink:0}},PC_EMO[id]);
   const d=IOS_F7[id];if(!d)return null;const[vb,html]=d[filled?1:0];
   return React.createElement("svg",{width:size,height:size,viewBox:vb,fill:"currentColor","aria-hidden":true,className:"ios-ico",style:{display:"block",flexShrink:0,color},dangerouslySetInnerHTML:{__html:html}});
@@ -6181,7 +6390,7 @@ function parseMSListsCSV(text){
 function buildBody(template, data){
   return (template||"").replace(/\{(\w+)\}/g, (_,k)=>data[k]||"NC");
 }
-function VueAccueil({badges,casiers,setView,wdCache,setBadges,setCasiers,showToast,addLog,settings,fssData,setFssData,isIT,histo,openHistorique,openDonnees,pendingOpen,setPendingOpen}){
+function VueAccueil({notifExtra,badges,casiers,setView,wdCache,setBadges,setCasiers,showToast,addLog,settings,fssData,setFssData,isIT,histo,openHistorique,openDonnees,pendingOpen,setPendingOpen}){
   // ── Ouvre directement la fiche d'un collaborateur depuis l'accueil (au lieu de juste changer d'onglet) ──
   const openCollab=b=>{
     if(isIT)return;
@@ -6474,7 +6683,7 @@ function VueAccueil({badges,casiers,setView,wdCache,setBadges,setCasiers,showToa
           }},"Rappels J-1"),
         React.createElement("button",{type:"button",className:"ios-link",onClick:toggleTheme,title:"Changer de thème"},dark?"Mode clair":"Mode sombre")
       ),
-      React.createElement("h1",{className:"ios-large"},"Accueil"),
+      React.createElement("h1",{className:"ios-large"},"Aujourd'hui"),
       React.createElement("p",{className:"ios-sub"},greeting+" · "+dateLongStr+" · "+clockStr),
       anniversaire.length>0&&React.createElement("p",{className:"ios-sub",style:{marginTop:-8}},"🎂 Anniversaire d'arrivée : "+anniversaire.map(b=>b.prenom+" "+b.nom).join(", ")),
       React.createElement(IosSegmented,{options:[["collab","Collaborateur"],["badge","N° de badge"]],value:searchMode,onChange:v=>{setSearchMode(v);setSearchQuery("");}}),
@@ -6488,6 +6697,7 @@ function VueAccueil({badges,casiers,setView,wdCache,setBadges,setCasiers,showToa
               React.createElement("span",{className:"ios-chev"},"›")))
       )
     ),
+    React.createElement(BlocAujourdhui,{badges,extra:notifExtra,setView}),
 
     // ══════════════ 1) NOUVEAUTÉS — ce qui a été saisi / importé / à compléter, en un coup d'œil ══════════════
     React.createElement("div",{className:"news-grid",style:{marginBottom:10}},
@@ -6983,7 +7193,7 @@ function VueCollaborateurs({badges,casiers,setBadges,setCasiers,showToast,wdCach
   const ctRow=b=>{
     const statCol=statC[b.statut]||C.gray;const hasM=b.matricule&&String(b.matricule)!=="0";const isNew=b.from_accueil&&!b.serie;
     return React.createElement("div",{key:b.id,className:"ct-row"+(ctSelB&&ctSelB.id===b.id?" sel":""),onClick:()=>{setCtSel(b.id);setCtMobile(b.id);}},
-      React.createElement("div",{className:"ct-av"},ctInit(b)),
+      React.createElement("div",{className:"ct-av",style:{background:couleurAvatar(String(b.prenom||"")+" "+String(b.nom||""))}},ctInit(b)),
       React.createElement("div",{style:{minWidth:0,flex:1}},
         React.createElement("div",{className:"ct-nm"},ctCap(b.prenom)+" ",React.createElement("b",null,String(b.nom||"").toUpperCase()),
           b.statut!=="Actif"&&React.createElement("span",{className:"ct-pill",style:{background:statCol+"22",color:statCol}},b.statut),
@@ -7132,7 +7342,7 @@ function VueCollaborateurs({badges,casiers,setBadges,setCasiers,showToast,wdCach
                 isNewMat?React.createElement("span",{title:"Nouveau matricule Workday",style:{background:C.blue,color:"#fff",borderRadius:4,padding:"1px 4px",fontSize:8,fontWeight:700}},"NEW"):i+1
               ),
               React.createElement("td",{style:{padding:"5px 5px",fontWeight:700,color:C.blue,fontSize:10}},!hasM?React.createElement("span",{style:{color:"#E74C3C",fontWeight:700,fontSize:9}},"NC"):b.matricule),
-              React.createElement("td",{style:{padding:"5px 5px",fontWeight:600,fontSize:11}},b.nom||"—",b.vip&&React.createElement("span",{title:"VIP : pas de mails automatiques",style:{marginLeft:5,background:"#EDE9FE",color:"#7C3AED",borderRadius:4,padding:"0 4px",fontSize:9,fontWeight:700}},"⭐ VIP")),
+              React.createElement("td",{style:{padding:"5px 5px",fontWeight:600,fontSize:11}},React.createElement("span",{className:"cell-nom"},React.createElement(Avatar,{prenom:b.prenom,nom:b.nom,size:26}),b.nom||"—"),b.vip&&React.createElement("span",{title:"VIP : pas de mails automatiques",style:{marginLeft:5,background:"#EDE9FE",color:"#7C3AED",borderRadius:4,padding:"0 4px",fontSize:9,fontWeight:700}},"⭐ VIP")),
               React.createElement("td",{style:{padding:"5px 5px",fontSize:11}},b.prenom||"—"),
               React.createElement("td",{style:{padding:"5px 5px",fontSize:9,color:"#6B7280",maxWidth:120,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}},b.email||"—"),
               React.createElement("td",{style:{padding:"5px 5px"}},hasB?React.createElement("span",null,React.createElement("code",{style:{background:doublon?"#FEF3C7":"#F3F4F6",color:doublon?"#92400E":"inherit",padding:"1px 4px",borderRadius:3,fontSize:9,border:doublon?"1px solid #F59E0B":"none"}},b.serie),doublon&&React.createElement("span",{title:"Badge attribué à plusieurs !",style:{marginLeft:2,color:"#F59E0B",fontSize:10}},"⚠️")):"—"),
@@ -9031,6 +9241,112 @@ function VueGestionAccueil({onglet,setView,canAccess,showToast,addLog,badges}){
     voitColis&&el("div",{ref:refColis,style:{marginTop:voitPret?32:0,scrollMarginTop:70}},el(GaLignes,{cle:"colis"},el(VueColis,{showToast,addLog,badges}))));
 }
 
+
+// Icônes dessinées du menu (trait fin, couleur du texte)
+const ICONES_NAV={
+  accueil:'<path d="M3 10.5 12 3l9 7.5"/><path d="M5 9.5V21h14V9.5"/><path d="M10 21v-6h4v6"/>',
+  field_support:'<rect x="5" y="4" width="14" height="17" rx="2"/><path d="M9 4h6v3H9z"/><path d="M9 12h6M9 16h4"/>',
+  collaborateurs:'<circle cx="9" cy="8" r="3.2"/><path d="M3 20c0-3.3 2.7-6 6-6s6 2.7 6 6"/><circle cx="17" cy="9" r="2.6"/><path d="M15.5 14.2c3 .2 5.5 2.6 5.5 5.8"/>',
+  casiers:'<rect x="4" y="3" width="16" height="18" rx="2"/><path d="M12 3v18M8 10v2M16 10v2"/>',
+  rapport:'<path d="M4 20V10M10 20V4M16 20v-7M22 20H2"/>',
+  impression:'<path d="M3 12V4a1 1 0 0 1 1-1h8l9 9-9 9-9-9z"/><circle cx="7.5" cy="7.5" r="1.5"/>',
+  gestion_accueil:'<path d="M4 18h16"/><path d="M6 18a6 6 0 0 1 12 0"/><path d="M12 9V7M10 7h4"/>',
+  badges_pret:'<rect x="3" y="6" width="18" height="12" rx="2"/><circle cx="8.5" cy="12" r="2"/><path d="M13 10.5h5M13 13.5h3"/>',
+  colis:'<path d="M21 8 12 3 3 8v8l9 5 9-5z"/><path d="M3 8l9 5 9-5M12 13v8"/>',
+  notifications:'<path d="M6 16V11a6 6 0 0 1 12 0v5l1.5 2h-15z"/><path d="M10 20a2 2 0 0 0 4 0"/>',
+  aide:'<circle cx="12" cy="12" r="9"/><path d="M9.5 9.5a2.5 2.5 0 1 1 3.5 2.3c-.6.3-1 .8-1 1.5V14"/><circle cx="12" cy="17.2" r=".6" fill="currentColor"/>',
+  settings:'<circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/>',
+  logout:'<path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><path d="M16 17l5-5-5-5M21 12H9"/>'
+};
+function IconeNav({id,size=17}){const d=ICONES_NAV[id];if(!d)return null;
+  return React.createElement("svg",{className:"ico-nav",width:size,height:size,viewBox:"0 0 24 24",fill:"none",stroke:"currentColor",strokeWidth:1.8,strokeLinecap:"round",strokeLinejoin:"round","aria-hidden":true,dangerouslySetInnerHTML:{__html:d}});}
+
+
+// ════════════════ NOUVEAU LOOK ════════════════
+const AV_COULEURS=["#2563EB","#7C3AED","#DB2777","#EA580C","#0891B2","#16A34A","#CA8A04","#4F46E5","#0D9488","#BE123C"];
+function couleurAvatar(t){t=String(t||"");let h=0;for(let i=0;i<t.length;i++)h=(h*31+t.charCodeAt(i))>>>0;return AV_COULEURS[h%AV_COULEURS.length];}
+function initiales(prenom,nom){const a=String(prenom||"").trim(),b=String(nom||"").trim();return ((a[0]||"")+(b[0]||"")).toUpperCase()||"?";}
+function Avatar({prenom,nom,size=30}){return React.createElement("span",{className:"avatar",style:{width:size,height:size,fontSize:Math.round(size*.38),background:couleurAvatar(String(prenom||"")+" "+String(nom||""))}},initiales(prenom,nom));}
+// Petite courbe des compteurs
+function Courbe({vals,col,w=104,h=34}){if(!vals||vals.length<2)return null;const mx=Math.max(...vals),mn=Math.min(...vals);
+  const pts=vals.map((v,i)=>[i*w/(vals.length-1),h-2-(v-mn)/((mx-mn)||1)*(h-6)]);const d="M"+pts.map(p=>p[0].toFixed(1)+","+p[1].toFixed(1)).join(" L");
+  return React.createElement("svg",{className:"courbe",width:w,height:h,viewBox:"0 0 "+w+" "+h},React.createElement("path",{d:d+" L"+w+","+h+" L0,"+h+" Z",fill:col,opacity:.12}),React.createElement("path",{d,fill:"none",stroke:col,strokeWidth:2,strokeLinecap:"round",strokeLinejoin:"round"}));}
+// ── Menu caché (☰) ──
+const MENU_SECTIONS=[["",["accueil"]],["Personnes",["collaborateurs","field_support"]],["Lieux",["casiers"]],["Accueil physique",["gestion_accueil"]],["Outils",["impression","rapport"]]];
+function MenuLateral({visibleNav,navActif,setView,onClose,session,notifs,ouvrirReglages,peutReglages}){
+  const el=React.createElement;
+  useEffect(()=>{const k=e=>{if(e.key==="Escape")onClose();};window.addEventListener("keydown",k);return()=>window.removeEventListener("keydown",k);},[]);
+  const ids=(visibleNav||[]).map(n=>n.id);const pris=new Set();
+  const sections=MENU_SECTIONS.map(([t,l])=>[t,l.filter(id=>ids.includes(id))]).filter(x=>x[1].length);sections.forEach(x=>x[1].forEach(id=>pris.add(id)));
+  const autres=ids.filter(id=>!pris.has(id));if(autres.length)sections.push(["Autres",autres]);
+  const lab=id=>{const n=(visibleNav||[]).find(x=>x.id===id);return n?n.label:id;};
+  const item=(id,label,onClick,actif,compte)=>el("button",{key:id,type:"button",className:"ml-it"+(actif?" on":""),onClick},
+    el(IconeNav,{id,size:18}),el("span",null,label),compte?el("span",{className:"ml-n"},compte):null);
+  const aller=id=>{setView(id);onClose();};
+  const qui=String((session&&(session.label||session.email))||"").trim();
+  return el("div",{className:"ml-fond no-print",onClick:e=>{if(e.target===e.currentTarget)onClose();}},
+    el("aside",{className:"ml"},
+      el("div",{className:"ml-brand"},el("span",{className:"ml-logo"},"🛎️"),el("span",null,"Services généraux"),el("button",{type:"button",className:"ml-x",onClick:onClose,title:"Fermer"},"✕")),
+      sections.map(([t,l],i)=>el(React.Fragment,{key:i},t?el("div",{className:"ml-sec"},t):null,
+        l.map(id=>item(id,lab(id),()=>aller(id),navActif(id))),
+        i===0&&ids.includes("notifications")===false&&notifs!==null?item("notifications","Notifications",()=>aller("notifications"),false,notifs||null):null)),
+      el("div",{style:{flex:1}}),
+      el("div",{className:"ml-sec"},"Application"),
+      peutReglages&&item("settings","Réglages",()=>{onClose();ouvrirReglages();},false),
+      item("aide","Aide",()=>aller("aide"),false),
+      qui&&el("div",{className:"ml-me"},el(Avatar,{prenom:qui.split(/[\s@.]/)[0],nom:qui.split(/[\s@.]/)[1]||"",size:34}),el("div",{style:{minWidth:0}},el("b",null,qui),el("span",null,"Connecté")))));
+}
+// ── Page « Aujourd'hui » : compteurs avec courbe + frise de la journée ──
+function BlocAujourdhui({badges,extra,setView}){
+  const el=React.createElement;
+  const auj=isoLocal(new Date());
+  const j=n=>isoLocal(new Date(Date.now()+n*864e5));
+  const fr=iso=>{const m=String(iso||"").match(/^(\d{4})-(\d{2})-(\d{2})/);return m?m[3]+"/"+m[2]:"";};
+  const hh=t=>{const d=new Date(t);return isNaN(d)?"":String(d.getHours()).padStart(2,"0")+":"+String(d.getMinutes()).padStart(2,"0");};
+  const cap=x=>String(x||"").toLowerCase().replace(/(^|[\s-])(\S)/g,(m,a,c)=>a+c.toUpperCase());
+  const enCours=(badges||[]).filter(b=>b.statut!=="Archivé");
+  const d10=x=>String(x||"").slice(0,10);
+  // séries des 8 dernières semaines
+  const sem=k=>[7,6,5,4,3,2,1,0].map(w=>{const a=j(-7*(w+1)+1),b=j(-7*w);return k(a,b);});
+  const arrSem=sem((a,b)=>(badges||[]).filter(x=>{const d=d10(x.date_entree);return d>=a&&d<=b;}).length);
+  const actifsSem=sem((a,b)=>enCours.filter(x=>!x.date_entree||d10(x.date_entree)<=b).length);
+  const colis=(extra&&extra.colis)||[],prets=(extra&&extra.prets)||[];
+  const colisSem=sem((a,b)=>colis.filter(c=>{const d=d10(c.recu_le);return d>=a&&d<=b;}).length);
+  const arr30=(badges||[]).filter(x=>{const d=d10(x.date_entree);return d>j(-30)&&d<=auj;}).length;
+  const pretsRetard=prets.filter(x=>x.date_retour_prevu&&d10(x.date_retour_prevu)<auj).length;
+  const colisVieux=colis.filter(c=>c.recu_le&&d10(c.recu_le)<=j(-5)).length;
+  const K=[["Collaborateurs actifs",enCours.length,"",actifsSem,"#2563EB","collaborateurs"],
+    ["Arrivées · 30 jours",arr30,"",arrSem,"#16A34A","collaborateurs"],
+    ["Colis en attente",colis.length,colisVieux?colisVieux+" depuis plus de 5 j":"",colisSem,"#EA580C","gestion_accueil"],
+    ["Badges de prêt sortis",prets.length,pretsRetard?pretsRetard+" en retard":"",null,"#DC2626","gestion_accueil"]];
+  // frise
+  const ev=[];
+  enCours.filter(b=>d10(b.date_entree)===auj).forEach(b=>ev.push({o:1,t:"Arrivée",c:"#16A34A",p:b.prenom,n:b.nom,sub:b.manager&&b.manager!=="NC"?"Manager "+b.manager:"",chips:[b.serie?["Badge "+b.serie,"g"]:["Pas de badge","o"],b.casier?["Casier "+b.casier,"v"]:["Pas de casier","n"]],go:"collaborateurs"}));
+  colis.forEach(c=>ev.push({o:2,h:hh(c.recu_le),t:"Colis #"+String(c.numero||0).padStart(3,"0")+(c.statut==="recu"?" à prévenir":" en attente"),c:"#EA580C",p:c.prenom,n:c.nom,sub:"Reçu le "+fr(c.recu_le),chips:[c.statut==="recu"?["À prévenir","o"]:["Prévenu le "+fr(c.prevenu_le),"b"]],go:"colis"}));
+  prets.forEach(x=>{const r=d10(x.date_retour_prevu);const w=String(x.emprunteur||"?").trim().split(/\s+/);ev.push({o:3,t:"Badge de prêt "+(x.code||""),c:"#2563EB",p:w.slice(1).join(" "),n:w[0],sub:r?"Retour prévu le "+fr(r):"Pas de date de retour",chips:[r&&r<auj?["En retard","r"]:r===auj?["Retour aujourd'hui","b"]:["Prêté","n"]],go:"badges_pret"});});
+  enCours.filter(b=>d10(b.date_sortie_prevue)===auj).forEach(b=>ev.push({o:4,t:"Départ",c:"#DC2626",p:b.prenom,n:b.nom,sub:"Dernier jour",chips:[b.serie?["Badge "+b.serie+" à récupérer","r"]:null,b.casier?["Casier "+b.casier+" à vider","r"]:null].filter(Boolean),go:"collaborateurs"}));
+  ev.sort((a,b)=>a.o-b.o);
+  const vus=ev.slice(0,8);
+  const chip=([t,k],i)=>el("span",{key:i,className:"chip chip-"+k},t);
+  return el("div",{className:"auj"},
+    el("div",{className:"auj-kpis"},K.map(([l,v,d,ser,col,go],i)=>el("button",{key:i,type:"button",className:"auj-kpi",onClick:()=>setView(go)},
+      el("div",{className:"auj-l"},l),el("div",{className:"auj-v"},v),d?el("div",{className:"auj-d",style:{color:col}},d):el("div",{className:"auj-d"}," "),
+      el(Courbe,{vals:ser,col})))),
+    el("div",{className:"auj-frise"},
+      el("div",{className:"auj-h"},"Votre journée",el("small",null,ev.length?" · "+ev.length+" élément"+(ev.length>1?"s":""):" · rien de prévu")),
+      !ev.length&&el("div",{className:"auj-vide"},"Aucune arrivée, aucun départ, aucun colis ni badge de prêt en cours aujourd'hui."),
+      vus.map((e,i)=>el("div",{key:i,className:"auj-ev",onClick:()=>setView(e.go)},
+        el("div",{className:"auj-dot",style:{background:e.c,boxShadow:"0 0 0 4px "+e.c+"22"}}),
+        el(Avatar,{prenom:e.p,nom:e.n,size:36}),
+        el("div",{style:{flex:1,minWidth:0}},
+          el("div",{className:"auj-t",style:{color:e.c}},(e.h?e.h+" · ":"")+e.t),
+          el("div",{className:"auj-n"},cap(e.p)+(e.p?" ":"")+String(e.n||"").toUpperCase()),
+          e.sub&&el("div",{className:"auj-s"},e.sub),
+          el("div",{className:"auj-chips"},e.chips.map(chip))),
+        el("span",{className:"auj-go"},"›"))),
+      ev.length>vus.length&&el("div",{className:"auj-plus"},"+ "+(ev.length-vus.length)+" autre(s) — voir les notifications")));
+}
+
 function SettingsModal({settings,setSettings,showToast,setShowSettings,racineRef,hrRef,hcmRef,importJsonRef,exportExcel,exportJSON,importJSON,badges,setBadges,casiers,wdCache,histo,addLog,canHistorique,canArchives,canHistoriquePret,initialTab}){
   const[tab,setTab]=useState(initialTab||"emails");
   const archivesCount=badges.filter(b=>b.statut==="Archivé").length;
@@ -10148,7 +10464,7 @@ useEffect(()=>{
   const restaurerNotifs=()=>{setNotifSupp({});enregistrerSupprimees({});if(settingsReadyRef.current)setSettings(st=>{const n={...st};delete n[cleNS];return n;});};
   useEffect(()=>{if(unlocked)majPastille(notifs.length);},[notifs.length,unlocked]);
   const nav=[
-    {id:"accueil",label:"Accueil",icon:"🏠"},
+    {id:"accueil",label:"Aujourd'hui",icon:"🏠"},
     {id:"field_support",label:"Field Support",icon:"📋"},
     {id:"collaborateurs",label:"Collaborateurs",icon:"👥"},
     {id:"casiers",label:"Casiers",icon:"🔐"},
@@ -10177,6 +10493,7 @@ useEffect(()=>{
   const isBadge=session&&session.role==="badge";
   const visibleNav=nav.filter(n=>canAccess(n.id));
   useEffect(()=>{const f=()=>setView("aide");window.addEventListener("ouvrir-aide",f);return()=>window.removeEventListener("ouvrir-aide",f);},[]);
+  const[menuOuvert,setMenuOuvert]=useState(false);
   const navActif=id=>view===id||(id==="gestion_accueil"&&(view==="badges_pret"||view==="colis"));
   // Lien « Consulter la fiche » d'un mail : ouvrir Field Support puis la fiche, une fois connecté et les fiches chargées
   useEffect(()=>{
@@ -10190,7 +10507,7 @@ useEffect(()=>{
     if(!canAccess(view)){return React.createElement("div",{style:{textAlign:"center",padding:80}},React.createElement("div",{style:{fontSize:48,marginBottom:12}},"🔒"),React.createElement("div",{style:{fontWeight:700,fontSize:18,color:"#0F172A",marginBottom:8}},"Accès refusé"),React.createElement("div",{style:{color:"#6B7280"}},"Vous n'avez pas accès à cette section."));}
     const props={badges,casiers:casiersEff,setBadges,setCasiers,showToast,wdCache,addLog,setView,settings,setSettings};
     switch(view){
-      case "accueil": return React.createElement(VueAccueil,{...props,fssData,setFssData,isIT,histo,openHistorique:()=>openSettingsTab("historique"),openDonnees:()=>openSettingsTab("import"),pendingOpen,setPendingOpen});
+      case "accueil": return React.createElement(VueAccueil,{...props,notifExtra,fssData,setFssData,isIT,histo,openHistorique:()=>openSettingsTab("historique"),openDonnees:()=>openSettingsTab("import"),pendingOpen,setPendingOpen});
       case "field_support": return React.createElement(VueFieldSupport,{fssData,setFssData,showToast,addLog,badges,casiers:casiersEff,setBadges,setCasiers,wdCache,settings,pendingOpen,setPendingOpen});
       case "collaborateurs": return React.createElement(VueCollaborateurs,{...props,newMats,setNewMats,pendingOpen,setPendingOpen});
       case "casiers": return React.createElement(VueCasiers,props);
@@ -10210,8 +10527,8 @@ useEffect(()=>{
   const dbDot=React.createElement("div",{style:{display:"flex",alignItems:"center",gap:5,fontSize:11,color:"var(--text3)"}},React.createElement("span",{className:"save-dot"+(saving?" saving":""),title:saving?"Sauvegarde...":"Sauvegardé"}),saving?"Sync...":dbStatus==="ok"?"✓":"Hors ligne");
 
   const toolbarButtons=React.createElement("div",{style:{display:"flex",gap:8,alignItems:"center"}},
-    canAccess("notifications")&&React.createElement("button",{title:"Notifications",className:"btn-icon",onClick:()=>setView("notifications"),style:{position:"relative",gap:5,display:"inline-flex",alignItems:"center",fontWeight:700,background:view==="notifications"?"#EFF6FF":undefined,borderColor:view==="notifications"?"#BFDBFE":undefined}},"🔔",notifs.length?React.createElement("span",{style:{color:"var(--text2)"}},notifs.length):null),
-    !isIT&&React.createElement("button",{title:"Réglages",className:"btn-icon",onClick:()=>setShowSettings(true),style:{position:"relative"}},"⚙️"),
+    canAccess("notifications")&&React.createElement("button",{title:"Notifications",className:"btn-icon",onClick:()=>setView("notifications"),style:{position:"relative",gap:5,display:"inline-flex",alignItems:"center",fontWeight:700,background:view==="notifications"?"#EFF6FF":undefined,borderColor:view==="notifications"?"#BFDBFE":undefined}},React.createElement(IconeNav,{id:"notifications",size:18}),notifs.length?React.createElement("span",{style:{color:"var(--text2)"}},notifs.length):null),
+    !isIT&&React.createElement("button",{title:"Réglages",className:"btn-icon",onClick:()=>setShowSettings(true),style:{position:"relative"}},React.createElement(IconeNav,{id:"settings",size:18})),
     session&&React.createElement("span",{style:{fontSize:11,color:"var(--text3)",marginLeft:2}},session.label),
     session&&React.createElement("button",{title:"Déconnexion",onClick:logout,style:{background:"var(--redBg)",border:"1px solid rgba(220,38,38,.2)",color:"var(--red)",borderRadius:6,padding:"3px 8px",fontSize:11,cursor:"pointer"}},"⏻"),
     dbDot
@@ -10252,11 +10569,13 @@ useEffect(()=>{
     loading&&React.createElement("div",{style:{position:"fixed",inset:0,background:"rgba(30,40,60,.45)",zIndex:9998,display:"flex",alignItems:"center",justifyContent:"center"}},React.createElement("div",{style:{background:"var(--surface)",border:"1px solid var(--border)",borderRadius:14,padding:"24px 36px",fontSize:15,fontWeight:700,color:"var(--text)"}},"⏳ Chargement en cours...")),
     toast&&React.createElement("div",{className:"toast-anim",style:{position:"fixed",top:20,left:"50%",transform:"translateX(-50%)",zIndex:9999,background:toast.type==="err"?"#7F1D1D":"#14532D",border:"1px solid "+(toast.type==="err"?"rgba(220,38,38,.3)":"rgba(22,163,74,.3)"),color:"#fff",padding:"12px 24px",borderRadius:12,fontSize:13,fontWeight:700,boxShadow:"0 4px 24px rgba(0,0,0,.12)",whiteSpace:"nowrap",pointerEvents:"none"}},toast.msg),
     showSettings&&!isIT&&React.createElement(SettingsModal,{settings,setSettings,showToast,setShowSettings,racineRef,hrRef,hcmRef,importJsonRef,exportExcel,exportJSON,importJSON,badges,setBadges,casiers,wdCache,histo,addLog,canHistorique:canAccess("historique"),canArchives:canAccess("archives"),canHistoriquePret:canAccess("historique_pret"),initialTab:settingsInitialTab}),
+    menuOuvert&&React.createElement(MenuLateral,{visibleNav,navActif,setView,onClose:()=>setMenuOuvert(false),session,notifs:canAccess("notifications")?notifs.length:null,ouvrirReglages:()=>setShowSettings(true),peutReglages:!isIT}),
     React.createElement("nav",{className:"desktop-nav no-print",style:{background:"var(--surface)",borderBottom:"1px solid var(--border)",padding:"0 12px",display:"flex",alignItems:"center",gap:2,height:48,position:"sticky",top:0,zIndex:500,boxShadow:"0 1px 0 var(--border)",overflow:"hidden"}},
-      React.createElement("div",{style:{display:"flex",alignItems:"center",gap:6,marginRight:10,paddingRight:10,borderRight:"1px solid var(--border)",flexShrink:0}},
-        React.createElement("span",{style:{color:"var(--text)",fontWeight:700,fontSize:15,whiteSpace:"nowrap"}},"Collaborateurs")
+      React.createElement("div",{style:{display:"flex",alignItems:"center",flexShrink:0}},
+        React.createElement("button",{type:"button",className:"burger",title:"Menu",onClick:()=>setMenuOuvert(true)},React.createElement("svg",{width:20,height:20,viewBox:"0 0 24 24",fill:"none",stroke:"currentColor",strokeWidth:2,strokeLinecap:"round"},React.createElement("path",{d:"M4 7h16M4 12h16M4 17h16"}))),
+        React.createElement("span",{className:"titre-page"},(()=>{const n=nav.find(x=>navActif(x.id));const id=n?n.id:view;const l=n?n.label:view==="notifications"?"Notifications":view==="aide"?"Aide":"";return [React.createElement(IconeNav,{key:"i",id,size:18}),l];})())
       ),
-      React.createElement("div",{style:{display:"flex",alignItems:"center",gap:1,flex:1,overflow:"hidden"}},
+      React.createElement("div",{className:"nav-links",style:{display:"flex",alignItems:"center",gap:1,flex:1,overflow:"hidden"}},
         visibleNav.map(n=>React.createElement("button",{key:n.id,onClick:()=>setView(n.id),className:"nav-item"+(navActif(n.id)?" active":""),style:{fontSize:11,padding:"5px 8px",flexShrink:0}},
           React.createElement(IosIcon,{id:n.id,size:17,filled:navActif(n.id)}),n.label,
           false&&React.createElement("span",{style:{background:"var(--red)",color:"#fff",borderRadius:999,fontSize:8,fontWeight:700,padding:"1px 4px",marginLeft:2}},fssOpenCount)
