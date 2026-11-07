@@ -4235,7 +4235,7 @@ function IconeNav({id,size=17}){const d=ICONES_NAV[id];if(!d)return null;
 
 
 // ════════════════ NOUVEAU LOOK ════════════════
-const AV_COULEURS=["#2563EB","#7C3AED","#DB2777","#EA580C","#0891B2","#16A34A","#CA8A04","#4F46E5","#0D9488","#BE123C"];
+const AV_COULEURS=["#2563EB","#7C3AED","#DB2777","#EA580C","#0891B2","#475569","#CA8A04","#4F46E5","#0E7490","#9333EA"];
 function couleurAvatar(t){t=String(t||"");let h=0;for(let i=0;i<t.length;i++)h=(h*31+t.charCodeAt(i))>>>0;return AV_COULEURS[h%AV_COULEURS.length];}
 function initiales(prenom,nom){const a=String(prenom||"").trim(),b=String(nom||"").trim();return ((a[0]||"")+(b[0]||"")).toUpperCase()||"?";}
 function Avatar({prenom,nom,size=30}){return React.createElement("span",{className:"avatar",style:{width:size,height:size,fontSize:Math.round(size*.38),background:couleurAvatar(String(prenom||"")+" "+String(nom||""))}},initiales(prenom,nom));}
@@ -8389,7 +8389,7 @@ function VueFieldSupport({fssData,setFssData,showToast,addLog,badges,casiers,set
     let r=fssData||[];
     if(search.trim()){const q=search.toLowerCase();r=r.filter(f=>chercheTexte(q,f.nom,f.prenom,f.manager,f.lieu,f.ritm,f.matPC));}
     if(filtSit)r=r.filter(f=>f.situation===filtSit);
-    if(filtStat)r=r.filter(f=>filtStat==="cloture"?f.cloture:filtStat==="ouvert"?!f.cloture:f.statut===filtStat);
+    if(filtStat)r=r.filter(f=>filtStat==="cloture"?f.cloture:filtStat==="ouvert"?!f.cloture:(f.statut===filtStat&&!f.cloture));
     if(filtDate)r=r.filter(f=>f.dateEvt&&f.dateEvt>=filtDate);
     return [...r].sort((a,b)=>{const av=a[sortCol]||"",bv=b[sortCol]||"";return sortDir==="asc"?String(av).localeCompare(String(bv)):String(bv).localeCompare(String(av));});
   },[fssData,search,filtSit,filtStat,sortCol,sortDir]);
@@ -8486,10 +8486,33 @@ function VueFieldSupport({fssData,setFssData,showToast,addLog,badges,casiers,set
 
   const[fsTable,setFsTable0]=useState(()=>{try{return localStorage.getItem("fsTable")==="1";}catch(e){return false;}});
   const setFsTable=v=>{setFsTable0(v);try{localStorage.setItem("fsTable",v?"1":"0");}catch(e){}};
-  const fsGroups=iosByFirstName(filtered,f=>f.prenom,f=>f.nom);
+  const isoEvt=d=>{const t=String(d||"").trim();let m=t.match(/^(\d{4})-(\d{2})-(\d{2})/);if(m)return m[1]+"-"+m[2]+"-"+m[3];m=t.match(/^(\d{2})\/(\d{2})\/(\d{4})/);return m?m[3]+"-"+m[2]+"-"+m[1]:"";};
+  const jourCourt=iso=>iso?new Date(iso+"T12:00:00").toLocaleDateString("fr-FR",{weekday:"short",day:"2-digit",month:"2-digit"}):"";
+  const fsGroups=(()=>{const auj=isoLocal(new Date()),sem=isoLocal(new Date(Date.now()+7*864e5));
+    const G=[["retard","⚠️ En retard"],["auj","Aujourd'hui"],["sem","Cette semaine"],["tard","Plus tard"],["sans","Sans date"],["clos","Clôturées"]];const m={};G.forEach(([k])=>m[k]=[]);
+    filtered.forEach(f=>{const d=isoEvt(f.dateEvt);const k=f.cloture?"clos":!d?"sans":d<auj?"retard":d===auj?"auj":d<=sem?"sem":"tard";m[k].push({...f,_d:d});});
+    Object.keys(m).forEach(k=>m[k].sort((a,b)=>k==="clos"?String(b._d).localeCompare(String(a._d)):String(a._d).localeCompare(String(b._d))));
+    return G.filter(([k])=>m[k].length).map(([k,t])=>({k:t+" · "+m[k].length,items:m[k]}));})();
+  const nbStat=st=>(fssData||[]).filter(f=>st==="cloture"?f.cloture:!f.cloture&&f.statut===st).length;
   return el("div",{className:"anim-in"},
+    // ── En-tête téléphone : statut en onglets, situation en pastilles, actions rangées ──
+    el("div",{className:"fs-new"},
+      el("div",{className:"fs-top"},
+        el("h1",{className:"ios-large",style:{margin:0}},"Field Support"),
+        el("button",{type:"button",className:"btn btn-primary fs-add",onClick:()=>setShowAddManuel(v=>!v)},"＋ Demande"),
+        el("details",{className:"fs-more"},el("summary",null,"⋯"),
+          el("div",{className:"fs-menu"},
+            el("label",null,"📂 Importer un CSV",el("input",{type:"file",accept:".csv",onChange:importFSS,style:{display:"none"}})),
+            el("button",{type:"button",onClick:e=>{const b=document.querySelector('[data-x="fss-exp"]');if(b)b.click();e.currentTarget.closest("details").open=false;}},"📤 Exporter en CSV")))),
+      el("p",{className:"ios-sub",style:{margin:"2px 2px 12px"}},openCount+" en attente · "+clotureCount+" clôturée"+(clotureCount>1?"s":"")),
+      el("div",{className:"fs-seg"},[["","Toutes",(fssData||[]).length],["A traiter","À traiter",nbStat("A traiter")],["En cours","En cours",nbStat("En cours")],["cloture","Clôturées",nbStat("cloture")]].map(([v,l,n])=>
+        el("button",{key:l,type:"button",className:filtStat===v?"on":"",onClick:()=>setFiltStat(v)},l,el("span",null,n)))),
+      el("div",{className:"fs-chips"},[["","Toutes"],["Arrivée","↘ Arrivées"],["Départ","↗ Départs"]].map(([v,l])=>
+        el("button",{key:l,type:"button",className:filtSit===v?"on":"",onClick:()=>setFiltSit(v)},l))),
+      el("div",{className:"fs-search"},el("span",null,"🔍"),el("input",{type:"search",value:search,onChange:e=>setSearch(e.target.value),placeholder:"Nom, manager, RITM, n° de PC…"}),
+        el("span",{className:"fs-n"},filtered.length+"/"+(fssData||[]).length))),
     // ── Header ──
-    el("div",{style:{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:16,flexWrap:"wrap",gap:10}},
+    el("div",{className:"fs-old",style:{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:16,flexWrap:"wrap",gap:10}},
       el("div",null,
         el("h1",{className:"ios-large",style:{fontSize:22,fontWeight:800,color:"var(--text)",marginBottom:4,display:"flex",alignItems:"center",gap:10}},
           "📋 Field Support",
@@ -8513,12 +8536,12 @@ function VueFieldSupport({fssData,setFssData,showToast,addLog,badges,casiers,set
           const rows=(fssData||[]).map(f=>[f.lieu,f.situation,f.statut,f.nom,f.prenom,f.dateEvt,f.manager,f.matPC,f.ritm,f.matRecu,f.idMat,f.dateRecep,f.matDonne,f.commentaires,f.cloture?"Oui":"Non"]);
           const csv=[headers,...rows].map(r=>r.map(v=>'"'+String(v||"").replace(/"/g,'""')+'"').join(";")).join("\n");
           const a=document.createElement("a");a.href="data:text/csv;charset=utf-8,"+encodeURIComponent("﻿"+csv);a.download="field_support_export.csv";a.click();
-        },className:"btn btn-outline",style:{fontSize:12}},"📤 Exporter CSV")
+        },className:"btn btn-outline","data-x":"fss-exp",style:{fontSize:12}},"📤 Exporter CSV")
       )
     ),
 
     // ── KPIs ──
-    el("div",{className:"m-grid-2 kpi-row",style:{display:"grid",gridTemplateColumns:"repeat(6,1fr)",gap:8,marginBottom:16}},
+    el("div",{className:"m-grid-2 kpi-row fs-old",style:{display:"grid",gridTemplateColumns:"repeat(6,1fr)",gap:8,marginBottom:16}},
       kpis.map(k=>el("div",{key:k.label,
         onClick:k.id?()=>{
           if(k.id.startsWith("sit_"))setFiltSit(filtSit===k.id.slice(4)?"":k.id.slice(4));
@@ -8532,7 +8555,7 @@ function VueFieldSupport({fssData,setFssData,showToast,addLog,badges,casiers,set
     ),
 
     // ── Barre recherche + filtres ──
-    el("div",{style:{display:"flex",gap:8,marginBottom:12,flexWrap:"wrap",alignItems:"center",
+    el("div",{className:"fs-old",style:{display:"flex",gap:8,marginBottom:12,flexWrap:"wrap",alignItems:"center",
       background:"var(--surface)",border:"1px solid var(--border)",borderRadius:"var(--radius)",padding:"8px 12px"}},
       el("span",{style:{color:"var(--text3)",fontSize:14}},"🔍"),
       el("input",{type:"text",value:search,onChange:e=>setSearch(e.target.value),
@@ -8582,18 +8605,17 @@ function VueFieldSupport({fssData,setFssData,showToast,addLog,badges,casiers,set
     el("div",{style:{display:"flex",justifyContent:"flex-end",margin:"0 2px 8px"}},el("button",{type:"button",className:"ios-link hide-m",onClick:()=>setFsTable(!fsTable)},fsTable?"Liste":"Tableau")),
     el("div",{className:fsTable?"ct-mobile-only":"",style:{display:"block"}},
       fsGroups.length===0?el("div",{className:"ios-group"},el("div",{className:"il-row",style:{cursor:"default",color:"var(--text3)"}},"Aucune fiche trouvée"))
-      :fsGroups.map(g=>el(React.Fragment,{key:g.k},el("div",{className:"ct-sec",id:"fs-sec-"+g.k},g.k),el("div",{className:"ios-group"},g.items.map(f=>{
+      :fsGroups.map(g=>el(React.Fragment,{key:g.k},el("div",{className:"ct-sec fs-sec"},g.k),el("div",{className:"ios-group"},g.items.map(f=>{
         const arr=f.situation==="Arrivée";const isNew=f.is_new&&f.statut==="A traiter";
         return el("div",{key:f.id,className:"il-row",onClick:()=>{setSelectedCard(f);setEditMode(false);setEditForm({...f});}},
-          el(IosAv,{txt:(String(f.prenom||"").charAt(0)+String(f.nom||"").charAt(0)).toUpperCase()||"?",bg:arr?"linear-gradient(180deg,#5EE07A,#34C759)":"linear-gradient(180deg,#FF6961,#FF3B30)"}),
+          el(IosAv,{txt:(String(f.prenom||"").charAt(0)+String(f.nom||"").charAt(0)).toUpperCase()||"?",bg:couleurAvatar(String(f.prenom||"")+" "+String(f.nom||""))}),
           el("div",{className:"t"},
             el("div",{className:"t1"},iosCap(f.prenom)+" ",el("b",null,String(f.nom||"").toUpperCase()),isNew&&el("span",{className:"ct-pill",style:{background:"rgba(255,149,0,.16)",color:"#C93400"}},"nouveau")),
-            el("div",{className:"t2"},el("span",{style:{color:arr?"#248A3D":"#D70015",fontWeight:600}},f.situation||"—"),(f.lieu?" · "+f.lieu:"")+(f.dateEvt?" · "+fmtD(f.dateEvt):"")+(f.manager?" · "+f.manager:""))),
-          el(StatBadge,{s:f.statut}),
-          f.cloture&&el(IosIcon,{id:"check",size:20,filled:true,color:"#34C759"}),
+            el("div",{className:"t2"},el("span",{style:{color:"var(--text)",fontWeight:700}},(arr?"↘ ":"↗ ")+(f.situation||"—")+(f._d?" "+jourCourt(f._d):"")),(f.lieu?" · "+f.lieu:"")+(f.manager?" · "+f.manager:"")),
+            (f.ritm||f.matPC)&&el("div",{className:"t2",style:{fontSize:12}},[f.ritm&&(/^RITM/i.test(f.ritm)?f.ritm:"RITM "+f.ritm),f.matPC&&(/^PC/i.test(f.matPC)?f.matPC:"PC "+f.matPC)].filter(Boolean).join(" · "))),
+          el("span",{className:"fs-st fs-st-"+(f.cloture?"clos":f.statut==="En cours"?"cours":f.statut==="A traiter"?"atraiter":"autre")},f.cloture?"Clôturée":f.statut==="A traiter"?"À traiter":(f.statut||"—")),
           el("span",{className:"ios-chev"},"›"));
       }))))),
-    fsGroups.length>0&&el(IosIndex,{letters:new Set(fsGroups.map(g=>g.k)),prefix:"fs-sec-"}),
     // ── Tableau (ordinateur, sur demande) ──
     fsTable&&el("div",{className:"hide-m",style:{background:"var(--surface)",border:"1px solid var(--border)",borderRadius:"var(--radius-lg)",overflow:"auto"}},
       el("table",{style:{minWidth:750,width:"100%",borderCollapse:"collapse"}},
@@ -9266,7 +9288,7 @@ function IconeNav({id,size=17}){const d=ICONES_NAV[id];if(!d)return null;
 
 
 // ════════════════ NOUVEAU LOOK ════════════════
-const AV_COULEURS=["#2563EB","#7C3AED","#DB2777","#EA580C","#0891B2","#16A34A","#CA8A04","#4F46E5","#0D9488","#BE123C"];
+const AV_COULEURS=["#2563EB","#7C3AED","#DB2777","#EA580C","#0891B2","#475569","#CA8A04","#4F46E5","#0E7490","#9333EA"];
 function couleurAvatar(t){t=String(t||"");let h=0;for(let i=0;i<t.length;i++)h=(h*31+t.charCodeAt(i))>>>0;return AV_COULEURS[h%AV_COULEURS.length];}
 function initiales(prenom,nom){const a=String(prenom||"").trim(),b=String(nom||"").trim();return ((a[0]||"")+(b[0]||"")).toUpperCase()||"?";}
 function Avatar({prenom,nom,size=30}){return React.createElement("span",{className:"avatar",style:{width:size,height:size,fontSize:Math.round(size*.38),background:couleurAvatar(String(prenom||"")+" "+String(nom||""))}},initiales(prenom,nom));}
@@ -9363,6 +9385,33 @@ function DetailsMobile({titre,cle,children}){
 }
 
 (function(){try{var st=document.createElement("style");st.id="mobile";st.textContent=`
+.fs-new{display:none}
+@media(max-width:700px){
+  .fs-old,.kpi-row.fs-old,div.fs-old{display:none!important}
+  .fs-new{display:block;margin-bottom:6px}
+  .fs-top{display:flex;align-items:center;gap:8px}
+  .fs-top h1{flex:1}
+  .fs-add{padding:8px 14px!important;font-size:14px!important;border-radius:12px!important}
+  .fs-more{position:relative}
+  .fs-more summary{list-style:none;cursor:pointer;width:38px;height:38px;border-radius:12px;border:1px solid var(--border);background:var(--surface);display:grid;place-items:center;font-size:20px;font-weight:800;color:var(--text)}
+  .fs-more summary::-webkit-details-marker{display:none}
+  .fs-menu{position:absolute;right:0;top:44px;z-index:50;background:var(--surface);border:1px solid var(--border);border-radius:14px;box-shadow:0 12px 30px rgba(0,0,0,.15);min-width:210px;overflow:hidden}
+  .fs-menu label,.fs-menu button{display:block;width:100%;text-align:left;padding:13px 16px;font:inherit;font-size:15px;background:none;border:none;border-bottom:1px solid var(--border);color:var(--text);cursor:pointer}
+  .fs-seg{display:flex;background:var(--surface2);border-radius:12px;padding:3px;gap:2px;margin-bottom:10px}
+  .fs-seg button{flex:1;border:none;background:none;border-radius:9px;padding:8px 2px;font:inherit;font-size:12.5px;font-weight:700;color:var(--text2);cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:1px}
+  .fs-seg button span{font-size:15px;font-weight:800;color:var(--text)}
+  .fs-seg button.on{background:var(--surface);color:var(--text);box-shadow:0 1px 3px rgba(16,24,40,.14)}
+  .fs-chips{display:flex;gap:6px;margin-bottom:10px}
+  .fs-chips button{border:1px solid var(--border);background:var(--surface);border-radius:999px;padding:6px 12px;font:inherit;font-size:13px;font-weight:600;color:var(--text2);cursor:pointer}
+  .fs-chips button.on{background:var(--text);color:var(--surface);border-color:var(--text)}
+  .fs-search{display:flex;align-items:center;gap:8px;background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:9px 12px;margin-bottom:12px}
+  .fs-search input{flex:1;border:none;outline:none;background:transparent;font:inherit;font-size:15px;color:var(--text);min-width:0}
+  .fs-n{font-size:12px;color:var(--text3)}
+  .fs-st{font-size:11.5px;font-weight:700;border-radius:999px;padding:3px 9px;white-space:nowrap;flex-shrink:0}
+  .fs-st-atraiter{background:#EEF3FF;color:#2563EB}.fs-st-cours{background:#FFF4E5;color:#B45309}.fs-st-clos,.fs-st-autre{background:var(--surface2);color:var(--text3)}
+  .fs-sec{text-transform:none!important;letter-spacing:0!important;font-weight:800!important;font-size:13px!important;color:var(--text2)!important}
+}
+
 /* Fiche contact : texte lisible sur fond clair, avatar en couleur */
 html body .cc-top .cc-nm{color:var(--text)!important}
 html body .cc-top .cc-st,html body .cc-top .cc-sub{color:var(--text3)!important}
