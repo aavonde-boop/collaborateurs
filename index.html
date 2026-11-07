@@ -6699,6 +6699,26 @@ function VueAccueil({notifExtra,badges,casiers,setView,wdCache,setBadges,setCasi
     ),
     React.createElement(BlocAujourdhui,{badges,extra:notifExtra,setView}),
 
+    // ══════════════ 2) ENREGISTRER UN MOUVEMENT — deux icônes, chacune ouvre sa fenêtre ══════════════
+    React.createElement("div",{className:"mvt-icon-row",style:{marginBottom:10}},
+      React.createElement("div",{className:"mvt-icon arr",onClick:()=>setModal("arrivee")},
+        React.createElement("div",{className:"ico"},"🟢"),
+        React.createElement("div",null,
+          React.createElement("div",{className:"ttl"},"Arrivée"),
+          React.createElement("div",{className:"sub"},"Recherche Workday en direct")
+        ),
+        foundArr&&React.createElement("span",{className:"tag"},"📡 "+foundArr.prenom)
+      ),
+      React.createElement("div",{className:"mvt-icon dep",onClick:()=>setModal("depart")},
+        React.createElement("div",{className:"ico"},"🔴"),
+        React.createElement("div",null,
+          React.createElement("div",{className:"ttl"},"Départ"),
+          React.createElement("div",{className:"sub"},"Checklist de restitution")
+        )
+      )
+    ),
+
+    React.createElement(DetailsMobile,{titre:"📊 Plus de chiffres et de détails",cle:"accueil-details"},
     // ══════════════ 1) NOUVEAUTÉS — ce qui a été saisi / importé / à compléter, en un coup d'œil ══════════════
     React.createElement("div",{className:"news-grid",style:{marginBottom:10}},
       React.createElement(NewsCard,{icon:"📝",count:histoToday.length,title:"Saisies aujourd'hui",sub:histoToday.length?"actions enregistrées":"Aucune saisie pour l'instant",color:C.blue,onClick:()=>setModal("saisies")}),
@@ -6734,25 +6754,6 @@ function VueAccueil({notifExtra,badges,casiers,setView,wdCache,setBadges,setCasi
               React.createElement("div",{className:"todo-txt",onClick:t.action},t.txt),
               React.createElement("span",{className:"todo-tag",style:{color:t.color,background:t.bg}},t.tag)
             ))
-      )
-    ),
-
-    // ══════════════ 2) ENREGISTRER UN MOUVEMENT — deux icônes, chacune ouvre sa fenêtre ══════════════
-    React.createElement("div",{className:"mvt-icon-row",style:{marginBottom:10}},
-      React.createElement("div",{className:"mvt-icon arr",onClick:()=>setModal("arrivee")},
-        React.createElement("div",{className:"ico"},"🟢"),
-        React.createElement("div",null,
-          React.createElement("div",{className:"ttl"},"Arrivée"),
-          React.createElement("div",{className:"sub"},"Recherche Workday en direct")
-        ),
-        foundArr&&React.createElement("span",{className:"tag"},"📡 "+foundArr.prenom)
-      ),
-      React.createElement("div",{className:"mvt-icon dep",onClick:()=>setModal("depart")},
-        React.createElement("div",{className:"ico"},"🔴"),
-        React.createElement("div",null,
-          React.createElement("div",{className:"ttl"},"Départ"),
-          React.createElement("div",{className:"sub"},"Checklist de restitution")
-        )
       )
     ),
 
@@ -6875,6 +6876,8 @@ function VueAccueil({notifExtra,badges,casiers,setView,wdCache,setBadges,setCasi
           ))),
       React.createElement("div",{className:"tl-foot",onClick:()=>setView("field_support")},"Aller à Field Support →")
     ),
+
+    null),
 
     // ══════════════ MODALES — l'info utile uniquement, au clic, puis proposition d'aller à l'onglet ══════════════
     modal==="arrivee"&&React.createElement(AccueilModal,{title:"Nouvelle arrivée",icon:"🟢",onClose:closeModal,maxWidth:460},
@@ -7164,7 +7167,7 @@ function VueCollaborateurs({badges,casiers,setBadges,setCasiers,showToast,wdCach
         React.createElement("button",{type:"button",className:"ios-link",onClick:close},"‹ Collaborateurs"),
         !arch&&React.createElement("button",{type:"button",className:"ios-link",onClick:edit},"Modifier")),
       React.createElement("div",{className:"cc-top"},
-        React.createElement("div",{className:"cc-av"},ctInit(b)),
+        React.createElement("div",{className:"cc-av",style:{backgroundImage:"linear-gradient("+couleurAvatar(String(b.prenom||"")+" "+String(b.nom||""))+","+couleurAvatar(String(b.prenom||"")+" "+String(b.nom||""))+")",border:"none"}},ctInit(b)),
         React.createElement("div",{style:{flex:1,minWidth:0}},
           React.createElement("div",{className:"cc-nm"},ctCap(b.prenom)+" "+String(b.nom||"").toUpperCase()),
           React.createElement("div",{className:"cc-st"},React.createElement("span",{style:{color:statCol,fontWeight:600}},b.statut),stLine.slice(String(b.statut).length))),
@@ -7217,7 +7220,7 @@ function VueCollaborateurs({badges,casiers,setBadges,setCasiers,showToast,wdCach
       React.createElement("div",{style:{flex:1}},
         React.createElement("h1",{className:"ios-large"},"👥 Collaborateurs"),
         React.createElement("p",{className:"ios-sub"},filtered.length+" affiché"+(filtered.length>1?"s":"")+" sur "+badges.filter(b=>b.statut!=="Archivé").length),
-        React.createElement("div",{className:"m-grid-2",style:{display:"grid",gridTemplateColumns:"repeat(5,1fr)",gap:8,marginBottom:4}},
+        React.createElement("div",{className:"m-grid-2 kpi-row",style:{display:"grid",gridTemplateColumns:"repeat(5,1fr)",gap:8,marginBottom:4}},
           [
             {label:"Total",val:badges.filter(b=>b.statut!=="Archivé").length,color:"#3B82F6",id:""},
             {label:"Actifs",val:badges.filter(b=>b.statut==="Actif").length,color:C.green,id:"Actif"},
@@ -8515,7 +8518,7 @@ function VueFieldSupport({fssData,setFssData,showToast,addLog,badges,casiers,set
     ),
 
     // ── KPIs ──
-    el("div",{className:"m-grid-2",style:{display:"grid",gridTemplateColumns:"repeat(6,1fr)",gap:8,marginBottom:16}},
+    el("div",{className:"m-grid-2 kpi-row",style:{display:"grid",gridTemplateColumns:"repeat(6,1fr)",gap:8,marginBottom:16}},
       kpis.map(k=>el("div",{key:k.label,
         onClick:k.id?()=>{
           if(k.id.startsWith("sit_"))setFiltSit(filtSit===k.id.slice(4)?"":k.id.slice(4));
@@ -9346,6 +9349,39 @@ function BlocAujourdhui({badges,extra,setView}){
         el("span",{className:"auj-go"},"›"))),
       ev.length>vus.length&&el("div",{className:"auj-plus"},"+ "+(ev.length-vus.length)+" autre(s) — voir les notifications")));
 }
+
+
+// Bloc repliable (téléphone) : garde la page courte, l'état est retenu
+function DetailsMobile({titre,cle,children}){
+  const lire=()=>{try{return localStorage.getItem("plie:"+cle)!=="ouvert";}catch(e){return true;}};
+  const[plie,setPlie]=useState(lire);
+  const basculer=()=>setPlie(v=>{try{localStorage.setItem("plie:"+cle,v?"ouvert":"plie");}catch(e){}return !v;});
+  return React.createElement("div",{className:"dm"},
+    React.createElement("button",{type:"button",className:"dm-tete",onClick:basculer},
+      React.createElement("span",null,titre),React.createElement("span",{className:"dm-fl"},plie?"Afficher":"Masquer")),
+    !plie&&React.createElement("div",{className:"dm-corps"},children));
+}
+
+(function(){try{var st=document.createElement("style");st.id="mobile";st.textContent=`
+/* Fiche contact : texte lisible sur fond clair, avatar en couleur */
+html body .cc-top .cc-nm{color:var(--text)!important}
+html body .cc-top .cc-st,html body .cc-top .cc-sub{color:var(--text3)!important}
+html body .cc-top .cc-st span{color:var(--text2)!important;background:var(--surface2)!important}
+html body .cc-top .cc-av{color:#fff!important}
+/* Bloc repliable */
+.dm{margin:4px 0 12px}
+.dm-tete{width:100%;display:flex;align-items:center;justify-content:space-between;background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:13px 16px;font:inherit;font-weight:800;font-size:15px;color:var(--text);cursor:pointer}
+.dm-fl{font-size:13px;font-weight:700;color:var(--accent2,#2563EB)}
+.dm-corps{margin-top:10px}
+/* En-têtes compacts sur téléphone : compteurs sur une ligne qui défile */
+@media(max-width:700px){
+  .stat-row,.kpi-row,.m-grid-2.kpis-collab{display:flex!important;flex-wrap:nowrap!important;overflow-x:auto;gap:8px!important;scrollbar-width:none;-webkit-overflow-scrolling:touch;padding-bottom:2px}
+  .stat-row::-webkit-scrollbar,.kpi-row::-webkit-scrollbar{display:none}
+  .stat-row>*,.kpi-row>*{flex:0 0 auto!important;min-width:104px!important}
+  .mvt-icon-row{position:relative}
+}
+
+`;document.head.appendChild(st);}catch(e){}})();
 
 function SettingsModal({settings,setSettings,showToast,setShowSettings,racineRef,hrRef,hcmRef,importJsonRef,exportExcel,exportJSON,importJSON,badges,setBadges,casiers,wdCache,histo,addLog,canHistorique,canArchives,canHistoriquePret,initialTab}){
   const[tab,setTab]=useState(initialTab||"emails");
@@ -10501,7 +10537,8 @@ useEffect(()=>{
     if(view!=="field_support")setView("field_support");
     if(fssData&&fssData.some(x=>x.id===LIEN_FICHE)){setPendingOpen({view:"field_support",id:LIEN_FICHE});LIEN_FICHE=null;try{history.replaceState(null,"",location.pathname);}catch(e){}}
   },[unlocked,fssData,view]);
-  const mainTabs=visibleNav.slice(0,4);const moreTabs=visibleNav.slice(4);
+  const ORDRE_TABS=["accueil","collaborateurs","gestion_accueil","casiers","field_support"];const navTri=[...visibleNav].sort((a,b)=>{const x=ORDRE_TABS.indexOf(a.id),y=ORDRE_TABS.indexOf(b.id);return (x<0?99:x)-(y<0?99:y);});
+  const mainTabs=navTri.slice(0,4);const moreTabs=navTri.slice(4);
 
   const renderView=()=>{
     if(!canAccess(view)){return React.createElement("div",{style:{textAlign:"center",padding:80}},React.createElement("div",{style:{fontSize:48,marginBottom:12}},"🔒"),React.createElement("div",{style:{fontWeight:700,fontSize:18,color:"#0F172A",marginBottom:8}},"Accès refusé"),React.createElement("div",{style:{color:"#6B7280"}},"Vous n'avez pas accès à cette section."));}
@@ -10587,7 +10624,7 @@ useEffect(()=>{
       React.createElement("div",{className:"ios-tabs"},
         mainTabs.map(n=>React.createElement("button",{key:n.id,type:"button",onClick:()=>setView(n.id),className:"ios-tab"+(navActif(n.id)?" on":""),"aria-label":n.label},
           React.createElement(IosIcon,{id:n.id,filled:navActif(n.id)}),
-          React.createElement("span",{className:"tlbl"},n.id==="field_support"?"Field Support":n.label),
+          React.createElement("span",{className:"tlbl"},n.id==="field_support"?"Field Support":n.id==="gestion_accueil"?"Accueil":n.label),
           false&&React.createElement("span",{className:"tb"},fssOpenCount))),
         React.createElement("button",{type:"button",onClick:()=>setShowMore(true),className:"ios-tab"+(moreTabs.some(n=>n.id===view)?" on":""),"aria-label":"Plus"},
           React.createElement(IosIcon,{id:"more"}),React.createElement("span",{className:"tlbl"},"Plus"))
