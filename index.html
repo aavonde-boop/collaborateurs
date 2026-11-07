@@ -1597,7 +1597,7 @@ function VueAccueil({notifExtra,badges,casiers,setView,wdCache,setBadges,setCasi
 
   // ══════════════ Thème clair/sombre (ajout) ══════════════
   const[dark,setDark]=useState(()=>{try{return document.body.classList.contains("dark");}catch(e){return false;}});
-  const toggleTheme=()=>{try{document.body.classList.toggle("dark");setDark(document.body.classList.contains("dark"));}catch(e){}};
+  const toggleTheme=()=>{};try{document.body.classList.remove("dark");}catch(e){}
 
   // ══════════════ Recherche d'en-tête : collaborateur ou n° de badge (ajout) ══════════════
   const[searchMode,setSearchMode]=useState("collab"); // "collab" | "badge"
@@ -1748,21 +1748,8 @@ function VueAccueil({notifExtra,badges,casiers,setView,wdCache,setBadges,setCasi
           anniversaire.length>0&&React.createElement("p",{className:"anniv-line"},"🎂 Anniversaire d'arrivée : "+anniversaire.map(b=>b.prenom+" "+b.nom).join(", "))
         ),
         React.createElement("div",{className:"hero-actions"},
-          React.createElement("button",{onClick:toggleTheme,title:"Changer de thème",style:{background:"rgba(255,255,255,.15)",border:"1px solid rgba(255,255,255,.3)",color:"#fff",borderRadius:8,padding:"6px 12px",cursor:"pointer",fontSize:12,fontWeight:600}},dark?"☀️ Clair":"🌙 Sombre"),
-          React.createElement("button",{onClick:()=>{
-            const it=settings&&settings.itEmail?settings.itEmail:"";
-            if(!it){showToast("⚠️ Email IT non configuré","err");return;}
-            const dem=new Date();dem.setDate(dem.getDate()+1);const dISO=isoLocal(dem);
-            const sorties=badges.filter(b=>b.date_sortie_prevue===dISO&&b.statut!=="Archivé");
-            const entrees=badges.filter(b=>b.date_entree===dISO&&b.statut!=="Archivé");
-            if(!sorties.length&&!entrees.length){showToast("Aucun événement demain");return;}
-            const lines=[];
-            if(entrees.length){lines.push("ARRIVÉES DEMAIN :");entrees.forEach(b=>lines.push("• "+b.prenom+" "+b.nom+" ("+b.matricule+")"));}
-            if(sorties.length){lines.push("\nDÉPARTS DEMAIN :");sorties.forEach(b=>lines.push("• "+b.prenom+" "+b.nom+" — Badge:"+(b.serie||"NC")));}
-            window.open("mailto:"+encodeURIComponent(it)+"?subject="+encodeURIComponent("Rappel J-1 — "+new Date(dISO+"T00:00:00").toLocaleDateString("fr-FR"))+"&body="+encodeURIComponent("Bonjour,\n\n"+lines.join("\n")+"\n\nCordialement"));
-            showToast("✅ Mail rappel ouvert");
-          },style:{background:"rgba(255,255,255,.15)",border:"1px solid rgba(255,255,255,.3)",color:"#fff",borderRadius:8,padding:"6px 12px",cursor:"pointer",fontSize:12,fontWeight:600}},"📬 Rappels J-1")
-        )
+          
+          )
       ),
       React.createElement("div",{className:"search-tabs"},
         React.createElement("button",{className:"search-tab"+(searchMode==="collab"?" active":""),onClick:()=>{setSearchMode("collab");setSearchQuery("");}},"👤 Collaborateur"),
@@ -4248,7 +4235,7 @@ const MENU_SECTIONS=[["",["accueil"]],["Personnes",["collaborateurs","field_supp
 function MenuLateral({visibleNav,navActif,setView,onClose,session,notifs,ouvrirReglages,peutReglages}){
   const el=React.createElement;
   useEffect(()=>{const k=e=>{if(e.key==="Escape")onClose();};window.addEventListener("keydown",k);return()=>window.removeEventListener("keydown",k);},[]);
-  const ids=(visibleNav||[]).map(n=>n.id);const pris=new Set();
+  const ids=(visibleNav||[]).map(n=>n.id).filter(id=>id!=="notifications"&&id!=="settings");const pris=new Set();
   const sections=MENU_SECTIONS.map(([t,l])=>[t,l.filter(id=>ids.includes(id))]).filter(x=>x[1].length);sections.forEach(x=>x[1].forEach(id=>pris.add(id)));
   const autres=ids.filter(id=>!pris.has(id));if(autres.length)sections.push(["Autres",autres]);
   const lab=id=>{const n=(visibleNav||[]).find(x=>x.id===id);return n?n.label:id;};
@@ -4261,11 +4248,10 @@ function MenuLateral({visibleNav,navActif,setView,onClose,session,notifs,ouvrirR
       el("div",{className:"ml-brand"},el("span",{className:"ml-logo"},"🛎️"),el("span",null,"Services généraux"),el("button",{type:"button",className:"ml-x",onClick:onClose,title:"Fermer"},"✕")),
       sections.map(([t,l],i)=>el(React.Fragment,{key:i},t?el("div",{className:"ml-sec"},t):null,
         l.map(id=>item(id,lab(id),()=>aller(id),navActif(id))),
-        i===0&&ids.includes("notifications")===false&&notifs!==null?item("notifications","Notifications",()=>aller("notifications"),false,notifs||null):null)),
+        null)),
       el("div",{style:{flex:1}}),
       el("div",{className:"ml-sec"},"Application"),
-      peutReglages&&item("settings","Réglages",()=>{onClose();ouvrirReglages();},false),
-      item("aide","Aide",()=>aller("aide"),false),
+            item("aide","Aide",()=>aller("aide"),false),
       qui&&el("div",{className:"ml-me"},el(Avatar,{prenom:qui.split(/[\s@.]/)[0],nom:qui.split(/[\s@.]/)[1]||"",size:34}),el("div",{style:{minWidth:0}},el("b",null,qui),el("span",null,"Connecté")))));
 }
 // ── Page « Aujourd'hui » : compteurs avec courbe + frise de la journée ──
@@ -6523,7 +6509,7 @@ function VueAccueil({notifExtra,badges,casiers,setView,wdCache,setBadges,setCasi
 
   // ══════════════ Thème clair/sombre (ajout) ══════════════
   const[dark,setDark]=useState(()=>{try{return document.body.classList.contains("dark");}catch(e){return false;}});
-  const toggleTheme=()=>{try{document.body.classList.toggle("dark");setDark(document.body.classList.contains("dark"));}catch(e){}};
+  const toggleTheme=()=>{};try{document.body.classList.remove("dark");}catch(e){}
 
   // ══════════════ Recherche d'en-tête : collaborateur ou n° de badge (ajout) ══════════════
   const[searchMode,setSearchMode]=useState("collab"); // "collab" | "badge"
@@ -6668,21 +6654,9 @@ function VueAccueil({notifExtra,badges,casiers,setView,wdCache,setBadges,setCasi
     // ══════════════ HEADER — salutation, horloge, recherche (collaborateur/badge), thème ══════════════
     React.createElement("div",{className:"ios-head"},
       React.createElement("div",{className:"ios-navbtns"},
-        React.createElement("button",{type:"button",className:"ios-link",onClick:()=>{
-            const it=settings&&settings.itEmail?settings.itEmail:"";
-            if(!it){showToast("⚠️ Email IT non configuré","err");return;}
-            const dem=new Date();dem.setDate(dem.getDate()+1);const dISO=isoLocal(dem);
-            const sorties=badges.filter(b=>b.date_sortie_prevue===dISO&&b.statut!=="Archivé");
-            const entrees=badges.filter(b=>b.date_entree===dISO&&b.statut!=="Archivé");
-            if(!sorties.length&&!entrees.length){showToast("Aucun événement demain");return;}
-            const lines=[];
-            if(entrees.length){lines.push("ARRIVÉES DEMAIN :");entrees.forEach(b=>lines.push("• "+b.prenom+" "+b.nom+" ("+b.matricule+")"));}
-            if(sorties.length){lines.push("\nDÉPARTS DEMAIN :");sorties.forEach(b=>lines.push("• "+b.prenom+" "+b.nom+" — Badge:"+(b.serie||"NC")));}
-            window.open("mailto:"+encodeURIComponent(it)+"?subject="+encodeURIComponent("Rappel J-1 — "+new Date(dISO+"T00:00:00").toLocaleDateString("fr-FR"))+"&body="+encodeURIComponent("Bonjour,\n\n"+lines.join("\n")+"\n\nCordialement"));
-            showToast("✅ Mail rappel ouvert");
-          }},"Rappels J-1"),
-        React.createElement("button",{type:"button",className:"ios-link",onClick:toggleTheme,title:"Changer de thème"},dark?"Mode clair":"Mode sombre")
-      ),
+        React.createElement("button",{type:"button",className:"ios-ico",title:"Notifications",onClick:()=>setView("notifications")},React.createElement(IconeNav,{id:"notifications",size:22}),window._nbNotifs?React.createElement("span",{className:"ios-ico-n"},window._nbNotifs):null),
+        React.createElement("button",{type:"button",className:"ios-ico",title:"Réglages",onClick:()=>window.dispatchEvent(new Event("ouvrir-reglages"))},React.createElement(IconeNav,{id:"settings",size:22})),
+        ),
       React.createElement("h1",{className:"ios-large"},"Aujourd'hui"),
       React.createElement("p",{className:"ios-sub"},greeting+" · "+dateLongStr+" · "+clockStr),
       anniversaire.length>0&&React.createElement("p",{className:"ios-sub",style:{marginTop:-8}},"🎂 Anniversaire d'arrivée : "+anniversaire.map(b=>b.prenom+" "+b.nom).join(", ")),
@@ -9384,7 +9358,7 @@ function DetailsMobile({titre,cle,children}){
     !plie&&React.createElement("div",{className:"dm-corps"},children));
 }
 
-(function(){try{var st=document.createElement("style");st.id="mobile";st.textContent=`
+(function(){try{var st=document.createElement("style");st.id="mobile";st.textContent=`.ios-navbtns{display:flex;justify-content:flex-end;gap:8px}.ios-ico{position:relative;display:inline-flex;align-items:center;gap:4px;height:40px;min-width:40px;padding:0 10px;border-radius:12px;border:1px solid var(--border);background:var(--surface);color:var(--text);font:inherit;font-weight:700;font-size:14px;cursor:pointer;justify-content:center}.ios-ico-n{font-size:13px;color:var(--text2)}
 .fs-new{display:none}
 @media(max-width:700px){
   .fs-old,.kpi-row.fs-old,div.fs-old{display:none!important}
@@ -10579,6 +10553,8 @@ useEffect(()=>{
   const visibleNav=nav.filter(n=>canAccess(n.id));
   useEffect(()=>{const f=()=>setView("aide");window.addEventListener("ouvrir-aide",f);return()=>window.removeEventListener("ouvrir-aide",f);},[]);
   const[menuOuvert,setMenuOuvert]=useState(false);
+  useEffect(()=>{window._nbNotifs=canAccess("notifications")?notifs.length:0;},[notifs.length]);
+  useEffect(()=>{const f=()=>{if(!isIT)setShowSettings(true);};window.addEventListener("ouvrir-reglages",f);return()=>window.removeEventListener("ouvrir-reglages",f);},[isIT]);
   const navActif=id=>view===id||(id==="gestion_accueil"&&(view==="badges_pret"||view==="colis"));
   // Lien « Consulter la fiche » d'un mail : ouvrir Field Support puis la fiche, une fois connecté et les fiches chargées
   useEffect(()=>{
@@ -10680,9 +10656,7 @@ useEffect(()=>{
       )
     ),
     showMore&&React.createElement(IosSheet,{title:session&&session.label?("Connecté : "+session.label):null,onClose:()=>setShowMore(false),items:[
-      ...moreTabs.map(n=>({label:n.label,icon:n.id,onClick:()=>setView(n.id)})),
-      canAccess("notifications")&&{label:"Notifications"+(notifs.length?" ("+notifs.length+")":""),icon:"notifications",onClick:()=>setView("notifications")},
-      !isIT&&{label:"Réglages",icon:"settings",onClick:()=>setShowSettings(true)},
+      ...moreTabs.filter(n=>n.id!=="impression").map(n=>({label:n.label,icon:n.id,onClick:()=>setView(n.id)})),
       session&&{label:"Déconnexion",icon:"logout",danger:true,onClick:logout}
     ]}),
     React.createElement("main",{style:{width:"100%",padding:"16px 20px"}},view==="accueil"&&React.createElement(CarteInstall,{showToast}),view==="accueil"&&React.createElement(CarteNotifs,{showToast}),view==="accueil"&&!isIT&&React.createElement(CompteurMails,{alerteSeule:true}),renderView())
