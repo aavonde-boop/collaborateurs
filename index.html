@@ -4113,60 +4113,162 @@ function EcartsWorkday({badges,wdCache,setBadges,addLog,showToast}){
 // Petite note grise sous un bouton : ce qui va se passer
 function NoteAide({children,style}){return React.createElement("div",{className:"note-aide",style:{fontSize:11.5,lineHeight:1.4,color:"var(--text3,#64748B)",marginTop:6,...style}},"ℹ️ ",children);}
 const AIDE_SECTIONS=[
-  {id:"accueil",t:"🏠 Accueil",l:["Tableau de bord : arrivées et départs de la semaine, fiches à compléter, badges à récupérer. Clique sur une carte pour voir la liste.",
-    "Arrivée : crée la fiche du collaborateur et une fiche Field Support (mail à l'IT tout de suite). Le restaurant reçoit un mail le jour de l'arrivée.",
-    "Départ : note la date de sortie et crée une fiche Field Support (mail à l'IT tout de suite). Le restaurant reçoit un mail le jour du départ.",
-    "Boutons ✉️ IT et 🍽️ : ouvrent un mail dans ta messagerie, que tu envoies toi-même.",
-    "Avant d'enregistrer, une fenêtre te dit quels mails vont partir : Annuler pour revenir."]},
-  {id:"field_support",t:"📋 Field Support",l:["Les demandes au service IT (PC, accès…) pour chaque arrivée et chaque départ.","Ouvre une fiche pour la suivre ; clôture-la quand le matériel est remis ou récupéré."]},
-  {id:"collaborateurs",t:"👥 Collaborateurs",l:["Toutes les fiches. Clique sur une ligne pour la modifier.",
-    "Ajouter ou changer une date d'entrée ou de sortie programme les mails à l'IT (la veille) et au restaurant (le jour même).",
-    "Case ⭐ VIP : aucun mail automatique pour cette personne, et elle n'apparaît pas dans les fiches à compléter.",
-    "📡 Vérifier avec Workday : complète les e-mails, managers, dates d'entrée et matricules depuis le dernier fichier Workday.",
-    "🔁 Doublons : même nom et même prénom. « Garder celle-ci » complète la bonne fiche et archive les autres (rien n'est supprimé).",
-    "✉️ Mail de bienvenue : ouvre un mail pour le nouvel arrivant, tu y joins sa photo et tu l'envoies."]},
-  {id:"casiers",t:"🔐 Casiers",l:["Clique sur un casier : attribue-le à quelqu'un (liste déroulante), marque-le « Occupé (sans nom) » ou libère-le.",
-    "L'enregistrement met aussi à jour le casier sur la fiche du collaborateur, et l'écrit dans l'historique du casier.",
-    "🔎 Contrôle : repère les casiers attribués à deux personnes et les fiches qui ne correspondent pas."]},
-  {id:"badges_pret",t:"🪪 Badges de prêt",l:["🔑 Marquer Prêtée : l'emprunteur reçoit tout de suite un mail de prêt (si son e-mail est renseigné).",
-    "S'il ne rend pas le badge : un rappel chaque matin du lundi au vendredi, à partir du lendemain de la date de retour (ou après 24 h sans date).",
-    "Badge déjà prêté : « 💾 Enregistrer » garde la nouvelle date de retour, sans nouveau mail de prêt.",
-    "✅ Retour : le badge redevient disponible et les rappels s'arrêtent."]},
-  {id:"colis",t:"📦 Colis",l:["Enregistre chaque colis reçu (tu peux photographier l'étiquette pour remplir le nom). Aucun mail n'est envoyé automatiquement.",
-    "Préviens le destinataire, puis clique « 📣 Prévenu ». À la remise, fais-le signer : la signature et l'historique sont gardés."]},
-  {id:"rapport",t:"📊 Rapport",l:["Les arrivées, départs et badges à venir, sur une seule page."]},
-  {id:"impression",t:"🏷️ Étiquettes",l:["Prépare et imprime les étiquettes des badges."]},
-  {id:"notifications",t:"🔔 Notifications",l:["Tout ce qui demande ton attention. Le chiffre sur l'icône de l'appli = le nombre de notifications.",
-    "Supprime une notification quand c'est réglé : elle disparaît aussi sur ton téléphone, et ne revient que si la situation change."]},
-  {id:"_reglages",t:"⚙️ Réglages (roue dentée)",l:["Adresses e-mail (IT, restaurant, copie), textes des mails, interrupteurs pour couper les envois, comptes et import / export.",
-    "Import « Racine Commune » : met à jour les fiches sans rien effacer, et te montre un résumé avant."]}
+  {id:"_mails",t:"Mails automatiques",ico:"_mail",acces:["accueil","collaborateurs","gestion_accueil","badges_pret"],l:[
+    ["Arrivée ou départ enregistré depuis « Aujourd'hui »","IT : tout de suite (fiche Field Support)."],
+    ["Date d'entrée sur une fiche","IT : la veille vers 6 h (pas si une fiche Field Support existe déjà). Restaurant : le jour même vers 6 h."],
+    ["Date de sortie sur une fiche","IT : la veille vers 6 h (pas si une fiche Field Support existe déjà). Restaurant : le jour même vers 6 h."],
+    ["Badge de prêt sorti","L'emprunteur : tout de suite."],
+    ["Badge de prêt non rendu","L'emprunteur : chaque matin du lundi au vendredi, à partir du lendemain de la date de retour prévue."],
+    ["Mail de bienvenue, boutons ✉️ IT et 🍽️","Jamais automatique : le mail s'ouvre dans ta messagerie et tu l'envoies toi-même."],
+    ["Quand aucun mail ne part","Fiche ⭐ VIP, ou envoi coupé dans les Réglages. Un mail déjà parti ne repart pas si tu changes la date."],
+    ["Avant d'enregistrer","Une fenêtre te dit quels mails vont partir. « Annuler » pour revenir sans rien envoyer."]]},
+  {id:"accueil",t:"Aujourd'hui",ico:"accueil",acces:["accueil"],l:[
+    ["Ce que montre la page","Les compteurs (collaborateurs actifs, arrivées sur 30 jours, colis en attente, badges de prêt sortis) et « Votre journée » : arrivées, colis à prévenir, badges à récupérer. Clique sur une ligne pour l'ouvrir."],
+    ["Chercher quelqu'un","Barre de recherche, par nom ou par n° de badge. Les accents ne comptent pas."],
+    ["Enregistrer une arrivée","Crée la fiche et une fiche Field Support (mail à l'IT tout de suite). Le restaurant reçoit un mail le jour de l'arrivée."],
+    ["Enregistrer un départ","Note la date de sortie et crée une fiche Field Support (mail à l'IT tout de suite). Le restaurant reçoit un mail le jour du départ."],
+    ["Boutons ✉️ IT et 🍽️","Ouvrent un mail dans ta messagerie, que tu envoies toi-même."]]},
+  {id:"collaborateurs",t:"Collaborateurs",ico:"collaborateurs",acces:["collaborateurs"],l:[
+    ["Modifier une fiche","Clique sur une ligne : la fiche s'ouvre sur le côté. « 💾 Enregistrer » pour garder."],
+    ["Changer une date d'entrée ou de sortie","Programme le mail à l'IT (la veille) et au restaurant (le jour même)."],
+    ["Case ⭐ VIP","Aucun mail automatique pour cette personne, et elle n'apparaît pas dans les fiches à compléter."],
+    ["📡 Vérifier avec Workday","Complète les e-mails, managers, dates d'entrée et matricules depuis le dernier fichier Workday."],
+    ["🔁 Doublons","Même nom et même prénom. « Garder celle-ci » complète la bonne fiche et archive les autres : rien n'est supprimé."],
+    ["✉️ Mail de bienvenue","Ouvre un mail pour le nouvel arrivant : tu y joins sa photo et tu l'envoies."]]},
+  {id:"field_support",t:"Field Support",ico:"field_support",acces:["field_support"],l:[
+    ["À quoi ça sert","Les demandes au service IT (PC, accès…) pour chaque arrivée et chaque départ."],
+    ["Suivre une demande","Ouvre la fiche pour changer son statut. Clôture-la quand le matériel est remis ou récupéré."],
+    ["Sur téléphone","Les demandes sont classées par date. Le bouton ⋯ donne les actions."]]},
+  {id:"casiers",t:"Casiers",ico:"casiers",acces:["casiers"],l:[
+    ["Attribuer ou libérer un casier","Clique sur le casier : choisis la personne dans la liste, marque-le « Occupé (sans nom) » ou libère-le."],
+    ["Ce que fait l'enregistrement","Met aussi à jour le casier sur la fiche du collaborateur, et l'écrit dans l'historique du casier."],
+    ["🔎 Contrôle","Repère les casiers attribués à deux personnes et les fiches qui ne correspondent pas."]]},
+  {id:"gestion_accueil",t:"Gestion accueil : badges de prêt et colis",ico:"gestion_accueil",acces:["gestion_accueil","badges_pret","colis"],l:[
+    ["Prêter un badge","« 🔑 Marquer Prêtée » : l'emprunteur reçoit tout de suite un mail de prêt (si son e-mail est renseigné)."],
+    ["Changer la date de retour","Badge déjà prêté : « 💾 Enregistrer » garde la nouvelle date, sans nouveau mail de prêt. Les rappels suivent la nouvelle date."],
+    ["Récupérer un badge","« ✅ Retour » : le badge redevient disponible et les rappels s'arrêtent."],
+    ["Enregistrer un colis","Remplis le destinataire (tu peux photographier l'étiquette). Aucun mail n'est envoyé automatiquement."],
+    ["Remettre un colis","Préviens le destinataire puis clique « 📣 Prévenu ». À la remise, fais-le signer : la signature et l'historique sont gardés."],
+    ["Voir plus de lignes","Au-dessus de chaque tableau : 5, 10, 20 ou Tout."]]},
+  {id:"impression",t:"Étiquettes",ico:"impression",acces:["impression"],l:[
+    ["Ce que montre la page","Seulement les badges dont l'étiquette n'est pas encore imprimée."],
+    ["Imprimer","Coche les étiquettes voulues puis « 🖨️ Imprimer » (Dymo). Rien n'est coché d'avance."],
+    ["Après l'impression","Confirme que les étiquettes sont bien sorties : elles quittent la liste. Pour en réimprimer une, tape le nom dans la recherche."]]},
+  {id:"rapport",t:"Rapport",ico:"rapport",acces:["rapport"],l:[
+    ["Ce que montre la page","Les arrivées, départs et badges à venir, sur une seule page."]]},
+  {id:"_notifs",t:"Notifications (🔔 en haut)",ico:"notifications",acces:["notifications"],l:[
+    ["Où les trouver","La cloche en haut à droite (en haut d'« Aujourd'hui » sur téléphone). Le chiffre = le nombre de notifications."],
+    ["Une fois réglé","Supprime la notification : elle disparaît aussi sur ton téléphone et ne revient que si la situation change."]]},
+  {id:"_reglages",t:"Réglages (⚙️ en haut)",ico:"settings",reg:true,l:[
+    ["Où les trouver","La roue en haut à droite (en haut d'« Aujourd'hui » sur téléphone)."],
+    ["Ce qu'on y règle","Adresses e-mail (IT, restaurant, copie), textes des mails, interrupteurs pour couper les envois, comptes, archives, historiques, import / export."],
+    ["Import « Racine Commune »","Met à jour les fiches sans rien effacer, et te montre un résumé avant."]]},
+  {id:"_faq",t:"Questions fréquentes",ico:"aide",l:[
+    ["Le rappel de badge part-il avant la date de retour ?","Non. Il part seulement à partir du lendemain de la date de retour prévue."],
+    ["Je ne veux aucun mail pour une personne","Coche ⭐ VIP sur sa fiche."],
+    ["Je veux couper tout un type de mail","Réglages ⚙️ : les interrupteurs des envois automatiques."],
+    ["J'ai changé une date après l'envoi du mail","Le mail ne repart pas : préviens l'IT avec le bouton ✉️ IT."],
+    ["Une personne apparaît deux fois","Collaborateurs › 🔁 Doublons."],
+    ["L'appli n'a pas l'air à jour","Ferme-la complètement puis rouvre-la."]]}
 ];
+
+// ── Aide sur la page : bouton « ? » + panneau ──
+const AIDE_MOBILE=false;
+const AIDE_PAGE={accueil:"accueil",collaborateurs:"collaborateurs",field_support:"field_support",casiers:"casiers",gestion_accueil:"gestion_accueil",badges_pret:"gestion_accueil",colis:"gestion_accueil",historique_pret:"gestion_accueil",impression:"impression",rapport:"rapport",notifications:"_notifs"};
+const AIDE_MAILS={
+  accueil:[["Arrivée ou départ enregistré","IT : tout de suite (fiche Field Support)"],["Restaurant","Le jour de l'arrivée ou du départ, vers 6 h"],["Boutons ✉️ IT et 🍽️","Jamais automatique : tu l'envoies toi-même"]],
+  collaborateurs:[["Date d'entrée ou de sortie","IT la veille vers 6 h, restaurant le jour même"],["Fiche ⭐ VIP","Aucun mail automatique"],["Mail de bienvenue","Jamais automatique : tu l'envoies toi-même"]],
+  field_support:[["Arrivée ou départ enregistré","IT : tout de suite"]],
+  gestion_accueil:[["Badge prêté","Emprunteur : tout de suite"],["Badge non rendu","Chaque matin (lun.–ven.) dès le lendemain de la date de retour"],["Colis","Jamais : tu préviens toi-même"]]};
+function AidePageBouton({page}){
+  if(!AIDE_PAGE[page])return null;
+  return React.createElement("button",{type:"button",className:"aide-q",title:"Aide sur cette page","aria-label":"Aide sur cette page",onClick:e=>{e.stopPropagation();window.dispatchEvent(new CustomEvent("aide-page",{detail:page}));}},"?");
+}
+function AidePanneau(){
+  const el=React.createElement;
+  const [page,setPage]=React.useState(null);
+  React.useEffect(()=>{
+    const ouvrir=e=>setPage(e.detail||window._pageAide||null);
+    const esc=e=>{if(e.key==="Escape")setPage(null);};
+    window.addEventListener("aide-page",ouvrir);window.addEventListener("keydown",esc);
+    // téléphone : le « ? » se pose à la fin du grand titre de la page
+    let mo=null,t=null;
+    if(AIDE_MOBILE){
+      const poser=()=>{
+        const pg=window._pageAide,ok=!!AIDE_PAGE[pg];
+        const main=document.querySelector("main");const h=main&&main.querySelector("h1");
+        document.querySelectorAll(".aide-q-inj").forEach(b=>{if(!ok||!h||!h.contains(b))b.remove();});
+        if(!ok||!h||h.querySelector(".aide-q-inj"))return;
+        const b=document.createElement("button");b.type="button";b.className="aide-q aide-q-inj";b.textContent="?";b.title="Aide sur cette page";b.setAttribute("aria-label","Aide sur cette page");
+        b.onclick=e=>{e.preventDefault();e.stopPropagation();window.dispatchEvent(new CustomEvent("aide-page",{detail:window._pageAide}));};
+        h.appendChild(b);
+      };
+      const r=document.getElementById("root");
+      if(r){mo=new MutationObserver(()=>{clearTimeout(t);t=setTimeout(poser,80);});mo.observe(r,{childList:true,subtree:true,characterData:true});}
+      poser();
+    }
+    return()=>{window.removeEventListener("aide-page",ouvrir);window.removeEventListener("keydown",esc);if(mo)mo.disconnect();clearTimeout(t);};
+  },[]);
+  if(!page||!AIDE_PAGE[page])return null;
+  const sec=AIDE_SECTIONS.find(x=>x.id===AIDE_PAGE[page]);if(!sec)return null;
+  const mails=AIDE_MAILS[AIDE_PAGE[page]];
+  const titre=sec.t.replace(/ \(.*\)$/,"").replace(/ : .*$/,"");
+  const fermer=()=>setPage(null);
+  return ReactDOM.createPortal(el("div",{className:"aide-fond no-print",onClick:e=>{if(e.target===e.currentTarget)fermer();}},
+    el("aside",{className:"aide-pan",role:"dialog","aria-label":"Aide · "+titre},
+      el("div",{className:"tete"},el("h3",null,"Aide · "+titre),el("button",{type:"button",className:"aide-x",onClick:fermer,"aria-label":"Fermer"},"✕")),
+      el("div",{className:"sub"},"Uniquement ce qui concerne cette page."),
+      sec.l.map(([a,b],i)=>el("div",{key:i,className:"q"},el("b",null,a),b)),
+      el("div",{className:"q"},el("b",null,"Ce qui part par mail"),
+        mails?el("table",null,el("tbody",null,mails.map((r,i)=>el("tr",{key:i},el("td",null,r[0]),el("td",null,r[1]))))):"Aucun mail ne part depuis cette page."),
+      el("button",{type:"button",className:"tout",onClick:()=>{fermer();window.dispatchEvent(new Event("ouvrir-aide"));}},"Voir toute l'aide →"))),document.body);
+}
+(function(){try{var st=document.createElement("style");st.id="aide-page";st.textContent=".aide-q{display:inline-flex;align-items:center;justify-content:center;width:26px;height:26px;border-radius:50%;border:2px solid #1E3A8A;background:#EEF2FF;color:#1E3A8A;font-family:inherit;font-size:14px;font-weight:800;line-height:1;margin-left:10px;vertical-align:middle;cursor:pointer;padding:0;flex-shrink:0;letter-spacing:0}.aide-q:hover{background:#1E3A8A;color:#fff}.aide-q-inj{width:28px;height:28px;font-size:15px!important;font-weight:800!important;border-color:currentColor;background:transparent;color:inherit;opacity:.7;-webkit-text-fill-color:currentColor}.aide-fond{position:fixed;inset:0;z-index:3000;background:rgba(15,23,42,.28)}.aide-pan{position:absolute;right:0;top:0;bottom:0;width:400px;max-width:100%;background:var(--surface,#fff);box-shadow:-20px 0 40px rgba(15,23,42,.14);padding:22px;overflow-y:auto;color:var(--text,#0F172A);box-sizing:border-box}.aide-pan .tete{display:flex;align-items:center;gap:10px}.aide-pan h3{margin:0;font-size:18px;font-weight:800}.aide-pan .sub{font-size:13px;color:var(--text3,#64748B);margin:4px 0 10px}.aide-pan .q{border-top:1px solid var(--border,#E6E9EE);padding:12px 0;font-size:13.5px;line-height:1.5;color:var(--text2,#334155)}.aide-pan .q b{display:block;margin-bottom:2px;color:var(--text,#0F172A)}.aide-pan table{width:100%;border-collapse:collapse;font-size:13px;margin-top:6px}.aide-pan td{padding:8px 6px;border-top:1px solid var(--border,#EEF1F5);vertical-align:top}.aide-pan td:first-child{font-weight:600;width:42%;color:var(--text,#0F172A)}.aide-pan .tout{margin-top:14px;background:none;border:none;padding:0;color:#1E3A8A;font-weight:700;font-size:13.5px;cursor:pointer}.aide-x{margin-left:auto;background:none;border:none;font-size:22px;line-height:1;color:#94A3B8;cursor:pointer;padding:4px}";document.head.appendChild(st);
+  setTimeout(function(){try{var d=document.createElement("div");d.id="aide-racine";document.body.appendChild(d);ReactDOM.createRoot(d).render(React.createElement(AidePanneau));}catch(e){}},0);}catch(e){}})();
+
 function VueAide({canAccess,peutReglages}){
   const el=React.createElement;
-  const secs=AIDE_SECTIONS.filter(x=>x.id==="_reglages"?peutReglages:(!canAccess||canAccess(x.id)));
-  const voitMails=!canAccess||canAccess("accueil")||canAccess("collaborateurs");
-  const L=[["Arrivée ou départ enregistré à l'Accueil","IT (fiche Field Support)","Tout de suite"],
-    ["Date d'entrée","IT","La veille vers 6 h — pas si une fiche Field Support existe déjà"],
-    ["Date d'entrée","Restaurant","Le jour même vers 6 h"],
-    ["Date de sortie","IT","La veille vers 6 h — pas si une fiche Field Support existe déjà"],
-    ["Date de sortie","Restaurant","Le jour même vers 6 h"],
-    ["Badge de prêt sorti","L'emprunteur","Tout de suite"],
-    ["Badge de prêt non rendu","L'emprunteur","Chaque matin (lun.–ven.) à partir du lendemain de la date de retour"],
-    ["Mail de bienvenue, boutons ✉️ et 🍽️","—","Jamais automatique : le mail s'ouvre et tu l'envoies toi-même"]];
-  const td={padding:"8px 10px",borderTop:"1px solid var(--border)",fontSize:12.5,verticalAlign:"top"};
-  const carte=(k,titre,...enfants)=>el("div",{key:k,className:"card",style:{background:"var(--surface)",border:"1px solid var(--border)",borderRadius:12,padding:"14px 16px",marginBottom:12}},
-    el("div",{style:{fontSize:15,fontWeight:800,marginBottom:8}},titre),...enfants);
+  const [q,setQ]=React.useState("");
+  const mobile=window.innerWidth<760;
+  const [ouv,setOuv]=React.useState(mobile?{}:{_mails:true});
+  const norm=t=>String(t||"").normalize("NFD").replace(/[̀-ͯ]/g,"").toLowerCase();
+  const nq=norm(q.trim());
+  const ok=x=>x.reg?peutReglages:(!x.acces||!canAccess||x.acces.some(id=>canAccess(id)));
+  const toutes=AIDE_SECTIONS.filter(ok);
+  const secs=toutes.map(x=>({...x,l:nq?x.l.filter(([a,b])=>norm(x.t+" "+a+" "+b).includes(nq)):x.l})).filter(x=>x.l.length);
+  const ico=k=>k==="_mail"?el("svg",{width:18,height:18,viewBox:"0 0 24 24",fill:"none",stroke:"currentColor",strokeWidth:1.8,strokeLinecap:"round",strokeLinejoin:"round"},el("rect",{x:3,y:5,width:18,height:14,rx:2}),el("path",{d:"M3 7l9 6 9-6"}))
+    :(typeof IconeNav!=="undefined"?el(IconeNav,{id:k,size:18}):null);
+  const aller=id=>{setOuv(o=>({...o,[id]:true}));setTimeout(()=>{const n=document.getElementById("aide-"+id);if(n)n.scrollIntoView({behavior:"smooth",block:"start"});},30);};
+  const tous=v=>{const o={};toutes.forEach(x=>o[x.id]=v);setOuv(o);};
+  const lien={background:"none",border:"none",padding:0,cursor:"pointer",color:"var(--text3,#64748B)",fontSize:12.5,fontWeight:600};
+  const recherche=el("div",{style:{display:"flex",alignItems:"center",gap:12,flexWrap:"wrap",marginBottom:14}},
+    el("div",{style:{position:"relative",flex:"1 1 260px",maxWidth:480}},
+      el("svg",{width:16,height:16,viewBox:"0 0 24 24",fill:"none",stroke:"currentColor",strokeWidth:2,style:{position:"absolute",left:12,top:"50%",transform:"translateY(-50%)",color:"var(--text3,#94A3B8)"}},el("circle",{cx:11,cy:11,r:7}),el("path",{d:"M20 20l-3.5-3.5"})),
+      el("input",{type:"search",value:q,onChange:e=>setQ(e.target.value),placeholder:"Chercher : badge, casier, VIP, mail…",
+        style:{width:"100%",boxSizing:"border-box",padding:"10px 12px 10px 36px",border:"1px solid var(--border)",borderRadius:10,fontSize:14,background:"var(--surface,#fff)",color:"var(--text)"}})),
+    !nq&&el("div",{style:{display:"flex",gap:14}},el("button",{type:"button",style:lien,onClick:()=>tous(true)},"Tout ouvrir"),el("button",{type:"button",style:lien,onClick:()=>tous(false)},"Tout fermer")));
+  const carte=x=>{const o=!!nq||!!ouv[x.id];
+    return el("section",{key:x.id,id:"aide-"+x.id,style:{background:"var(--surface,#fff)",border:"1px solid var(--border)",borderRadius:12,marginBottom:10,scrollMarginTop:70,overflow:"hidden"}},
+      el("button",{type:"button",onClick:()=>setOuv(v=>({...v,[x.id]:!o})),"aria-expanded":o,
+        style:{display:"flex",alignItems:"center",gap:10,width:"100%",padding:"14px 16px",background:"none",border:"none",cursor:"pointer",textAlign:"left",color:"var(--text)"}},
+        el("span",{style:{display:"flex",color:"var(--text2,#334155)"}},ico(x.ico)),
+        el("span",{style:{flex:1,fontSize:15,fontWeight:700}},x.t),
+        el("span",{style:{color:"var(--text3,#94A3B8)",fontSize:18,lineHeight:1,transform:o?"rotate(90deg)":"none",transition:"transform .15s"}},"›")),
+      o&&el("div",{style:{padding:"0 16px 8px"}},x.l.map(([a,b],i)=>el("div",{key:i,style:{padding:"10px 0",borderTop:"1px solid var(--border)",display:mobile?"block":"grid",gridTemplateColumns:"minmax(180px,34%) 1fr",gap:16}},
+        el("div",{style:{fontSize:13.5,fontWeight:600,color:"var(--text)",marginBottom:mobile?3:0}},a),
+        el("div",{style:{fontSize:13.5,lineHeight:1.5,color:"var(--text2,#475569)"}},b)))));};
+  const sommaire=!mobile&&el("nav",{style:{position:"sticky",top:70,alignSelf:"start",display:"flex",flexDirection:"column",gap:2}},
+    el("div",{style:{fontSize:11,fontWeight:700,letterSpacing:".06em",textTransform:"uppercase",color:"var(--text3,#94A3B8)",padding:"0 10px 6px"}},"Sommaire"),
+    toutes.map(x=>el("button",{key:x.id,type:"button",onClick:()=>{setQ("");aller(x.id);},
+      style:{display:"flex",alignItems:"center",gap:9,padding:"7px 10px",borderRadius:8,border:"none",background:"none",cursor:"pointer",textAlign:"left",fontSize:13,color:"var(--text2,#334155)"},
+      onMouseEnter:e=>e.currentTarget.style.background="var(--surface2,#F1F5F9)",onMouseLeave:e=>e.currentTarget.style.background="none"},
+      el("span",{style:{display:"flex",opacity:.8}},ico(x.ico)),x.t.replace(/ \(.*\)$/,"").replace(/ : .*$/,""))));
   return el("div",null,
-    typeof PageHero!=="undefined"?el(PageHero,{icone:"❓",titre:"Aide",sousTitre:"ce que fait chaque partie de l'application"}):el("div",{style:{margin:"4px 2px 14px"}},el("div",{style:{fontSize:28,fontWeight:800}},"❓ Aide"),el("div",{style:{fontSize:13,color:"var(--text3)"}},"Ce que fait chaque partie de l'application")),
-    voitMails&&carte("mails","📧 Quels mails partent, et quand",
-      window.innerWidth<700?el("div",null,L.map((r,i)=>el("div",{key:i,style:{padding:"8px 0",borderTop:i?"1px solid var(--border)":"none"}},
-          el("div",{style:{fontSize:13.5,fontWeight:700}},r[0]),
-          el("div",{style:{fontSize:13,color:"var(--text2)"}},(r[1]!=="—"?"→ "+r[1]+" · ":"")+r[2])))):
-      el("div",{style:{overflowX:"auto"}},el("table",{style:{width:"100%",borderCollapse:"collapse"}},
-        el("thead",null,el("tr",null,["Ce que tu enregistres","Qui reçoit","Quand"].map(h=>el("th",{key:h,style:{textAlign:"left",fontSize:11,color:"var(--text3)",textTransform:"uppercase",padding:"4px 10px"}},h)))),
-        el("tbody",null,L.map((r,i)=>el("tr",{key:i},r.map((c,j)=>el("td",{key:j,style:{...td,fontWeight:j===0?600:400}},c))))))),
-      el("div",{style:{fontSize:12,color:"var(--text3)",marginTop:8,lineHeight:1.45}},"Pas de mail automatique pour une fiche ⭐ VIP, ni quand l'envoi est coupé dans les Réglages. Un mail déjà parti ne repart pas si tu changes la date. Avant chaque enregistrement qui envoie un mail, une fenêtre te le dit.")),
-    secs.map(x=>carte(x.id,x.t,el("ul",{style:{margin:0,paddingLeft:18}},x.l.map((t,i)=>el("li",{key:i,style:{fontSize:13,lineHeight:1.5,marginBottom:4,color:"var(--text2)"}},t))))));
+    typeof PageHero!=="undefined"?el(PageHero,{icone:"❓",titre:"Aide",sousTitre:"comment faire, et ce qui se passe quand tu enregistres"}):el("div",{style:{margin:"4px 2px 14px"}},el("div",{style:{fontSize:28,fontWeight:800}},"Aide"),el("div",{style:{fontSize:13,color:"var(--text3)"}},"Comment faire, et ce qui se passe quand tu enregistres")),
+    el("div",{style:mobile?null:{display:"grid",gridTemplateColumns:"210px 1fr",gap:24}},
+      sommaire,
+      el("div",{style:{minWidth:0}},recherche,
+        secs.length?secs.map(carte):el("div",{style:{padding:"30px 10px",textAlign:"center",color:"var(--text3)",fontSize:14}},"Rien trouvé pour « "+q.trim()+" ». Essaie un autre mot."))));
 }
 
 
@@ -4255,6 +4357,7 @@ function MenuLateral({visibleNav,navActif,setView,onClose,session,notifs,ouvrirR
       qui&&el("div",{className:"ml-me"},el(Avatar,{prenom:qui.split(/[\s@.]/)[0],nom:qui.split(/[\s@.]/)[1]||"",size:34}),el("div",{style:{minWidth:0}},el("b",null,qui),el("span",null,"Connecté")))));
 }
 // ── Page « Aujourd'hui » : compteurs avec courbe + frise de la journée ──
+(function(){try{var st=document.createElement("style");st.id="ecran";st.textContent=".auj-vr{display:flex;align-items:center;justify-content:space-between;gap:10px;min-width:0}.auj-kpi .courbe{position:static!important;flex:0 1 auto;min-width:0;max-width:55%;top:auto!important;bottom:auto!important;right:auto!important}";document.head.appendChild(st);}catch(e){}})();
 function BlocAujourdhui({badges,extra,setView}){
   const el=React.createElement;
   const auj=isoLocal(new Date());
@@ -4280,7 +4383,7 @@ function BlocAujourdhui({badges,extra,setView}){
   // frise
   const ev=[];
   enCours.filter(b=>d10(b.date_entree)===auj).forEach(b=>ev.push({o:1,t:"Arrivée",c:"#16A34A",p:b.prenom,n:b.nom,sub:b.manager&&b.manager!=="NC"?"Manager "+b.manager:"",chips:[b.serie?["Badge "+b.serie,"g"]:["Pas de badge","o"],b.casier?["Casier "+b.casier,"v"]:["Pas de casier","n"]],go:"collaborateurs"}));
-  colis.forEach(c=>ev.push({o:2,h:hh(c.recu_le),t:"Colis #"+String(c.numero||0).padStart(3,"0")+(c.statut==="recu"?" à prévenir":" en attente"),c:"#EA580C",p:c.prenom,n:c.nom,sub:"Reçu le "+fr(c.recu_le),chips:[c.statut==="recu"?["À prévenir","o"]:["Prévenu le "+fr(c.prevenu_le),"b"]],go:"colis"}));
+  colis.forEach(c=>{const jr=c.recu_le?Math.round((new Date(auj+"T12:00")-new Date(d10(c.recu_le)+"T12:00"))/864e5):0;ev.push({o:2,h:jr<=0?hh(c.recu_le):"",t:"Colis #"+String(c.numero||0).padStart(3,"0")+(c.statut==="recu"?" à prévenir":" en attente")+(jr>0?" · depuis "+jr+" j":""),c:"#EA580C",p:c.prenom,n:c.nom,sub:"Reçu le "+fr(c.recu_le),chips:[c.statut==="recu"?["À prévenir","o"]:["Prévenu le "+fr(c.prevenu_le),"b"]],go:"colis"});});
   prets.forEach(x=>{const r=d10(x.date_retour_prevu);const w=String(x.emprunteur||"?").trim().split(/\s+/);ev.push({o:3,t:"Badge de prêt "+(x.code||""),c:"#2563EB",p:w.slice(1).join(" "),n:w[0],sub:r?"Retour prévu le "+fr(r):"Pas de date de retour",chips:[r&&r<auj?["En retard","r"]:r===auj?["Retour aujourd'hui","b"]:["Prêté","n"]],go:"badges_pret"});});
   enCours.filter(b=>d10(b.date_sortie_prevue)===auj).forEach(b=>ev.push({o:4,t:"Départ",c:"#DC2626",p:b.prenom,n:b.nom,sub:"Dernier jour",chips:[b.serie?["Badge "+b.serie+" à récupérer","r"]:null,b.casier?["Casier "+b.casier+" à vider","r"]:null].filter(Boolean),go:"collaborateurs"}));
   ev.sort((a,b)=>a.o-b.o);
@@ -4288,8 +4391,7 @@ function BlocAujourdhui({badges,extra,setView}){
   const chip=([t,k],i)=>el("span",{key:i,className:"chip chip-"+k},t);
   return el("div",{className:"auj"},
     el("div",{className:"auj-kpis"},K.map(([l,v,d,ser,col,go],i)=>el("button",{key:i,type:"button",className:"auj-kpi",onClick:()=>setView(go)},
-      el("div",{className:"auj-l"},l),el("div",{className:"auj-v"},v),d?el("div",{className:"auj-d",style:{color:col}},d):el("div",{className:"auj-d"}," "),
-      el(Courbe,{vals:ser,col})))),
+      el("div",{className:"auj-l"},l),el("div",{className:"auj-vr"},el("div",{className:"auj-v"},v),el(Courbe,{vals:ser,col})),d?el("div",{className:"auj-d",style:{color:col}},d):el("div",{className:"auj-d"}," ")))),
     el("div",{className:"auj-frise"},
       el("div",{className:"auj-h"},"Votre journée",el("small",null,ev.length?" · "+ev.length+" élément"+(ev.length>1?"s":""):" · rien de prévu")),
       !ev.length&&el("div",{className:"auj-vide"},"Aucune arrivée, aucun départ, aucun colis ni badge de prêt en cours aujourd'hui."),
@@ -5443,6 +5545,7 @@ useEffect(()=>{
   const isIT=session&&session.role==="it";
   const isBadge=session&&session.role==="badge";
   const visibleNav=nav.filter(n=>canAccess(n.id));
+  window._pageAide=view;
   useEffect(()=>{const f=()=>setView("aide");window.addEventListener("ouvrir-aide",f);return()=>window.removeEventListener("ouvrir-aide",f);},[]);
   const[menuOuvert,setMenuOuvert]=useState(false);
   const navActif=id=>view===id||(id==="gestion_accueil"&&(view==="badges_pret"||view==="colis"));
@@ -5524,7 +5627,7 @@ useEffect(()=>{
     React.createElement("nav",{className:"desktop-nav no-print",style:{background:"var(--surface)",borderBottom:"1px solid var(--border)",padding:"0 12px",display:"flex",alignItems:"center",gap:2,height:48,position:"sticky",top:0,zIndex:500,boxShadow:"0 1px 0 var(--border)",overflow:"hidden"}},
       React.createElement("div",{style:{display:"flex",alignItems:"center",flexShrink:0}},
         React.createElement("button",{type:"button",className:"burger",title:"Menu",onClick:()=>setMenuOuvert(true)},React.createElement("svg",{width:20,height:20,viewBox:"0 0 24 24",fill:"none",stroke:"currentColor",strokeWidth:2,strokeLinecap:"round"},React.createElement("path",{d:"M4 7h16M4 12h16M4 17h16"}))),
-        React.createElement("span",{className:"titre-page"},(()=>{const n=nav.find(x=>navActif(x.id));const id=n?n.id:view;const l=n?n.label:view==="notifications"?"Notifications":view==="aide"?"Aide":"";return [React.createElement(IconeNav,{key:"i",id,size:18}),l];})())
+        React.createElement("span",{className:"titre-page"},(()=>{const n=nav.find(x=>navActif(x.id));const id=n?n.id:view;const l=n?n.label:view==="notifications"?"Notifications":view==="aide"?"Aide":"";return [React.createElement(IconeNav,{key:"i",id,size:18}),l,React.createElement(AidePageBouton,{key:"q",page:id})];})())
       ),
       React.createElement("div",{className:"nav-links",style:{display:"flex",alignItems:"center",gap:1,flex:1,overflow:"hidden"}},
         visibleNav.map(n=>React.createElement("button",{key:n.id,onClick:()=>setView(n.id),className:"nav-item"+(navActif(n.id)?" active":""),style:{fontSize:11,padding:"5px 8px",flexShrink:0}},
@@ -5854,7 +5957,7 @@ function IosIndex({letters,prefix}){
     for(let k=i;k>=0&&!t;k--)if(letters.has(ALL[k]))t=ALL[k];
     setCur(L);
     const el=t&&document.getElementById(prefix+t);
-    if(el){const y=el.getBoundingClientRect().top+window.scrollY-8;window.scrollTo(0,Math.max(0,y));}
+    if(el){const sc=document.getElementById("root");const y=el.getBoundingClientRect().top-sc.getBoundingClientRect().top+sc.scrollTop-8;sc.scrollTo(0,Math.max(0,y));}
     try{navigator.vibrate&&navigator.vibrate(5);}catch(e){}
   };
   const atY=y=>{const box=ref.current;if(!box)return null;const r=box.getBoundingClientRect();const k=Math.floor((y-r.top)/r.height*ALL.length);return ALL[Math.max(0,Math.min(ALL.length-1,k))];};
@@ -9153,60 +9256,162 @@ function EcartsWorkday({badges,wdCache,setBadges,addLog,showToast}){
 // Petite note grise sous un bouton : ce qui va se passer
 function NoteAide({children,style}){return React.createElement("div",{className:"note-aide",style:{fontSize:11.5,lineHeight:1.4,color:"var(--text3,#64748B)",marginTop:6,...style}},"ℹ️ ",children);}
 const AIDE_SECTIONS=[
-  {id:"accueil",t:"🏠 Accueil",l:["Tableau de bord : arrivées et départs de la semaine, fiches à compléter, badges à récupérer. Clique sur une carte pour voir la liste.",
-    "Arrivée : crée la fiche du collaborateur et une fiche Field Support (mail à l'IT tout de suite). Le restaurant reçoit un mail le jour de l'arrivée.",
-    "Départ : note la date de sortie et crée une fiche Field Support (mail à l'IT tout de suite). Le restaurant reçoit un mail le jour du départ.",
-    "Boutons ✉️ IT et 🍽️ : ouvrent un mail dans ta messagerie, que tu envoies toi-même.",
-    "Avant d'enregistrer, une fenêtre te dit quels mails vont partir : Annuler pour revenir."]},
-  {id:"field_support",t:"📋 Field Support",l:["Les demandes au service IT (PC, accès…) pour chaque arrivée et chaque départ.","Ouvre une fiche pour la suivre ; clôture-la quand le matériel est remis ou récupéré."]},
-  {id:"collaborateurs",t:"👥 Collaborateurs",l:["Toutes les fiches. Clique sur une ligne pour la modifier.",
-    "Ajouter ou changer une date d'entrée ou de sortie programme les mails à l'IT (la veille) et au restaurant (le jour même).",
-    "Case ⭐ VIP : aucun mail automatique pour cette personne, et elle n'apparaît pas dans les fiches à compléter.",
-    "📡 Vérifier avec Workday : complète les e-mails, managers, dates d'entrée et matricules depuis le dernier fichier Workday.",
-    "🔁 Doublons : même nom et même prénom. « Garder celle-ci » complète la bonne fiche et archive les autres (rien n'est supprimé).",
-    "✉️ Mail de bienvenue : ouvre un mail pour le nouvel arrivant, tu y joins sa photo et tu l'envoies."]},
-  {id:"casiers",t:"🔐 Casiers",l:["Clique sur un casier : attribue-le à quelqu'un (liste déroulante), marque-le « Occupé (sans nom) » ou libère-le.",
-    "L'enregistrement met aussi à jour le casier sur la fiche du collaborateur, et l'écrit dans l'historique du casier.",
-    "🔎 Contrôle : repère les casiers attribués à deux personnes et les fiches qui ne correspondent pas."]},
-  {id:"badges_pret",t:"🪪 Badges de prêt",l:["🔑 Marquer Prêtée : l'emprunteur reçoit tout de suite un mail de prêt (si son e-mail est renseigné).",
-    "S'il ne rend pas le badge : un rappel chaque matin du lundi au vendredi, à partir du lendemain de la date de retour (ou après 24 h sans date).",
-    "Badge déjà prêté : « 💾 Enregistrer » garde la nouvelle date de retour, sans nouveau mail de prêt.",
-    "✅ Retour : le badge redevient disponible et les rappels s'arrêtent."]},
-  {id:"colis",t:"📦 Colis",l:["Enregistre chaque colis reçu (tu peux photographier l'étiquette pour remplir le nom). Aucun mail n'est envoyé automatiquement.",
-    "Préviens le destinataire, puis clique « 📣 Prévenu ». À la remise, fais-le signer : la signature et l'historique sont gardés."]},
-  {id:"rapport",t:"📊 Rapport",l:["Les arrivées, départs et badges à venir, sur une seule page."]},
-  {id:"impression",t:"🏷️ Étiquettes",l:["Prépare et imprime les étiquettes des badges."]},
-  {id:"notifications",t:"🔔 Notifications",l:["Tout ce qui demande ton attention. Le chiffre sur l'icône de l'appli = le nombre de notifications.",
-    "Supprime une notification quand c'est réglé : elle disparaît aussi sur ton téléphone, et ne revient que si la situation change."]},
-  {id:"_reglages",t:"⚙️ Réglages (roue dentée)",l:["Adresses e-mail (IT, restaurant, copie), textes des mails, interrupteurs pour couper les envois, comptes et import / export.",
-    "Import « Racine Commune » : met à jour les fiches sans rien effacer, et te montre un résumé avant."]}
+  {id:"_mails",t:"Mails automatiques",ico:"_mail",acces:["accueil","collaborateurs","gestion_accueil","badges_pret"],l:[
+    ["Arrivée ou départ enregistré depuis « Aujourd'hui »","IT : tout de suite (fiche Field Support)."],
+    ["Date d'entrée sur une fiche","IT : la veille vers 6 h (pas si une fiche Field Support existe déjà). Restaurant : le jour même vers 6 h."],
+    ["Date de sortie sur une fiche","IT : la veille vers 6 h (pas si une fiche Field Support existe déjà). Restaurant : le jour même vers 6 h."],
+    ["Badge de prêt sorti","L'emprunteur : tout de suite."],
+    ["Badge de prêt non rendu","L'emprunteur : chaque matin du lundi au vendredi, à partir du lendemain de la date de retour prévue."],
+    ["Mail de bienvenue, boutons ✉️ IT et 🍽️","Jamais automatique : le mail s'ouvre dans ta messagerie et tu l'envoies toi-même."],
+    ["Quand aucun mail ne part","Fiche ⭐ VIP, ou envoi coupé dans les Réglages. Un mail déjà parti ne repart pas si tu changes la date."],
+    ["Avant d'enregistrer","Une fenêtre te dit quels mails vont partir. « Annuler » pour revenir sans rien envoyer."]]},
+  {id:"accueil",t:"Aujourd'hui",ico:"accueil",acces:["accueil"],l:[
+    ["Ce que montre la page","Les compteurs (collaborateurs actifs, arrivées sur 30 jours, colis en attente, badges de prêt sortis) et « Votre journée » : arrivées, colis à prévenir, badges à récupérer. Clique sur une ligne pour l'ouvrir."],
+    ["Chercher quelqu'un","Barre de recherche, par nom ou par n° de badge. Les accents ne comptent pas."],
+    ["Enregistrer une arrivée","Crée la fiche et une fiche Field Support (mail à l'IT tout de suite). Le restaurant reçoit un mail le jour de l'arrivée."],
+    ["Enregistrer un départ","Note la date de sortie et crée une fiche Field Support (mail à l'IT tout de suite). Le restaurant reçoit un mail le jour du départ."],
+    ["Boutons ✉️ IT et 🍽️","Ouvrent un mail dans ta messagerie, que tu envoies toi-même."]]},
+  {id:"collaborateurs",t:"Collaborateurs",ico:"collaborateurs",acces:["collaborateurs"],l:[
+    ["Modifier une fiche","Clique sur une ligne : la fiche s'ouvre sur le côté. « 💾 Enregistrer » pour garder."],
+    ["Changer une date d'entrée ou de sortie","Programme le mail à l'IT (la veille) et au restaurant (le jour même)."],
+    ["Case ⭐ VIP","Aucun mail automatique pour cette personne, et elle n'apparaît pas dans les fiches à compléter."],
+    ["📡 Vérifier avec Workday","Complète les e-mails, managers, dates d'entrée et matricules depuis le dernier fichier Workday."],
+    ["🔁 Doublons","Même nom et même prénom. « Garder celle-ci » complète la bonne fiche et archive les autres : rien n'est supprimé."],
+    ["✉️ Mail de bienvenue","Ouvre un mail pour le nouvel arrivant : tu y joins sa photo et tu l'envoies."]]},
+  {id:"field_support",t:"Field Support",ico:"field_support",acces:["field_support"],l:[
+    ["À quoi ça sert","Les demandes au service IT (PC, accès…) pour chaque arrivée et chaque départ."],
+    ["Suivre une demande","Ouvre la fiche pour changer son statut. Clôture-la quand le matériel est remis ou récupéré."],
+    ["Sur téléphone","Les demandes sont classées par date. Le bouton ⋯ donne les actions."]]},
+  {id:"casiers",t:"Casiers",ico:"casiers",acces:["casiers"],l:[
+    ["Attribuer ou libérer un casier","Clique sur le casier : choisis la personne dans la liste, marque-le « Occupé (sans nom) » ou libère-le."],
+    ["Ce que fait l'enregistrement","Met aussi à jour le casier sur la fiche du collaborateur, et l'écrit dans l'historique du casier."],
+    ["🔎 Contrôle","Repère les casiers attribués à deux personnes et les fiches qui ne correspondent pas."]]},
+  {id:"gestion_accueil",t:"Gestion accueil : badges de prêt et colis",ico:"gestion_accueil",acces:["gestion_accueil","badges_pret","colis"],l:[
+    ["Prêter un badge","« 🔑 Marquer Prêtée » : l'emprunteur reçoit tout de suite un mail de prêt (si son e-mail est renseigné)."],
+    ["Changer la date de retour","Badge déjà prêté : « 💾 Enregistrer » garde la nouvelle date, sans nouveau mail de prêt. Les rappels suivent la nouvelle date."],
+    ["Récupérer un badge","« ✅ Retour » : le badge redevient disponible et les rappels s'arrêtent."],
+    ["Enregistrer un colis","Remplis le destinataire (tu peux photographier l'étiquette). Aucun mail n'est envoyé automatiquement."],
+    ["Remettre un colis","Préviens le destinataire puis clique « 📣 Prévenu ». À la remise, fais-le signer : la signature et l'historique sont gardés."],
+    ["Voir plus de lignes","Au-dessus de chaque tableau : 5, 10, 20 ou Tout."]]},
+  {id:"impression",t:"Étiquettes",ico:"impression",acces:["impression"],l:[
+    ["Ce que montre la page","Seulement les badges dont l'étiquette n'est pas encore imprimée."],
+    ["Imprimer","Coche les étiquettes voulues puis « 🖨️ Imprimer » (Dymo). Rien n'est coché d'avance."],
+    ["Après l'impression","Confirme que les étiquettes sont bien sorties : elles quittent la liste. Pour en réimprimer une, tape le nom dans la recherche."]]},
+  {id:"rapport",t:"Rapport",ico:"rapport",acces:["rapport"],l:[
+    ["Ce que montre la page","Les arrivées, départs et badges à venir, sur une seule page."]]},
+  {id:"_notifs",t:"Notifications (🔔 en haut)",ico:"notifications",acces:["notifications"],l:[
+    ["Où les trouver","La cloche en haut à droite (en haut d'« Aujourd'hui » sur téléphone). Le chiffre = le nombre de notifications."],
+    ["Une fois réglé","Supprime la notification : elle disparaît aussi sur ton téléphone et ne revient que si la situation change."]]},
+  {id:"_reglages",t:"Réglages (⚙️ en haut)",ico:"settings",reg:true,l:[
+    ["Où les trouver","La roue en haut à droite (en haut d'« Aujourd'hui » sur téléphone)."],
+    ["Ce qu'on y règle","Adresses e-mail (IT, restaurant, copie), textes des mails, interrupteurs pour couper les envois, comptes, archives, historiques, import / export."],
+    ["Import « Racine Commune »","Met à jour les fiches sans rien effacer, et te montre un résumé avant."]]},
+  {id:"_faq",t:"Questions fréquentes",ico:"aide",l:[
+    ["Le rappel de badge part-il avant la date de retour ?","Non. Il part seulement à partir du lendemain de la date de retour prévue."],
+    ["Je ne veux aucun mail pour une personne","Coche ⭐ VIP sur sa fiche."],
+    ["Je veux couper tout un type de mail","Réglages ⚙️ : les interrupteurs des envois automatiques."],
+    ["J'ai changé une date après l'envoi du mail","Le mail ne repart pas : préviens l'IT avec le bouton ✉️ IT."],
+    ["Une personne apparaît deux fois","Collaborateurs › 🔁 Doublons."],
+    ["L'appli n'a pas l'air à jour","Ferme-la complètement puis rouvre-la."]]}
 ];
+
+// ── Aide sur la page : bouton « ? » + panneau ──
+const AIDE_MOBILE=true;
+const AIDE_PAGE={accueil:"accueil",collaborateurs:"collaborateurs",field_support:"field_support",casiers:"casiers",gestion_accueil:"gestion_accueil",badges_pret:"gestion_accueil",colis:"gestion_accueil",historique_pret:"gestion_accueil",impression:"impression",rapport:"rapport",notifications:"_notifs"};
+const AIDE_MAILS={
+  accueil:[["Arrivée ou départ enregistré","IT : tout de suite (fiche Field Support)"],["Restaurant","Le jour de l'arrivée ou du départ, vers 6 h"],["Boutons ✉️ IT et 🍽️","Jamais automatique : tu l'envoies toi-même"]],
+  collaborateurs:[["Date d'entrée ou de sortie","IT la veille vers 6 h, restaurant le jour même"],["Fiche ⭐ VIP","Aucun mail automatique"],["Mail de bienvenue","Jamais automatique : tu l'envoies toi-même"]],
+  field_support:[["Arrivée ou départ enregistré","IT : tout de suite"]],
+  gestion_accueil:[["Badge prêté","Emprunteur : tout de suite"],["Badge non rendu","Chaque matin (lun.–ven.) dès le lendemain de la date de retour"],["Colis","Jamais : tu préviens toi-même"]]};
+function AidePageBouton({page}){
+  if(!AIDE_PAGE[page])return null;
+  return React.createElement("button",{type:"button",className:"aide-q",title:"Aide sur cette page","aria-label":"Aide sur cette page",onClick:e=>{e.stopPropagation();window.dispatchEvent(new CustomEvent("aide-page",{detail:page}));}},"?");
+}
+function AidePanneau(){
+  const el=React.createElement;
+  const [page,setPage]=React.useState(null);
+  React.useEffect(()=>{
+    const ouvrir=e=>setPage(e.detail||window._pageAide||null);
+    const esc=e=>{if(e.key==="Escape")setPage(null);};
+    window.addEventListener("aide-page",ouvrir);window.addEventListener("keydown",esc);
+    // téléphone : le « ? » se pose à la fin du grand titre de la page
+    let mo=null,t=null;
+    if(AIDE_MOBILE){
+      const poser=()=>{
+        const pg=window._pageAide,ok=!!AIDE_PAGE[pg];
+        const main=document.querySelector("main");const h=main&&main.querySelector("h1");
+        document.querySelectorAll(".aide-q-inj").forEach(b=>{if(!ok||!h||!h.contains(b))b.remove();});
+        if(!ok||!h||h.querySelector(".aide-q-inj"))return;
+        const b=document.createElement("button");b.type="button";b.className="aide-q aide-q-inj";b.textContent="?";b.title="Aide sur cette page";b.setAttribute("aria-label","Aide sur cette page");
+        b.onclick=e=>{e.preventDefault();e.stopPropagation();window.dispatchEvent(new CustomEvent("aide-page",{detail:window._pageAide}));};
+        h.appendChild(b);
+      };
+      const r=document.getElementById("root");
+      if(r){mo=new MutationObserver(()=>{clearTimeout(t);t=setTimeout(poser,80);});mo.observe(r,{childList:true,subtree:true,characterData:true});}
+      poser();
+    }
+    return()=>{window.removeEventListener("aide-page",ouvrir);window.removeEventListener("keydown",esc);if(mo)mo.disconnect();clearTimeout(t);};
+  },[]);
+  if(!page||!AIDE_PAGE[page])return null;
+  const sec=AIDE_SECTIONS.find(x=>x.id===AIDE_PAGE[page]);if(!sec)return null;
+  const mails=AIDE_MAILS[AIDE_PAGE[page]];
+  const titre=sec.t.replace(/ \(.*\)$/,"").replace(/ : .*$/,"");
+  const fermer=()=>setPage(null);
+  return ReactDOM.createPortal(el("div",{className:"aide-fond no-print",onClick:e=>{if(e.target===e.currentTarget)fermer();}},
+    el("aside",{className:"aide-pan",role:"dialog","aria-label":"Aide · "+titre},
+      el("div",{className:"tete"},el("h3",null,"Aide · "+titre),el("button",{type:"button",className:"aide-x",onClick:fermer,"aria-label":"Fermer"},"✕")),
+      el("div",{className:"sub"},"Uniquement ce qui concerne cette page."),
+      sec.l.map(([a,b],i)=>el("div",{key:i,className:"q"},el("b",null,a),b)),
+      el("div",{className:"q"},el("b",null,"Ce qui part par mail"),
+        mails?el("table",null,el("tbody",null,mails.map((r,i)=>el("tr",{key:i},el("td",null,r[0]),el("td",null,r[1]))))):"Aucun mail ne part depuis cette page."),
+      el("button",{type:"button",className:"tout",onClick:()=>{fermer();window.dispatchEvent(new Event("ouvrir-aide"));}},"Voir toute l'aide →"))),document.body);
+}
+(function(){try{var st=document.createElement("style");st.id="aide-page";st.textContent=".aide-q{display:inline-flex;align-items:center;justify-content:center;width:26px;height:26px;border-radius:50%;border:2px solid #1E3A8A;background:#EEF2FF;color:#1E3A8A;font-family:inherit;font-size:14px;font-weight:800;line-height:1;margin-left:10px;vertical-align:middle;cursor:pointer;padding:0;flex-shrink:0;letter-spacing:0}.aide-q:hover{background:#1E3A8A;color:#fff}.aide-q-inj{width:28px;height:28px;font-size:15px!important;font-weight:800!important;border-color:currentColor;background:transparent;color:inherit;opacity:.7;-webkit-text-fill-color:currentColor}.aide-fond{position:fixed;inset:0;z-index:3000;background:rgba(15,23,42,.28)}.aide-pan{position:absolute;right:0;top:0;bottom:0;width:400px;max-width:100%;background:var(--surface,#fff);box-shadow:-20px 0 40px rgba(15,23,42,.14);padding:22px;overflow-y:auto;color:var(--text,#0F172A);box-sizing:border-box}.aide-pan .tete{display:flex;align-items:center;gap:10px}.aide-pan h3{margin:0;font-size:18px;font-weight:800}.aide-pan .sub{font-size:13px;color:var(--text3,#64748B);margin:4px 0 10px}.aide-pan .q{border-top:1px solid var(--border,#E6E9EE);padding:12px 0;font-size:13.5px;line-height:1.5;color:var(--text2,#334155)}.aide-pan .q b{display:block;margin-bottom:2px;color:var(--text,#0F172A)}.aide-pan table{width:100%;border-collapse:collapse;font-size:13px;margin-top:6px}.aide-pan td{padding:8px 6px;border-top:1px solid var(--border,#EEF1F5);vertical-align:top}.aide-pan td:first-child{font-weight:600;width:42%;color:var(--text,#0F172A)}.aide-pan .tout{margin-top:14px;background:none;border:none;padding:0;color:#1E3A8A;font-weight:700;font-size:13.5px;cursor:pointer}.aide-x{margin-left:auto;background:none;border:none;font-size:22px;line-height:1;color:#94A3B8;cursor:pointer;padding:4px}.aide-pan{top:auto;left:0;width:auto;max-height:85vh;border-radius:18px 18px 0 0;padding:18px 18px calc(18px + env(safe-area-inset-bottom));box-shadow:0 -10px 40px rgba(15,23,42,.18)}";document.head.appendChild(st);
+  setTimeout(function(){try{var d=document.createElement("div");d.id="aide-racine";document.body.appendChild(d);ReactDOM.createRoot(d).render(React.createElement(AidePanneau));}catch(e){}},0);}catch(e){}})();
+
 function VueAide({canAccess,peutReglages}){
   const el=React.createElement;
-  const secs=AIDE_SECTIONS.filter(x=>x.id==="_reglages"?peutReglages:(!canAccess||canAccess(x.id)));
-  const voitMails=!canAccess||canAccess("accueil")||canAccess("collaborateurs");
-  const L=[["Arrivée ou départ enregistré à l'Accueil","IT (fiche Field Support)","Tout de suite"],
-    ["Date d'entrée","IT","La veille vers 6 h — pas si une fiche Field Support existe déjà"],
-    ["Date d'entrée","Restaurant","Le jour même vers 6 h"],
-    ["Date de sortie","IT","La veille vers 6 h — pas si une fiche Field Support existe déjà"],
-    ["Date de sortie","Restaurant","Le jour même vers 6 h"],
-    ["Badge de prêt sorti","L'emprunteur","Tout de suite"],
-    ["Badge de prêt non rendu","L'emprunteur","Chaque matin (lun.–ven.) à partir du lendemain de la date de retour"],
-    ["Mail de bienvenue, boutons ✉️ et 🍽️","—","Jamais automatique : le mail s'ouvre et tu l'envoies toi-même"]];
-  const td={padding:"8px 10px",borderTop:"1px solid var(--border)",fontSize:12.5,verticalAlign:"top"};
-  const carte=(k,titre,...enfants)=>el("div",{key:k,className:"card",style:{background:"var(--surface)",border:"1px solid var(--border)",borderRadius:12,padding:"14px 16px",marginBottom:12}},
-    el("div",{style:{fontSize:15,fontWeight:800,marginBottom:8}},titre),...enfants);
+  const [q,setQ]=React.useState("");
+  const mobile=window.innerWidth<760;
+  const [ouv,setOuv]=React.useState(mobile?{}:{_mails:true});
+  const norm=t=>String(t||"").normalize("NFD").replace(/[̀-ͯ]/g,"").toLowerCase();
+  const nq=norm(q.trim());
+  const ok=x=>x.reg?peutReglages:(!x.acces||!canAccess||x.acces.some(id=>canAccess(id)));
+  const toutes=AIDE_SECTIONS.filter(ok);
+  const secs=toutes.map(x=>({...x,l:nq?x.l.filter(([a,b])=>norm(x.t+" "+a+" "+b).includes(nq)):x.l})).filter(x=>x.l.length);
+  const ico=k=>k==="_mail"?el("svg",{width:18,height:18,viewBox:"0 0 24 24",fill:"none",stroke:"currentColor",strokeWidth:1.8,strokeLinecap:"round",strokeLinejoin:"round"},el("rect",{x:3,y:5,width:18,height:14,rx:2}),el("path",{d:"M3 7l9 6 9-6"}))
+    :(typeof IconeNav!=="undefined"?el(IconeNav,{id:k,size:18}):null);
+  const aller=id=>{setOuv(o=>({...o,[id]:true}));setTimeout(()=>{const n=document.getElementById("aide-"+id);if(n)n.scrollIntoView({behavior:"smooth",block:"start"});},30);};
+  const tous=v=>{const o={};toutes.forEach(x=>o[x.id]=v);setOuv(o);};
+  const lien={background:"none",border:"none",padding:0,cursor:"pointer",color:"var(--text3,#64748B)",fontSize:12.5,fontWeight:600};
+  const recherche=el("div",{style:{display:"flex",alignItems:"center",gap:12,flexWrap:"wrap",marginBottom:14}},
+    el("div",{style:{position:"relative",flex:"1 1 260px",maxWidth:480}},
+      el("svg",{width:16,height:16,viewBox:"0 0 24 24",fill:"none",stroke:"currentColor",strokeWidth:2,style:{position:"absolute",left:12,top:"50%",transform:"translateY(-50%)",color:"var(--text3,#94A3B8)"}},el("circle",{cx:11,cy:11,r:7}),el("path",{d:"M20 20l-3.5-3.5"})),
+      el("input",{type:"search",value:q,onChange:e=>setQ(e.target.value),placeholder:"Chercher : badge, casier, VIP, mail…",
+        style:{width:"100%",boxSizing:"border-box",padding:"10px 12px 10px 36px",border:"1px solid var(--border)",borderRadius:10,fontSize:14,background:"var(--surface,#fff)",color:"var(--text)"}})),
+    !nq&&el("div",{style:{display:"flex",gap:14}},el("button",{type:"button",style:lien,onClick:()=>tous(true)},"Tout ouvrir"),el("button",{type:"button",style:lien,onClick:()=>tous(false)},"Tout fermer")));
+  const carte=x=>{const o=!!nq||!!ouv[x.id];
+    return el("section",{key:x.id,id:"aide-"+x.id,style:{background:"var(--surface,#fff)",border:"1px solid var(--border)",borderRadius:12,marginBottom:10,scrollMarginTop:70,overflow:"hidden"}},
+      el("button",{type:"button",onClick:()=>setOuv(v=>({...v,[x.id]:!o})),"aria-expanded":o,
+        style:{display:"flex",alignItems:"center",gap:10,width:"100%",padding:"14px 16px",background:"none",border:"none",cursor:"pointer",textAlign:"left",color:"var(--text)"}},
+        el("span",{style:{display:"flex",color:"var(--text2,#334155)"}},ico(x.ico)),
+        el("span",{style:{flex:1,fontSize:15,fontWeight:700}},x.t),
+        el("span",{style:{color:"var(--text3,#94A3B8)",fontSize:18,lineHeight:1,transform:o?"rotate(90deg)":"none",transition:"transform .15s"}},"›")),
+      o&&el("div",{style:{padding:"0 16px 8px"}},x.l.map(([a,b],i)=>el("div",{key:i,style:{padding:"10px 0",borderTop:"1px solid var(--border)",display:mobile?"block":"grid",gridTemplateColumns:"minmax(180px,34%) 1fr",gap:16}},
+        el("div",{style:{fontSize:13.5,fontWeight:600,color:"var(--text)",marginBottom:mobile?3:0}},a),
+        el("div",{style:{fontSize:13.5,lineHeight:1.5,color:"var(--text2,#475569)"}},b)))));};
+  const sommaire=!mobile&&el("nav",{style:{position:"sticky",top:70,alignSelf:"start",display:"flex",flexDirection:"column",gap:2}},
+    el("div",{style:{fontSize:11,fontWeight:700,letterSpacing:".06em",textTransform:"uppercase",color:"var(--text3,#94A3B8)",padding:"0 10px 6px"}},"Sommaire"),
+    toutes.map(x=>el("button",{key:x.id,type:"button",onClick:()=>{setQ("");aller(x.id);},
+      style:{display:"flex",alignItems:"center",gap:9,padding:"7px 10px",borderRadius:8,border:"none",background:"none",cursor:"pointer",textAlign:"left",fontSize:13,color:"var(--text2,#334155)"},
+      onMouseEnter:e=>e.currentTarget.style.background="var(--surface2,#F1F5F9)",onMouseLeave:e=>e.currentTarget.style.background="none"},
+      el("span",{style:{display:"flex",opacity:.8}},ico(x.ico)),x.t.replace(/ \(.*\)$/,"").replace(/ : .*$/,""))));
   return el("div",null,
-    typeof PageHero!=="undefined"?el(PageHero,{icone:"❓",titre:"Aide",sousTitre:"ce que fait chaque partie de l'application"}):el("div",{style:{margin:"4px 2px 14px"}},el("div",{style:{fontSize:28,fontWeight:800}},"❓ Aide"),el("div",{style:{fontSize:13,color:"var(--text3)"}},"Ce que fait chaque partie de l'application")),
-    voitMails&&carte("mails","📧 Quels mails partent, et quand",
-      window.innerWidth<700?el("div",null,L.map((r,i)=>el("div",{key:i,style:{padding:"8px 0",borderTop:i?"1px solid var(--border)":"none"}},
-          el("div",{style:{fontSize:13.5,fontWeight:700}},r[0]),
-          el("div",{style:{fontSize:13,color:"var(--text2)"}},(r[1]!=="—"?"→ "+r[1]+" · ":"")+r[2])))):
-      el("div",{style:{overflowX:"auto"}},el("table",{style:{width:"100%",borderCollapse:"collapse"}},
-        el("thead",null,el("tr",null,["Ce que tu enregistres","Qui reçoit","Quand"].map(h=>el("th",{key:h,style:{textAlign:"left",fontSize:11,color:"var(--text3)",textTransform:"uppercase",padding:"4px 10px"}},h)))),
-        el("tbody",null,L.map((r,i)=>el("tr",{key:i},r.map((c,j)=>el("td",{key:j,style:{...td,fontWeight:j===0?600:400}},c))))))),
-      el("div",{style:{fontSize:12,color:"var(--text3)",marginTop:8,lineHeight:1.45}},"Pas de mail automatique pour une fiche ⭐ VIP, ni quand l'envoi est coupé dans les Réglages. Un mail déjà parti ne repart pas si tu changes la date. Avant chaque enregistrement qui envoie un mail, une fenêtre te le dit.")),
-    secs.map(x=>carte(x.id,x.t,el("ul",{style:{margin:0,paddingLeft:18}},x.l.map((t,i)=>el("li",{key:i,style:{fontSize:13,lineHeight:1.5,marginBottom:4,color:"var(--text2)"}},t))))));
+    typeof PageHero!=="undefined"?el(PageHero,{icone:"❓",titre:"Aide",sousTitre:"comment faire, et ce qui se passe quand tu enregistres"}):el("div",{style:{margin:"4px 2px 14px"}},el("div",{style:{fontSize:28,fontWeight:800}},"Aide"),el("div",{style:{fontSize:13,color:"var(--text3)"}},"Comment faire, et ce qui se passe quand tu enregistres")),
+    el("div",{style:mobile?null:{display:"grid",gridTemplateColumns:"210px 1fr",gap:24}},
+      sommaire,
+      el("div",{style:{minWidth:0}},recherche,
+        secs.length?secs.map(carte):el("div",{style:{padding:"30px 10px",textAlign:"center",color:"var(--text3)",fontSize:14}},"Rien trouvé pour « "+q.trim()+" ». Essaie un autre mot."))));
 }
 
 
@@ -9296,6 +9501,7 @@ function MenuLateral({visibleNav,navActif,setView,onClose,session,notifs,ouvrirR
       qui&&el("div",{className:"ml-me"},el(Avatar,{prenom:qui.split(/[\s@.]/)[0],nom:qui.split(/[\s@.]/)[1]||"",size:34}),el("div",{style:{minWidth:0}},el("b",null,qui),el("span",null,"Connecté")))));
 }
 // ── Page « Aujourd'hui » : compteurs avec courbe + frise de la journée ──
+(function(){try{var st=document.createElement("style");st.id="ecran";st.textContent=".auj-vr{display:flex;align-items:center;justify-content:space-between;gap:10px;min-width:0}.auj-kpi .courbe{position:static!important;flex:0 1 auto;min-width:0;max-width:55%;top:auto!important;bottom:auto!important;right:auto!important}.auj-kpi .courbe{width:72px!important;height:28px!important}.auj-kpi{min-height:0!important}html,body{height:100%;overflow:hidden;overscroll-behavior:none}#root{position:fixed;inset:0;overflow-y:auto;overflow-x:hidden;-webkit-overflow-scrolling:touch;overscroll-behavior-y:contain}";document.head.appendChild(st);}catch(e){}})();
 function BlocAujourdhui({badges,extra,setView}){
   const el=React.createElement;
   const auj=isoLocal(new Date());
@@ -9321,7 +9527,7 @@ function BlocAujourdhui({badges,extra,setView}){
   // frise
   const ev=[];
   enCours.filter(b=>d10(b.date_entree)===auj).forEach(b=>ev.push({o:1,t:"Arrivée",c:"#16A34A",p:b.prenom,n:b.nom,sub:b.manager&&b.manager!=="NC"?"Manager "+b.manager:"",chips:[b.serie?["Badge "+b.serie,"g"]:["Pas de badge","o"],b.casier?["Casier "+b.casier,"v"]:["Pas de casier","n"]],go:"collaborateurs"}));
-  colis.forEach(c=>ev.push({o:2,h:hh(c.recu_le),t:"Colis #"+String(c.numero||0).padStart(3,"0")+(c.statut==="recu"?" à prévenir":" en attente"),c:"#EA580C",p:c.prenom,n:c.nom,sub:"Reçu le "+fr(c.recu_le),chips:[c.statut==="recu"?["À prévenir","o"]:["Prévenu le "+fr(c.prevenu_le),"b"]],go:"colis"}));
+  colis.forEach(c=>{const jr=c.recu_le?Math.round((new Date(auj+"T12:00")-new Date(d10(c.recu_le)+"T12:00"))/864e5):0;ev.push({o:2,h:jr<=0?hh(c.recu_le):"",t:"Colis #"+String(c.numero||0).padStart(3,"0")+(c.statut==="recu"?" à prévenir":" en attente")+(jr>0?" · depuis "+jr+" j":""),c:"#EA580C",p:c.prenom,n:c.nom,sub:"Reçu le "+fr(c.recu_le),chips:[c.statut==="recu"?["À prévenir","o"]:["Prévenu le "+fr(c.prevenu_le),"b"]],go:"colis"});});
   prets.forEach(x=>{const r=d10(x.date_retour_prevu);const w=String(x.emprunteur||"?").trim().split(/\s+/);ev.push({o:3,t:"Badge de prêt "+(x.code||""),c:"#2563EB",p:w.slice(1).join(" "),n:w[0],sub:r?"Retour prévu le "+fr(r):"Pas de date de retour",chips:[r&&r<auj?["En retard","r"]:r===auj?["Retour aujourd'hui","b"]:["Prêté","n"]],go:"badges_pret"});});
   enCours.filter(b=>d10(b.date_sortie_prevue)===auj).forEach(b=>ev.push({o:4,t:"Départ",c:"#DC2626",p:b.prenom,n:b.nom,sub:"Dernier jour",chips:[b.serie?["Badge "+b.serie+" à récupérer","r"]:null,b.casier?["Casier "+b.casier+" à vider","r"]:null].filter(Boolean),go:"collaborateurs"}));
   ev.sort((a,b)=>a.o-b.o);
@@ -9329,8 +9535,7 @@ function BlocAujourdhui({badges,extra,setView}){
   const chip=([t,k],i)=>el("span",{key:i,className:"chip chip-"+k},t);
   return el("div",{className:"auj"},
     el("div",{className:"auj-kpis"},K.map(([l,v,d,ser,col,go],i)=>el("button",{key:i,type:"button",className:"auj-kpi",onClick:()=>setView(go)},
-      el("div",{className:"auj-l"},l),el("div",{className:"auj-v"},v),d?el("div",{className:"auj-d",style:{color:col}},d):el("div",{className:"auj-d"}," "),
-      el(Courbe,{vals:ser,col})))),
+      el("div",{className:"auj-l"},l),el("div",{className:"auj-vr"},el("div",{className:"auj-v"},v),el(Courbe,{vals:ser,col})),d?el("div",{className:"auj-d",style:{color:col}},d):el("div",{className:"auj-d"}," ")))),
     el("div",{className:"auj-frise"},
       el("div",{className:"auj-h"},"Votre journée",el("small",null,ev.length?" · "+ev.length+" élément"+(ev.length>1?"s":""):" · rien de prévu")),
       !ev.length&&el("div",{className:"auj-vide"},"Aucune arrivée, aucun départ, aucun colis ni badge de prêt en cours aujourd'hui."),
@@ -9358,7 +9563,7 @@ function DetailsMobile({titre,cle,children}){
     !plie&&React.createElement("div",{className:"dm-corps"},children));
 }
 
-(function(){try{var st=document.createElement("style");st.id="mobile";st.textContent=`.ios-navbtns{display:flex;justify-content:flex-end;gap:8px}.ios-ico{position:relative;display:inline-flex;align-items:center;gap:4px;height:40px;min-width:40px;padding:0 10px;border-radius:12px;border:1px solid var(--border);background:var(--surface);color:var(--text);font:inherit;font-weight:700;font-size:14px;cursor:pointer;justify-content:center}.ios-ico-n{font-size:13px;color:var(--text2)}
+(function(){try{var st=document.createElement("style");st.id="mobile";st.textContent=`.ios-navbtns{display:flex;justify-content:flex-end;gap:8px}button.ios-ico{position:relative;display:inline-flex;align-items:center;gap:4px;height:40px;min-width:40px;padding:0 10px;border-radius:12px;border:1px solid var(--border);background:var(--surface);color:var(--text);font:inherit;font-weight:700;font-size:14px;cursor:pointer;justify-content:center}.ios-ico-n{font-size:13px;color:var(--text2)}
 .fs-new{display:none}
 @media(max-width:700px){
   .fs-old,.kpi-row.fs-old,div.fs-old{display:none!important}
@@ -10551,6 +10756,7 @@ useEffect(()=>{
   const isIT=session&&session.role==="it";
   const isBadge=session&&session.role==="badge";
   const visibleNav=nav.filter(n=>canAccess(n.id));
+  window._pageAide=view;
   useEffect(()=>{const f=()=>setView("aide");window.addEventListener("ouvrir-aide",f);return()=>window.removeEventListener("ouvrir-aide",f);},[]);
   const[menuOuvert,setMenuOuvert]=useState(false);
   useEffect(()=>{window._nbNotifs=canAccess("notifications")?notifs.length:0;},[notifs.length]);
