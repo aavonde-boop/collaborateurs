@@ -1743,7 +1743,7 @@ function VueAccueil({notifExtra,badges,casiers,setView,wdCache,setBadges,setCasi
     React.createElement("div",{className:"hero",style:{marginBottom:12}},
       React.createElement("div",{className:"hero-top"},
         React.createElement("div",null,
-          React.createElement("h1",null,"Aujourd'hui"),
+          React.createElement("h1",null,"Tableau de bord"),
           React.createElement("p",{className:"greet"},greeting+" · "+dateLongStr+" · "+clockStr+" — Prochain rapport : "+getNextFriday()),
           anniversaire.length>0&&React.createElement("p",{className:"anniv-line"},"🎂 Anniversaire d'arrivée : "+anniversaire.map(b=>b.prenom+" "+b.nom).join(", "))
         ),
@@ -1784,30 +1784,10 @@ function VueAccueil({notifExtra,badges,casiers,setView,wdCache,setBadges,setCasi
       overdueRecup.length===0&&React.createElement("div",{className:"banner bravo"},
         React.createElement("span",{className:"ico"},"🎉"),
         React.createElement("div",null,React.createElement("div",{className:"txt"},"Bravo, aucun badge en retard de récupération !"),React.createElement("div",{className:"sub"},"Tous les badges « à récupérer » sont dans les temps"))
-      ),
-      React.createElement("div",{className:"banner tip"},
-        React.createElement("span",{className:"ico"},"💡"),
-        React.createElement("div",null,React.createElement("div",{className:"txt"},"Astuce du jour"),React.createElement("div",{className:"sub"},TIPS[tipIdx]))
       )
     ),
 
-    // ══════════════ Tâches du jour (checklist) ══════════════
-    React.createElement(Card,{className:"todo-card",style:{padding:0,marginBottom:10}},
-      React.createElement("div",{style:{padding:"14px 18px"}},
-        React.createElement("div",{className:"todo-top"},
-          React.createElement("span",{style:{fontSize:16}},"✅"),
-          React.createElement("h3",null,"Tâches du jour"),
-          React.createElement("span",{className:"cnt"},todos.length?todosDoneCount+"/"+todos.length:"")
-        ),
-        todos.length===0
-          ?React.createElement("div",{style:{padding:"8px 4px",color:"var(--text3)",fontSize:12.5}},"Tout est à jour, aucune tâche en attente 🎉")
-          :todos.map(t=>React.createElement("div",{key:t.id,className:"todo-item"+(todoDone[t.id]?" done":"")},
-              React.createElement("div",{className:"todo-check",onClick:()=>toggleTodo(t.id)},todoDone[t.id]?"✓":""),
-              React.createElement("div",{className:"todo-txt",onClick:t.action},t.txt),
-              React.createElement("span",{className:"todo-tag",style:{color:t.color,background:t.bg}},t.tag)
-            ))
-      )
-    ),
+    // ══════════════ Tâches du jour (checklist) ══════════════,
 
     // ══════════════ 2) ENREGISTRER UN MOUVEMENT — deux icônes, chacune ouvre sa fenêtre ══════════════
     React.createElement("div",{className:"mvt-icon-row",style:{marginBottom:10}},
@@ -1921,34 +1901,9 @@ function VueAccueil({notifExtra,badges,casiers,setView,wdCache,setBadges,setCasi
       )
     ),
 
-    // ══════════════ Raccourcis rapides + export du jour ══════════════
-    React.createElement("div",{className:"shortcuts-row",style:{marginBottom:10}},
-      React.createElement("div",{className:"shortcut",onClick:()=>setView("rapport")},React.createElement("span",{className:"ico"},"📊"),"Rapport"),
-      React.createElement("div",{className:"shortcut",onClick:()=>setView("impression")},React.createElement("span",{className:"ico"},"🏷️"),"Étiquettes"),
-      React.createElement("div",{className:"shortcut",onClick:()=>setView("badges_pret")},React.createElement("span",{className:"ico"},"🔑"),"Badges Prêt"),
-      React.createElement("div",{className:"shortcut",onClick:()=>setView("colis")},React.createElement("span",{className:"ico"},"📦"),"Colis"),
-      !isIT&&React.createElement("div",{className:"shortcut",onClick:goCollab},React.createElement("span",{className:"ico"},"👥"),"Collaborateurs"),
-      React.createElement("div",{className:"shortcut",onClick:exportMouvementsJour},React.createElement("span",{className:"ico"},"⬇️"),"Export du jour")
-    ),
+    // ══════════════ Raccourcis rapides + export du jour ══════════════,
 
-    // ══════════════ 5) ACTIVITÉ RÉCENTE — uniquement Field Support, en timeline ══════════════
-    React.createElement(Card,{className:"activity-card",style:{marginBottom:4,padding:"14px 18px"}},
-      React.createElement("div",{className:"activity-top",style:{marginBottom:8}},
-        React.createElement("span",{style:{fontSize:15}},"🎫"),
-        React.createElement("h3",null,"Activité récente — Field Support")
-      ),
-      histoFS.length===0
-        ?React.createElement("div",{style:{padding:"6px 2px",textAlign:"center",color:"var(--text3)",fontSize:12}},"Aucune activité Field Support récente")
-        :React.createElement("div",{className:"tl"},histoFS.slice(0,4).map(h=>React.createElement("div",{key:h.id,className:"tl-item "+(/Arrivée/i.test(h.action)?"created":"modified"),style:{paddingBottom:10}},
-            React.createElement("div",{className:"tl-dot"},/Arrivée/i.test(h.action)?"🟢":"🎫"),
-            React.createElement("div",{className:"tl-row"},
-              React.createElement("span",{className:"tl-action"},h.action),
-              React.createElement("span",{className:"tl-who"},h.detail),
-              React.createElement("span",{className:"tl-time"},h.ts)
-            )
-          ))),
-      React.createElement("div",{className:"tl-foot",onClick:()=>setView("field_support")},"Aller à Field Support →")
-    ),
+    // ══════════════ 5) ACTIVITÉ RÉCENTE — uniquement Field Support, en timeline ══════════════,
 
     // ══════════════ MODALES — l'info utile uniquement, au clic, puis proposition d'aller à l'onglet ══════════════
     modal==="arrivee"&&React.createElement(AccueilModal,{title:"Nouvelle arrivée",icon:"🟢",onClose:closeModal,maxWidth:460},
@@ -3927,7 +3882,8 @@ function calculerNotifications({badges,fssData,prets,colis,quota}){
   if(quota&&quota.total>=QUOTA_MAILS*0.8)L.push({id:"quota-"+Math.floor(quota.total/10),cat:"À traiter",icone:"📧",titre:"Quota mails : "+quota.total+" / "+QUOTA_MAILS,raison:quota.total>=QUOTA_MAILS?"Quota EmailJS atteint : les mails automatiques ne partent plus jusqu'au mois prochain.":"Plus de 80 % du quota EmailJS du mois est utilisé.",vue:"accueil"});
   return L;
 }
-function VueNotifications({items,supprimer,toutSupprimer,restaurer,nbSupprimees,setView}){
+function VueNotifications({histo,items,supprimer,toutSupprimer,restaurer,nbSupprimees,setView}){
+  const histoFS=(histo||[]).filter(h=>h.action&&/FSS|Field Support|Départ|Arrivée/i.test(h.action));
   const el=React.createElement;const ios=document.documentElement.classList.contains("ios-ui");
   const cats=["Aujourd'hui","À relancer","Colis","À traiter"];
   const titre=ios?el("div",null,el("h1",{className:"ios-large"},"🔔 Notifications"),el("p",{className:"ios-sub"},items.length?items.length+" en cours":"Rien à signaler")):
@@ -3949,7 +3905,18 @@ function VueNotifications({items,supprimer,toutSupprimer,restaurer,nbSupprimees,
               el("div",{style:{fontSize:12,color:"var(--text2)",marginTop:2}},x.raison)),
             el("button",{type:"button",className:"btn btn-outline",style:{fontSize:12,padding:"4px 10px",flexShrink:0},onClick:()=>setView(x.vue)},"Voir"),
             el("button",{type:"button",title:"Supprimer cette notification","aria-label":"Supprimer",onClick:()=>supprimer(x.id),style:{background:"var(--surface3)",border:"none",borderRadius:8,width:32,height:32,fontSize:15,cursor:"pointer",color:"var(--text3)",flexShrink:0}},"✕")))));
-    }));
+    }),
+    el("div",{style:{marginTop:22}},
+      el("div",{style:{fontSize:11,fontWeight:700,color:"var(--text3)",textTransform:"uppercase",letterSpacing:".5px",margin:"4px 2px 6px"}},"Activité récente — Field Support"),
+      el("div",{className:"card",style:{border:"1px solid var(--border)",borderRadius:12,padding:0,overflow:"hidden"}},
+        histoFS.length===0?el("div",{style:{padding:"16px 14px",textAlign:"center",color:"var(--text3)",fontSize:13}},"Aucune activité Field Support récente")
+        :histoFS.slice(0,10).map((h,i)=>el("div",{key:h.id||i,style:{display:"flex",alignItems:"flex-start",gap:12,padding:"10px 14px",borderTop:i?"1px solid var(--border)":"none"}},
+          el("div",{style:{fontSize:18,flexShrink:0,lineHeight:"22px"}},/Arrivée/i.test(h.action)?"🟢":/Départ/i.test(h.action)?"👋":"🎫"),
+          el("div",{style:{flex:1,minWidth:0}},
+            el("div",{style:{fontWeight:700,fontSize:13.5,color:"var(--text)"}},h.action),
+            h.detail&&el("div",{style:{fontSize:12,color:"var(--text2)",marginTop:2,overflowWrap:"anywhere"}},h.detail)),
+          el("div",{style:{fontSize:11.5,color:"var(--text3)",flexShrink:0,whiteSpace:"nowrap"}},h.ts))),
+        el("div",{onClick:()=>setView("field_support"),style:{padding:"10px 14px",borderTop:"1px solid var(--border)",fontSize:13,fontWeight:700,color:"#1E3A8A",cursor:"pointer"}},"Aller à Field Support →"))));
 }
 
 
@@ -4114,7 +4081,7 @@ function EcartsWorkday({badges,wdCache,setBadges,addLog,showToast}){
 function NoteAide({children,style}){return React.createElement("div",{className:"note-aide",style:{fontSize:11.5,lineHeight:1.4,color:"var(--text3,#64748B)",marginTop:6,...style}},"ℹ️ ",children);}
 const AIDE_SECTIONS=[
   {id:"_mails",t:"Mails automatiques",ico:"_mail",acces:["accueil","collaborateurs","gestion_accueil","badges_pret"],l:[
-    ["Arrivée ou départ enregistré depuis « Aujourd'hui »","IT : tout de suite (fiche Field Support)."],
+    ["Arrivée ou départ enregistré depuis le tableau de bord","IT : tout de suite (fiche Field Support)."],
     ["Date d'entrée sur une fiche","IT : la veille vers 6 h (pas si une fiche Field Support existe déjà). Restaurant : le jour même vers 6 h."],
     ["Date de sortie sur une fiche","IT : la veille vers 6 h (pas si une fiche Field Support existe déjà). Restaurant : le jour même vers 6 h."],
     ["Badge de prêt sorti","L'emprunteur : tout de suite."],
@@ -4122,8 +4089,8 @@ const AIDE_SECTIONS=[
     ["Mail de bienvenue, boutons ✉️ IT et 🍽️","Jamais automatique : le mail s'ouvre dans ta messagerie et tu l'envoies toi-même."],
     ["Quand aucun mail ne part","Fiche ⭐ VIP, ou envoi coupé dans les Réglages. Un mail déjà parti ne repart pas si tu changes la date."],
     ["Avant d'enregistrer","Une fenêtre te dit quels mails vont partir. « Annuler » pour revenir sans rien envoyer."]]},
-  {id:"accueil",t:"Aujourd'hui",ico:"accueil",acces:["accueil"],l:[
-    ["Ce que montre la page","Les compteurs (collaborateurs actifs, arrivées sur 30 jours, colis en attente, badges de prêt sortis) et « Votre journée » : arrivées, colis à prévenir, badges à récupérer. Clique sur une ligne pour l'ouvrir."],
+  {id:"accueil",t:"Tableau de bord",ico:"accueil",acces:["accueil"],l:[
+    ["Ce que montre la page","Les compteurs (collaborateurs actifs, arrivées sur 30 jours, colis en attente, badges de prêt sortis). L'activité Field Support récente est dans les Notifications 🔔."],
     ["Chercher quelqu'un","Barre de recherche, par nom ou par n° de badge. Les accents ne comptent pas."],
     ["Enregistrer une arrivée","Crée la fiche et une fiche Field Support (mail à l'IT tout de suite). Le restaurant reçoit un mail le jour de l'arrivée."],
     ["Enregistrer un départ","Note la date de sortie et crée une fiche Field Support (mail à l'IT tout de suite). Le restaurant reçoit un mail le jour du départ."],
@@ -4157,10 +4124,10 @@ const AIDE_SECTIONS=[
   {id:"rapport",t:"Rapport",ico:"rapport",acces:["rapport"],l:[
     ["Ce que montre la page","Les arrivées, départs et badges à venir, sur une seule page."]]},
   {id:"_notifs",t:"Notifications (🔔 en haut)",ico:"notifications",acces:["notifications"],l:[
-    ["Où les trouver","La cloche en haut à droite (en haut d'« Aujourd'hui » sur téléphone). Le chiffre = le nombre de notifications."],
+    ["Où les trouver","La cloche en haut à droite (en haut du tableau de bord sur téléphone). Le chiffre = le nombre de notifications."],
     ["Une fois réglé","Supprime la notification : elle disparaît aussi sur ton téléphone et ne revient que si la situation change."]]},
   {id:"_reglages",t:"Réglages (⚙️ en haut)",ico:"settings",reg:true,l:[
-    ["Où les trouver","La roue en haut à droite (en haut d'« Aujourd'hui » sur téléphone)."],
+    ["Où les trouver","La roue en haut à droite (en haut du tableau de bord sur téléphone)."],
     ["Ce qu'on y règle","Adresses e-mail (IT, restaurant, copie), textes des mails, interrupteurs pour couper les envois, comptes, archives, historiques, import / export."],
     ["Import « Racine Commune »","Met à jour les fiches sans rien effacer, et te montre un résumé avant."]]},
   {id:"_faq",t:"Questions fréquentes",ico:"aide",l:[
@@ -4391,20 +4358,7 @@ function BlocAujourdhui({badges,extra,setView}){
   const chip=([t,k],i)=>el("span",{key:i,className:"chip chip-"+k},t);
   return el("div",{className:"auj"},
     el("div",{className:"auj-kpis"},K.map(([l,v,d,ser,col,go],i)=>el("button",{key:i,type:"button",className:"auj-kpi",onClick:()=>setView(go)},
-      el("div",{className:"auj-l"},l),el("div",{className:"auj-vr"},el("div",{className:"auj-v"},v),el(Courbe,{vals:ser,col})),d?el("div",{className:"auj-d",style:{color:col}},d):el("div",{className:"auj-d"}," ")))),
-    el("div",{className:"auj-frise"},
-      el("div",{className:"auj-h"},"Votre journée",el("small",null,ev.length?" · "+ev.length+" élément"+(ev.length>1?"s":""):" · rien de prévu")),
-      !ev.length&&el("div",{className:"auj-vide"},"Aucune arrivée, aucun départ, aucun colis ni badge de prêt en cours aujourd'hui."),
-      vus.map((e,i)=>el("div",{key:i,className:"auj-ev",onClick:()=>setView(e.go)},
-        el("div",{className:"auj-dot",style:{background:e.c,boxShadow:"0 0 0 4px "+e.c+"22"}}),
-        el(Avatar,{prenom:e.p,nom:e.n,size:36}),
-        el("div",{style:{flex:1,minWidth:0}},
-          el("div",{className:"auj-t",style:{color:e.c}},(e.h?e.h+" · ":"")+e.t),
-          el("div",{className:"auj-n"},cap(e.p)+(e.p?" ":"")+String(e.n||"").toUpperCase()),
-          e.sub&&el("div",{className:"auj-s"},e.sub),
-          el("div",{className:"auj-chips"},e.chips.map(chip))),
-        el("span",{className:"auj-go"},"›"))),
-      ev.length>vus.length&&el("div",{className:"auj-plus"},"+ "+(ev.length-vus.length)+" autre(s) — voir les notifications")));
+      el("div",{className:"auj-l"},l),el("div",{className:"auj-vr"},el("div",{className:"auj-v"},v),el(Courbe,{vals:ser,col})),d?el("div",{className:"auj-d",style:{color:col}},d):el("div",{className:"auj-d"}," ")))));
 }
 
 function SettingsModal({settings,setSettings,showToast,setShowSettings,racineRef,hrRef,hcmRef,importJsonRef,exportExcel,exportJSON,importJSON,badges,setBadges,casiers,wdCache,histo,addLog,canHistorique,canArchives,canHistoriquePret,initialTab}){
@@ -5517,7 +5471,7 @@ useEffect(()=>{
   const restaurerNotifs=()=>{setNotifSupp({});enregistrerSupprimees({});if(settingsReadyRef.current)setSettings(st=>{const n={...st};delete n[cleNS];return n;});};
   useEffect(()=>{if(unlocked)majPastille(notifs.length);},[notifs.length,unlocked]);
   const nav=[
-    {id:"accueil",label:"Aujourd'hui",icon:"🏠"},
+    {id:"accueil",label:"Tableau de bord",icon:"🏠"},
     {id:"field_support",label:"Field Support",icon:"📋"},
     {id:"collaborateurs",label:"Collaborateurs",icon:"👥"},
     {id:"casiers",label:"Casiers",icon:"🔐"},
@@ -5568,7 +5522,7 @@ useEffect(()=>{
       case "impression": return React.createElement(VueImpression,{badges,settings,setSettings});
       case "gestion_accueil": case "badges_pret": case "colis": return React.createElement(VueGestionAccueil,{onglet:view,setView,canAccess,showToast,addLog,badges});
       case "aide": return React.createElement(VueAide,{canAccess,peutReglages:!isIT&&!isBadgeOnly});
-      case "notifications": return React.createElement(VueNotifications,{items:notifs,supprimer:supprimerNotif,toutSupprimer:toutSupprimerNotifs,restaurer:restaurerNotifs,nbSupprimees:notifsToutes.length-notifs.length,setView});
+      case "notifications": return React.createElement(VueNotifications,{histo,items:notifs,supprimer:supprimerNotif,toutSupprimer:toutSupprimerNotifs,restaurer:restaurerNotifs,nbSupprimees:notifsToutes.length-notifs.length,setView});
       default: return null;
     }
   };
@@ -6760,7 +6714,7 @@ function VueAccueil({notifExtra,badges,casiers,setView,wdCache,setBadges,setCasi
         React.createElement("button",{type:"button",className:"ios-ico",title:"Notifications",onClick:()=>setView("notifications")},React.createElement(IconeNav,{id:"notifications",size:22}),window._nbNotifs?React.createElement("span",{className:"ios-ico-n"},window._nbNotifs):null),
         React.createElement("button",{type:"button",className:"ios-ico",title:"Réglages",onClick:()=>window.dispatchEvent(new Event("ouvrir-reglages"))},React.createElement(IconeNav,{id:"settings",size:22})),
         ),
-      React.createElement("h1",{className:"ios-large"},"Aujourd'hui"),
+      React.createElement("h1",{className:"ios-large"},"Tableau de bord"),
       React.createElement("p",{className:"ios-sub"},greeting+" · "+dateLongStr+" · "+clockStr),
       anniversaire.length>0&&React.createElement("p",{className:"ios-sub",style:{marginTop:-8}},"🎂 Anniversaire d'arrivée : "+anniversaire.map(b=>b.prenom+" "+b.nom).join(", ")),
       React.createElement(IosSegmented,{options:[["collab","Collaborateur"],["badge","N° de badge"]],value:searchMode,onChange:v=>{setSearchMode(v);setSearchQuery("");}}),
@@ -6809,30 +6763,10 @@ function VueAccueil({notifExtra,badges,casiers,setView,wdCache,setBadges,setCasi
       overdueRecup.length===0&&React.createElement("div",{className:"banner bravo"},
         React.createElement("span",{className:"ico"},"🎉"),
         React.createElement("div",null,React.createElement("div",{className:"txt"},"Bravo, aucun badge en retard de récupération !"),React.createElement("div",{className:"sub"},"Tous les badges « à récupérer » sont dans les temps"))
-      ),
-      React.createElement("div",{className:"banner tip"},
-        React.createElement("span",{className:"ico"},"💡"),
-        React.createElement("div",null,React.createElement("div",{className:"txt"},"Astuce du jour"),React.createElement("div",{className:"sub"},TIPS[tipIdx]))
       )
     ),
 
-    // ══════════════ Tâches du jour (checklist) ══════════════
-    React.createElement(Card,{className:"todo-card",style:{padding:0,marginBottom:10}},
-      React.createElement("div",{style:{padding:"14px 18px"}},
-        React.createElement("div",{className:"todo-top"},
-          React.createElement("span",{style:{fontSize:16}},"✅"),
-          React.createElement("h3",null,"Tâches du jour"),
-          React.createElement("span",{className:"cnt"},todos.length?todosDoneCount+"/"+todos.length:"")
-        ),
-        todos.length===0
-          ?React.createElement("div",{style:{padding:"8px 4px",color:"var(--text3)",fontSize:12.5}},"Tout est à jour, aucune tâche en attente 🎉")
-          :todos.map(t=>React.createElement("div",{key:t.id,className:"todo-item"+(todoDone[t.id]?" done":"")},
-              React.createElement("div",{className:"todo-check",onClick:()=>toggleTodo(t.id)},todoDone[t.id]?"✓":""),
-              React.createElement("div",{className:"todo-txt",onClick:t.action},t.txt),
-              React.createElement("span",{className:"todo-tag",style:{color:t.color,background:t.bg}},t.tag)
-            ))
-      )
-    ),
+    // ══════════════ Tâches du jour (checklist) ══════════════,
 
     // ══════════════ 3) KPI — l'essentiel, cliquable pour aller plus loin ══════════════
     React.createElement("div",{className:"kpi-grid",style:{marginBottom:10}},
@@ -6927,32 +6861,9 @@ function VueAccueil({notifExtra,badges,casiers,setView,wdCache,setBadges,setCasi
       )
     ),
 
-    // ══════════════ Raccourcis rapides + export du jour ══════════════
-    React.createElement("div",{className:"ios-hdr"},"Raccourcis"),
-    React.createElement("div",{className:"ios-group",style:{marginBottom:10,"--inset":"58px"}},
-      [["rapport","Rapport","#007AFF",()=>setView("rapport")],["impression","Étiquettes","#FF9500",()=>setView("impression")],["badges_pret","Badges de prêt","#AF52DE",()=>setView("badges_pret")],["colis","Colis","#FF9F0A",()=>setView("colis")],
-       !isIT&&["collaborateurs","Collaborateurs","#5856D6",goCollab],["download","Export du jour","#34C759",exportMouvementsJour]].filter(Boolean).map(([id,l,bg,fn])=>
-        React.createElement("div",{key:id,className:"ios-cell",onClick:fn},React.createElement(IosTile,{id,bg}),React.createElement("div",{className:"t t1"},l),React.createElement("span",{className:"ios-chev"},"›")))
-    ),
+    // ══════════════ Raccourcis rapides + export du jour ══════════════,
 
-    // ══════════════ 5) ACTIVITÉ RÉCENTE — uniquement Field Support, en timeline ══════════════
-    React.createElement(Card,{className:"activity-card",style:{marginBottom:4,padding:"14px 18px"}},
-      React.createElement("div",{className:"activity-top",style:{marginBottom:8}},
-        React.createElement("span",{style:{fontSize:15}},"🎫"),
-        React.createElement("h3",null,"Activité récente — Field Support")
-      ),
-      histoFS.length===0
-        ?React.createElement("div",{style:{padding:"6px 2px",textAlign:"center",color:"var(--text3)",fontSize:12}},"Aucune activité Field Support récente")
-        :React.createElement("div",{className:"tl"},histoFS.slice(0,4).map(h=>React.createElement("div",{key:h.id,className:"tl-item "+(/Arrivée/i.test(h.action)?"created":"modified"),style:{paddingBottom:10}},
-            React.createElement("div",{className:"tl-dot"},/Arrivée/i.test(h.action)?"🟢":"🎫"),
-            React.createElement("div",{className:"tl-row"},
-              React.createElement("span",{className:"tl-action"},h.action),
-              React.createElement("span",{className:"tl-who"},h.detail),
-              React.createElement("span",{className:"tl-time"},h.ts)
-            )
-          ))),
-      React.createElement("div",{className:"tl-foot",onClick:()=>setView("field_support")},"Aller à Field Support →")
-    ),
+    // ══════════════ 5) ACTIVITÉ RÉCENTE — uniquement Field Support, en timeline ══════════════,
 
     null),
 
@@ -9070,7 +8981,8 @@ function calculerNotifications({badges,fssData,prets,colis,quota}){
   if(quota&&quota.total>=QUOTA_MAILS*0.8)L.push({id:"quota-"+Math.floor(quota.total/10),cat:"À traiter",icone:"📧",titre:"Quota mails : "+quota.total+" / "+QUOTA_MAILS,raison:quota.total>=QUOTA_MAILS?"Quota EmailJS atteint : les mails automatiques ne partent plus jusqu'au mois prochain.":"Plus de 80 % du quota EmailJS du mois est utilisé.",vue:"accueil"});
   return L;
 }
-function VueNotifications({items,supprimer,toutSupprimer,restaurer,nbSupprimees,setView}){
+function VueNotifications({histo,items,supprimer,toutSupprimer,restaurer,nbSupprimees,setView}){
+  const histoFS=(histo||[]).filter(h=>h.action&&/FSS|Field Support|Départ|Arrivée/i.test(h.action));
   const el=React.createElement;const ios=document.documentElement.classList.contains("ios-ui");
   const cats=["Aujourd'hui","À relancer","Colis","À traiter"];
   const titre=ios?el("div",null,el("h1",{className:"ios-large"},"🔔 Notifications"),el("p",{className:"ios-sub"},items.length?items.length+" en cours":"Rien à signaler")):
@@ -9092,7 +9004,18 @@ function VueNotifications({items,supprimer,toutSupprimer,restaurer,nbSupprimees,
               el("div",{style:{fontSize:12,color:"var(--text2)",marginTop:2}},x.raison)),
             el("button",{type:"button",className:"btn btn-outline",style:{fontSize:12,padding:"4px 10px",flexShrink:0},onClick:()=>setView(x.vue)},"Voir"),
             el("button",{type:"button",title:"Supprimer cette notification","aria-label":"Supprimer",onClick:()=>supprimer(x.id),style:{background:"var(--surface3)",border:"none",borderRadius:8,width:32,height:32,fontSize:15,cursor:"pointer",color:"var(--text3)",flexShrink:0}},"✕")))));
-    }));
+    }),
+    el("div",{style:{marginTop:22}},
+      el("div",{style:{fontSize:11,fontWeight:700,color:"var(--text3)",textTransform:"uppercase",letterSpacing:".5px",margin:"4px 2px 6px"}},"Activité récente — Field Support"),
+      el("div",{className:"card",style:{border:"1px solid var(--border)",borderRadius:12,padding:0,overflow:"hidden"}},
+        histoFS.length===0?el("div",{style:{padding:"16px 14px",textAlign:"center",color:"var(--text3)",fontSize:13}},"Aucune activité Field Support récente")
+        :histoFS.slice(0,10).map((h,i)=>el("div",{key:h.id||i,style:{display:"flex",alignItems:"flex-start",gap:12,padding:"10px 14px",borderTop:i?"1px solid var(--border)":"none"}},
+          el("div",{style:{fontSize:18,flexShrink:0,lineHeight:"22px"}},/Arrivée/i.test(h.action)?"🟢":/Départ/i.test(h.action)?"👋":"🎫"),
+          el("div",{style:{flex:1,minWidth:0}},
+            el("div",{style:{fontWeight:700,fontSize:13.5,color:"var(--text)"}},h.action),
+            h.detail&&el("div",{style:{fontSize:12,color:"var(--text2)",marginTop:2,overflowWrap:"anywhere"}},h.detail)),
+          el("div",{style:{fontSize:11.5,color:"var(--text3)",flexShrink:0,whiteSpace:"nowrap"}},h.ts))),
+        el("div",{onClick:()=>setView("field_support"),style:{padding:"10px 14px",borderTop:"1px solid var(--border)",fontSize:13,fontWeight:700,color:"#1E3A8A",cursor:"pointer"}},"Aller à Field Support →"))));
 }
 
 
@@ -9257,7 +9180,7 @@ function EcartsWorkday({badges,wdCache,setBadges,addLog,showToast}){
 function NoteAide({children,style}){return React.createElement("div",{className:"note-aide",style:{fontSize:11.5,lineHeight:1.4,color:"var(--text3,#64748B)",marginTop:6,...style}},"ℹ️ ",children);}
 const AIDE_SECTIONS=[
   {id:"_mails",t:"Mails automatiques",ico:"_mail",acces:["accueil","collaborateurs","gestion_accueil","badges_pret"],l:[
-    ["Arrivée ou départ enregistré depuis « Aujourd'hui »","IT : tout de suite (fiche Field Support)."],
+    ["Arrivée ou départ enregistré depuis le tableau de bord","IT : tout de suite (fiche Field Support)."],
     ["Date d'entrée sur une fiche","IT : la veille vers 6 h (pas si une fiche Field Support existe déjà). Restaurant : le jour même vers 6 h."],
     ["Date de sortie sur une fiche","IT : la veille vers 6 h (pas si une fiche Field Support existe déjà). Restaurant : le jour même vers 6 h."],
     ["Badge de prêt sorti","L'emprunteur : tout de suite."],
@@ -9265,8 +9188,8 @@ const AIDE_SECTIONS=[
     ["Mail de bienvenue, boutons ✉️ IT et 🍽️","Jamais automatique : le mail s'ouvre dans ta messagerie et tu l'envoies toi-même."],
     ["Quand aucun mail ne part","Fiche ⭐ VIP, ou envoi coupé dans les Réglages. Un mail déjà parti ne repart pas si tu changes la date."],
     ["Avant d'enregistrer","Une fenêtre te dit quels mails vont partir. « Annuler » pour revenir sans rien envoyer."]]},
-  {id:"accueil",t:"Aujourd'hui",ico:"accueil",acces:["accueil"],l:[
-    ["Ce que montre la page","Les compteurs (collaborateurs actifs, arrivées sur 30 jours, colis en attente, badges de prêt sortis) et « Votre journée » : arrivées, colis à prévenir, badges à récupérer. Clique sur une ligne pour l'ouvrir."],
+  {id:"accueil",t:"Tableau de bord",ico:"accueil",acces:["accueil"],l:[
+    ["Ce que montre la page","Les compteurs (collaborateurs actifs, arrivées sur 30 jours, colis en attente, badges de prêt sortis). L'activité Field Support récente est dans les Notifications 🔔."],
     ["Chercher quelqu'un","Barre de recherche, par nom ou par n° de badge. Les accents ne comptent pas."],
     ["Enregistrer une arrivée","Crée la fiche et une fiche Field Support (mail à l'IT tout de suite). Le restaurant reçoit un mail le jour de l'arrivée."],
     ["Enregistrer un départ","Note la date de sortie et crée une fiche Field Support (mail à l'IT tout de suite). Le restaurant reçoit un mail le jour du départ."],
@@ -9300,10 +9223,10 @@ const AIDE_SECTIONS=[
   {id:"rapport",t:"Rapport",ico:"rapport",acces:["rapport"],l:[
     ["Ce que montre la page","Les arrivées, départs et badges à venir, sur une seule page."]]},
   {id:"_notifs",t:"Notifications (🔔 en haut)",ico:"notifications",acces:["notifications"],l:[
-    ["Où les trouver","La cloche en haut à droite (en haut d'« Aujourd'hui » sur téléphone). Le chiffre = le nombre de notifications."],
+    ["Où les trouver","La cloche en haut à droite (en haut du tableau de bord sur téléphone). Le chiffre = le nombre de notifications."],
     ["Une fois réglé","Supprime la notification : elle disparaît aussi sur ton téléphone et ne revient que si la situation change."]]},
   {id:"_reglages",t:"Réglages (⚙️ en haut)",ico:"settings",reg:true,l:[
-    ["Où les trouver","La roue en haut à droite (en haut d'« Aujourd'hui » sur téléphone)."],
+    ["Où les trouver","La roue en haut à droite (en haut du tableau de bord sur téléphone)."],
     ["Ce qu'on y règle","Adresses e-mail (IT, restaurant, copie), textes des mails, interrupteurs pour couper les envois, comptes, archives, historiques, import / export."],
     ["Import « Racine Commune »","Met à jour les fiches sans rien effacer, et te montre un résumé avant."]]},
   {id:"_faq",t:"Questions fréquentes",ico:"aide",l:[
@@ -9535,20 +9458,7 @@ function BlocAujourdhui({badges,extra,setView}){
   const chip=([t,k],i)=>el("span",{key:i,className:"chip chip-"+k},t);
   return el("div",{className:"auj"},
     el("div",{className:"auj-kpis"},K.map(([l,v,d,ser,col,go],i)=>el("button",{key:i,type:"button",className:"auj-kpi",onClick:()=>setView(go)},
-      el("div",{className:"auj-l"},l),el("div",{className:"auj-vr"},el("div",{className:"auj-v"},v),el(Courbe,{vals:ser,col})),d?el("div",{className:"auj-d",style:{color:col}},d):el("div",{className:"auj-d"}," ")))),
-    el("div",{className:"auj-frise"},
-      el("div",{className:"auj-h"},"Votre journée",el("small",null,ev.length?" · "+ev.length+" élément"+(ev.length>1?"s":""):" · rien de prévu")),
-      !ev.length&&el("div",{className:"auj-vide"},"Aucune arrivée, aucun départ, aucun colis ni badge de prêt en cours aujourd'hui."),
-      vus.map((e,i)=>el("div",{key:i,className:"auj-ev",onClick:()=>setView(e.go)},
-        el("div",{className:"auj-dot",style:{background:e.c,boxShadow:"0 0 0 4px "+e.c+"22"}}),
-        el(Avatar,{prenom:e.p,nom:e.n,size:36}),
-        el("div",{style:{flex:1,minWidth:0}},
-          el("div",{className:"auj-t",style:{color:e.c}},(e.h?e.h+" · ":"")+e.t),
-          el("div",{className:"auj-n"},cap(e.p)+(e.p?" ":"")+String(e.n||"").toUpperCase()),
-          e.sub&&el("div",{className:"auj-s"},e.sub),
-          el("div",{className:"auj-chips"},e.chips.map(chip))),
-        el("span",{className:"auj-go"},"›"))),
-      ev.length>vus.length&&el("div",{className:"auj-plus"},"+ "+(ev.length-vus.length)+" autre(s) — voir les notifications")));
+      el("div",{className:"auj-l"},l),el("div",{className:"auj-vr"},el("div",{className:"auj-v"},v),el(Courbe,{vals:ser,col})),d?el("div",{className:"auj-d",style:{color:col}},d):el("div",{className:"auj-d"}," ")))));
 }
 
 
@@ -10728,7 +10638,7 @@ useEffect(()=>{
   const restaurerNotifs=()=>{setNotifSupp({});enregistrerSupprimees({});if(settingsReadyRef.current)setSettings(st=>{const n={...st};delete n[cleNS];return n;});};
   useEffect(()=>{if(unlocked)majPastille(notifs.length);},[notifs.length,unlocked]);
   const nav=[
-    {id:"accueil",label:"Aujourd'hui",icon:"🏠"},
+    {id:"accueil",label:"Tableau de bord",icon:"🏠"},
     {id:"field_support",label:"Field Support",icon:"📋"},
     {id:"collaborateurs",label:"Collaborateurs",icon:"👥"},
     {id:"casiers",label:"Casiers",icon:"🔐"},
@@ -10783,7 +10693,7 @@ useEffect(()=>{
       case "impression": return React.createElement(VueImpression,{badges,settings,setSettings});
       case "gestion_accueil": case "badges_pret": case "colis": return React.createElement(VueGestionAccueil,{onglet:view,setView,canAccess,showToast,addLog,badges});
       case "aide": return React.createElement(VueAide,{canAccess,peutReglages:!isIT&&!isBadgeOnly});
-      case "notifications": return React.createElement(VueNotifications,{items:notifs,supprimer:supprimerNotif,toutSupprimer:toutSupprimerNotifs,restaurer:restaurerNotifs,nbSupprimees:notifsToutes.length-notifs.length,setView});
+      case "notifications": return React.createElement(VueNotifications,{histo,items:notifs,supprimer:supprimerNotif,toutSupprimer:toutSupprimerNotifs,restaurer:restaurerNotifs,nbSupprimees:notifsToutes.length-notifs.length,setView});
       default: return null;
     }
   };
