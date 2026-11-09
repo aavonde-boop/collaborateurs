@@ -14,7 +14,7 @@ pre{margin:0;background:var(--code);color:var(--codetx);padding:16px;overflow:au
 .how{margin-top:16px;color:var(--t2);font-size:13.5px}
 </style></head><body><div class="w"><h1>Scripts sécurité — Gestion Collaborateurs</h1>
 <p class="intro">Supabase → SQL Editor : « Copier le script », coller, puis « Run ». Ordre conseillé : 0, puis le script voulu, puis 0 pour vérifier.</p>
-<div class="tabs"><button class="tab on" data-i="0">0 · Vérification</button><button class="tab" data-i="1">1 · Verrouillage</button><button class="tab" data-i="2">2 · Annulation</button><button class="tab" data-i="3">3 · Inscription</button><button class="tab" data-i="4">4 · Sécurité + RGPD</button></div><section class="sc on" id="s0"><div class="hd"><div><h2>0 · Vérification</h2><p>Ne modifie rien : affiche l&#x27;état de la sécurité. À lancer avant et après.</p><small>0-verification.sql · 31 lignes</small></div><button class="cp" data-i="0">Copier le script</button></div><pre><code id="c0">-- ════════════════════════════════════════════════════════════════════
+<div class="tabs"><button class="tab on" data-i="0">0 · Vérification</button><button class="tab" data-i="1">1 · Verrouillage</button><button class="tab" data-i="2">2 · Annulation</button><button class="tab" data-i="3">3 · Inscription</button><button class="tab" data-i="4">4 · Sécurité + RGPD</button><button class="tab" data-i="5">5 · Fonctions (à lancer)</button></div><section class="sc on" id="s0"><div class="hd"><div><h2>0 · Vérification</h2><p>Ne modifie rien : affiche l&#x27;état de la sécurité. À lancer avant et après.</p><small>0-verification.sql · 31 lignes</small></div><button class="cp" data-i="0">Copier le script</button></div><pre><code id="c0">-- ════════════════════════════════════════════════════════════════════
 --  VÉRIFICATION SÉCURITÉ — Gestion Collaborateurs (lecture seule)
 --  À lancer dans Supabase → SQL Editor. Ne modifie RIEN : affiche l&#x27;état.
 --  Une ligne par point contrôlé ; la colonne « ok » doit valoir « oui ».
@@ -397,6 +397,39 @@ begin
 end $$;
 
 select &#x27;Installé&#x27; as resultat;
+</code></pre></section>
+<section class="sc" id="s5"><div class="hd"><div><h2>5 · Fonctions (à lancer)</h2><p>Ferme aux personnes non connectées les fonctions des mails (les 7 « NON » de ta vérification). Ne touche à aucune donnée.</p><small>5-fonctions.sql · 33 lignes</small></div><button class="cp" data-i="5">Copier le script</button></div><pre><code id="c5">-- ════════════════════════════════════════════════════════════════════
+--  FONCTIONS DES MAILS : FERMÉES AUX PERSONNES NON CONNECTÉES — Gestion Collaborateurs
+--  À lancer une fois dans Supabase → SQL Editor (projet jymobewqenhcjtzniytb).
+--  Peut être relancé sans risque. Ne touche à aucune donnée ni aux tables.
+--
+--  Avant : n&#x27;importe qui sur Internet pouvait déclencher les envois de mails
+--  ou lire les réglages (adresses IT, restaurant…) sans se connecter.
+--  Après : seuls les comptes connectés et les envois automatiques (cron,
+--  déclencheurs) peuvent les utiliser. L&#x27;appli continue de marcher pareil.
+-- ════════════════════════════════════════════════════════════════════
+do $$
+declare f record;
+begin
+  for f in select p.oid::regprocedure as sig
+           from pg_proc p join pg_namespace n on n.oid = p.pronamespace
+           where n.nspname = &#x27;public&#x27; and p.proname in
+             (&#x27;envoyer_mails_auto&#x27;,&#x27;envoyer_relances_pret&#x27;,&#x27;envoyer_mails_depart&#x27;,&#x27;lp24_reglages&#x27;,
+              &#x27;lp24_texte&#x27;,&#x27;lp24_texte_defaut&#x27;,&#x27;lp24_remplir&#x27;,&#x27;mail_pret_accueil&#x27;) loop
+    execute format(&#x27;revoke execute on function %s from public, anon&#x27;, f.sig);
+    execute format(&#x27;grant execute on function %s to authenticated&#x27;, f.sig);
+    raise notice &#x27;Fonction % : fermée sans connexion&#x27;, f.sig;
+  end loop;
+end $$;
+
+-- Vérification : tout doit être « oui »
+select p.proname || &#x27;()&#x27; as fonction,
+       case when has_function_privilege(&#x27;anon&#x27;, p.oid, &#x27;execute&#x27;) then &#x27;NON&#x27; else &#x27;oui&#x27; end as &quot;fermée sans connexion&quot;
+from pg_proc p join pg_namespace n on n.oid = p.pronamespace
+where n.nspname = &#x27;public&#x27; and p.proname in
+  (&#x27;envoyer_mails_auto&#x27;,&#x27;envoyer_relances_pret&#x27;,&#x27;envoyer_mails_depart&#x27;,&#x27;lp24_reglages&#x27;,
+   &#x27;lp24_texte&#x27;,&#x27;lp24_texte_defaut&#x27;,&#x27;lp24_remplir&#x27;,&#x27;mail_pret_accueil&#x27;)
+order by 1;
 </code></pre></section>
 <p class="how">Lien Supabase : <a href="https://supabase.com/dashboard/project/jymobewqenhcjtzniytb/sql/new" style="color:var(--ac)">éditeur SQL du projet</a></p></div>
 <script>
