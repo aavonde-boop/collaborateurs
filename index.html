@@ -4257,6 +4257,7 @@ function GaLignes({cle,children}){
       el("span",{style:{fontWeight:600,color:"var(--text2)"}},vus+" ligne(s) sur "+nb),el("span",null,"· Afficher :"),
       ["5","10","20","tout"].map(v=>el("button",{key:v,type:"button",onClick:()=>choisir(v),style:{border:"1px solid "+(max===v?"#2563EB":"var(--border)"),background:max===v?"#EFF6FF":"var(--surface)",color:max===v?"#1D4ED8":"var(--text2)",borderRadius:7,padding:"3px 10px",fontSize:12,fontWeight:700,cursor:"pointer"}},v==="tout"?"Tout":v))));
 }
+(function(){try{var st=document.createElement("style");st.id="pc-ga";st.textContent=".ga-titre{font-size:13px;font-weight:800;letter-spacing:.04em;text-transform:uppercase;color:var(--text2);margin:0 2px 10px}.ga-colis{margin-top:30px}.ga-wrap .hero+.bp-kpis3{grid-template-columns:1fr 1fr!important;gap:0!important}.ga-wrap .hero+.bp-kpis3>.kpi-std:nth-child(1){display:none!important}.ga-wrap .hero+.m-grid-2{grid-template-columns:1fr 1fr 12px 1fr 1fr!important;gap:0!important}.ga-wrap .hero+.m-grid-2>.kpi-std:nth-child(3){grid-column:4}.ga-wrap .hero+.m-grid-2>.kpi-std:nth-child(4){grid-column:5}.ga-wrap .hero+.bp-kpis3>.kpi-std,.ga-wrap .hero+.m-grid-2>.kpi-std{border:1px solid var(--border)!important;box-shadow:none!important;}.ga-wrap .hero+.bp-kpis3>.kpi-std:nth-child(2),.ga-wrap .hero+.m-grid-2>.kpi-std:nth-child(odd){border-radius:14px 0 0 14px!important;border-right:none!important}.ga-wrap .hero+.bp-kpis3>.kpi-std:nth-child(3),.ga-wrap .hero+.m-grid-2>.kpi-std:nth-child(even){border-radius:0 14px 14px 0!important;border-left:1px solid var(--border)!important;position:relative}@media (min-width:1200px){.ga-deux{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:22px;align-items:start}.ga-deux .ga-colis{margin-top:0}.ga-deux .ga-prets th:nth-child(2),.ga-deux .ga-prets td:nth-child(2),.ga-deux .ga-prets th:nth-child(5),.ga-deux .ga-prets td:nth-child(5),.ga-deux .ga-prets th:nth-child(6),.ga-deux .ga-prets td:nth-child(6),.ga-deux .ga-prets th:nth-child(8),.ga-deux .ga-prets td:nth-child(8){display:none}.ga-deux .ga-colis th:nth-child(4),.ga-deux .ga-colis td:nth-child(4),.ga-deux .ga-colis th:nth-child(6),.ga-deux .ga-colis td:nth-child(6),.ga-deux .ga-colis th:nth-child(7),.ga-deux .ga-colis td:nth-child(7){display:none}.ga-deux td:last-child>div,.ga-deux td:last-child{flex-wrap:wrap}.ga-deux td{white-space:normal}}.hero-top h1,.hero-top .greet,.hero-top>div:first-child>p{display:none!important}.hero-top:not(:has(.hero-actions)):not(:has(button)):not(:has(input)){display:none!important}.hero:not(:has(button)):not(:has(input)):not(:has(.hero-actions)){display:none!important}@media (min-width:1100px){body.ml-pin #root{padding-left:272px}body.ml-pin .ml-fond{inset:0 auto 0 0;width:272px;background:none;animation:none;z-index:900}body.ml-pin .ml{animation:none;box-shadow:none}body.ml-pin .ml-x,body.ml-pin button.burger{display:none!important}}";document.head.appendChild(st);}catch(e){}})();
 function VueGestionAccueil({onglet,setView,canAccess,showToast,addLog,badges}){
   const el=React.createElement;
   const voitPret=!canAccess||canAccess("badges_pret"),voitColis=!canAccess||canAccess("colis");
@@ -4264,9 +4265,9 @@ function VueGestionAccueil({onglet,setView,canAccess,showToast,addLog,badges}){
   // raccourci vers un colis (Accueil, notifications) : on descend directement à la partie Colis
   useEffect(()=>{if(onglet==="colis"&&voitPret&&refColis.current)setTimeout(()=>{try{refColis.current.scrollIntoView({behavior:"smooth",block:"start"});}catch(e){}},150);},[onglet]);
   const css=["5","10","20"].map(n=>'.ga-sec[data-max="'+n+'"] tbody>tr:nth-child(n+'+(+n+1)+'),.ga-sec[data-max="'+n+'"] .ios-group>.bp-swipe:nth-child(n+'+(+n+1)+'){display:none}').join("");
-  return el("div",null,el("style",null,css),
-    voitPret&&el(GaLignes,{cle:"prets"},el(VueBadgesPret,{showToast,addLog})),
-    voitColis&&el("div",{ref:refColis,style:{marginTop:voitPret?32:0,scrollMarginTop:70}},el(GaLignes,{cle:"colis"},el(VueColis,{showToast,addLog,badges}))));
+  return el("div",{className:"ga-wrap"+(voitPret&&voitColis?" ga-deux":"")},el("style",null,css),
+    voitPret&&el("div",{className:"ga-col ga-prets"},el("div",{className:"ga-titre"},"Badges de prêt"),el(GaLignes,{cle:"prets"},el(VueBadgesPret,{showToast,addLog}))),
+    voitColis&&el("div",{ref:refColis,className:"ga-col ga-colis",style:{scrollMarginTop:70}},el("div",{className:"ga-titre"},"Colis"),el(GaLignes,{cle:"colis"},el(VueColis,{showToast,addLog,badges}))));
 }
 
 
@@ -4314,7 +4315,7 @@ function MenuLateral({visibleNav,navActif,setView,onClose,session,notifs,ouvrirR
   const qui=String((session&&(session.label||session.email))||"").trim();
   return el("div",{className:"ml-fond no-print",onClick:e=>{if(e.target===e.currentTarget)onClose();}},
     el("aside",{className:"ml"},
-      el("div",{className:"ml-brand"},el("span",{className:"ml-logo"},"🛎️"),el("span",null,"Services généraux"),el("button",{type:"button",className:"ml-x",onClick:onClose,title:"Fermer"},"✕")),
+      el("div",{className:"ml-brand"},el("span",{className:"ml-logo"},"🛎️"),el("span",null,"Gestion du site"),el("button",{type:"button",className:"ml-x",onClick:onClose,title:"Fermer"},"✕")),
       sections.map(([t,l],i)=>el(React.Fragment,{key:i},t?el("div",{className:"ml-sec"},t):null,
         l.map(id=>item(id,lab(id),()=>aller(id),navActif(id))),
         null)),
@@ -5500,6 +5501,9 @@ useEffect(()=>{
   const isBadge=session&&session.role==="badge";
   const visibleNav=nav.filter(n=>canAccess(n.id));
   window._pageAide=view;
+  const[mlLarge,setMlLarge]=useState(()=>{try{return window.matchMedia("(min-width:1100px)").matches;}catch(e){return false;}});
+  useEffect(()=>{let mq;try{mq=window.matchMedia("(min-width:1100px)");}catch(e){return;}const f=()=>setMlLarge(mq.matches);try{mq.addEventListener("change",f);}catch(e){mq.addListener(f);}return()=>{try{mq.removeEventListener("change",f);}catch(e){}};},[]);
+  useEffect(()=>{document.body.classList.toggle("ml-pin",!!mlLarge);},[mlLarge]);
   useEffect(()=>{const f=()=>setView("aide");window.addEventListener("ouvrir-aide",f);return()=>window.removeEventListener("ouvrir-aide",f);},[]);
   const[menuOuvert,setMenuOuvert]=useState(false);
   const navActif=id=>view===id||(id==="gestion_accueil"&&(view==="badges_pret"||view==="colis"));
@@ -5577,7 +5581,7 @@ useEffect(()=>{
     loading&&React.createElement("div",{style:{position:"fixed",inset:0,background:"rgba(30,40,60,.45)",zIndex:9998,display:"flex",alignItems:"center",justifyContent:"center"}},React.createElement("div",{style:{background:"var(--surface)",border:"1px solid var(--border)",borderRadius:14,padding:"24px 36px",fontSize:15,fontWeight:700,color:"var(--text)"}},"⏳ Chargement en cours...")),
     toast&&React.createElement("div",{className:"toast-anim",style:{position:"fixed",top:20,left:"50%",transform:"translateX(-50%)",zIndex:9999,background:toast.type==="err"?"#7F1D1D":"#14532D",border:"1px solid "+(toast.type==="err"?"rgba(220,38,38,.3)":"rgba(22,163,74,.3)"),color:"#fff",padding:"12px 24px",borderRadius:12,fontSize:13,fontWeight:700,boxShadow:"0 4px 24px rgba(0,0,0,.12)",whiteSpace:"nowrap",pointerEvents:"none"}},toast.msg),
     showSettings&&!isIT&&React.createElement(SettingsModal,{settings,setSettings,showToast,setShowSettings,racineRef,hrRef,hcmRef,importJsonRef,exportExcel,exportJSON,importJSON,badges,setBadges,casiers,wdCache,histo,addLog,canHistorique:canAccess("historique"),canArchives:canAccess("archives"),canHistoriquePret:canAccess("historique_pret"),initialTab:settingsInitialTab}),
-    menuOuvert&&React.createElement(MenuLateral,{visibleNav,navActif,setView,onClose:()=>setMenuOuvert(false),session,notifs:canAccess("notifications")?notifs.length:null,ouvrirReglages:()=>setShowSettings(true),peutReglages:!isIT}),
+    (menuOuvert||(mlLarge&&unlocked))&&React.createElement(MenuLateral,{visibleNav,navActif,setView,onClose:()=>setMenuOuvert(false),session,notifs:canAccess("notifications")?notifs.length:null,ouvrirReglages:()=>setShowSettings(true),peutReglages:!isIT}),
     React.createElement("nav",{className:"desktop-nav no-print",style:{background:"var(--surface)",borderBottom:"1px solid var(--border)",padding:"0 12px",display:"flex",alignItems:"center",gap:2,height:48,position:"sticky",top:0,zIndex:500,boxShadow:"0 1px 0 var(--border)",overflow:"hidden"}},
       React.createElement("div",{style:{display:"flex",alignItems:"center",flexShrink:0}},
         React.createElement("button",{type:"button",className:"burger",title:"Menu",onClick:()=>setMenuOuvert(true)},React.createElement("svg",{width:20,height:20,viewBox:"0 0 24 24",fill:"none",stroke:"currentColor",strokeWidth:2,strokeLinecap:"round"},React.createElement("path",{d:"M4 7h16M4 12h16M4 17h16"}))),
@@ -9356,6 +9360,7 @@ function GaLignes({cle,children}){
       el("span",{style:{fontWeight:600,color:"var(--text2)"}},vus+" ligne(s) sur "+nb),el("span",null,"· Afficher :"),
       ["5","10","20","tout"].map(v=>el("button",{key:v,type:"button",onClick:()=>choisir(v),style:{border:"1px solid "+(max===v?"#2563EB":"var(--border)"),background:max===v?"#EFF6FF":"var(--surface)",color:max===v?"#1D4ED8":"var(--text2)",borderRadius:7,padding:"3px 10px",fontSize:12,fontWeight:700,cursor:"pointer"}},v==="tout"?"Tout":v))));
 }
+(function(){try{var st=document.createElement("style");st.id="pc-ga";st.textContent=".ga-titre{font-size:13px;font-weight:800;letter-spacing:.04em;text-transform:uppercase;color:var(--text2);margin:0 2px 10px}.ga-colis{margin-top:30px}.ga-wrap .hero+.bp-kpis3{grid-template-columns:1fr 1fr!important;gap:0!important}.ga-wrap .hero+.bp-kpis3>.kpi-std:nth-child(1){display:none!important}.ga-wrap .hero+.m-grid-2{grid-template-columns:1fr 1fr 12px 1fr 1fr!important;gap:0!important}.ga-wrap .hero+.m-grid-2>.kpi-std:nth-child(3){grid-column:4}.ga-wrap .hero+.m-grid-2>.kpi-std:nth-child(4){grid-column:5}.ga-wrap .hero+.bp-kpis3>.kpi-std,.ga-wrap .hero+.m-grid-2>.kpi-std{border:1px solid var(--border)!important;box-shadow:none!important;}.ga-wrap .hero+.bp-kpis3>.kpi-std:nth-child(2),.ga-wrap .hero+.m-grid-2>.kpi-std:nth-child(odd){border-radius:14px 0 0 14px!important;border-right:none!important}.ga-wrap .hero+.bp-kpis3>.kpi-std:nth-child(3),.ga-wrap .hero+.m-grid-2>.kpi-std:nth-child(even){border-radius:0 14px 14px 0!important;border-left:1px solid var(--border)!important;position:relative}@media (min-width:1200px){.ga-deux{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:22px;align-items:start}.ga-deux .ga-colis{margin-top:0}.ga-deux .ga-prets th:nth-child(2),.ga-deux .ga-prets td:nth-child(2),.ga-deux .ga-prets th:nth-child(5),.ga-deux .ga-prets td:nth-child(5),.ga-deux .ga-prets th:nth-child(6),.ga-deux .ga-prets td:nth-child(6),.ga-deux .ga-prets th:nth-child(8),.ga-deux .ga-prets td:nth-child(8){display:none}.ga-deux .ga-colis th:nth-child(4),.ga-deux .ga-colis td:nth-child(4),.ga-deux .ga-colis th:nth-child(6),.ga-deux .ga-colis td:nth-child(6),.ga-deux .ga-colis th:nth-child(7),.ga-deux .ga-colis td:nth-child(7){display:none}.ga-deux td:last-child>div,.ga-deux td:last-child{flex-wrap:wrap}.ga-deux td{white-space:normal}}.ga-titre{display:none}";document.head.appendChild(st);}catch(e){}})();
 function VueGestionAccueil({onglet,setView,canAccess,showToast,addLog,badges}){
   const el=React.createElement;
   const voitPret=!canAccess||canAccess("badges_pret"),voitColis=!canAccess||canAccess("colis");
@@ -9363,9 +9368,9 @@ function VueGestionAccueil({onglet,setView,canAccess,showToast,addLog,badges}){
   // raccourci vers un colis (Accueil, notifications) : on descend directement à la partie Colis
   useEffect(()=>{if(onglet==="colis"&&voitPret&&refColis.current)setTimeout(()=>{try{refColis.current.scrollIntoView({behavior:"smooth",block:"start"});}catch(e){}},150);},[onglet]);
   const css=["5","10","20"].map(n=>'.ga-sec[data-max="'+n+'"] tbody>tr:nth-child(n+'+(+n+1)+'),.ga-sec[data-max="'+n+'"] .ios-group>.bp-swipe:nth-child(n+'+(+n+1)+'){display:none}').join("");
-  return el("div",null,el("style",null,css),
-    voitPret&&el(GaLignes,{cle:"prets"},el(VueBadgesPret,{showToast,addLog})),
-    voitColis&&el("div",{ref:refColis,style:{marginTop:voitPret?32:0,scrollMarginTop:70}},el(GaLignes,{cle:"colis"},el(VueColis,{showToast,addLog,badges}))));
+  return el("div",{className:"ga-wrap"+(voitPret&&voitColis?" ga-deux":"")},el("style",null,css),
+    voitPret&&el("div",{className:"ga-col ga-prets"},el("div",{className:"ga-titre"},"Badges de prêt"),el(GaLignes,{cle:"prets"},el(VueBadgesPret,{showToast,addLog}))),
+    voitColis&&el("div",{ref:refColis,className:"ga-col ga-colis",style:{scrollMarginTop:70}},el("div",{className:"ga-titre"},"Colis"),el(GaLignes,{cle:"colis"},el(VueColis,{showToast,addLog,badges}))));
 }
 
 
@@ -9413,7 +9418,7 @@ function MenuLateral({visibleNav,navActif,setView,onClose,session,notifs,ouvrirR
   const qui=String((session&&(session.label||session.email))||"").trim();
   return el("div",{className:"ml-fond no-print",onClick:e=>{if(e.target===e.currentTarget)onClose();}},
     el("aside",{className:"ml"},
-      el("div",{className:"ml-brand"},el("span",{className:"ml-logo"},"🛎️"),el("span",null,"Services généraux"),el("button",{type:"button",className:"ml-x",onClick:onClose,title:"Fermer"},"✕")),
+      el("div",{className:"ml-brand"},el("span",{className:"ml-logo"},"🛎️"),el("span",null,"Gestion du site"),el("button",{type:"button",className:"ml-x",onClick:onClose,title:"Fermer"},"✕")),
       sections.map(([t,l],i)=>el(React.Fragment,{key:i},t?el("div",{className:"ml-sec"},t):null,
         l.map(id=>item(id,lab(id),()=>aller(id),navActif(id))),
         i===0&&ids.includes("notifications")===false&&notifs!==null?item("notifications","Notifications",()=>aller("notifications"),false,notifs||null):null)),
