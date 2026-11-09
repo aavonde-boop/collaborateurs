@@ -921,16 +921,8 @@ async function sendFssEmail(toEmail,fiche,ccEmail){
       manager:fiche.manager||"",
       statut:fiche.statut||"A traiter",
       // Modèle EmailJS commun à tous les mails : objet {{sujet}}, contenu {{{message}}}
-      sujet:"Field Support — "+(fiche.prenom||"")+" "+String(fiche.nom||"").toUpperCase(),
-      message:(function(){const fr=d=>{const m=String(d||"").match(/^(\d{4})-(\d{2})-(\d{2})/);return m?m[3]+"/"+m[2]+"/"+m[1]:(d||"");};
-        return "Bonjour,\n\nUne nouvelle demande Field Support a été enregistrée :\n\n"
-          +"Nom : "+String(fiche.nom||"").toUpperCase()+"\n"
-          +"Prénom : "+(fiche.prenom||"")+"\n"
-          +"Situation : "+(fiche.situation||"")+"\n"
-          +"Date : "+fr(fiche.dateEvt)+"\n"
-          +"Manager : "+(fiche.manager||"Non renseigné")+"\n\n"
-          +blocLienAppli(fiche.id)+"\n"
-          +"Cordialement,\n"+(window._mailSignature||SIGNATURE_MAIL);})(),
+      sujet:"Field Support — "+mailNomPropre(fiche.prenom)+" "+String(fiche.nom||"").toUpperCase(),
+      message:messageFss(fiche,fiche.id,window._mailSignature||SIGNATURE_MAIL),
     });
     console.log("Email envoyé à",toEmail);noterMailAppli("field_support",toEmail);
   }catch(e){console.error("EmailJS error:",e);}
@@ -989,15 +981,32 @@ function EditeurTextesMails({settings,setSettings,showToast}){
 // ── Textes des mails automatiques (modifiables dans Réglages → Textes des mails ; identiques aux textes d'origine de la base) ──
 // ── Lien vers l'appli dans les mails IT (logo + bouton) ──
 var URL_APPLI=(function(){try{if(/github\.io$/.test(location.hostname))return location.origin+location.pathname.replace(/[^/]*$/,"");}catch(e){}return "https://aavonde-boop.github.io/collaborateurs/";})();
+function mailEsc(t){return String(t==null?"":t).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;");}
+const MAIL_POLICE="font-family:Calibri,Arial,sans-serif;";
+// texte simple (avec retours à la ligne) → HTML lisible dans Outlook
+function mailTexteHtml(t){return String(t||"").replace(/\r/g,"").split(/\n[ \t]*\n+/).map(x=>x.trim()).filter(Boolean).map(x=>{
+    const l=x.split("\n").map(y=>y.trim()).filter(Boolean);
+    if(l.length>=2&&l.every(y=>/^[^:\n]{1,30} : ./.test(y)))return mailDetails(l.map(y=>{const k=y.indexOf(" : ");return [y.slice(0,k),y.slice(k+3)];}));
+    return '<p style="margin:0 0 12px;'+MAIL_POLICE+'font-size:11pt;line-height:1.45;color:#1f2937">'+mailEsc(x).replace(/\n/g,"<br>")+'</p>';}).join("");}
+function mailCadre(inner){return '<table role="presentation" cellpadding="0" cellspacing="0" border="0" style="border-collapse:collapse;max-width:620px"><tr><td style="'+MAIL_POLICE+'font-size:11pt;line-height:1.45;color:#1f2937">'+inner+'</td></tr></table>';}
+function mailDetails(rows){return '<table role="presentation" cellpadding="0" cellspacing="0" border="0" style="border-collapse:collapse;margin:2px 0 18px">'
+  +rows.map(([k,v])=>'<tr><td style="padding:7px 16px 7px 12px;border:1px solid #e5e7eb;background:#f5f7fa;'+MAIL_POLICE+'font-size:10.5pt;color:#6b7280;white-space:nowrap">'+mailEsc(k)+'</td>'
+    +'<td style="padding:7px 16px 7px 12px;border:1px solid #e5e7eb;'+MAIL_POLICE+'font-size:11pt;color:#111827;font-weight:bold">'+mailEsc(v||"—")+'</td></tr>').join("")+'</table>';}
 function blocLienAppli(id){
   const url=URL_APPLI+(id!=null?"?fiche="+encodeURIComponent(id):"");
-  return '<table role="presentation" cellpadding="0" cellspacing="0" border="0" style="margin:6px 0 2px;border-collapse:collapse"><tr>'
-    +'<td style="padding:0 14px 0 0;vertical-align:middle"><a href="'+url+'" style="text-decoration:none"><img src="'+URL_APPLI+'icons/icon-192.png" width="52" height="52" alt="Gestion Collaborateurs" style="display:block;border:0;border-radius:12px"></a></td>'
-    +'<td style="vertical-align:middle;font-family:Calibri,Arial,sans-serif">'
-    +'<div style="font-size:11pt;color:#1f2937;margin:0 0 6px">Pour consulter le détail de cette demande, accédez à la fiche dans l\'application :</div>'
-    +'<a href="'+url+'" style="display:inline-block;background:#0A63C9;color:#ffffff;text-decoration:none;font-weight:bold;font-size:11pt;padding:9px 18px;border-radius:6px">Consulter la fiche</a>'
-    +'<div style="font-size:9pt;color:#6b7280;margin-top:5px">Gestion Collaborateurs — accès réservé aux utilisateurs habilités</div>'
-    +'</td></tr></table>';
+  return '<table role="presentation" cellpadding="0" cellspacing="0" border="0" style="border-collapse:collapse;margin:0 0 6px"><tr>'
+    +'<td style="background:#1E3A8A;border-radius:6px"><a href="'+url+'" style="display:inline-block;padding:9px 18px;'+MAIL_POLICE+'font-size:11pt;font-weight:bold;color:#ffffff;text-decoration:none">Ouvrir la fiche dans l\'application</a></td>'
+    +'</tr></table><div style="'+MAIL_POLICE+'font-size:9pt;color:#6b7280;margin:0 0 18px">Accès réservé aux utilisateurs habilités.</div>';
+}
+function mailNomPropre(t){return String(t||"").trim().toLowerCase().replace(/(^|[\s\-'])([a-zà-ÿ])/g,(m,a,b)=>a+b.toUpperCase());}
+// Mail Field Support : même mise en forme pour le vrai mail et le mail de test
+function messageFss(f,id,signature){
+  const fr=d=>{const m=String(d||"").match(/^(\d{4})-(\d{2})-(\d{2})/);return m?m[3]+"/"+m[2]+"/"+m[1]:(d||"");};
+  const sit=String(f.situation||"");const lib=/d[ée]part/i.test(sit)?"Date de départ":/arriv/i.test(sit)?"Date d'arrivée":"Date";
+  return mailCadre(mailTexteHtml("Bonjour,\n\nUne nouvelle demande Field Support a été enregistrée :")
+    +mailDetails([["Nom",String(f.nom||"").toUpperCase()],["Prénom",mailNomPropre(f.prenom)],["Situation",sit],[lib,fr(f.dateEvt)],["Manager",f.manager||"Non renseigné"]])
+    +blocLienAppli(id)
+    +mailTexteHtml("Cordialement,\n"+(signature||"")));
 }
 // Ouverture directe d'une fiche Field Support depuis le lien d'un mail (?fiche=ID)
 var LIEN_FICHE=(function(){try{var m=location.search.match(/[?&]fiche=(\d+)/);return m?Number(m[1]):null;}catch(e){return null;}})();
@@ -1092,7 +1101,7 @@ function mailsDeTest(settings){
     ["[TEST] Départ — Jean DUPONT — "+d(1)+"  (IT, la veille)",remplirModele(T("autoITDepart"),{...p,date:d(1)})],
     ["[TEST] Arrivée — Jean DUPONT — "+d(0)+"  (restaurant, le jour même)",remplirModele(T("autoRestoArrivee"),{...p,date:d(0)})],
     ["[TEST] Départ — Jean DUPONT — "+d(0)+"  (restaurant, le jour même)",remplirModele(T("autoRestoDepart"),{...p,date:d(0)})],
-    ["[TEST] Field Support — Jean DUPONT","Bonjour,\n\nUne nouvelle demande Field Support a été enregistrée :\n\nNom : DUPONT\nPrénom : Jean\nSituation : Arrivée\nDate : "+d(5)+"\nManager : LEROY THOMAS\n\n"+blocLienAppli(null)+finFss.replace(/^\n/,"")],
+    ["[TEST] Field Support — Jean DUPONT",messageFss({nom:"DUPONT",prenom:"JEAN",situation:"Arrivée",dateEvt:(()=>{const x=new Date();x.setDate(x.getDate()+5);return isoLocal(x);})(),manager:"LEROY THOMAS"},null,sig)],
     ["[TEST] Badge de prêt P002 — horaires de l'accueil",remplirModele(T("autoPret"),{emprunteur:"Dupont Jean",code:"P002",badge_nom:"Badge Prêt 2",date_pret:d(0)+" à 09h30",ligne_retour:"Retour prévu : "+d(2),horaires:hor,signature:sig})],
     ["[TEST] Rappel — badge de prêt P002 à restituer",remplirModele(T("autoRappel"),{emprunteur:"Dupont Jean",code:"P002",badge_nom:"Badge Prêt 2",date_pret:d(-1)+" à 09h30",ligne_retour:"Retour prévu : "+d(-1),horaires:hor,signature:sig})],
   ];
@@ -1105,7 +1114,7 @@ function TestMailsBox({showToast,settings}){
     if(!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(to)){showToast("⚠️ Adresse e-mail invalide","err");return;}
     if(!window.emailjs){showToast("⚠️ Service d'envoi indisponible","err");return;}
     const liste=mailsDeTest(settings);let ok=0,err="";setEtat("Envoi en cours…");
-    for(let i=0;i<liste.length;i++){const [sujet,message]=liste[i];
+    for(let i=0;i<liste.length;i++){const [sujet,brut]=liste[i];const message=/^\s*<table/.test(brut)?brut:mailCadre(mailTexteHtml(brut));
       if(i>0)await new Promise(r=>setTimeout(r,1500));   // EmailJS refuse plus d'un envoi par seconde
       try{await window.emailjs.send(EMAILJS_SERVICE,EMAILJS_TEMPLATE,{to_email:to,cc_email:"",sujet,message},{publicKey:EMAILJS_KEY});ok++;noterMailAppli("test",to);}
       catch(e){console.error("Test mail",e);err=(e&&(e.status||""))+" "+(e&&(e.text||e.message)||String(e));}
@@ -5852,16 +5861,8 @@ async function sendFssEmail(toEmail,fiche,ccEmail){
       manager:fiche.manager||"",
       statut:fiche.statut||"A traiter",
       // Modèle EmailJS commun à tous les mails : objet {{sujet}}, contenu {{{message}}}
-      sujet:"Field Support — "+(fiche.prenom||"")+" "+String(fiche.nom||"").toUpperCase(),
-      message:(function(){const fr=d=>{const m=String(d||"").match(/^(\d{4})-(\d{2})-(\d{2})/);return m?m[3]+"/"+m[2]+"/"+m[1]:(d||"");};
-        return "Bonjour,\n\nUne nouvelle demande Field Support a été enregistrée :\n\n"
-          +"Nom : "+String(fiche.nom||"").toUpperCase()+"\n"
-          +"Prénom : "+(fiche.prenom||"")+"\n"
-          +"Situation : "+(fiche.situation||"")+"\n"
-          +"Date : "+fr(fiche.dateEvt)+"\n"
-          +"Manager : "+(fiche.manager||"Non renseigné")+"\n\n"
-          +blocLienAppli(fiche.id)+"\n"
-          +"Cordialement,\n"+(window._mailSignature||SIGNATURE_MAIL);})(),
+      sujet:"Field Support — "+mailNomPropre(fiche.prenom)+" "+String(fiche.nom||"").toUpperCase(),
+      message:messageFss(fiche,fiche.id,window._mailSignature||SIGNATURE_MAIL),
     });
     console.log("Email envoyé à",toEmail);noterMailAppli("field_support",toEmail);
   }catch(e){console.error("EmailJS error:",e);}
@@ -6025,15 +6026,32 @@ function EditeurTextesMails({settings,setSettings,showToast}){
 // ── Textes des mails automatiques (modifiables dans Réglages → Textes des mails ; identiques aux textes d'origine de la base) ──
 // ── Lien vers l'appli dans les mails IT (logo + bouton) ──
 var URL_APPLI=(function(){try{if(/github\.io$/.test(location.hostname))return location.origin+location.pathname.replace(/[^/]*$/,"");}catch(e){}return "https://aavonde-boop.github.io/collaborateurs/";})();
+function mailEsc(t){return String(t==null?"":t).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;");}
+const MAIL_POLICE="font-family:Calibri,Arial,sans-serif;";
+// texte simple (avec retours à la ligne) → HTML lisible dans Outlook
+function mailTexteHtml(t){return String(t||"").replace(/\r/g,"").split(/\n[ \t]*\n+/).map(x=>x.trim()).filter(Boolean).map(x=>{
+    const l=x.split("\n").map(y=>y.trim()).filter(Boolean);
+    if(l.length>=2&&l.every(y=>/^[^:\n]{1,30} : ./.test(y)))return mailDetails(l.map(y=>{const k=y.indexOf(" : ");return [y.slice(0,k),y.slice(k+3)];}));
+    return '<p style="margin:0 0 12px;'+MAIL_POLICE+'font-size:11pt;line-height:1.45;color:#1f2937">'+mailEsc(x).replace(/\n/g,"<br>")+'</p>';}).join("");}
+function mailCadre(inner){return '<table role="presentation" cellpadding="0" cellspacing="0" border="0" style="border-collapse:collapse;max-width:620px"><tr><td style="'+MAIL_POLICE+'font-size:11pt;line-height:1.45;color:#1f2937">'+inner+'</td></tr></table>';}
+function mailDetails(rows){return '<table role="presentation" cellpadding="0" cellspacing="0" border="0" style="border-collapse:collapse;margin:2px 0 18px">'
+  +rows.map(([k,v])=>'<tr><td style="padding:7px 16px 7px 12px;border:1px solid #e5e7eb;background:#f5f7fa;'+MAIL_POLICE+'font-size:10.5pt;color:#6b7280;white-space:nowrap">'+mailEsc(k)+'</td>'
+    +'<td style="padding:7px 16px 7px 12px;border:1px solid #e5e7eb;'+MAIL_POLICE+'font-size:11pt;color:#111827;font-weight:bold">'+mailEsc(v||"—")+'</td></tr>').join("")+'</table>';}
 function blocLienAppli(id){
   const url=URL_APPLI+(id!=null?"?fiche="+encodeURIComponent(id):"");
-  return '<table role="presentation" cellpadding="0" cellspacing="0" border="0" style="margin:6px 0 2px;border-collapse:collapse"><tr>'
-    +'<td style="padding:0 14px 0 0;vertical-align:middle"><a href="'+url+'" style="text-decoration:none"><img src="'+URL_APPLI+'icons/icon-192.png" width="52" height="52" alt="Gestion Collaborateurs" style="display:block;border:0;border-radius:12px"></a></td>'
-    +'<td style="vertical-align:middle;font-family:Calibri,Arial,sans-serif">'
-    +'<div style="font-size:11pt;color:#1f2937;margin:0 0 6px">Pour consulter le détail de cette demande, accédez à la fiche dans l\'application :</div>'
-    +'<a href="'+url+'" style="display:inline-block;background:#0A63C9;color:#ffffff;text-decoration:none;font-weight:bold;font-size:11pt;padding:9px 18px;border-radius:6px">Consulter la fiche</a>'
-    +'<div style="font-size:9pt;color:#6b7280;margin-top:5px">Gestion Collaborateurs — accès réservé aux utilisateurs habilités</div>'
-    +'</td></tr></table>';
+  return '<table role="presentation" cellpadding="0" cellspacing="0" border="0" style="border-collapse:collapse;margin:0 0 6px"><tr>'
+    +'<td style="background:#1E3A8A;border-radius:6px"><a href="'+url+'" style="display:inline-block;padding:9px 18px;'+MAIL_POLICE+'font-size:11pt;font-weight:bold;color:#ffffff;text-decoration:none">Ouvrir la fiche dans l\'application</a></td>'
+    +'</tr></table><div style="'+MAIL_POLICE+'font-size:9pt;color:#6b7280;margin:0 0 18px">Accès réservé aux utilisateurs habilités.</div>';
+}
+function mailNomPropre(t){return String(t||"").trim().toLowerCase().replace(/(^|[\s\-'])([a-zà-ÿ])/g,(m,a,b)=>a+b.toUpperCase());}
+// Mail Field Support : même mise en forme pour le vrai mail et le mail de test
+function messageFss(f,id,signature){
+  const fr=d=>{const m=String(d||"").match(/^(\d{4})-(\d{2})-(\d{2})/);return m?m[3]+"/"+m[2]+"/"+m[1]:(d||"");};
+  const sit=String(f.situation||"");const lib=/d[ée]part/i.test(sit)?"Date de départ":/arriv/i.test(sit)?"Date d'arrivée":"Date";
+  return mailCadre(mailTexteHtml("Bonjour,\n\nUne nouvelle demande Field Support a été enregistrée :")
+    +mailDetails([["Nom",String(f.nom||"").toUpperCase()],["Prénom",mailNomPropre(f.prenom)],["Situation",sit],[lib,fr(f.dateEvt)],["Manager",f.manager||"Non renseigné"]])
+    +blocLienAppli(id)
+    +mailTexteHtml("Cordialement,\n"+(signature||"")));
 }
 // Ouverture directe d'une fiche Field Support depuis le lien d'un mail (?fiche=ID)
 var LIEN_FICHE=(function(){try{var m=location.search.match(/[?&]fiche=(\d+)/);return m?Number(m[1]):null;}catch(e){return null;}})();
@@ -6128,7 +6146,7 @@ function mailsDeTest(settings){
     ["[TEST] Départ — Jean DUPONT — "+d(1)+"  (IT, la veille)",remplirModele(T("autoITDepart"),{...p,date:d(1)})],
     ["[TEST] Arrivée — Jean DUPONT — "+d(0)+"  (restaurant, le jour même)",remplirModele(T("autoRestoArrivee"),{...p,date:d(0)})],
     ["[TEST] Départ — Jean DUPONT — "+d(0)+"  (restaurant, le jour même)",remplirModele(T("autoRestoDepart"),{...p,date:d(0)})],
-    ["[TEST] Field Support — Jean DUPONT","Bonjour,\n\nUne nouvelle demande Field Support a été enregistrée :\n\nNom : DUPONT\nPrénom : Jean\nSituation : Arrivée\nDate : "+d(5)+"\nManager : LEROY THOMAS\n\n"+blocLienAppli(null)+finFss.replace(/^\n/,"")],
+    ["[TEST] Field Support — Jean DUPONT",messageFss({nom:"DUPONT",prenom:"JEAN",situation:"Arrivée",dateEvt:(()=>{const x=new Date();x.setDate(x.getDate()+5);return isoLocal(x);})(),manager:"LEROY THOMAS"},null,sig)],
     ["[TEST] Badge de prêt P002 — horaires de l'accueil",remplirModele(T("autoPret"),{emprunteur:"Dupont Jean",code:"P002",badge_nom:"Badge Prêt 2",date_pret:d(0)+" à 09h30",ligne_retour:"Retour prévu : "+d(2),horaires:hor,signature:sig})],
     ["[TEST] Rappel — badge de prêt P002 à restituer",remplirModele(T("autoRappel"),{emprunteur:"Dupont Jean",code:"P002",badge_nom:"Badge Prêt 2",date_pret:d(-1)+" à 09h30",ligne_retour:"Retour prévu : "+d(-1),horaires:hor,signature:sig})],
   ];
@@ -6141,7 +6159,7 @@ function TestMailsBox({showToast,settings}){
     if(!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(to)){showToast("⚠️ Adresse e-mail invalide","err");return;}
     if(!window.emailjs){showToast("⚠️ Service d'envoi indisponible","err");return;}
     const liste=mailsDeTest(settings);let ok=0,err="";setEtat("Envoi en cours…");
-    for(let i=0;i<liste.length;i++){const [sujet,message]=liste[i];
+    for(let i=0;i<liste.length;i++){const [sujet,brut]=liste[i];const message=/^\s*<table/.test(brut)?brut:mailCadre(mailTexteHtml(brut));
       if(i>0)await new Promise(r=>setTimeout(r,1500));   // EmailJS refuse plus d'un envoi par seconde
       try{await window.emailjs.send(EMAILJS_SERVICE,EMAILJS_TEMPLATE,{to_email:to,cc_email:"",sujet,message},{publicKey:EMAILJS_KEY});ok++;noterMailAppli("test",to);}
       catch(e){console.error("Test mail",e);err=(e&&(e.status||""))+" "+(e&&(e.text||e.message)||String(e));}

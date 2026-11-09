@@ -14,7 +14,7 @@ pre{margin:0;background:var(--code);color:var(--codetx);padding:16px;overflow:au
 .how{margin-top:16px;color:var(--t2);font-size:13.5px}
 </style></head><body><div class="w"><h1>Scripts sécurité — Gestion Collaborateurs</h1>
 <p class="intro">Supabase → SQL Editor : « Copier le script », coller, puis « Run ». Ordre conseillé : 0, puis le script voulu, puis 0 pour vérifier.</p>
-<div class="tabs"><button class="tab on" data-i="0">0 · Vérification</button><button class="tab" data-i="1">1 · Verrouillage</button><button class="tab" data-i="2">2 · Annulation</button><button class="tab" data-i="3">3 · Inscription</button><button class="tab" data-i="4">4 · Sécurité + RGPD</button><button class="tab" data-i="5">5 · Fonctions (à lancer)</button></div><section class="sc on" id="s0"><div class="hd"><div><h2>0 · Vérification</h2><p>Ne modifie rien : affiche l&#x27;état de la sécurité. À lancer avant et après.</p><small>0-verification.sql · 31 lignes</small></div><button class="cp" data-i="0">Copier le script</button></div><pre><code id="c0">-- ════════════════════════════════════════════════════════════════════
+<div class="tabs"><button class="tab on" data-i="0">0 · Vérification</button><button class="tab" data-i="1">1 · Verrouillage</button><button class="tab" data-i="2">2 · Annulation</button><button class="tab" data-i="3">3 · Inscription</button><button class="tab" data-i="4">4 · Sécurité + RGPD</button><button class="tab" data-i="5">5 · Fonctions (à lancer)</button><button class="tab" data-i="6">6 · Mails (mise en forme)</button></div><section class="sc on" id="s0"><div class="hd"><div><h2>0 · Vérification</h2><p>Ne modifie rien : affiche l&#x27;état de la sécurité. À lancer avant et après.</p><small>0-verification.sql · 31 lignes</small></div><button class="cp" data-i="0">Copier le script</button></div><pre><code id="c0">-- ════════════════════════════════════════════════════════════════════
 --  VÉRIFICATION SÉCURITÉ — Gestion Collaborateurs (lecture seule)
 --  À lancer dans Supabase → SQL Editor. Ne modifie RIEN : affiche l&#x27;état.
 --  Une ligne par point contrôlé ; la colonne « ok » doit valoir « oui ».
@@ -429,6 +429,72 @@ from pg_proc p join pg_namespace n on n.oid = p.pronamespace
 where n.nspname = &#x27;public&#x27; and p.proname in
   (&#x27;envoyer_mails_auto&#x27;,&#x27;envoyer_relances_pret&#x27;,&#x27;envoyer_mails_depart&#x27;,&#x27;lp24_reglages&#x27;,
    &#x27;lp24_texte&#x27;,&#x27;lp24_texte_defaut&#x27;,&#x27;lp24_remplir&#x27;,&#x27;mail_pret_accueil&#x27;)
+order by 1;
+</code></pre></section>
+<section class="sc" id="s6"><div class="hd"><div><h2>6 · Mails (mise en forme)</h2><p>Mails automatiques (IT, restaurant, prêts, rappels) bien présentés dans Outlook : paragraphes, tableau des informations, signature. Ne touche à aucune donnée.</p><small>6-mails-mise-en-forme.sql · 66 lignes</small></div><button class="cp" data-i="6">Copier le script</button></div><pre><code id="c6">-- ════════════════════════════════════════════════════════════════════
+--  MAILS AUTOMATIQUES : MISE EN FORME PROPRE (Outlook) — Gestion Collaborateurs
+--  À lancer une fois dans Supabase → SQL Editor (projet jymobewqenhcjtzniytb).
+--  Peut être relancé sans risque. Ne touche à aucune donnée.
+--
+--  Avant : les mails arrivaient sur une seule ligne dans Outlook.
+--  Après : paragraphes séparés, informations (Nom, Prénom, Date…) dans un
+--  petit tableau, signature sur plusieurs lignes. Les textes modifiables
+--  dans les Réglages restent les mêmes.
+--  Concerne : mails IT et restaurant (veille / jour même), prêt de badge, rappels.
+-- ════════════════════════════════════════════════════════════════════
+create or replace function public.lp24_remplir(modele text, vars jsonb) returns text
+language plpgsql stable as $r$
+declare
+  k text; v text; t text := coalesce(modele, &#x27;&#x27;);
+  para text; lignes text[]; l text; tableau boolean; corps text := &#x27;&#x27;;
+  police constant text := &#x27;font-family:Calibri,Arial,sans-serif;&#x27;;
+  cel1 constant text := &#x27;padding:7px 16px 7px 12px;border:1px solid #e5e7eb;background:#f5f7fa;font-family:Calibri,Arial,sans-serif;font-size:10.5pt;color:#6b7280;white-space:nowrap&#x27;;
+  cel2 constant text := &#x27;padding:7px 16px 7px 12px;border:1px solid #e5e7eb;font-family:Calibri,Arial,sans-serif;font-size:11pt;color:#111827;font-weight:bold&#x27;;
+begin
+  for k, v in select key, value from jsonb_each_text(vars) loop
+    t := replace(t, &#x27;{&#x27; || k || &#x27;}&#x27;, coalesce(v, &#x27;&#x27;));
+  end loop;
+  t := replace(t, E&#x27;\r&#x27;, &#x27;&#x27;);
+  t := regexp_replace(t, &#x27; +\(\)&#x27;, &#x27;&#x27;, &#x27;g&#x27;);
+  t := regexp_replace(t, &#x27;Bonjour +,&#x27;, &#x27;Bonjour,&#x27;, &#x27;g&#x27;);
+  t := regexp_replace(t, E&#x27;\n[ \t]*\n([ \t]*\n)+&#x27;, E&#x27;\n\n&#x27;, &#x27;g&#x27;);
+  -- texte → HTML (les caractères spéciaux sont neutralisés)
+  t := replace(replace(replace(t, &#x27;&amp;&#x27;, &#x27;&amp;amp;&#x27;), &#x27;&lt;&#x27;, &#x27;&amp;lt;&#x27;), &#x27;&gt;&#x27;, &#x27;&amp;gt;&#x27;);
+  foreach para in array regexp_split_to_array(btrim(t, E&#x27; \n\t&#x27;), E&#x27;\n[ \t]*\n&#x27;) loop
+    para := btrim(para, E&#x27; \n\t&#x27;);
+    continue when para = &#x27;&#x27;;
+    lignes := array(select btrim(x, E&#x27; \t&#x27;) from unnest(string_to_array(para, E&#x27;\n&#x27;)) x where btrim(x, E&#x27; \t&#x27;) &lt;&gt; &#x27;&#x27;);
+    tableau := coalesce(array_length(lignes, 1), 0) &gt;= 2;
+    foreach l in array lignes loop
+      if l !~ &#x27;^[^:]{1,30} : .&#x27; then tableau := false; end if;
+    end loop;
+    if tableau then
+      corps := corps || &#x27;&lt;table role=&quot;presentation&quot; cellpadding=&quot;0&quot; cellspacing=&quot;0&quot; border=&quot;0&quot; style=&quot;border-collapse:collapse;margin:2px 0 18px&quot;&gt;&#x27;;
+      foreach l in array lignes loop
+        corps := corps || &#x27;&lt;tr&gt;&lt;td style=&quot;&#x27; || cel1 || &#x27;&quot;&gt;&#x27; || split_part(l, &#x27; : &#x27;, 1) || &#x27;&lt;/td&gt;&lt;td style=&quot;&#x27; || cel2 || &#x27;&quot;&gt;&#x27;
+                       || substr(l, length(split_part(l, &#x27; : &#x27;, 1)) + 4) || &#x27;&lt;/td&gt;&lt;/tr&gt;&#x27;;
+      end loop;
+      corps := corps || &#x27;&lt;/table&gt;&#x27;;
+    else
+      corps := corps || &#x27;&lt;p style=&quot;margin:0 0 12px;&#x27; || police || &#x27;font-size:11pt;line-height:1.45;color:#1f2937&quot;&gt;&#x27;
+                     || replace(para, E&#x27;\n&#x27;, &#x27;&lt;br&gt;&#x27;) || &#x27;&lt;/p&gt;&#x27;;
+    end if;
+  end loop;
+  return &#x27;&lt;table role=&quot;presentation&quot; cellpadding=&quot;0&quot; cellspacing=&quot;0&quot; border=&quot;0&quot; style=&quot;border-collapse:collapse;max-width:620px&quot;&gt;&lt;tr&gt;&lt;td style=&quot;&#x27;
+         || police || &#x27;font-size:11pt;line-height:1.45;color:#1f2937&quot;&gt;&#x27; || corps || &#x27;&lt;/td&gt;&lt;/tr&gt;&lt;/table&gt;&#x27;;
+end
+$r$;
+
+-- Aperçu : à quoi ressemble un mail IT d&#x27;arrivée
+select public.lp24_remplir(
+  E&#x27;Bonjour,\n\nNous vous informons de l&#x27;&#x27;arrivée d&#x27;&#x27;un nouveau collaborateur :\n\nNom : {nom}\nPrénom : {prenom}\nDate d&#x27;&#x27;arrivée : {date}\nManager : {manager}\n\nCordialement,\nArnaud AVONDE\n07.85.42.37.24\nResponsable de site&#x27;,
+  &#x27;{&quot;nom&quot;:&quot;DUPONT&quot;,&quot;prenom&quot;:&quot;Jean&quot;,&quot;date&quot;:&quot;12/11/2026&quot;,&quot;manager&quot;:&quot;LEROY THOMAS&quot;}&#x27;::jsonb) as apercu_html;
+
+-- Vérification : les 3 envois automatiques utilisent bien cette mise en forme (tout doit être « oui »)
+select p.proname as envoi,
+       case when p.prosrc like &#x27;%lp24_remplir%&#x27; then &#x27;oui&#x27; else &#x27;NON&#x27; end as &quot;mise en forme appliquée&quot;
+from pg_proc p join pg_namespace n on n.oid = p.pronamespace
+where n.nspname = &#x27;public&#x27; and p.proname in (&#x27;envoyer_mails_auto&#x27;,&#x27;mail_pret_accueil&#x27;,&#x27;envoyer_relances_pret&#x27;)
 order by 1;
 </code></pre></section>
 <p class="how">Lien Supabase : <a href="https://supabase.com/dashboard/project/jymobewqenhcjtzniytb/sql/new" style="color:var(--ac)">éditeur SQL du projet</a></p></div>
