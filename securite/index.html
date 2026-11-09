@@ -1,0 +1,405 @@
+<!DOCTYPE html><html lang="fr"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Scripts sécurité</title>
+<style>
+:root{--bg:#F5F7FA;--sf:#fff;--tx:#0F172A;--t2:#64748B;--bd:#E2E8F0;--ac:#1E3A8A;--code:#0F172A;--codetx:#E2E8F0}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#0B1120;--sf:#111827;--tx:#E5E7EB;--t2:#94A3B8;--bd:#1F2937;--ac:#93C5FD;--code:#020617}}
+:root[data-theme="dark"]{--bg:#0B1120;--sf:#111827;--tx:#E5E7EB;--t2:#94A3B8;--bd:#1F2937;--ac:#93C5FD;--code:#020617}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--tx);font:15px/1.5 -apple-system,Segoe UI,Roboto,sans-serif}
+.w{max-width:1000px;margin:0 auto;padding:20px 16px 40px}h1{font-size:22px;margin:0 0 4px}.intro{color:var(--t2);font-size:14px;margin:0 0 16px}
+.tabs{display:flex;gap:6px;overflow-x:auto;padding-bottom:6px;margin-bottom:12px}.tab{flex:0 0 auto;border:1px solid var(--bd);background:var(--sf);color:var(--tx);border-radius:999px;padding:8px 14px;font-weight:600;font-size:13.5px;cursor:pointer}
+.tab.on{background:var(--ac);border-color:var(--ac);color:var(--bg)}
+.sc{display:none;background:var(--sf);border:1px solid var(--bd);border-radius:14px;overflow:hidden}.sc.on{display:block}
+.hd{display:flex;gap:14px;align-items:flex-start;justify-content:space-between;padding:16px;flex-wrap:wrap}h2{margin:0;font-size:17px}.hd p{margin:4px 0;color:var(--t2);font-size:14px}small{color:var(--t2)}
+.cp{border:none;background:var(--ac);color:var(--bg);font-weight:700;border-radius:10px;padding:10px 16px;cursor:pointer;font-size:14px;white-space:nowrap}
+pre{margin:0;background:var(--code);color:var(--codetx);padding:16px;overflow:auto;font:12.5px/1.55 ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;max-height:75vh}
+.how{margin-top:16px;color:var(--t2);font-size:13.5px}
+</style></head><body><div class="w"><h1>Scripts sécurité — Gestion Collaborateurs</h1>
+<p class="intro">Supabase → SQL Editor : « Copier le script », coller, puis « Run ». Ordre conseillé : 0, puis le script voulu, puis 0 pour vérifier.</p>
+<div class="tabs"><button class="tab on" data-i="0">0 · Vérification</button><button class="tab" data-i="1">1 · Verrouillage</button><button class="tab" data-i="2">2 · Annulation</button><button class="tab" data-i="3">3 · Inscription</button><button class="tab" data-i="4">4 · Sécurité + RGPD</button></div><section class="sc on" id="s0"><div class="hd"><div><h2>0 · Vérification</h2><p>Ne modifie rien : affiche l&#x27;état de la sécurité. À lancer avant et après.</p><small>0-verification.sql · 31 lignes</small></div><button class="cp" data-i="0">Copier le script</button></div><pre><code id="c0">-- ════════════════════════════════════════════════════════════════════
+--  VÉRIFICATION SÉCURITÉ — Gestion Collaborateurs (lecture seule)
+--  À lancer dans Supabase → SQL Editor. Ne modifie RIEN : affiche l&#x27;état.
+--  Une ligne par point contrôlé ; la colonne « ok » doit valoir « oui ».
+-- ════════════════════════════════════════════════════════════════════
+with tables as (
+  select c.relname as nom, c.oid, c.relrowsecurity as rls
+  from pg_class c join pg_namespace n on n.oid = c.relnamespace
+  where n.nspname = &#x27;public&#x27; and c.relkind = &#x27;r&#x27;
+), fonctions as (
+  select p.proname as nom, p.oid
+  from pg_proc p join pg_namespace n on n.oid = p.pronamespace
+  where n.nspname = &#x27;public&#x27; and p.proname in
+    (&#x27;envoyer_mails_auto&#x27;,&#x27;envoyer_relances_pret&#x27;,&#x27;envoyer_mails_depart&#x27;,&#x27;lp24_reglages&#x27;,&#x27;lp24_texte&#x27;,&#x27;lp24_texte_defaut&#x27;,&#x27;lp24_remplir&#x27;,&#x27;mail_pret_accueil&#x27;)
+)
+select &#x27;Table &#x27; || nom as point,
+       case when rls then &#x27;verrouillée&#x27; else &#x27;NON verrouillée&#x27; end
+         || &#x27; · &#x27; || case when has_table_privilege(&#x27;anon&#x27;, oid, &#x27;select&#x27;) then &#x27;lisible SANS connexion&#x27; else &#x27;fermée sans connexion&#x27; end as etat,
+       case when rls and not has_table_privilege(&#x27;anon&#x27;, oid, &#x27;select&#x27;) then &#x27;oui&#x27; else &#x27;NON&#x27; end as ok
+from tables
+union all
+select &#x27;Fonction &#x27; || nom || &#x27;()&#x27;,
+       case when has_function_privilege(&#x27;anon&#x27;, oid, &#x27;execute&#x27;) then &#x27;appelable SANS connexion&#x27; else &#x27;fermée sans connexion&#x27; end,
+       case when has_function_privilege(&#x27;anon&#x27;, oid, &#x27;execute&#x27;) then &#x27;NON&#x27; else &#x27;oui&#x27; end
+from fonctions
+union all
+select &#x27;Création de compte limitée aux adresses autorisées&#x27;,
+       case when exists (select 1 from pg_trigger where tgname = &#x27;lp24_inscription_autorisee&#x27;) then &#x27;active&#x27; else &#x27;absente&#x27; end,
+       case when exists (select 1 from pg_trigger where tgname = &#x27;lp24_inscription_autorisee&#x27;) then &#x27;oui&#x27; else &#x27;NON&#x27; end
+order by 3, 1;
+</code></pre></section><section class="sc" id="s1"><div class="hd"><div><h2>1 · Verrouillage</h2><p>Seules les personnes connectées lisent ou modifient les données ; tables internes des mails fermées.</p><small>1-verrouillage.sql · 58 lignes</small></div><button class="cp" data-i="1">Copier le script</button></div><pre><code id="c1">-- ════════════════════════════════════════════════════════════════════
+--  VERROUILLAGE DE LA BASE — Gestion Collaborateurs (version du 21/10)
+--  À lancer dans Supabase → SQL Editor (tout le bloc d&#x27;un coup).
+--
+--  Effet :
+--   • Tables de l&#x27;appli : seules les personnes connectées avec leur
+--     e-mail et mot de passe peuvent lire ou modifier les données.
+--   • Tables internes des mails (dont la clé EmailJS) : plus aucun accès
+--     depuis l&#x27;appli ou Internet ; seuls les envois automatiques
+--     (cron, déclencheurs) y ont accès.
+--  Aucune donnée n&#x27;est modifiée ni supprimée.
+--  En cas de souci : lancer 2-annulation.sql.
+-- ════════════════════════════════════════════════════════════════════
+do $$
+declare
+  t text;
+  p record;
+  appli text[] := array[&#x27;lp24_badges&#x27;,&#x27;lp24_casiers&#x27;,&#x27;lp24_fss&#x27;,&#x27;lp24_settings&#x27;,
+                        &#x27;historique&#x27;,&#x27;badges_pret&#x27;,&#x27;badges_pret_histo&#x27;,&#x27;lp24_colis&#x27;];
+  internes text[] := array[&#x27;lp24_mail_config&#x27;,&#x27;lp24_mails_auto&#x27;,&#x27;lp24_mails_depart&#x27;,
+                           &#x27;lp24_mails_pret&#x27;,&#x27;lp24_relances_pret&#x27;];
+begin
+  -- 1. Tables de l&#x27;appli : réservées aux comptes connectés
+  foreach t in array appli loop
+    if to_regclass(&#x27;public.&#x27;||t) is null then raise notice &#x27;Table % absente, ignorée&#x27;, t; continue; end if;
+    for p in select policyname from pg_policies where schemaname=&#x27;public&#x27; and tablename=t loop
+      execute format(&#x27;drop policy %I on public.%I&#x27;, p.policyname, t);
+    end loop;
+    execute format(&#x27;alter table public.%I enable row level security&#x27;, t);
+    execute format(&#x27;create policy &quot;membres_connectes&quot; on public.%I for all to authenticated using (true) with check (true)&#x27;, t);
+    execute format(&#x27;revoke all on public.%I from anon&#x27;, t);
+    execute format(&#x27;grant select, insert, update, delete on public.%I to authenticated&#x27;, t);
+    raise notice &#x27;Table % : réservée aux comptes connectés&#x27;, t;
+  end loop;
+  -- 2. Tables internes des mails : aucun accès depuis l&#x27;extérieur
+  foreach t in array internes loop
+    if to_regclass(&#x27;public.&#x27;||t) is null then raise notice &#x27;Table % absente, ignorée&#x27;, t; continue; end if;
+    for p in select policyname from pg_policies where schemaname=&#x27;public&#x27; and tablename=t loop
+      execute format(&#x27;drop policy %I on public.%I&#x27;, p.policyname, t);
+    end loop;
+    execute format(&#x27;alter table public.%I enable row level security&#x27;, t);
+    execute format(&#x27;revoke all on public.%I from anon, authenticated&#x27;, t);
+    raise notice &#x27;Table % : interne, fermée&#x27;, t;
+  end loop;
+  -- 3. Séquences (numéros automatiques) utilisables par les comptes connectés seulement
+  execute &#x27;grant usage, select on all sequences in schema public to authenticated&#x27;;
+end $$;
+
+-- Vérification : une ligne par table, tout doit être « oui »
+select c.relname as &quot;table&quot;,
+       case when c.relrowsecurity then &#x27;oui&#x27; else &#x27;NON&#x27; end as &quot;verrouillée&quot;,
+       case when has_table_privilege(&#x27;anon&#x27;, c.oid, &#x27;select&#x27;) then &#x27;NON&#x27; else &#x27;oui&#x27; end as &quot;fermée aux non-connectés&quot;
+from pg_class c join pg_namespace n on n.oid=c.relnamespace
+where n.nspname=&#x27;public&#x27; and c.relkind=&#x27;r&#x27; and c.relname in
+  (&#x27;lp24_badges&#x27;,&#x27;lp24_casiers&#x27;,&#x27;lp24_fss&#x27;,&#x27;lp24_settings&#x27;,&#x27;historique&#x27;,&#x27;badges_pret&#x27;,&#x27;badges_pret_histo&#x27;,&#x27;lp24_colis&#x27;,
+   &#x27;lp24_mail_config&#x27;,&#x27;lp24_mails_auto&#x27;,&#x27;lp24_mails_depart&#x27;,&#x27;lp24_mails_pret&#x27;,&#x27;lp24_relances_pret&#x27;)
+order by 1;
+</code></pre></section><section class="sc" id="s2"><div class="hd"><div><h2>2 · Annulation</h2><p>Retour en arrière si l&#x27;appli ne marche plus après le 1.</p><small>2-annulation.sql · 22 lignes</small></div><button class="cp" data-i="2">Copier le script</button></div><pre><code id="c2">-- ════════════════════════════════════════════════════════════════════
+--  ANNULATION DU VERROUILLAGE — Gestion Collaborateurs (version du 21/10)
+--  À lancer dans Supabase → SQL Editor si l&#x27;appli ne fonctionne plus
+--  après le verrouillage. Remet les tables de l&#x27;appli ouvertes comme avant.
+--  Aucune donnée n&#x27;est modifiée ni supprimée.
+-- ════════════════════════════════════════════════════════════════════
+do $$
+declare
+  t text;
+  appli text[] := array[&#x27;lp24_badges&#x27;,&#x27;lp24_casiers&#x27;,&#x27;lp24_fss&#x27;,&#x27;lp24_settings&#x27;,
+                        &#x27;historique&#x27;,&#x27;badges_pret&#x27;,&#x27;badges_pret_histo&#x27;,&#x27;lp24_colis&#x27;];
+begin
+  foreach t in array appli loop
+    if to_regclass(&#x27;public.&#x27;||t) is null then continue; end if;
+    execute format(&#x27;drop policy if exists &quot;membres_connectes&quot; on public.%I&#x27;, t);
+    execute format(&#x27;alter table public.%I disable row level security&#x27;, t);
+    execute format(&#x27;grant select, insert, update, delete on public.%I to anon, authenticated&#x27;, t);
+    raise notice &#x27;Table % rouverte&#x27;, t;
+  end loop;
+  execute &#x27;grant usage, select on all sequences in schema public to anon, authenticated&#x27;;
+end $$;
+</code></pre></section><section class="sc" id="s3"><div class="hd"><div><h2>3 · Inscription</h2><p>Seules les adresses de Réglages → Comptes peuvent créer un compte.</p><small>3-inscription.sql · 27 lignes</small></div><button class="cp" data-i="3">Copier le script</button></div><pre><code id="c3">-- ════════════════════════════════════════════════════════════════════
+--  CRÉATION DE COMPTE PAR LA PERSONNE ELLE-MÊME — Gestion Collaborateurs
+--  À lancer une fois dans Supabase → SQL Editor.
+--  Seules les adresses ajoutées dans l&#x27;appli (Réglages → Comptes) peuvent
+--  créer un compte. Toute autre adresse est refusée par la base.
+-- ════════════════════════════════════════════════════════════════════
+create or replace function public.lp24_inscription_autorisee() returns trigger
+language plpgsql security definer set search_path = public as $f$
+declare
+  u jsonb;
+begin
+  u := coalesce(public.lp24_reglages()-&gt;&#x27;users&#x27;, &#x27;[]&#x27;::jsonb);
+  if jsonb_typeof(u) &lt;&gt; &#x27;array&#x27; or not exists (
+       select 1 from jsonb_array_elements(u) e
+       where lower(trim(e-&gt;&gt;&#x27;email&#x27;)) = lower(trim(new.email))) then
+    raise exception &#x27;Adresse non autorisée : ajoutez-la dans Réglages → Comptes&#x27;;
+  end if;
+  return new;
+end $f$;
+
+drop trigger if exists lp24_inscription_autorisee on auth.users;
+create trigger lp24_inscription_autorisee before insert on auth.users
+  for each row execute function public.lp24_inscription_autorisee();
+
+-- Vérification : doit afficher 1
+select count(*) as protection_active from pg_trigger where tgname = &#x27;lp24_inscription_autorisee&#x27;;
+</code></pre></section><section class="sc" id="s4"><div class="hd"><div><h2>4 · Sécurité + RGPD</h2><p>Base fermée, comptes réservés aux admins, effacement auto après 24 mois (chaque nuit), droit à l&#x27;effacement, photos privées.</p><small>4-securite-rgpd.sql · 250 lignes</small></div><button class="cp" data-i="4">Copier le script</button></div><pre><code id="c4">-- ════════════════════════════════════════════════════════════════════
+--  SÉCURITÉ + RGPD — Gestion Collaborateurs
+--  À lancer une fois dans Supabase → SQL Editor (tout le bloc d&#x27;un coup).
+--  Peut être relancé sans risque. Aucune donnée n&#x27;est supprimée au lancement :
+--  l&#x27;effacement des données de plus de 24 mois se fait ensuite chaque nuit.
+--
+--  1. Base fermée à toute personne non connectée (toutes les tables)
+--  2. Fonctions internes (envois de mails, réglages) non appelables de l&#x27;extérieur
+--  3. Seul un administrateur peut modifier la liste des comptes et des rôles
+--  4. Effacement automatique des données de plus de 24 mois (chaque nuit, 3 h 30)
+--  5. Droit à l&#x27;effacement : bouton dans la fiche pour effacer toutes les
+--     données d&#x27;une personne (réservé aux administrateurs)
+--  6. Espace photos rendu privé
+-- ════════════════════════════════════════════════════════════════════
+
+-- ── Outil : lire un champ JSON quel que soit son format (texte, jsonb, jsonb « chaîne »)
+create or replace function public.lp24_json(x anyelement) returns jsonb
+language plpgsql immutable as $f$
+declare v jsonb;
+begin
+  begin v := to_jsonb(x); exception when others then return &#x27;{}&#x27;::jsonb; end;
+  while v is not null and jsonb_typeof(v) = &#x27;string&#x27; loop
+    begin v := (v #&gt;&gt; &#x27;{}&#x27;)::jsonb; exception when others then return &#x27;{}&#x27;::jsonb; end;
+  end loop;
+  return coalesce(v, &#x27;{}&#x27;::jsonb);
+end $f$;
+
+-- ── Qui fait la demande ? (vide = SQL Editor / tâches automatiques de Supabase)
+create or replace function public.lp24_email_appelant() returns text
+language sql stable as $f$
+  select lower(coalesce(nullif(current_setting(&#x27;request.jwt.claims&#x27;, true), &#x27;&#x27;)::jsonb -&gt;&gt; &#x27;email&#x27;, &#x27;&#x27;))
+$f$;
+
+-- ── Est-ce un administrateur de l&#x27;appli ? (même règle que l&#x27;appli)
+create or replace function public.lp24_est_admin(users jsonb) returns boolean
+language plpgsql stable as $f$
+declare em text := public.lp24_email_appelant(); u jsonb := coalesce(users, &#x27;[]&#x27;::jsonb);
+begin
+  if current_setting(&#x27;request.jwt.claims&#x27;, true) is null or current_setting(&#x27;request.jwt.claims&#x27;, true) = &#x27;&#x27; then
+    return true;                                   -- SQL Editor, cron, déclencheurs internes
+  end if;
+  if jsonb_typeof(u) &lt;&gt; &#x27;array&#x27; then u := &#x27;[]&#x27;::jsonb; end if;
+  if exists (select 1 from jsonb_array_elements(u) e where lower(trim(e-&gt;&gt;&#x27;email&#x27;)) = em and e-&gt;&gt;&#x27;role&#x27; = &#x27;admin&#x27;) then
+    return true;
+  end if;
+  -- tant qu&#x27;aucun administrateur n&#x27;est défini, le compte du responsable de site l&#x27;est (comme dans l&#x27;appli)
+  return not exists (select 1 from jsonb_array_elements(u) e where e-&gt;&gt;&#x27;role&#x27; = &#x27;admin&#x27;)
+         and em = &#x27;a.avonde@allianceautomotive.fr&#x27;;
+end $f$;
+
+do $$
+declare
+  t text; p record; n int;
+  internes text[] := array[&#x27;lp24_mail_config&#x27;,&#x27;lp24_mails_auto&#x27;,&#x27;lp24_mails_depart&#x27;,&#x27;lp24_mails_pret&#x27;,&#x27;lp24_relances_pret&#x27;];
+begin
+  -- 1. Toutes les tables : RLS activée, aucun accès sans connexion
+  for t in select c.relname from pg_class c join pg_namespace s on s.oid = c.relnamespace
+           where s.nspname = &#x27;public&#x27; and c.relkind = &#x27;r&#x27; loop
+    execute format(&#x27;alter table public.%I enable row level security&#x27;, t);
+    execute format(&#x27;revoke all on public.%I from anon&#x27;, t);
+    if t = any(internes) then
+      for p in select policyname from pg_policies where schemaname = &#x27;public&#x27; and tablename = t loop
+        execute format(&#x27;drop policy %I on public.%I&#x27;, p.policyname, t);
+      end loop;
+      execute format(&#x27;revoke all on public.%I from authenticated&#x27;, t);
+    else
+      select count(*) into n from pg_policies where schemaname = &#x27;public&#x27; and tablename = t;
+      if n = 0 then
+        execute format(&#x27;create policy &quot;membres_connectes&quot; on public.%I for all to authenticated using (true) with check (true)&#x27;, t);
+        execute format(&#x27;grant select, insert, update, delete on public.%I to authenticated&#x27;, t);
+      end if;
+    end if;
+  end loop;
+  execute &#x27;grant usage, select on all sequences in schema public to authenticated&#x27;;
+  execute &#x27;revoke all on all sequences in schema public from anon&#x27;;
+end $$;
+
+-- 2. Fonctions : plus rien d&#x27;appelable sans connexion ; les fonctions internes
+--    (envois de mails, réglages) ne sont appelables que par la base elle-même
+revoke execute on all functions in schema public from public, anon;
+alter default privileges in schema public revoke execute on functions from public, anon;
+do $$
+declare f record;
+begin
+  for f in select p.oid::regprocedure as sig, p.proname from pg_proc p join pg_namespace n on n.oid = p.pronamespace
+           where n.nspname = &#x27;public&#x27; loop
+    if f.proname in (&#x27;lp24_compteur_mails&#x27;,&#x27;lp24_effacer_personne&#x27;) then
+      execute format(&#x27;grant execute on function %s to authenticated&#x27;, f.sig);
+    elsif f.proname in (&#x27;envoyer_mails_auto&#x27;,&#x27;envoyer_relances_pret&#x27;,&#x27;envoyer_mails_depart&#x27;,&#x27;lp24_reglages&#x27;,
+                        &#x27;lp24_texte&#x27;,&#x27;lp24_texte_defaut&#x27;,&#x27;lp24_remplir&#x27;,&#x27;lp24_purge_rgpd&#x27;) then
+      execute format(&#x27;revoke execute on function %s from authenticated&#x27;, f.sig);
+    else
+      execute format(&#x27;grant execute on function %s to authenticated&#x27;, f.sig);   -- outils utilisés par les déclencheurs
+    end if;
+  end loop;
+end $$;
+
+-- 3. Comptes et rôles : seul un administrateur peut les modifier
+create or replace function public.lp24_proteger_comptes() returns trigger
+language plpgsql as $f$
+declare avant jsonb; apres jsonb;
+begin
+  if tg_op = &#x27;DELETE&#x27; then
+    if old.id = 1 and not public.lp24_est_admin(public.lp24_json(old.data)-&gt;&#x27;users&#x27;) then
+      raise exception &#x27;Seul un administrateur peut supprimer les réglages&#x27;;
+    end if;
+    return old;
+  end if;
+  if new.id &lt;&gt; 1 then return new; end if;
+  avant := case when tg_op = &#x27;UPDATE&#x27; then public.lp24_json(old.data)-&gt;&#x27;users&#x27; else null end;
+  apres := public.lp24_json(new.data)-&gt;&#x27;users&#x27;;
+  if coalesce(avant, &#x27;[]&#x27;::jsonb) is distinct from coalesce(apres, &#x27;[]&#x27;::jsonb)
+     and not public.lp24_est_admin(avant) then
+    raise exception &#x27;Seul un administrateur peut modifier les comptes et les rôles&#x27;;
+  end if;
+  return new;
+end $f$;
+drop trigger if exists lp24_proteger_comptes on public.lp24_settings;
+create trigger lp24_proteger_comptes before insert or update or delete on public.lp24_settings
+  for each row execute function public.lp24_proteger_comptes();
+
+-- Le registre des colis remis reste protégé, sauf pour l&#x27;effacement RGPD
+create or replace function public.lp24_colis_proteger() returns trigger
+language plpgsql as $f$
+begin
+  if current_setting(&#x27;lp24.purge&#x27;, true) = &#x27;oui&#x27; then return old; end if;
+  if old.statut = &#x27;recupere&#x27; or old.signature is not null then
+    raise exception &#x27;Colis remis : il est conservé pour l&#x27;&#x27;historique et ne peut pas être supprimé&#x27;;
+  end if;
+  return old;
+end $f$;
+
+-- 4. Effacement automatique : tout ce qui concerne une personne partie depuis plus de 24 mois
+create or replace function public.lp24_purge_rgpd() returns jsonb
+language plpgsql security definer set search_path = public as $f$
+declare
+  limite timestamptz := now() - interval &#x27;24 months&#x27;;
+  lim text := to_char(now() - interval &#x27;24 months&#x27;, &#x27;YYYY-MM-DD&#x27;);
+  r jsonb := &#x27;{}&#x27;::jsonb; n bigint; debut timestamptz := clock_timestamp();
+  procedure_sql text;
+begin
+  perform set_config(&#x27;lp24.purge&#x27;, &#x27;oui&#x27;, true);
+  -- fiches archivées depuis plus de 24 mois
+  begin
+  delete from public.lp24_badges
+   where statut = &#x27;Archivé&#x27;
+     and left(coalesce(nullif(date_archive::text, &#x27;&#x27;), nullif(date_sortie_prevue::text, &#x27;&#x27;), &#x27;9999&#x27;), 10) ~ &#x27;^\d{4}-\d{2}-\d{2}$&#x27;
+     and left(coalesce(nullif(date_archive::text, &#x27;&#x27;), nullif(date_sortie_prevue::text, &#x27;&#x27;)), 10) &lt; lim;
+  get diagnostics n = row_count; r := r || jsonb_build_object(&#x27;fiches&#x27;, n);
+  exception when others then raise notice &#x27;Fiches ignorées : %&#x27;, sqlerrm;
+  end;
+  -- colis remis depuis plus de 24 mois (avec leur signature)
+  if to_regclass(&#x27;public.lp24_colis&#x27;) is not null then
+    delete from public.lp24_colis where statut = &#x27;recupere&#x27; and coalesce(recupere_le, recu_le) &lt; limite;
+    get diagnostics n = row_count; r := r || jsonb_build_object(&#x27;colis&#x27;, n);
+  end if;
+  -- historiques et journaux de plus de 24 mois (et lignes créées par cet effacement)
+  foreach procedure_sql in array array[
+    &#x27;delete from public.lp24_colis_journal where le &lt; $1 or le &gt;= $2&#x27;,
+    &#x27;delete from public.lp24_casiers_journal where le &lt; $1 or le &gt;= $2&#x27;,
+    &#x27;delete from public.badges_pret_histo where ts::timestamptz &lt; $1&#x27;,
+    &#x27;delete from public.historique where ts::timestamptz &lt; $1&#x27;,
+    &#x27;delete from public.lp24_mails_auto where envoye_le &lt; $1&#x27;,
+    &#x27;delete from public.lp24_mails_pret where envoye_le &lt; $1&#x27;,
+    &#x27;delete from public.lp24_relances_pret where jour &lt; $1::date&#x27;,
+    &#x27;delete from public.lp24_mails_depart where envoye_le &lt; $1&#x27;,
+    &#x27;delete from public.lp24_mails_appli where envoye_le &lt; $1&#x27;] loop
+    begin
+      execute procedure_sql using limite, debut;
+      get diagnostics n = row_count;
+      r := r || jsonb_build_object(split_part(split_part(procedure_sql, &#x27;public.&#x27;, 2), &#x27; &#x27;, 1), n);
+    exception when others then raise notice &#x27;Effacement ignoré (%): %&#x27;, sqlerrm, procedure_sql;
+    end;
+  end loop;
+  -- demandes Field Support clôturées depuis plus de 24 mois
+  begin
+    execute $q$delete from public.lp24_fss where coalesce(cloture, false)
+             and left(coalesce(nullif(&quot;dateEvt&quot;::text, &#x27;&#x27;), &#x27;9999&#x27;), 10) ~ &#x27;^\d{4}-\d{2}-\d{2}$&#x27;
+             and left(&quot;dateEvt&quot;::text, 10) &lt; $1$q$ using lim;
+    get diagnostics n = row_count; r := r || jsonb_build_object(&#x27;field_support&#x27;, n);
+  exception when others then raise notice &#x27;Field Support ignoré : %&#x27;, sqlerrm;
+  end;
+  return r;
+end $f$;
+revoke execute on function public.lp24_purge_rgpd() from public, anon, authenticated;
+
+do $$
+begin
+  if exists (select 1 from pg_extension where extname = &#x27;pg_cron&#x27;) then
+    if exists (select 1 from cron.job where jobname = &#x27;lp24-purge-rgpd&#x27;) then
+      perform cron.unschedule(&#x27;lp24-purge-rgpd&#x27;);
+    end if;
+    perform cron.schedule(&#x27;lp24-purge-rgpd&#x27;, &#x27;30 2 * * *&#x27;, &#x27;select public.lp24_purge_rgpd()&#x27;);
+  else
+    raise notice &#x27;pg_cron absent : effacement automatique non programmé&#x27;;
+  end if;
+end $$;
+
+-- 5. Droit à l&#x27;effacement : toutes les données d&#x27;une personne (administrateurs seulement)
+create or replace function public.lp24_effacer_personne(p_nom text, p_prenom text, p_email text default &#x27;&#x27;)
+returns jsonb language plpgsql security definer set search_path = public as $f$
+declare
+  nm text := upper(trim(coalesce(p_nom, &#x27;&#x27;))); pr text := lower(trim(coalesce(p_prenom, &#x27;&#x27;)));
+  em text := lower(trim(coalesce(p_email, &#x27;&#x27;)));
+  r jsonb := &#x27;{}&#x27;::jsonb; n bigint; debut timestamptz := clock_timestamp(); q text;
+begin
+  if not public.lp24_est_admin(public.lp24_reglages()-&gt;&#x27;users&#x27;) then
+    raise exception &#x27;Réservé aux administrateurs&#x27;;
+  end if;
+  if nm = &#x27;&#x27; or pr = &#x27;&#x27; then raise exception &#x27;Nom et prénom obligatoires&#x27;; end if;
+  perform set_config(&#x27;lp24.purge&#x27;, &#x27;oui&#x27;, true);
+  delete from public.lp24_badges where upper(trim(nom)) = nm and lower(trim(prenom)) = pr;
+  get diagnostics n = row_count; r := r || jsonb_build_object(&#x27;fiches&#x27;, n);
+  foreach q in array array[
+    &#x27;delete from public.lp24_colis where (upper(trim(nom)) = $1 and lower(trim(prenom)) = $2) or ($3 &lt;&gt; &#x27;&#x27;&#x27;&#x27; and lower(trim(email)) = $3)&#x27;,
+    &#x27;delete from public.lp24_fss where upper(trim(nom)) = $1 and lower(trim(prenom)) = $2&#x27;,
+    &#x27;delete from public.badges_pret_histo where upper(emprunteur) like &#x27;&#x27;%&#x27;&#x27;||$1||&#x27;&#x27;%&#x27;&#x27; and lower(emprunteur) like &#x27;&#x27;%&#x27;&#x27;||$2||&#x27;&#x27;%&#x27;&#x27;&#x27;,
+    &#x27;update public.badges_pret set emprunteur = &#x27;&#x27;&#x27;&#x27;, email_emprunteur = &#x27;&#x27;&#x27;&#x27; where statut = &#x27;&#x27;disponible&#x27;&#x27; and ((upper(emprunteur) like &#x27;&#x27;%&#x27;&#x27;||$1||&#x27;&#x27;%&#x27;&#x27; and lower(emprunteur) like &#x27;&#x27;%&#x27;&#x27;||$2||&#x27;&#x27;%&#x27;&#x27;) or ($3 &lt;&gt; &#x27;&#x27;&#x27;&#x27; and lower(email_emprunteur) = $3))&#x27;,
+    &#x27;delete from public.lp24_casiers_journal where upper(personne) like &#x27;&#x27;%&#x27;&#x27;||$1||&#x27;&#x27;%&#x27;&#x27; and lower(personne) like &#x27;&#x27;%&#x27;&#x27;||$2||&#x27;&#x27;%&#x27;&#x27;&#x27;,
+    &#x27;delete from public.historique where upper(detail) like &#x27;&#x27;%&#x27;&#x27;||$1||&#x27;&#x27;%&#x27;&#x27; and lower(detail) like &#x27;&#x27;%&#x27;&#x27;||$2||&#x27;&#x27;%&#x27;&#x27;&#x27;,
+    &#x27;delete from public.lp24_mails_auto where (upper(trim(nom)) = $1 and lower(trim(prenom)) = $2)&#x27;,
+    &#x27;delete from public.lp24_mails_pret where $3 &lt;&gt; &#x27;&#x27;&#x27;&#x27; and lower(destinataire) = $3&#x27;,
+    &#x27;delete from public.lp24_relances_pret where $3 &lt;&gt; &#x27;&#x27;&#x27;&#x27; and lower(destinataire) = $3&#x27;,
+    &#x27;delete from public.lp24_mails_appli where $3 &lt;&gt; &#x27;&#x27;&#x27;&#x27; and lower(destinataire) = $3&#x27;,
+    &#x27;update public.lp24_casiers set occupant = &#x27;&#x27;&#x27;&#x27;, statut = &#x27;&#x27;Libre&#x27;&#x27; where upper(occupant) like &#x27;&#x27;%&#x27;&#x27;||$1||&#x27;&#x27;%&#x27;&#x27; and lower(occupant) like &#x27;&#x27;%&#x27;&#x27;||$2||&#x27;&#x27;%&#x27;&#x27;&#x27;] loop
+    begin
+      execute q using nm, pr, em;
+      get diagnostics n = row_count;
+      r := r || jsonb_build_object(split_part(split_part(q, &#x27;public.&#x27;, 2), &#x27; &#x27;, 1), n);
+    exception when undefined_table or undefined_column then null;
+    end;
+  end loop;
+  -- lignes de journal créées par cet effacement : elles contiennent encore le nom
+  begin execute &#x27;delete from public.lp24_colis_journal where le &gt;= $1&#x27; using debut; exception when undefined_table then null; end;
+  begin execute &#x27;delete from public.lp24_casiers_journal where le &gt;= $1&#x27; using debut; exception when undefined_table then null; end;
+  return r;
+end $f$;
+revoke execute on function public.lp24_effacer_personne(text, text, text) from public, anon;
+grant execute on function public.lp24_effacer_personne(text, text, text) to authenticated;
+
+-- 6. Espace photos : plus accessible par simple lien
+do $$
+begin
+  if to_regclass(&#x27;storage.buckets&#x27;) is not null then
+    update storage.buckets set public = false where id = &#x27;photos&#x27;;
+  end if;
+end $$;
+
+select &#x27;Installé&#x27; as resultat;
+</code></pre></section>
+<p class="how">Lien Supabase : <a href="https://supabase.com/dashboard/project/jymobewqenhcjtzniytb/sql/new" style="color:var(--ac)">éditeur SQL du projet</a></p></div>
+<script>
+document.querySelectorAll('.tab').forEach(b=>b.onclick=()=>{document.querySelectorAll('.tab,.sc').forEach(x=>x.classList.remove('on'));b.classList.add('on');document.getElementById('s'+b.dataset.i).classList.add('on');});
+document.querySelectorAll('.cp').forEach(b=>b.onclick=async()=>{const t=document.getElementById('c'+b.dataset.i).textContent;let ok=false;try{await navigator.clipboard.writeText(t);ok=true;}catch(e){try{const r=document.createRange();r.selectNodeContents(document.getElementById('c'+b.dataset.i));const s=getSelection();s.removeAllRanges();s.addRange(r);ok=document.execCommand('copy');}catch(e2){}}b.textContent=ok?'Copié ✓':'Sélectionné : Ctrl+C';setTimeout(()=>b.textContent='Copier le script',2000);});
+</script></body></html>
