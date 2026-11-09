@@ -1202,7 +1202,7 @@ function LoginScreen({onUnlock,authError}){
     if(busy)return;
     const em=email.trim();
     if(!em||!pwd){fail("Saisis ton e-mail et choisis un mot de passe.");return;}
-    if(pwd.length<6){fail("Le mot de passe doit faire au moins 6 caractères.");return;}
+    if(pwd.length<8){fail("Le mot de passe doit faire au moins 8 caractères.");return;}
     if(pwd!==pwd2){fail("Les deux mots de passe ne sont pas identiques.");return;}
     if(!sb){fail("Connexion à la base impossible. Vérifie ta connexion internet.");return;}
     setBusy(true);setErr("");
@@ -1254,7 +1254,7 @@ function LoginScreen({onUnlock,authError}){
         React.createElement("button",{onClick:()=>changerMode(inscription?"login":"signup"),style:{background:"none",border:"none",padding:0,color:"var(--accent)",fontWeight:700,fontSize:13,cursor:"pointer"}},inscription?"Se connecter":"Créer mon compte")),
       !inscription&&React.createElement("p",{style:{fontSize:11,color:"var(--text3)",marginTop:10}},"Mot de passe oublié ? Demande à l'administrateur de le réinitialiser."),
       React.createElement("p",{className:"mention-rgpd",style:{fontSize:11,lineHeight:1.5,color:"var(--text3)",marginTop:16,paddingTop:12,borderTop:"1px solid var(--border)",textAlign:"left"}},
-        "Outil interne réservé au personnel autorisé d'Alliance Automotive Group. Les données sont utilisées uniquement pour la gestion de l'accueil et des services généraux du site, et ne sont pas transmises à des tiers. Pour toute question ou pour exercer vos droits (accès, rectification, effacement) : ",
+        "Outil interne réservé au personnel autorisé d'Alliance Automotive Group. Les données sont utilisées uniquement pour la gestion de l'accueil et des services généraux du site, et ne sont pas transmises à des tiers. Elles sont effacées automatiquement 24 mois après le départ. Pour toute question ou pour exercer vos droits (accès, rectification, effacement) : ",
         React.createElement("span",{style:{fontWeight:600,color:"var(--text2)",userSelect:"all",overflowWrap:"anywhere"}},"conformite.france@allianceautomotive.fr"),"."),
       React.createElement("style",null,"@keyframes shake{0%,100%{transform:translateX(0)}20%,60%{transform:translateX(-8px)}40%,80%{transform:translateX(8px)}}")
     )
@@ -1311,9 +1311,9 @@ function parseWDFileAsync(file,type,wdCache,setWdCache,showToast,setLoading){
       });
       if(!parsed.length){alert("Aucune donnée valide.");setLoading(false);return;}
       setWdCache(prev=>{const next={...(prev||{})};parsed.forEach(p=>{next[p.matricule]=p;});
-        // ── FIX: Persister wdCache dans Supabase (id:2) — IIFE async car setWdCache callback non-async ──
-        (async()=>{try{if(sb)await sb.from("lp24_settings").upsert({id:2,data:JSON.stringify(next)});}catch(e){}})();
-        return next;});
+        const mini=wdMinimiser(next,window._badgesWd||[]);
+        (async()=>{try{if(sb)await sb.from("lp24_settings").upsert({id:2,data:JSON.stringify(mini)});}catch(e){}})();
+        return mini;});
       // Mettre à jour les badges existants sans matricule et les marquer comme "nouveaux"
       if(typeof window._onWdImport==="function")window._onWdImport(parsed);
       if(typeof window._onWdImportMeta==="function")window._onWdImportMeta({count:parsed.length,type,fileName:file.name,date:new Date().toISOString()});
@@ -2206,6 +2206,7 @@ function VueCollaborateurs({badges,casiers,setBadges,setCasiers,showToast,wdCach
           React.createElement("h3",{style:{fontWeight:700,color:C.blue,fontSize:16}},editing?"✏️ Modifier le collaborateur":"+ Nouveau collaborateur"),
           React.createElement("button",{onClick:()=>{setShowForm(false);setEditing(null);},style:{background:"none",border:"none",fontSize:22,cursor:"pointer",color:"#9CA3AF"}},"×")
         ),
+        editing&&React.createElement(DonneesPersonne,{fiche:form,showToast,setBadges,editingId:editing,fermer:()=>{setShowForm(false);setEditing(null);}}),
         React.createElement("div",{style:{display:"flex",alignItems:"center",gap:8,marginBottom:10}},
           wdCache&&Object.keys(wdCache).length>0?React.createElement("p",{style:{fontSize:11,color:"#0369a1",background:"#e0f2fe",borderRadius:6,padding:"6px 10px",flex:1,margin:0}},"💡 Saisissez le nom ET prénom pour auto-compléter depuis Workday"):React.createElement("p",{style:{fontSize:11,color:"#9CA3AF",background:"#F3F4F6",borderRadius:6,padding:"6px 10px",flex:1,margin:0}},"⚠️ Workday non chargé — importez HR Data (👤)"),
           wdCache&&React.createElement(Btn,{color:"#0369a1",style:{fontSize:11,padding:"5px 10px",whiteSpace:"nowrap"},onClick:wdSearch},"🔍 Chercher")
@@ -4133,6 +4134,15 @@ const AIDE_SECTIONS=[
     ["Où les trouver","La roue en haut à droite (en haut du tableau de bord sur téléphone)."],
     ["Ce qu'on y règle","Adresses e-mail (IT, restaurant, copie), textes des mails, interrupteurs pour couper les envois, comptes, archives, historiques, import / export."],
     ["Import « Racine Commune »","Met à jour les fiches sans rien effacer, et te montre un résumé avant."]]},
+  {id:"_rgpd",t:"Données personnelles (RGPD)",ico:"aide",l:[
+    ["Ce qui est enregistré","Nom, prénom, matricule, e-mail professionnel, manager, n° de badge et de casier, dates d'entrée et de départ. Pour les colis et les badges de prêt : nom, e-mail, dates et signature à la remise. Aucune adresse personnelle, date de naissance, donnée de santé ni salaire."],
+    ["Pourquoi","Gestion de l'accueil du site (badges, casiers, colis, arrivées et départs), dans l'intérêt légitime de l'entreprise."],
+    ["Qui y a accès","Uniquement les comptes de l'appli, ajoutés par l'administrateur. La base est fermée à toute personne non connectée."],
+    ["Combien de temps","Tout ce qui concerne une personne partie (fiche archivée, colis remis, prêts, journaux) est effacé automatiquement 24 mois après. La copie Workday ne garde que les personnes du site et les arrivées récentes."],
+    ["Une personne demande ses données","Ouvre sa fiche : « 📄 Exporter ses données » produit le fichier de tout ce qui la concerne."],
+    ["Une personne demande l'effacement","Ouvre sa fiche : « 🗑️ Tout effacer » (administrateur) supprime définitivement toutes ses données."],
+    ["Contact","conformite.france@allianceautomotive.fr"],
+    ["Prestataires","Supabase (base de données), EmailJS (envoi des mails), GitHub (hébergement de la page)."]]},
   {id:"_faq",t:"Questions fréquentes",ico:"aide",l:[
     ["Le rappel de badge part-il avant la date de retour ?","Non. Il part seulement à partir du lendemain de la date de retour prévue."],
     ["Je ne veux aucun mail pour une personne","Coche ⭐ VIP sur sa fiche."],
@@ -4363,6 +4373,52 @@ function BlocAujourdhui({badges,extra,setView}){
   return el("div",{className:"auj"},
     el("div",{className:"auj-kpis"},K.map(([l,v,d,ser,col,go],i)=>el("button",{key:i,type:"button",className:"auj-kpi",onClick:()=>setView(go)},
       el("div",{className:"auj-l"},l),el("div",{className:"auj-vr"},el("div",{className:"auj-v"},v),el(Courbe,{vals:ser,col})),d?el("div",{className:"auj-d",style:{color:col}},d):el("div",{className:"auj-d"}," ")))));
+}
+
+
+// ════════════════ RGPD ════════════════
+// Copie Workday : on ne garde que les personnes qui ont une fiche, et les arrivées récentes ou à venir
+function wdMinimiser(cache,badges){
+  if(!cache||typeof cache!=="object")return cache;
+  const mats=new Set((badges||[]).filter(b=>b.statut!=="Archivé").map(b=>String(b.matricule||"").trim()).filter(m=>m&&m!=="0"&&m!=="NC"));
+  const min=isoLocal(new Date(Date.now()-60*864e5));const out={};
+  Object.keys(cache).forEach(k=>{const w=cache[k]||{};const h=String(w.hireDate||"").slice(0,10);
+    if(mats.has(String(k).trim())||mats.has(String(w.matricule||"").trim())||(/^\d{4}-\d{2}-\d{2}$/.test(h)&&h>=min))out[k]=w;});
+  return out;
+}
+// Droit d'accès et droit à l'effacement, depuis la fiche
+function DonneesPersonne({fiche,showToast,setBadges,editingId,fermer}){
+  const el=React.createElement;const[busy,setBusy]=useState(false);
+  const nom=String(fiche.nom||"").trim(),prenom=String(fiche.prenom||"").trim(),email=String(fiche.email||"").trim();
+  const admin=!!window._estAdmin;
+  const exporter=async()=>{if(!nom){showToast("⚠️ Nom manquant","err");return;}setBusy(true);
+    const out={personne:prenom+" "+nom,exporte_le:new Date().toISOString(),fiche,colis:[],field_support:[],prets_de_badges:[],casiers:[],journal:[]};
+    const lc=x=>String(x||"").toLowerCase();const contient=t=>lc(t).includes(lc(nom))&&lc(t).includes(lc(prenom));
+    try{if(sb){
+      const q=async(f)=>{try{const r=await f();return r&&!r.error?(r.data||[]):[];}catch(e){return [];}};
+      out.colis=(await q(()=>sb.from("lp24_colis").select("*").ilike("nom",nom))).filter(c=>lc(c.prenom)===lc(prenom)||(email&&lc(c.email)===lc(email)));
+      out.field_support=(await q(()=>sb.from("lp24_fss").select("*").ilike("nom",nom))).filter(f=>lc(f.prenom)===lc(prenom));
+      out.prets_de_badges=(await q(()=>sb.from("badges_pret_histo").select("*").ilike("emprunteur","%"+nom+"%"))).filter(x=>contient(x.emprunteur));
+      out.casiers=(await q(()=>sb.from("lp24_casiers_journal").select("*").ilike("personne","%"+nom+"%"))).filter(x=>contient(x.personne));
+      out.journal=(await q(()=>sb.from("historique").select("*").ilike("detail","%"+nom+"%").limit(1000))).filter(x=>contient(x.detail));
+    }}catch(e){}
+    const blob=new Blob([JSON.stringify(out,null,2)],{type:"application/json"});const a=document.createElement("a");
+    a.href=URL.createObjectURL(blob);a.download="donnees-"+nom.toUpperCase()+"-"+prenom+".json";document.body.appendChild(a);a.click();a.remove();
+    setBusy(false);showToast("📄 Données exportées ("+(1+out.colis.length+out.field_support.length+out.prets_de_badges.length+out.casiers.length+out.journal.length)+" éléments)");};
+  const effacer=async()=>{
+    if(!confirm("Effacer DÉFINITIVEMENT toutes les données de "+prenom+" "+nom.toUpperCase()+" ?\n\nFiche, colis et signatures, demandes Field Support, prêts de badges, historique des casiers et journal.\nCette action est irréversible."))return;
+    if(prompt("Pour confirmer, tape le NOM de la personne :","")?.trim().toUpperCase()!==nom.toUpperCase()){showToast("Effacement annulé","err");return;}
+    setBusy(true);
+    try{const r=await sb.rpc("lp24_effacer_personne",{p_nom:nom,p_prenom:prenom,p_email:email});
+      if(r.error)throw r.error;
+      setBadges(prev=>prev.filter(b=>b.id!==editingId&&!(String(b.nom||"").trim().toUpperCase()===nom.toUpperCase()&&String(b.prenom||"").trim().toLowerCase()===prenom.toLowerCase())));
+      showToast("🗑️ Toutes les données de "+prenom+" "+nom.toUpperCase()+" ont été effacées");fermer();}
+    catch(e){showToast(/lp24_effacer_personne|function|fonction/i.test(String(e&&e.message))?"⚠️ Lance d'abord le script Supabase « 4-securite-rgpd.sql »":"⚠️ "+(e&&e.message||e),"err");}
+    setBusy(false);};
+  return el("div",{style:{display:"flex",alignItems:"center",gap:8,flexWrap:"wrap",background:"var(--surface2)",borderRadius:10,padding:"8px 12px",marginBottom:12,fontSize:12.5,color:"var(--text2)"}},
+    el("span",{style:{fontWeight:700}},"🔒 Données personnelles"),el("span",{style:{flex:1}}),
+    el("button",{type:"button",className:"btn btn-outline",disabled:busy,style:{fontSize:12,padding:"4px 10px"},onClick:exporter},"📄 Exporter ses données"),
+    admin&&el("button",{type:"button",className:"btn btn-outline",disabled:busy,style:{fontSize:12,padding:"4px 10px"},onClick:effacer},"🗑️ Tout effacer"));
 }
 
 function SettingsModal({settings,setSettings,showToast,setShowSettings,racineRef,hrRef,hcmRef,importJsonRef,exportExcel,exportJSON,importJSON,badges,setBadges,casiers,wdCache,histo,addLog,canHistorique,canArchives,canHistoriquePret,initialTab}){
@@ -5509,6 +5565,10 @@ useEffect(()=>{
   useEffect(()=>{document.body.classList.toggle("ml-pin",!!mlLarge);},[mlLarge]);
   useEffect(()=>{const f=()=>setView("aide");window.addEventListener("ouvrir-aide",f);return()=>window.removeEventListener("ouvrir-aide",f);},[]);
   const[menuOuvert,setMenuOuvert]=useState(false);
+  useEffect(()=>{window._badgesWd=badges;window._estAdmin=!!(session&&session.role==="admin");},[badges,session]);
+  useEffect(()=>{if(!wdCache||!badges||badges.length<1||!session||session.role!=="admin")return;
+    const m=wdMinimiser(wdCache,badges);if(Object.keys(m).length<Object.keys(wdCache).length){setWdCache(m);
+      (async()=>{try{if(sb)await sb.from("lp24_settings").upsert({id:2,data:JSON.stringify(m)});}catch(e){}})();}},[wdCache,badges.length,session&&session.role]);
   const navActif=id=>view===id||(id==="gestion_accueil"&&(view==="badges_pret"||view==="colis"));
   // Lien « Consulter la fiche » d'un mail : ouvrir Field Support puis la fiche, une fois connecté et les fiches chargées
   useEffect(()=>{
@@ -6178,7 +6238,7 @@ function LoginScreen({onUnlock,authError}){
     if(busy)return;
     const em=email.trim();
     if(!em||!pwd){fail("Saisis ton e-mail et choisis un mot de passe.");return;}
-    if(pwd.length<6){fail("Le mot de passe doit faire au moins 6 caractères.");return;}
+    if(pwd.length<8){fail("Le mot de passe doit faire au moins 8 caractères.");return;}
     if(pwd!==pwd2){fail("Les deux mots de passe ne sont pas identiques.");return;}
     if(!sb){fail("Connexion à la base impossible. Vérifie ta connexion internet.");return;}
     setBusy(true);setErr("");
@@ -6230,7 +6290,7 @@ function LoginScreen({onUnlock,authError}){
         React.createElement("button",{onClick:()=>changerMode(inscription?"login":"signup"),style:{background:"none",border:"none",padding:0,color:"var(--accent)",fontWeight:700,fontSize:13,cursor:"pointer"}},inscription?"Se connecter":"Créer mon compte")),
       !inscription&&React.createElement("p",{style:{fontSize:11,color:"var(--text3)",marginTop:10}},"Mot de passe oublié ? Demande à l'administrateur de le réinitialiser."),
       React.createElement("p",{className:"mention-rgpd",style:{fontSize:11,lineHeight:1.5,color:"var(--text3)",marginTop:16,paddingTop:12,borderTop:"1px solid var(--border)",textAlign:"left"}},
-        "Outil interne réservé au personnel autorisé d'Alliance Automotive Group. Les données sont utilisées uniquement pour la gestion de l'accueil et des services généraux du site, et ne sont pas transmises à des tiers. Pour toute question ou pour exercer vos droits (accès, rectification, effacement) : ",
+        "Outil interne réservé au personnel autorisé d'Alliance Automotive Group. Les données sont utilisées uniquement pour la gestion de l'accueil et des services généraux du site, et ne sont pas transmises à des tiers. Elles sont effacées automatiquement 24 mois après le départ. Pour toute question ou pour exercer vos droits (accès, rectification, effacement) : ",
         React.createElement("span",{style:{fontWeight:600,color:"var(--text2)",userSelect:"all",overflowWrap:"anywhere"}},"conformite.france@allianceautomotive.fr"),"."),
       React.createElement("style",null,"@keyframes shake{0%,100%{transform:translateX(0)}20%,60%{transform:translateX(-8px)}40%,80%{transform:translateX(8px)}}")
     )
@@ -6287,9 +6347,9 @@ function parseWDFileAsync(file,type,wdCache,setWdCache,showToast,setLoading){
       });
       if(!parsed.length){alert("Aucune donnée valide.");setLoading(false);return;}
       setWdCache(prev=>{const next={...(prev||{})};parsed.forEach(p=>{next[p.matricule]=p;});
-        // ── FIX: Persister wdCache dans Supabase (id:2) — IIFE async car setWdCache callback non-async ──
-        (async()=>{try{if(sb)await sb.from("lp24_settings").upsert({id:2,data:JSON.stringify(next)});}catch(e){}})();
-        return next;});
+        const mini=wdMinimiser(next,window._badgesWd||[]);
+        (async()=>{try{if(sb)await sb.from("lp24_settings").upsert({id:2,data:JSON.stringify(mini)});}catch(e){}})();
+        return mini;});
       // Mettre à jour les badges existants sans matricule et les marquer comme "nouveaux"
       if(typeof window._onWdImport==="function")window._onWdImport(parsed);
       if(typeof window._onWdImportMeta==="function")window._onWdImportMeta({count:parsed.length,type,fileName:file.name,date:new Date().toISOString()});
@@ -7249,6 +7309,7 @@ function VueCollaborateurs({badges,casiers,setBadges,setCasiers,showToast,wdCach
           React.createElement("h3",{style:{fontWeight:700,color:C.blue,fontSize:16}},editing?"✏️ Modifier le collaborateur":"+ Nouveau collaborateur"),
           React.createElement("button",{onClick:()=>{setShowForm(false);setEditing(null);},style:{background:"none",border:"none",fontSize:22,cursor:"pointer",color:"#9CA3AF"}},"×")
         ),
+        editing&&React.createElement(DonneesPersonne,{fiche:form,showToast,setBadges,editingId:editing,fermer:()=>{setShowForm(false);setEditing(null);}}),
         React.createElement("div",{style:{display:"flex",alignItems:"center",gap:8,marginBottom:10}},
           wdCache&&Object.keys(wdCache).length>0?React.createElement("p",{style:{fontSize:11,color:"#0369a1",background:"#e0f2fe",borderRadius:6,padding:"6px 10px",flex:1,margin:0}},"💡 Saisissez le nom ET prénom pour auto-compléter depuis Workday"):React.createElement("p",{style:{fontSize:11,color:"#9CA3AF",background:"#F3F4F6",borderRadius:6,padding:"6px 10px",flex:1,margin:0}},"⚠️ Workday non chargé — importez HR Data (👤)"),
           wdCache&&React.createElement(Btn,{color:"#0369a1",style:{fontSize:11,padding:"5px 10px",whiteSpace:"nowrap"},onClick:wdSearch},"🔍 Chercher")
@@ -9239,6 +9300,15 @@ const AIDE_SECTIONS=[
     ["Où les trouver","La roue en haut à droite (en haut du tableau de bord sur téléphone)."],
     ["Ce qu'on y règle","Adresses e-mail (IT, restaurant, copie), textes des mails, interrupteurs pour couper les envois, comptes, archives, historiques, import / export."],
     ["Import « Racine Commune »","Met à jour les fiches sans rien effacer, et te montre un résumé avant."]]},
+  {id:"_rgpd",t:"Données personnelles (RGPD)",ico:"aide",l:[
+    ["Ce qui est enregistré","Nom, prénom, matricule, e-mail professionnel, manager, n° de badge et de casier, dates d'entrée et de départ. Pour les colis et les badges de prêt : nom, e-mail, dates et signature à la remise. Aucune adresse personnelle, date de naissance, donnée de santé ni salaire."],
+    ["Pourquoi","Gestion de l'accueil du site (badges, casiers, colis, arrivées et départs), dans l'intérêt légitime de l'entreprise."],
+    ["Qui y a accès","Uniquement les comptes de l'appli, ajoutés par l'administrateur. La base est fermée à toute personne non connectée."],
+    ["Combien de temps","Tout ce qui concerne une personne partie (fiche archivée, colis remis, prêts, journaux) est effacé automatiquement 24 mois après. La copie Workday ne garde que les personnes du site et les arrivées récentes."],
+    ["Une personne demande ses données","Ouvre sa fiche : « 📄 Exporter ses données » produit le fichier de tout ce qui la concerne."],
+    ["Une personne demande l'effacement","Ouvre sa fiche : « 🗑️ Tout effacer » (administrateur) supprime définitivement toutes ses données."],
+    ["Contact","conformite.france@allianceautomotive.fr"],
+    ["Prestataires","Supabase (base de données), EmailJS (envoi des mails), GitHub (hébergement de la page)."]]},
   {id:"_faq",t:"Questions fréquentes",ico:"aide",l:[
     ["Le rappel de badge part-il avant la date de retour ?","Non. Il part seulement à partir du lendemain de la date de retour prévue."],
     ["Je ne veux aucun mail pour une personne","Coche ⭐ VIP sur sa fiche."],
@@ -9531,6 +9601,52 @@ html body .cc-top .cc-av{color:#fff!important}
 }
 
 `;document.head.appendChild(st);}catch(e){}})();
+
+
+// ════════════════ RGPD ════════════════
+// Copie Workday : on ne garde que les personnes qui ont une fiche, et les arrivées récentes ou à venir
+function wdMinimiser(cache,badges){
+  if(!cache||typeof cache!=="object")return cache;
+  const mats=new Set((badges||[]).filter(b=>b.statut!=="Archivé").map(b=>String(b.matricule||"").trim()).filter(m=>m&&m!=="0"&&m!=="NC"));
+  const min=isoLocal(new Date(Date.now()-60*864e5));const out={};
+  Object.keys(cache).forEach(k=>{const w=cache[k]||{};const h=String(w.hireDate||"").slice(0,10);
+    if(mats.has(String(k).trim())||mats.has(String(w.matricule||"").trim())||(/^\d{4}-\d{2}-\d{2}$/.test(h)&&h>=min))out[k]=w;});
+  return out;
+}
+// Droit d'accès et droit à l'effacement, depuis la fiche
+function DonneesPersonne({fiche,showToast,setBadges,editingId,fermer}){
+  const el=React.createElement;const[busy,setBusy]=useState(false);
+  const nom=String(fiche.nom||"").trim(),prenom=String(fiche.prenom||"").trim(),email=String(fiche.email||"").trim();
+  const admin=!!window._estAdmin;
+  const exporter=async()=>{if(!nom){showToast("⚠️ Nom manquant","err");return;}setBusy(true);
+    const out={personne:prenom+" "+nom,exporte_le:new Date().toISOString(),fiche,colis:[],field_support:[],prets_de_badges:[],casiers:[],journal:[]};
+    const lc=x=>String(x||"").toLowerCase();const contient=t=>lc(t).includes(lc(nom))&&lc(t).includes(lc(prenom));
+    try{if(sb){
+      const q=async(f)=>{try{const r=await f();return r&&!r.error?(r.data||[]):[];}catch(e){return [];}};
+      out.colis=(await q(()=>sb.from("lp24_colis").select("*").ilike("nom",nom))).filter(c=>lc(c.prenom)===lc(prenom)||(email&&lc(c.email)===lc(email)));
+      out.field_support=(await q(()=>sb.from("lp24_fss").select("*").ilike("nom",nom))).filter(f=>lc(f.prenom)===lc(prenom));
+      out.prets_de_badges=(await q(()=>sb.from("badges_pret_histo").select("*").ilike("emprunteur","%"+nom+"%"))).filter(x=>contient(x.emprunteur));
+      out.casiers=(await q(()=>sb.from("lp24_casiers_journal").select("*").ilike("personne","%"+nom+"%"))).filter(x=>contient(x.personne));
+      out.journal=(await q(()=>sb.from("historique").select("*").ilike("detail","%"+nom+"%").limit(1000))).filter(x=>contient(x.detail));
+    }}catch(e){}
+    const blob=new Blob([JSON.stringify(out,null,2)],{type:"application/json"});const a=document.createElement("a");
+    a.href=URL.createObjectURL(blob);a.download="donnees-"+nom.toUpperCase()+"-"+prenom+".json";document.body.appendChild(a);a.click();a.remove();
+    setBusy(false);showToast("📄 Données exportées ("+(1+out.colis.length+out.field_support.length+out.prets_de_badges.length+out.casiers.length+out.journal.length)+" éléments)");};
+  const effacer=async()=>{
+    if(!confirm("Effacer DÉFINITIVEMENT toutes les données de "+prenom+" "+nom.toUpperCase()+" ?\n\nFiche, colis et signatures, demandes Field Support, prêts de badges, historique des casiers et journal.\nCette action est irréversible."))return;
+    if(prompt("Pour confirmer, tape le NOM de la personne :","")?.trim().toUpperCase()!==nom.toUpperCase()){showToast("Effacement annulé","err");return;}
+    setBusy(true);
+    try{const r=await sb.rpc("lp24_effacer_personne",{p_nom:nom,p_prenom:prenom,p_email:email});
+      if(r.error)throw r.error;
+      setBadges(prev=>prev.filter(b=>b.id!==editingId&&!(String(b.nom||"").trim().toUpperCase()===nom.toUpperCase()&&String(b.prenom||"").trim().toLowerCase()===prenom.toLowerCase())));
+      showToast("🗑️ Toutes les données de "+prenom+" "+nom.toUpperCase()+" ont été effacées");fermer();}
+    catch(e){showToast(/lp24_effacer_personne|function|fonction/i.test(String(e&&e.message))?"⚠️ Lance d'abord le script Supabase « 4-securite-rgpd.sql »":"⚠️ "+(e&&e.message||e),"err");}
+    setBusy(false);};
+  return el("div",{style:{display:"flex",alignItems:"center",gap:8,flexWrap:"wrap",background:"var(--surface2)",borderRadius:10,padding:"8px 12px",marginBottom:12,fontSize:12.5,color:"var(--text2)"}},
+    el("span",{style:{fontWeight:700}},"🔒 Données personnelles"),el("span",{style:{flex:1}}),
+    el("button",{type:"button",className:"btn btn-outline",disabled:busy,style:{fontSize:12,padding:"4px 10px"},onClick:exporter},"📄 Exporter ses données"),
+    admin&&el("button",{type:"button",className:"btn btn-outline",disabled:busy,style:{fontSize:12,padding:"4px 10px"},onClick:effacer},"🗑️ Tout effacer"));
+}
 
 function SettingsModal({settings,setSettings,showToast,setShowSettings,racineRef,hrRef,hcmRef,importJsonRef,exportExcel,exportJSON,importJSON,badges,setBadges,casiers,wdCache,histo,addLog,canHistorique,canArchives,canHistoriquePret,initialTab}){
   const[tab,setTab]=useState(initialTab||"emails");
@@ -10682,6 +10798,10 @@ useEffect(()=>{
   const[menuOuvert,setMenuOuvert]=useState(false);
   useEffect(()=>{window._nbNotifs=canAccess("notifications")?notifs.length:0;},[notifs.length]);
   useEffect(()=>{const f=()=>{if(!isIT)setShowSettings(true);};window.addEventListener("ouvrir-reglages",f);return()=>window.removeEventListener("ouvrir-reglages",f);},[isIT]);
+  useEffect(()=>{window._badgesWd=badges;window._estAdmin=!!(session&&session.role==="admin");},[badges,session]);
+  useEffect(()=>{if(!wdCache||!badges||badges.length<1||!session||session.role!=="admin")return;
+    const m=wdMinimiser(wdCache,badges);if(Object.keys(m).length<Object.keys(wdCache).length){setWdCache(m);
+      (async()=>{try{if(sb)await sb.from("lp24_settings").upsert({id:2,data:JSON.stringify(m)});}catch(e){}})();}},[wdCache,badges.length,session&&session.role]);
   const navActif=id=>view===id||(id==="gestion_accueil"&&(view==="badges_pret"||view==="colis"));
   // Lien « Consulter la fiche » d'un mail : ouvrir Field Support puis la fiche, une fois connecté et les fiches chargées
   useEffect(()=>{
