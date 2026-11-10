@@ -14,7 +14,7 @@ pre{margin:0;background:var(--code);color:var(--codetx);padding:16px;overflow:au
 .how{margin-top:16px;color:var(--t2);font-size:13.5px}
 </style></head><body><div class="w"><h1>Scripts sécurité — Gestion Collaborateurs</h1>
 <p class="intro">Supabase → SQL Editor : « Copier le script », coller, puis « Run ». Ordre conseillé : 0, puis le script voulu, puis 0 pour vérifier.</p>
-<div class="tabs"><button class="tab on" data-i="0">0 · Vérification</button><button class="tab" data-i="1">1 · Verrouillage</button><button class="tab" data-i="2">2 · Annulation</button><button class="tab" data-i="3">3 · Inscription</button><button class="tab" data-i="4">4 · Sécurité + RGPD</button><button class="tab" data-i="5">5 · Fonctions (à lancer)</button><button class="tab" data-i="6">6 · Mails (mise en forme)</button></div><section class="sc on" id="s0"><div class="hd"><div><h2>0 · Vérification</h2><p>Ne modifie rien : affiche l&#x27;état de la sécurité. À lancer avant et après.</p><small>0-verification.sql · 31 lignes</small></div><button class="cp" data-i="0">Copier le script</button></div><pre><code id="c0">-- ════════════════════════════════════════════════════════════════════
+<div class="tabs"><button class="tab on" data-i="0">0 · Vérification</button><button class="tab" data-i="1">1 · Verrouillage</button><button class="tab" data-i="2">2 · Annulation</button><button class="tab" data-i="3">3 · Inscription</button><button class="tab" data-i="4">4 · Sécurité + RGPD</button><button class="tab" data-i="5">5 · Fonctions (à lancer)</button><button class="tab" data-i="6">6 · Mails (mise en forme)</button><button class="tab" data-i="7">7 · Membres de l&#x27;appli (à lancer)</button></div><section class="sc on" id="s0"><div class="hd"><div><h2>0 · Vérification</h2><p>Ne modifie rien : affiche l&#x27;état de la sécurité. À lancer avant et après.</p><small>0-verification.sql · 31 lignes</small></div><button class="cp" data-i="0">Copier le script</button></div><pre><code id="c0">-- ════════════════════════════════════════════════════════════════════
 --  VÉRIFICATION SÉCURITÉ — Gestion Collaborateurs (lecture seule)
 --  À lancer dans Supabase → SQL Editor. Ne modifie RIEN : affiche l&#x27;état.
 --  Une ligne par point contrôlé ; la colonne « ok » doit valoir « oui ».
@@ -496,6 +496,82 @@ select p.proname as envoi,
 from pg_proc p join pg_namespace n on n.oid = p.pronamespace
 where n.nspname = &#x27;public&#x27; and p.proname in (&#x27;envoyer_mails_auto&#x27;,&#x27;mail_pret_accueil&#x27;,&#x27;envoyer_relances_pret&#x27;)
 order by 1;
+</code></pre></section>
+<section class="sc" id="s7"><div class="hd"><div><h2>7 · Membres de l&#x27;appli (à lancer)</h2><p>Accès réservé aux personnes de Réglages → Comptes, plus d&#x27;administrateur automatique. Ne touche à aucune donnée.</p><small>7-membres-appli.sql · 76 lignes</small></div><button class="cp" data-i="7">Copier le script</button></div><pre><code id="c7">-- ════════════════════════════════════════════════════════════════════
+--  ACCÈS RÉSERVÉ AUX MEMBRES DE L&#x27;APPLI — Gestion Collaborateurs
+--  À lancer une fois dans Supabase → SQL Editor (projet jymobewqenhcjtzniytb).
+--  Peut être relancé sans risque. Ne touche à aucune donnée.
+--
+--  Avant : tout compte connecté pouvait lire et modifier les tables.
+--  Après : il faut en plus figurer dans Réglages → Comptes de l&#x27;appli.
+--          Un compte créé en douce, ou retiré de la liste, ne voit plus rien.
+--  Aussi : plus d&#x27;administrateur « automatique » par adresse e-mail.
+--  Les envois automatiques (cron) et le SQL Editor ne sont pas concernés.
+-- ════════════════════════════════════════════════════════════════════
+
+-- ── Liste des comptes de l&#x27;appli (Réglages → Comptes), lue côté serveur
+create or replace function public.lp24_comptes() returns jsonb
+language sql stable security definer set search_path = public as $f$
+  select coalesce((select case when jsonb_typeof(public.lp24_json(s.data)-&gt;&#x27;users&#x27;) = &#x27;array&#x27;
+                               then public.lp24_json(s.data)-&gt;&#x27;users&#x27; end
+                   from public.lp24_settings s where s.id = 1), &#x27;[]&#x27;::jsonb)
+$f$;
+
+-- ── La personne connectée fait-elle partie de l&#x27;appli ?
+create or replace function public.lp24_est_membre() returns boolean
+language plpgsql stable security definer set search_path = public as $f$
+declare em text := public.lp24_email_appelant(); u jsonb := public.lp24_comptes();
+begin
+  if coalesce(current_setting(&#x27;request.jwt.claims&#x27;, true), &#x27;&#x27;) = &#x27;&#x27; then
+    return true;                                   -- SQL Editor, cron, déclencheurs internes
+  end if;
+  if em = &#x27;&#x27; then return false; end if;
+  return exists (select 1 from jsonb_array_elements(u) e where lower(trim(e-&gt;&gt;&#x27;email&#x27;)) = em);
+end $f$;
+revoke all on function public.lp24_est_membre() from public, anon;
+grant execute on function public.lp24_est_membre() to authenticated;
+revoke all on function public.lp24_comptes() from public, anon, authenticated;
+
+-- ── Administrateur : uniquement ceux marqués « Administrateur » dans Réglages → Comptes
+create or replace function public.lp24_est_admin(users jsonb) returns boolean
+language plpgsql stable as $f$
+declare em text := public.lp24_email_appelant(); u jsonb := coalesce(users, &#x27;[]&#x27;::jsonb);
+begin
+  if coalesce(current_setting(&#x27;request.jwt.claims&#x27;, true), &#x27;&#x27;) = &#x27;&#x27; then
+    return true;                                   -- SQL Editor, cron, déclencheurs internes
+  end if;
+  if jsonb_typeof(u) &lt;&gt; &#x27;array&#x27; then return false; end if;
+  return exists (select 1 from jsonb_array_elements(u) e where lower(trim(e-&gt;&gt;&#x27;email&#x27;)) = em and e-&gt;&gt;&#x27;role&#x27; = &#x27;admin&#x27;);
+end $f$;
+
+-- ── Toutes les tables : accès réservé aux membres
+do $$
+declare
+  t text; p record;
+  internes text[] := array[&#x27;lp24_mail_config&#x27;,&#x27;lp24_mails_auto&#x27;,&#x27;lp24_mails_depart&#x27;,&#x27;lp24_mails_pret&#x27;,&#x27;lp24_relances_pret&#x27;];
+begin
+  for t in select c.relname from pg_class c join pg_namespace s on s.oid = c.relnamespace
+           where s.nspname = &#x27;public&#x27; and c.relkind = &#x27;r&#x27; and c.relname &lt;&gt; all(internes) loop
+    execute format(&#x27;alter table public.%I enable row level security&#x27;, t);
+    execute format(&#x27;revoke all on public.%I from anon&#x27;, t);
+    for p in select policyname from pg_policies where schemaname = &#x27;public&#x27; and tablename = t loop
+      execute format(&#x27;drop policy %I on public.%I&#x27;, p.policyname, t);
+    end loop;
+    execute format(&#x27;create policy &quot;membres_appli&quot; on public.%I for all to authenticated using ((select public.lp24_est_membre())) with check ((select public.lp24_est_membre()))&#x27;, t);
+    execute format(&#x27;grant select, insert, update, delete on public.%I to authenticated&#x27;, t);
+  end loop;
+  execute &#x27;grant usage, select on all sequences in schema public to authenticated&#x27;;
+end $$;
+
+-- ── Vérification : chaque table doit afficher « membres de l&#x27;appli »
+select c.relname as &quot;table&quot;,
+       case when c.relname in (&#x27;lp24_mail_config&#x27;,&#x27;lp24_mails_auto&#x27;,&#x27;lp24_mails_depart&#x27;,&#x27;lp24_mails_pret&#x27;,&#x27;lp24_relances_pret&#x27;) then &#x27;interne (fermée)&#x27;
+            when not c.relrowsecurity then &#x27;NON : RLS désactivée&#x27;
+            when exists (select 1 from pg_policies p where p.schemaname = &#x27;public&#x27; and p.tablename = c.relname and p.policyname = &#x27;membres_appli&#x27;) then &#x27;membres de l&#x27;&#x27;appli&#x27;
+            else &#x27;NON : à vérifier&#x27; end as acces
+from pg_class c join pg_namespace s on s.oid = c.relnamespace
+where s.nspname = &#x27;public&#x27; and c.relkind = &#x27;r&#x27;
+order by 2 desc, 1;
 </code></pre></section>
 <p class="how">Lien Supabase : <a href="https://supabase.com/dashboard/project/jymobewqenhcjtzniytb/sql/new" style="color:var(--ac)">éditeur SQL du projet</a></p></div>
 <script>
