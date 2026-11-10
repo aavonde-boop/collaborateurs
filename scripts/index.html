@@ -147,18 +147,23 @@ select &#x27;Mails de test envoyés par Supabase&#x27;,
 union all
 select &#x27;Clé EmailJS privée configurée&#x27;,
        case when exists (select 1 from public.lp24_mail_config where id = 1 and actif and emailjs_private_key not like &#x27;&lt;&lt;%&#x27;) then &#x27;oui&#x27; else &#x27;NON&#x27; end;
-</code></pre></section><section class="sc" id="s1"><div class="hd"><div><h2>9 · Nouvelle clé EmailJS</h2><p>À lancer après avoir régénéré la clé publique dans EmailJS : remplace COLLE_ICI_LA_NOUVELLE_CLE par la nouvelle clé.</p><small>9-cle-emailjs.sql · 14 lignes</small></div><button class="cp" data-i="1">Copier le script</button></div><pre><code id="c1">-- ════════════════════════════════════════════════════════════════════
+</code></pre></section><section class="sc" id="s1"><div class="hd"><div><h2>9 · Nouvelle clé EmailJS</h2><p>À lancer après avoir régénéré la clé publique dans EmailJS : remplace COLLE_ICI_LA_NOUVELLE_CLE par la nouvelle clé.</p><small>9-cle-emailjs.sql · 19 lignes</small></div><button class="cp" data-i="1">Copier le script</button></div><pre><code id="c1">-- ════════════════════════════════════════════════════════════════════
 --  NOUVELLE CLÉ PUBLIQUE EMAILJS — Gestion Collaborateurs
---  À lancer APRÈS avoir régénéré la clé publique dans EmailJS
---  (Account → General → API keys). Remplace COLLE_ICI_LA_NOUVELLE_CLE
---  par la nouvelle clé publique, en gardant les guillemets simples.
+--  À lancer APRÈS avoir régénéré la clé publique dans EmailJS.
+--  Remplace COLLE_ICI_LA_NOUVELLE_CLE (ligne 8) par la nouvelle clé publique,
+--  en gardant les guillemets simples, puis « Run ».
 -- ════════════════════════════════════════════════════════════════════
-update public.lp24_mail_config
-   set emailjs_public_key = &#x27;COLLE_ICI_LA_NOUVELLE_CLE&#x27;
- where id = 1 and &#x27;COLLE_ICI_LA_NOUVELLE_CLE&#x27; not like &#x27;COLLE%&#x27;;
+do $$
+declare cle text := &#x27;COLLE_ICI_LA_NOUVELLE_CLE&#x27;;
+begin
+  if cle like &#x27;COLLE%&#x27; or length(trim(cle)) &lt; 8 then
+    raise exception &#x27;Remplace d&#x27;&#x27;abord COLLE_ICI_LA_NOUVELLE_CLE par la nouvelle clé publique&#x27;;
+  end if;
+  update public.lp24_mail_config set emailjs_public_key = trim(cle) where id = 1;
+end $$;
 
-select case when emailjs_public_key like &#x27;COLLE%&#x27; or emailjs_public_key = &#x27;n04JbAxmU3mf9UuXz&#x27;
-            then &#x27;NON : ancienne clé toujours en place&#x27; else &#x27;oui : nouvelle clé enregistrée&#x27; end as resultat
+select case when emailjs_public_key = &#x27;n04JbAxmU3mf9UuXz&#x27; then &#x27;NON : ancienne clé toujours en place&#x27;
+            else &#x27;oui : nouvelle clé enregistrée&#x27; end as resultat
 from public.lp24_mail_config where id = 1;
 </code></pre></section>
 <p class="how">Lien Supabase : <a href="https://supabase.com/dashboard/project/jymobewqenhcjtzniytb/sql/new" style="color:var(--ac)">éditeur SQL du projet</a></p></div>
