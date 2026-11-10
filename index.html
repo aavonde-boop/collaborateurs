@@ -11027,15 +11027,15 @@ catch(e){document.getElementById("root").innerHTML='<div style="padding:40px;fon
 @keyframes lp-trace{to{stroke-dashoffset:0}}
 @keyframes lp-fond{from{opacity:0}to{opacity:.12}}
 @keyframes lp-entree{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
-.courbe path:last-child{stroke-dasharray:420;stroke-dashoffset:420;animation:lp-trace 1.2s .15s cubic-bezier(.3,.7,.2,1) forwards}
-.courbe path:first-child{opacity:0;animation:lp-fond .7s .9s ease-out forwards}
-.auj-kpi,.kpi-card,.kpi-std,.ga-col,.ml-it{animation:lp-entree .45s cubic-bezier(.2,.7,.2,1) both}
-.auj-kpi:nth-child(2),.kpi-card:nth-child(2),.kpi-std:nth-child(2){animation-delay:.05s}
-.auj-kpi:nth-child(3),.kpi-card:nth-child(3),.kpi-std:nth-child(3){animation-delay:.1s}
-.auj-kpi:nth-child(4),.kpi-card:nth-child(4),.kpi-std:nth-child(4){animation-delay:.15s}
-.auj-kpi:nth-child(5),.kpi-card:nth-child(5),.kpi-std:nth-child(5){animation-delay:.2s}
-.auj-kpi:nth-child(6),.kpi-card:nth-child(6),.kpi-std:nth-child(6){animation-delay:.25s}
-.ml-it{animation-duration:.3s}
+.courbe path:last-child{stroke-dasharray:420;stroke-dashoffset:420;animation:lp-trace 2.2s .3s cubic-bezier(.3,.7,.2,1) forwards}
+.courbe path:first-child{opacity:0;animation:lp-fond 1s 1.8s ease-out forwards}
+.auj-kpi,.kpi-card,.kpi-std,.ga-col,.ml-it{animation:lp-entree .8s cubic-bezier(.2,.7,.2,1) both}
+.auj-kpi:nth-child(2),.kpi-card:nth-child(2),.kpi-std:nth-child(2){animation-delay:.1s}
+.auj-kpi:nth-child(3),.kpi-card:nth-child(3),.kpi-std:nth-child(3){animation-delay:.2s}
+.auj-kpi:nth-child(4),.kpi-card:nth-child(4),.kpi-std:nth-child(4){animation-delay:.3s}
+.auj-kpi:nth-child(5),.kpi-card:nth-child(5),.kpi-std:nth-child(5){animation-delay:.4s}
+.auj-kpi:nth-child(6),.kpi-card:nth-child(6),.kpi-std:nth-child(6){animation-delay:.5s}
+.ml-it{animation-duration:.5s}
 .auj-kpi,.kpi-card{transition:transform .18s ease,box-shadow .18s ease}
 .auj-kpi:hover,.kpi-card:hover{transform:translateY(-2px);box-shadow:0 8px 22px rgba(15,23,42,.08)}
 @media (prefers-reduced-motion:reduce){.courbe path,.auj-kpi,.kpi-card,.kpi-std,.ga-col,.ml-it{animation:none!important;stroke-dashoffset:0!important}.courbe path:first-child{opacity:.12!important}.auj-kpi:hover,.kpi-card:hover{transform:none}}
@@ -11047,7 +11047,7 @@ catch(e){document.getElementById("root").innerHTML='<div style="padding:40px;fon
   var vus=new WeakMap(),enCours=new WeakSet(),moi=false;
   function anime(el,de,a){
     var t=el.firstChild;if(!t||t.nodeType!==3)return;
-    enCours.add(el);var d0=performance.now(),duree=Math.min(900,350+a*15);
+    enCours.add(el);var d0=performance.now(),duree=Math.min(1900,900+a*20);
     function pas(now){var k=Math.min(1,(now-d0)/duree),v=Math.round(de+(a-de)*(1-Math.pow(1-k,3)));
       if(t.parentNode!==el){enCours.delete(el);return;}
       moi=true;t.nodeValue=String(k<1?v:a);moi=false;
