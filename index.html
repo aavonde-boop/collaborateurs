@@ -821,7 +821,7 @@ body.dark .desktop-nav{background:rgba(20,27,46,.85)!important}
 .ml-it{display:flex;align-items:center;gap:11px;padding:9px 10px;border-radius:9px;font-weight:600;font-size:13.5px;color:#CBD5E1;background:none;border:none;cursor:pointer;text-align:left;font-family:inherit;width:100%}
 .ml-it:hover{background:rgba(255,255,255,.06);color:#fff}.ml-it.on{background:rgba(255,255,255,.12);color:#fff}
 .ml-n{margin-left:auto;background:rgba(255,255,255,.14);color:#E2E8F0;font-size:11px;border-radius:999px;padding:1px 8px}
-.ml-me{display:flex;align-items:center;gap:10px;padding:12px 8px 4px;margin-top:8px;border-top:1px solid rgba(255,255,255,.08)}
+.ml-me{display:flex;align-items:center;gap:10px;padding:14px 8px 4px;margin-top:8px;border-top:1px solid rgba(255,255,255,.08)}.ml-bas{border-top:1px solid rgba(255,255,255,.08);padding-top:8px;margin-top:8px;display:flex;flex-direction:column;gap:2px}.ml-out{margin-left:auto;background:none;border:none;color:#94A3B8;cursor:pointer;padding:6px;border-radius:8px;display:flex}.ml-out:hover{background:rgba(255,255,255,.08);color:#fff}
 .ml-me b{color:#fff;font-size:13px;display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.ml-me span{font-size:11.5px;color:#94A3B8}
 .avatar{display:inline-grid;place-items:center;border-radius:50%;color:#fff;font-weight:800;flex-shrink:0;letter-spacing:.01em;line-height:1}
 .cell-nom{display:flex;align-items:center;gap:9px}
@@ -4324,7 +4324,20 @@ function Courbe({vals,col,w=104,h=34}){if(!vals||vals.length<2)return null;const
   return React.createElement("svg",{className:"courbe",width:w,height:h,viewBox:"0 0 "+w+" "+h},React.createElement("path",{d:d+" L"+w+","+h+" L0,"+h+" Z",fill:col,opacity:.12}),React.createElement("path",{d,fill:"none",stroke:col,strokeWidth:2,strokeLinecap:"round",strokeLinejoin:"round"}));}
 // ── Menu caché (☰) ──
 const MENU_SECTIONS=[["",["accueil"]],["Personnes",["collaborateurs","field_support"]],["Lieux",["casiers"]],["Accueil physique",["gestion_accueil"]],["Outils",["impression","rapport"]]];
-function MenuLateral({visibleNav,navActif,setView,onClose,session,notifs,ouvrirReglages,peutReglages}){
+function personneConnectee(session){
+  const ROLES={admin:"Administrateur",user:"Utilisateur",it:"Service IT",badge:"Gestion des badges"};
+  const role=ROLES[session&&session.role]||"Connecté";
+  const em=String(session&&session.email||"").toLowerCase();const lab=String(session&&session.label||"").trim();
+  const propre=t=>String(t||"").toLowerCase().replace(/(^|[\s\-'])([a-zà-ÿ])/g,(m,a,b)=>a+b.toUpperCase());
+  const fiche=(window._badgesWd||[]).find(b=>em&&String(b.email||"").toLowerCase()===em);
+  if(fiche&&fiche.nom)return{prenom:propre(fiche.prenom),nom:String(fiche.nom).toUpperCase(),role};
+  if(lab&&!lab.includes("@")){const m=lab.split(/\s+/);const k=m.findIndex(x=>x.length>1&&x===x.toUpperCase());
+    if(k>0)return{prenom:propre(m.slice(0,k).join(" ")),nom:m.slice(k).join(" ").toUpperCase(),role};
+    return{prenom:propre(m[0]),nom:m.slice(1).join(" ").toUpperCase(),role};}
+  const loc=em.split("@")[0].split(/[._-]/).filter(Boolean);
+  return{prenom:propre(loc[0]||""),nom:(loc.slice(1).join(" ")||"").toUpperCase(),role};
+}
+function MenuLateral({visibleNav,navActif,setView,onClose,session,notifs,ouvrirReglages,peutReglages,logout}){
   const el=React.createElement;
   useEffect(()=>{const k=e=>{if(e.key==="Escape")onClose();};window.addEventListener("keydown",k);return()=>window.removeEventListener("keydown",k);},[]);
   const ids=(visibleNav||[]).map(n=>n.id).filter(id=>id!=="notifications"&&id!=="settings");const pris=new Set();
@@ -4342,9 +4355,14 @@ function MenuLateral({visibleNav,navActif,setView,onClose,session,notifs,ouvrirR
         l.map(id=>item(id,lab(id),()=>aller(id),navActif(id))),
         null)),
       el("div",{style:{flex:1}}),
-      el("div",{className:"ml-sec"},"Application"),
-            item("aide","Aide",()=>aller("aide"),false),
-      qui&&el("div",{className:"ml-me"},el(Avatar,{prenom:qui.split(/[\s@.]/)[0],nom:qui.split(/[\s@.]/)[1]||"",size:34}),el("div",{style:{minWidth:0}},el("b",null,qui),el("span",null,"Connecté")))));
+      el("div",{className:"ml-bas"},
+        item("aide","Aide",()=>aller("aide"),false),
+        peutReglages&&el("button",{type:"button",className:"ml-it",onClick:()=>{onClose();ouvrirReglages();}},el(IconeNav,{id:"settings",size:18}),el("span",null,"Réglages"))),
+      qui&&(()=>{const pn=personneConnectee(session);return el("div",{className:"ml-me"},el(Avatar,{prenom:pn.prenom,nom:pn.nom,size:36}),
+        el("div",{style:{minWidth:0,flex:1}},el("b",null,(pn.prenom+" "+pn.nom).trim()),el("span",null,pn.role)),
+        logout&&el("button",{type:"button",className:"ml-out",title:"Se déconnecter","aria-label":"Se déconnecter",onClick:()=>{onClose();logout();}},
+          el("svg",{width:20,height:20,viewBox:"0 0 24 24",fill:"none",stroke:"currentColor",strokeWidth:2,strokeLinecap:"round",strokeLinejoin:"round"},
+            el("path",{d:"M14 4h4a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2h-4"}),el("path",{d:"M9 8l-4 4 4 4"}),el("path",{d:"M5 12h11"}))));})()));
 }
 // ── Page « Aujourd'hui » : compteurs avec courbe + frise de la journée ──
 (function(){try{var st=document.createElement("style");st.id="ecran";st.textContent=".auj-vr{display:flex;align-items:center;justify-content:space-between;gap:10px;min-width:0}.auj-kpi .courbe{position:static!important;flex:0 1 auto;min-width:0;max-width:55%;top:auto!important;bottom:auto!important;right:auto!important}";document.head.appendChild(st);}catch(e){}})();
@@ -5611,9 +5629,6 @@ useEffect(()=>{
 
   const toolbarButtons=React.createElement("div",{style:{display:"flex",gap:8,alignItems:"center"}},
     canAccess("notifications")&&React.createElement("button",{title:"Notifications",className:"btn-icon",onClick:()=>setView("notifications"),style:{position:"relative",gap:5,display:"inline-flex",alignItems:"center",fontWeight:700,background:view==="notifications"?"#EFF6FF":undefined,borderColor:view==="notifications"?"#BFDBFE":undefined}},React.createElement(IconeNav,{id:"notifications",size:18}),notifs.length?React.createElement("span",{style:{color:"var(--text2)"}},notifs.length):null),
-    !isIT&&React.createElement("button",{title:"Réglages",className:"btn-icon",onClick:()=>setShowSettings(true),style:{position:"relative"}},React.createElement(IconeNav,{id:"settings",size:18})),
-    session&&React.createElement("span",{style:{fontSize:11,color:"var(--text3)",marginLeft:2}},session.label),
-    session&&React.createElement("button",{title:"Déconnexion",onClick:logout,style:{background:"var(--redBg)",border:"1px solid rgba(220,38,38,.2)",color:"var(--red)",borderRadius:6,padding:"3px 8px",fontSize:11,cursor:"pointer"}},"⏻"),
     dbDot
   );
 
@@ -5653,7 +5668,7 @@ useEffect(()=>{
     loading&&React.createElement("div",{style:{position:"fixed",inset:0,background:"rgba(30,40,60,.45)",zIndex:9998,display:"flex",alignItems:"center",justifyContent:"center"}},React.createElement("div",{style:{background:"var(--surface)",border:"1px solid var(--border)",borderRadius:14,padding:"24px 36px",fontSize:15,fontWeight:700,color:"var(--text)"}},"⏳ Chargement en cours...")),
     toast&&React.createElement("div",{className:"toast-anim",style:{position:"fixed",top:20,left:"50%",transform:"translateX(-50%)",zIndex:9999,background:toast.type==="err"?"#7F1D1D":"#14532D",border:"1px solid "+(toast.type==="err"?"rgba(220,38,38,.3)":"rgba(22,163,74,.3)"),color:"#fff",padding:"12px 24px",borderRadius:12,fontSize:13,fontWeight:700,boxShadow:"0 4px 24px rgba(0,0,0,.12)",whiteSpace:"nowrap",pointerEvents:"none"}},toast.msg),
     showSettings&&!isIT&&React.createElement(SettingsModal,{settings,setSettings,showToast,setShowSettings,racineRef,hrRef,hcmRef,importJsonRef,exportExcel,exportJSON,importJSON,badges,setBadges,casiers,wdCache,histo,addLog,canHistorique:canAccess("historique"),canArchives:canAccess("archives"),canHistoriquePret:canAccess("historique_pret"),initialTab:settingsInitialTab}),
-    (menuOuvert||(mlLarge&&unlocked))&&React.createElement(MenuLateral,{visibleNav,navActif,setView,onClose:()=>setMenuOuvert(false),session,notifs:canAccess("notifications")?notifs.length:null,ouvrirReglages:()=>setShowSettings(true),peutReglages:!isIT}),
+    (menuOuvert||(mlLarge&&unlocked))&&React.createElement(MenuLateral,{visibleNav,navActif,setView,onClose:()=>setMenuOuvert(false),session,notifs:canAccess("notifications")?notifs.length:null,ouvrirReglages:()=>setShowSettings(true),peutReglages:!isIT,logout}),
     React.createElement("nav",{className:"desktop-nav no-print",style:{background:"var(--surface)",borderBottom:"1px solid var(--border)",padding:"0 12px",display:"flex",alignItems:"center",gap:2,height:48,position:"sticky",top:0,zIndex:500,boxShadow:"0 1px 0 var(--border)",overflow:"hidden"}},
       React.createElement("div",{style:{display:"flex",alignItems:"center",flexShrink:0}},
         React.createElement("button",{type:"button",className:"burger",title:"Menu",onClick:()=>setMenuOuvert(true)},React.createElement("svg",{width:20,height:20,viewBox:"0 0 24 24",fill:"none",stroke:"currentColor",strokeWidth:2,strokeLinecap:"round"},React.createElement("path",{d:"M4 7h16M4 12h16M4 17h16"}))),
@@ -9499,7 +9514,7 @@ function Courbe({vals,col,w=104,h=34}){if(!vals||vals.length<2)return null;const
   return React.createElement("svg",{className:"courbe",width:w,height:h,viewBox:"0 0 "+w+" "+h},React.createElement("path",{d:d+" L"+w+","+h+" L0,"+h+" Z",fill:col,opacity:.12}),React.createElement("path",{d,fill:"none",stroke:col,strokeWidth:2,strokeLinecap:"round",strokeLinejoin:"round"}));}
 // ── Menu caché (☰) ──
 const MENU_SECTIONS=[["",["accueil"]],["Personnes",["collaborateurs","field_support"]],["Lieux",["casiers"]],["Accueil physique",["gestion_accueil"]],["Outils",["impression","rapport"]]];
-function MenuLateral({visibleNav,navActif,setView,onClose,session,notifs,ouvrirReglages,peutReglages}){
+function MenuLateral({visibleNav,navActif,setView,onClose,session,notifs,ouvrirReglages,peutReglages,logout}){
   const el=React.createElement;
   useEffect(()=>{const k=e=>{if(e.key==="Escape")onClose();};window.addEventListener("keydown",k);return()=>window.removeEventListener("keydown",k);},[]);
   const ids=(visibleNav||[]).map(n=>n.id);const pris=new Set();
@@ -10855,9 +10870,6 @@ useEffect(()=>{
 
   const toolbarButtons=React.createElement("div",{style:{display:"flex",gap:8,alignItems:"center"}},
     canAccess("notifications")&&React.createElement("button",{title:"Notifications",className:"btn-icon",onClick:()=>setView("notifications"),style:{position:"relative",gap:5,display:"inline-flex",alignItems:"center",fontWeight:700,background:view==="notifications"?"#EFF6FF":undefined,borderColor:view==="notifications"?"#BFDBFE":undefined}},React.createElement(IconeNav,{id:"notifications",size:18}),notifs.length?React.createElement("span",{style:{color:"var(--text2)"}},notifs.length):null),
-    !isIT&&React.createElement("button",{title:"Réglages",className:"btn-icon",onClick:()=>setShowSettings(true),style:{position:"relative"}},React.createElement(IconeNav,{id:"settings",size:18})),
-    session&&React.createElement("span",{style:{fontSize:11,color:"var(--text3)",marginLeft:2}},session.label),
-    session&&React.createElement("button",{title:"Déconnexion",onClick:logout,style:{background:"var(--redBg)",border:"1px solid rgba(220,38,38,.2)",color:"var(--red)",borderRadius:6,padding:"3px 8px",fontSize:11,cursor:"pointer"}},"⏻"),
     dbDot
   );
 
@@ -10896,7 +10908,7 @@ useEffect(()=>{
     loading&&React.createElement("div",{style:{position:"fixed",inset:0,background:"rgba(30,40,60,.45)",zIndex:9998,display:"flex",alignItems:"center",justifyContent:"center"}},React.createElement("div",{style:{background:"var(--surface)",border:"1px solid var(--border)",borderRadius:14,padding:"24px 36px",fontSize:15,fontWeight:700,color:"var(--text)"}},"⏳ Chargement en cours...")),
     toast&&React.createElement("div",{className:"toast-anim",style:{position:"fixed",top:20,left:"50%",transform:"translateX(-50%)",zIndex:9999,background:toast.type==="err"?"#7F1D1D":"#14532D",border:"1px solid "+(toast.type==="err"?"rgba(220,38,38,.3)":"rgba(22,163,74,.3)"),color:"#fff",padding:"12px 24px",borderRadius:12,fontSize:13,fontWeight:700,boxShadow:"0 4px 24px rgba(0,0,0,.12)",whiteSpace:"nowrap",pointerEvents:"none"}},toast.msg),
     showSettings&&!isIT&&React.createElement(SettingsModal,{settings,setSettings,showToast,setShowSettings,racineRef,hrRef,hcmRef,importJsonRef,exportExcel,exportJSON,importJSON,badges,setBadges,casiers,wdCache,histo,addLog,canHistorique:canAccess("historique"),canArchives:canAccess("archives"),canHistoriquePret:canAccess("historique_pret"),initialTab:settingsInitialTab}),
-    menuOuvert&&React.createElement(MenuLateral,{visibleNav,navActif,setView,onClose:()=>setMenuOuvert(false),session,notifs:canAccess("notifications")?notifs.length:null,ouvrirReglages:()=>setShowSettings(true),peutReglages:!isIT}),
+    menuOuvert&&React.createElement(MenuLateral,{visibleNav,navActif,setView,onClose:()=>setMenuOuvert(false),session,notifs:canAccess("notifications")?notifs.length:null,ouvrirReglages:()=>setShowSettings(true),peutReglages:!isIT,logout}),
     React.createElement("nav",{className:"desktop-nav no-print",style:{background:"var(--surface)",borderBottom:"1px solid var(--border)",padding:"0 12px",display:"flex",alignItems:"center",gap:2,height:48,position:"sticky",top:0,zIndex:500,boxShadow:"0 1px 0 var(--border)",overflow:"hidden"}},
       React.createElement("div",{style:{display:"flex",alignItems:"center",flexShrink:0}},
         React.createElement("button",{type:"button",className:"burger",title:"Menu",onClick:()=>setMenuOuvert(true)},React.createElement("svg",{width:20,height:20,viewBox:"0 0 24 24",fill:"none",stroke:"currentColor",strokeWidth:2,strokeLinecap:"round"},React.createElement("path",{d:"M4 7h16M4 12h16M4 17h16"}))),
