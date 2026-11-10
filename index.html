@@ -2,7 +2,7 @@
 <html lang="fr">
 <head>
   <meta charset="UTF-8"/>
-<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' 'wasm-unsafe-eval' blob: https://unpkg.com https://cdn.jsdelivr.net; worker-src 'self' blob: https://cdn.jsdelivr.net https://unpkg.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' data: https://fonts.gstatic.com; img-src 'self' data: blob: https://jymobewqenhcjtzniytb.supabase.co https://aavonde-boop.github.io; connect-src 'self' data: blob: https://jymobewqenhcjtzniytb.supabase.co wss://jymobewqenhcjtzniytb.supabase.co https://api.emailjs.com https://cdn.jsdelivr.net https://unpkg.com https://tessdata.projectnaptha.com; media-src 'self' blob: data:; object-src 'none'; base-uri 'self'; form-action 'self'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' 'wasm-unsafe-eval' blob: https://unpkg.com https://cdn.jsdelivr.net; worker-src 'self' blob: https://cdn.jsdelivr.net https://unpkg.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' data: https://fonts.gstatic.com; img-src 'self' data: blob: https://jymobewqenhcjtzniytb.supabase.co https://aavonde-boop.github.io; connect-src 'self' data: blob: https://jymobewqenhcjtzniytb.supabase.co wss://jymobewqenhcjtzniytb.supabase.co https://cdn.jsdelivr.net https://unpkg.com https://tessdata.projectnaptha.com; media-src 'self' blob: data:; object-src 'none'; base-uri 'self'; form-action 'self'">
 <meta name="referrer" content="strict-origin-when-cross-origin">
 <script>if(window.top!==window.self){try{window.top.location.replace(window.location.href);}catch(e){document.documentElement.style.display="none";}}</script>
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover"/>
@@ -25,8 +25,7 @@
   <script crossorigin src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.production.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
   <script src="https://unpkg.com/xlsx/dist/xlsx.full.min.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/@emailjs/browser@4/dist/email.min.js"></script>
-  <style>
+    <style>
     *{margin:0;padding:0;box-sizing:border-box;}
     :root{
       --bg:#F5F7FA;--surface:#FFFFFF;--surface2:#F0F2F5;--surface3:#E8EBF0;
@@ -904,12 +903,11 @@ var sb=null;
 try{if(window.supabase)sb=window.supabase.createClient(SUPABASE_URL,SUPABASE_ANON_KEY);}catch(e){}
 
 // ── EmailJS config ──
-var EMAILJS_SERVICE="service_gv8it64";
-var EMAILJS_TEMPLATE="template_4sqmjiw";
-var EMAILJS_KEY="n04JbAxmU3mf9UuXz";
-try{if(window.emailjs)window.emailjs.init({publicKey:EMAILJS_KEY});}catch(e){}
+// Les mails partent de Supabase (clé privée côté serveur) : plus aucune clé EmailJS dans l'appli
+var EMAILJS_SERVICE="",EMAILJS_TEMPLATE="",EMAILJS_KEY="";
 
 async function sendFssEmail(toEmail,fiche,ccEmail){
+  return;   // envoyé par Supabase (déclencheur mail_fss_it)
   if(!window.emailjs||!toEmail)return;
   {const c=window._envoisMails||{};if(c.envoiMails===false||c.envoiFSS===false){console.log("Notification Field Support non envoyée (coupée dans les Réglages)");return;}}
   try{
@@ -1110,17 +1108,17 @@ function mailsDeTest(settings){
   ];
 }
 function TestMailsBox({showToast,settings}){
-  const[adr,setAdr]=React.useState("a.avonde@allianceautomotive.fr");
+  const[adr,setAdr]=React.useState("");
   const[etat,setEtat]=React.useState("");
   const envoyer=async()=>{
     const to=String(adr||"").trim();
     if(!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(to)){showToast("⚠️ Adresse e-mail invalide","err");return;}
-    if(!window.emailjs){showToast("⚠️ Service d'envoi indisponible","err");return;}
-    const liste=mailsDeTest(settings);let ok=0,err="";setEtat("Envoi en cours…");
-    for(let i=0;i<liste.length;i++){const [sujet,brut]=liste[i];const message=/^\s*<table/.test(brut)?brut:mailCadre(mailTexteHtml(brut));
+    if(!sb){showToast("⚠️ Service d'envoi indisponible","err");return;}
+    const liste=[1,2,3,4,5,6,7];let ok=0,err="";setEtat("Envoi en cours…");
+    for(let i=0;i<liste.length;i++){
       if(i>0)await new Promise(r=>setTimeout(r,1500));   // EmailJS refuse plus d'un envoi par seconde
-      try{await window.emailjs.send(EMAILJS_SERVICE,EMAILJS_TEMPLATE,{to_email:to,cc_email:"",sujet,message},{publicKey:EMAILJS_KEY});ok++;noterMailAppli("test",to);}
-      catch(e){console.error("Test mail",e);err=(e&&(e.status||""))+" "+(e&&(e.text||e.message)||String(e));}
+      try{const{error}=await sb.rpc("lp24_envoyer_test",{adresse:to,numero:liste[i]});if(error)throw error;ok++;}
+      catch(e){console.error("Test mail",e);err=(e&&(e.message||e.details))||String(e);}
       setEtat("Envoi en cours… "+ok+"/"+liste.length);
     }
     setEtat(ok===liste.length?"✅ "+ok+" mails de test envoyés à "+to:"⚠️ "+ok+"/"+liste.length+" envoyés. Réponse d'EmailJS : "+err.trim());
@@ -5858,12 +5856,11 @@ var sb=null;
 try{if(window.supabase)sb=window.supabase.createClient(SUPABASE_URL,SUPABASE_ANON_KEY);}catch(e){}
 
 // ── EmailJS config ──
-var EMAILJS_SERVICE="service_gv8it64";
-var EMAILJS_TEMPLATE="template_4sqmjiw";
-var EMAILJS_KEY="n04JbAxmU3mf9UuXz";
-try{if(window.emailjs)window.emailjs.init({publicKey:EMAILJS_KEY});}catch(e){}
+// Les mails partent de Supabase (clé privée côté serveur) : plus aucune clé EmailJS dans l'appli
+var EMAILJS_SERVICE="",EMAILJS_TEMPLATE="",EMAILJS_KEY="";
 
 async function sendFssEmail(toEmail,fiche,ccEmail){
+  return;   // envoyé par Supabase (déclencheur mail_fss_it)
   if(!window.emailjs||!toEmail)return;
   {const c=window._envoisMails||{};if(c.envoiMails===false||c.envoiFSS===false){console.log("Notification Field Support non envoyée (coupée dans les Réglages)");return;}}
   try{
@@ -6169,17 +6166,17 @@ function mailsDeTest(settings){
   ];
 }
 function TestMailsBox({showToast,settings}){
-  const[adr,setAdr]=React.useState("a.avonde@allianceautomotive.fr");
+  const[adr,setAdr]=React.useState("");
   const[etat,setEtat]=React.useState("");
   const envoyer=async()=>{
     const to=String(adr||"").trim();
     if(!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(to)){showToast("⚠️ Adresse e-mail invalide","err");return;}
-    if(!window.emailjs){showToast("⚠️ Service d'envoi indisponible","err");return;}
-    const liste=mailsDeTest(settings);let ok=0,err="";setEtat("Envoi en cours…");
-    for(let i=0;i<liste.length;i++){const [sujet,brut]=liste[i];const message=/^\s*<table/.test(brut)?brut:mailCadre(mailTexteHtml(brut));
+    if(!sb){showToast("⚠️ Service d'envoi indisponible","err");return;}
+    const liste=[1,2,3,4,5,6,7];let ok=0,err="";setEtat("Envoi en cours…");
+    for(let i=0;i<liste.length;i++){
       if(i>0)await new Promise(r=>setTimeout(r,1500));   // EmailJS refuse plus d'un envoi par seconde
-      try{await window.emailjs.send(EMAILJS_SERVICE,EMAILJS_TEMPLATE,{to_email:to,cc_email:"",sujet,message},{publicKey:EMAILJS_KEY});ok++;noterMailAppli("test",to);}
-      catch(e){console.error("Test mail",e);err=(e&&(e.status||""))+" "+(e&&(e.text||e.message)||String(e));}
+      try{const{error}=await sb.rpc("lp24_envoyer_test",{adresse:to,numero:liste[i]});if(error)throw error;ok++;}
+      catch(e){console.error("Test mail",e);err=(e&&(e.message||e.details))||String(e);}
       setEtat("Envoi en cours… "+ok+"/"+liste.length);
     }
     setEtat(ok===liste.length?"✅ "+ok+" mails de test envoyés à "+to:"⚠️ "+ok+"/"+liste.length+" envoyés. Réponse d'EmailJS : "+err.trim());
