@@ -1,0 +1,64 @@
+<!DOCTYPE html><html lang="fr"><head><meta charset="utf-8"><meta name="robots" content="noindex"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Scripts sécurité</title>
+<style>
+:root{--bg:#F5F7FA;--sf:#fff;--tx:#0F172A;--t2:#64748B;--bd:#E2E8F0;--ac:#1E3A8A;--code:#0F172A;--codetx:#E2E8F0}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#0B1120;--sf:#111827;--tx:#E5E7EB;--t2:#94A3B8;--bd:#1F2937;--ac:#93C5FD;--code:#020617}}
+:root[data-theme="dark"]{--bg:#0B1120;--sf:#111827;--tx:#E5E7EB;--t2:#94A3B8;--bd:#1F2937;--ac:#93C5FD;--code:#020617}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--tx);font:15px/1.5 -apple-system,Segoe UI,Roboto,sans-serif}
+.w{max-width:1000px;margin:0 auto;padding:20px 16px 40px}h1{font-size:22px;margin:0 0 4px}.intro{color:var(--t2);font-size:14px;margin:0 0 16px}
+.tabs{display:flex;gap:6px;overflow-x:auto;padding-bottom:6px;margin-bottom:12px}.tab{flex:0 0 auto;border:1px solid var(--bd);background:var(--sf);color:var(--tx);border-radius:999px;padding:8px 14px;font-weight:600;font-size:13.5px;cursor:pointer}
+.tab.on{background:var(--ac);border-color:var(--ac);color:var(--bg)}
+.sc{display:none;background:var(--sf);border:1px solid var(--bd);border-radius:14px;overflow:hidden}.sc.on{display:block}
+.hd{display:flex;gap:14px;align-items:flex-start;justify-content:space-between;padding:16px;flex-wrap:wrap}h2{margin:0;font-size:17px}.hd p{margin:4px 0;color:var(--t2);font-size:14px}small{color:var(--t2)}
+.cp{border:none;background:var(--ac);color:var(--bg);font-weight:700;border-radius:10px;padding:10px 16px;cursor:pointer;font-size:14px;white-space:nowrap}
+pre{margin:0;background:var(--code);color:var(--codetx);padding:16px;overflow:auto;font:12.5px/1.55 ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;max-height:75vh}
+.how{margin-top:16px;color:var(--t2);font-size:13.5px}
+</style></head><body><div class="w"><h1>Scripts sécurité — Gestion Collaborateurs</h1>
+<p class="intro">Supabase → SQL Editor : « Copier le script », coller, puis « Run ». Ordre conseillé : 0, puis le script voulu, puis 0 pour vérifier.</p>
+<div class="tabs"><button class="tab on" data-i="0">10 · Mentions légales et confidentialité</button></div><section class="sc on" id="s0"><div class="hd"><div><h2>10 · Mentions légales et confidentialité</h2><p>Permet d&#x27;enregistrer tes textes avec le bouton « Modifier ». Lisibles par tous, modifiables seulement par un administrateur.</p><small>10-textes-publics.sql · 43 lignes</small></div><button class="cp" data-i="0">Copier le script</button></div><pre><code id="c0">-- ════════════════════════════════════════════════════════════════════
+--  MENTIONS LÉGALES ET CONFIDENTIALITÉ — Gestion Collaborateurs
+--  À lancer une fois dans Supabase → SQL Editor (projet jymobewqenhcjtzniytb).
+--  Peut être relancé sans risque. Ne touche à aucune autre donnée.
+--
+--  Crée une petite table pour ces 2 textes :
+--   · lisibles par tout le monde (même sans compte, depuis l&#x27;écran de connexion) ;
+--   · modifiables uniquement par un administrateur de l&#x27;appli (bouton « Modifier »).
+--  Elle ne contient que ces 2 textes : aucune donnée personnelle.
+-- ════════════════════════════════════════════════════════════════════
+create table if not exists public.lp24_textes_publics (
+  cle   text primary key check (cle in (&#x27;mentions&#x27;, &#x27;confidentialite&#x27;)),
+  texte text not null default &#x27;&#x27;,
+  maj   timestamptz not null default now()
+);
+
+create or replace function public.lp24_est_admin_appli() returns boolean
+language sql stable security definer set search_path = public as $f$
+  select public.lp24_est_admin(public.lp24_comptes())
+$f$;
+revoke all on function public.lp24_est_admin_appli() from public, anon;
+grant execute on function public.lp24_est_admin_appli() to authenticated;
+
+alter table public.lp24_textes_publics enable row level security;
+do $$ declare p record; begin
+  for p in select policyname from pg_policies where schemaname = &#x27;public&#x27; and tablename = &#x27;lp24_textes_publics&#x27; loop
+    execute format(&#x27;drop policy %I on public.lp24_textes_publics&#x27;, p.policyname);
+  end loop;
+end $$;
+create policy &quot;lecture_publique&quot; on public.lp24_textes_publics for select to anon, authenticated using (true);
+create policy &quot;ecriture_admin&quot; on public.lp24_textes_publics for insert to authenticated with check ((select public.lp24_est_admin_appli()));
+create policy &quot;modif_admin&quot; on public.lp24_textes_publics for update to authenticated using ((select public.lp24_est_admin_appli())) with check ((select public.lp24_est_admin_appli()));
+revoke all on public.lp24_textes_publics from anon, authenticated;
+grant select on public.lp24_textes_publics to anon, authenticated;
+grant insert, update on public.lp24_textes_publics to authenticated;
+
+-- Vérification
+select &#x27;Textes lisibles sans compte&#x27; as point, case when has_table_privilege(&#x27;anon&#x27;, &#x27;public.lp24_textes_publics&#x27;, &#x27;select&#x27;) then &#x27;oui&#x27; else &#x27;NON&#x27; end as ok
+union all
+select &#x27;Modification impossible sans compte&#x27;, case when not has_table_privilege(&#x27;anon&#x27;, &#x27;public.lp24_textes_publics&#x27;, &#x27;insert&#x27;) and not has_table_privilege(&#x27;anon&#x27;, &#x27;public.lp24_textes_publics&#x27;, &#x27;update&#x27;) then &#x27;oui&#x27; else &#x27;NON&#x27; end
+union all
+select &#x27;Modification réservée aux administrateurs&#x27;, case when exists (select 1 from pg_policies where tablename = &#x27;lp24_textes_publics&#x27; and policyname = &#x27;modif_admin&#x27;) then &#x27;oui&#x27; else &#x27;NON&#x27; end;
+</code></pre></section>
+<p class="how">Lien Supabase : <a href="https://supabase.com/dashboard/project/jymobewqenhcjtzniytb/sql/new" style="color:var(--ac)">éditeur SQL du projet</a></p></div>
+<script>
+document.querySelectorAll('.tab').forEach(b=>b.onclick=()=>{document.querySelectorAll('.tab,.sc').forEach(x=>x.classList.remove('on'));b.classList.add('on');document.getElementById('s'+b.dataset.i).classList.add('on');});
+document.querySelectorAll('.cp').forEach(b=>b.onclick=async()=>{const t=document.getElementById('c'+b.dataset.i).textContent;let ok=false;try{await navigator.clipboard.writeText(t);ok=true;}catch(e){try{const r=document.createRange();r.selectNodeContents(document.getElementById('c'+b.dataset.i));const s=getSelection();s.removeAllRanges();s.addRange(r);ok=document.execCommand('copy');}catch(e2){}}b.textContent=ok?'Copié ✓':'Sélectionné : Ctrl+C';setTimeout(()=>b.textContent='Copier le script',2000);});
+</script></body></html>

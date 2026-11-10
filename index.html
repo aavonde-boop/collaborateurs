@@ -1262,6 +1262,7 @@ function LoginScreen({onUnlock,authError}){
         inscription?"Déjà un compte ? ":"Première connexion ? ",
         React.createElement("button",{onClick:()=>changerMode(inscription?"login":"signup"),style:{background:"none",border:"none",padding:0,color:"var(--accent)",fontWeight:700,fontSize:13,cursor:"pointer"}},inscription?"Se connecter":"Créer mon compte")),
       !inscription&&React.createElement("p",{style:{fontSize:11,color:"var(--text3)",marginTop:10}},"Mot de passe oublié ? Demande à l'administrateur de le réinitialiser."),
+      React.createElement(LienLegal,{style:{marginTop:16}}),
       
       React.createElement("style",null,"@keyframes shake{0%,100%{transform:translateX(0)}20%,60%{transform:translateX(-8px)}40%,80%{transform:translateX(8px)}}")
     )
@@ -4149,6 +4150,7 @@ const AIDE_SECTIONS=[
     ["Une personne demande ses données","Ouvre sa fiche : « 📄 Exporter ses données » produit le fichier de tout ce qui la concerne."],
     ["Une personne demande l'effacement","Ouvre sa fiche : « 🗑️ Tout effacer » (administrateur) supprime définitivement toutes ses données."],
     ["Contact","conformite.france@allianceautomotive.fr"],
+    ["Textes officiels","Mentions légales et politique de confidentialité : lien en bas de l'écran de connexion et du menu (sur iPhone : Plus)."],
     ["Prestataires","Supabase (base de données), EmailJS (envoi des mails), GitHub (hébergement de la page)."]]},
   {id:"_faq",t:"Questions fréquentes",ico:"aide",l:[
     ["Le rappel de badge part-il avant la date de retour ?","Non. Il part seulement à partir du lendemain de la date de retour prévue."],
@@ -4171,6 +4173,52 @@ function AidePageBouton({page}){
   if(!AIDE_PAGE[page])return null;
   return React.createElement("button",{type:"button",className:"aide-q",title:"Aide sur cette page","aria-label":"Aide sur cette page",onClick:e=>{e.stopPropagation();window.dispatchEvent(new CustomEvent("aide-page",{detail:page}));}},"?");
 }
+
+// ── Mentions légales et politique de confidentialité ──
+const LEGAL_DEFAUT={mentions:"## Application\n« Gestion Collaborateurs » est une application interne, réservée aux personnes autorisées, utilisée pour la gestion de l'accueil du site [nom du site].\n\n## Éditeur\nAlliance Automotive Group France — [forme juridique et capital]\n[Adresse du siège]\nRCS [ville et numéro]\nResponsable de l'application : [Prénom NOM], [fonction]\nDirecteur de la publication : [Prénom NOM]\n\n## Hébergement\nPage de l'application : GitHub Pages — GitHub, Inc., 88 Colin P. Kelly Jr. Street, San Francisco, CA 94107, États-Unis (github.com).\nBase de données : Supabase, Inc. (supabase.com) — région d'hébergement : [à vérifier dans Supabase → Project Settings → General].\nEnvoi des e-mails : EmailJS (emailjs.com).\n\n## Accès\nL'accès est strictement réservé aux comptes autorisés. Tout accès ou tentative d'accès non autorisé est interdit et peut être poursuivi (article 323-1 du Code pénal).\n\n## Contact\nconformite.france@allianceautomotive.fr",confidentialite:"## Responsable du traitement\nAlliance Automotive Group France. Pour toute question : conformite.france@allianceautomotive.fr\n\n## Données traitées\n- Collaborateurs : nom, prénom, matricule, e-mail professionnel, manager, n° de badge et de casier, dates d'arrivée et de départ.\n- Badges de prêt : nom de l'emprunteur, e-mail, dates de prêt et de retour.\n- Colis : nom du destinataire, dates de réception et de remise, signature à la remise.\nAucune donnée de santé, adresse personnelle, date de naissance ni donnée de salaire n'est enregistrée.\n\n## Finalités\nGestion de l'accueil du site : badges d'accès, casiers, colis, badges de prêt, arrivées et départs, demandes au service informatique (Field Support).\n\n## Base légale\nIntérêt légitime de l'entreprise à organiser l'accueil et la sécurité du site.\n\n## Destinataires\nUniquement les personnes disposant d'un compte dans l'application (accueil, services généraux, service informatique). Les données ne sont ni vendues ni transmises à des tiers à des fins commerciales.\n\n## Durée de conservation\nLes données d'une personne partie sont effacées automatiquement 24 mois après son départ (fiche, colis, prêts de badges, journaux).\n\n## Prestataires et transferts\nSupabase (base de données), EmailJS (envoi des e-mails), GitHub (hébergement de la page). Certains de ces prestataires peuvent être situés hors de l'Union européenne : [préciser les garanties, par exemple clauses contractuelles types].\n\n## Sécurité\nAccès réservé aux comptes autorisés, double authentification des comptes d'administration techniques, données fermées à toute personne non connectée, effacement automatique.\n\n## Vos droits\nVous disposez d'un droit d'accès, de rectification, d'effacement, de limitation et d'opposition. Pour les exercer : conformite.france@allianceautomotive.fr. Vous pouvez aussi introduire une réclamation auprès de la CNIL (cnil.fr).\n\nDernière mise à jour : [date]"};
+function legalHtml(t){const el=React.createElement;const out=[];let liste=null;
+  String(t||"").replace(/\r/g,"").split("\n").forEach((l,i)=>{const x=l.trim();
+    if(/^- /.test(x)){(liste=liste||[]).push(el("li",{key:i},x.slice(2)));return;}
+    if(liste){out.push(el("ul",{key:"u"+i,style:{margin:"0 0 10px",paddingLeft:20}},liste));liste=null;}
+    if(!x)return;
+    if(/^## /.test(x))out.push(el("h3",{key:i,style:{fontSize:15,fontWeight:800,margin:"18px 0 6px",color:"var(--text,#0F172A)"}},x.slice(3)));
+    else out.push(el("p",{key:i,style:{margin:"0 0 6px",lineHeight:1.55}},x));});
+  if(liste)out.push(el("ul",{key:"fin",style:{margin:"0 0 10px",paddingLeft:20}},liste));
+  return out;}
+function PageLegale(){
+  const el=React.createElement;
+  const[ouvert,setOuvert]=React.useState(null),[textes,setTextes]=React.useState({}),[edit,setEdit]=React.useState(false),[brouillon,setBrouillon]=React.useState(""),[msg,setMsg]=React.useState("");
+  React.useEffect(()=>{const f=e=>{setOuvert((e&&e.detail)||"mentions");setEdit(false);setMsg("");};window.addEventListener("ouvrir-legal",f);
+    const esc=e=>{if(e.key==="Escape")setOuvert(null);};window.addEventListener("keydown",esc);
+    return()=>{window.removeEventListener("ouvrir-legal",f);window.removeEventListener("keydown",esc);};},[]);
+  React.useEffect(()=>{if(!ouvert||!sb)return;sb.from("lp24_textes_publics").select("cle,texte,maj").then(({data})=>{const o={};(data||[]).forEach(r=>{if(r&&r.texte&&r.texte.trim())o[r.cle]=r;});setTextes(o);}).catch(()=>{});},[ouvert]);
+  if(!ouvert)return null;
+  const admin=!!window._estAdmin;
+  const texte=(textes[ouvert]&&textes[ouvert].texte)||LEGAL_DEFAUT[ouvert];
+  const titre=ouvert==="mentions"?"Mentions légales":"Politique de confidentialité";
+  const sauver=async()=>{setMsg("Enregistrement…");try{const{error}=await sb.from("lp24_textes_publics").upsert({cle:ouvert,texte:brouillon,maj:new Date().toISOString()});if(error)throw error;
+      setTextes(t=>({...t,[ouvert]:{cle:ouvert,texte:brouillon}}));setEdit(false);setMsg("✅ Enregistré");}
+    catch(e){setMsg("⚠️ Non enregistré : "+((e&&e.message)||e));}};
+  const ong=(id,l)=>el("button",{type:"button",onClick:()=>{setOuvert(id);setEdit(false);setMsg("");},style:{border:"none",background:ouvert===id?"#1E3A8A":"transparent",color:ouvert===id?"#fff":"var(--text2,#334155)",borderRadius:999,padding:"7px 14px",fontWeight:700,fontSize:13,cursor:"pointer"}},l);
+  return ReactDOM.createPortal(el("div",{className:"no-print",onClick:e=>{if(e.target===e.currentTarget)setOuvert(null);},style:{position:"fixed",inset:0,zIndex:3500,background:"rgba(15,23,42,.35)",display:"flex",alignItems:"center",justifyContent:"center",padding:16}},
+    el("div",{role:"dialog","aria-label":titre,style:{background:"var(--surface,#fff)",color:"var(--text,#0F172A)",borderRadius:16,width:"min(760px,100%)",maxHeight:"88vh",display:"flex",flexDirection:"column",boxShadow:"0 20px 60px rgba(15,23,42,.25)",overflow:"hidden"}},
+      el("div",{style:{display:"flex",alignItems:"center",gap:8,padding:"14px 16px",borderBottom:"1px solid var(--border,#E2E8F0)",flexWrap:"wrap"}},
+        ong("mentions","Mentions légales"),ong("confidentialite","Confidentialité"),
+        el("span",{style:{flex:1}}),
+        admin&&!edit&&el("button",{type:"button",className:"btn btn-outline",style:{fontSize:12,padding:"5px 10px"},onClick:()=>{setBrouillon(texte);setEdit(true);setMsg("");}},"✏️ Modifier"),
+        el("button",{type:"button","aria-label":"Fermer",onClick:()=>setOuvert(null),style:{background:"none",border:"none",fontSize:22,color:"#94A3B8",cursor:"pointer",padding:4}},"✕")),
+      el("div",{style:{padding:"6px 20px 20px",overflowY:"auto",fontSize:14,color:"var(--text2,#334155)"}},
+        el("h2",{style:{fontSize:20,fontWeight:800,margin:"12px 0 4px",color:"var(--text,#0F172A)"}},titre),
+        edit?el("div",null,
+            el("p",{style:{fontSize:12,color:"var(--text3,#64748B)",margin:"6px 0 8px"}},"« ## » en début de ligne = titre, « - » = liste. Les textes entre [crochets] sont à compléter."),
+            el("textarea",{value:brouillon,onChange:e=>setBrouillon(e.target.value),style:{width:"100%",minHeight:"50vh",boxSizing:"border-box",border:"1px solid var(--border,#E2E8F0)",borderRadius:10,padding:12,font:"13px/1.5 ui-monospace,Menlo,Consolas,monospace",background:"var(--surface,#fff)",color:"var(--text,#0F172A)"}}),
+            el("div",{style:{display:"flex",gap:8,marginTop:10}},el("button",{type:"button",className:"btn btn-primary",onClick:sauver},"💾 Enregistrer"),el("button",{type:"button",className:"btn btn-outline",onClick:()=>{setEdit(false);setMsg("");}},"Annuler")))
+          :el("div",null,legalHtml(texte)),
+        msg&&el("div",{style:{marginTop:10,fontSize:12.5}},msg)))),document.body);
+}
+function LienLegal({style}){const el=React.createElement;const a=(id,l)=>el("button",{type:"button",onClick:e=>{e.preventDefault();e.stopPropagation();window.dispatchEvent(new CustomEvent("ouvrir-legal",{detail:id}));},style:{background:"none",border:"none",padding:0,color:"inherit",textDecoration:"underline",cursor:"pointer",font:"inherit"}},l);
+  return el("div",{className:"lien-legal",style:Object.assign({fontSize:11,color:"var(--text3,#94A3B8)",textAlign:"center"},style||{})},a("mentions","Mentions légales")," · ",a("confidentialite","Confidentialité"));}
+(function(){try{setTimeout(function(){try{var d=document.createElement("div");d.id="legal-racine";document.body.appendChild(d);ReactDOM.createRoot(d).render(React.createElement(PageLegale));}catch(e){}},0);}catch(e){}})();
 function AidePanneau(){
   const el=React.createElement;
   const [page,setPage]=React.useState(null);
@@ -4360,7 +4408,8 @@ function MenuLateral({visibleNav,navActif,setView,onClose,session,notifs,ouvrirR
         el("div",{style:{minWidth:0,flex:1}},el("b",null,(pn.prenom+" "+pn.nom).trim()),el("span",null,pn.role)),
         logout&&el("button",{type:"button",className:"ml-out",title:"Se déconnecter","aria-label":"Se déconnecter",onClick:()=>{onClose();logout();}},
           el("svg",{width:20,height:20,viewBox:"0 0 24 24",fill:"none",stroke:"currentColor",strokeWidth:2,strokeLinecap:"round",strokeLinejoin:"round"},
-            el("path",{d:"M14 4h4a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2h-4"}),el("path",{d:"M9 8l-4 4 4 4"}),el("path",{d:"M5 12h11"}))));})()));
+            el("path",{d:"M14 4h4a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2h-4"}),el("path",{d:"M9 8l-4 4 4 4"}),el("path",{d:"M5 12h11"}))));})(),
+      el(LienLegal,{style:{margin:"10px 0 2px",color:"#64748B"}})));
 }
 // ── Page « Aujourd'hui » : compteurs avec courbe + frise de la journée ──
 (function(){try{var st=document.createElement("style");st.id="ecran";st.textContent=".auj-vr{display:flex;align-items:center;justify-content:space-between;gap:10px;min-width:0}.auj-kpi .courbe{position:static!important;flex:0 1 auto;min-width:0;max-width:55%;top:auto!important;bottom:auto!important;right:auto!important}";document.head.appendChild(st);}catch(e){}})();
@@ -5585,12 +5634,13 @@ useEffect(()=>{
   const isBadge=session&&session.role==="badge";
   const visibleNav=nav.filter(n=>canAccess(n.id));
   window._pageAide=view;
+  window._estAdmin=!!(unlocked&&session&&session.role==="admin");
   const[mlLarge,setMlLarge]=useState(()=>{try{return window.matchMedia("(min-width:1100px)").matches;}catch(e){return false;}});
   useEffect(()=>{let mq;try{mq=window.matchMedia("(min-width:1100px)");}catch(e){return;}const f=()=>setMlLarge(mq.matches);try{mq.addEventListener("change",f);}catch(e){mq.addListener(f);}return()=>{try{mq.removeEventListener("change",f);}catch(e){}};},[]);
-  useEffect(()=>{document.body.classList.toggle("ml-pin",!!mlLarge);},[mlLarge]);
+  useEffect(()=>{document.body.classList.toggle("ml-pin",!!mlLarge&&!!unlocked);},[mlLarge,unlocked]);
   useEffect(()=>{const f=()=>setView("aide");window.addEventListener("ouvrir-aide",f);return()=>window.removeEventListener("ouvrir-aide",f);},[]);
   const[menuOuvert,setMenuOuvert]=useState(false);
-  useEffect(()=>{window._badgesWd=badges;window._estAdmin=!!(session&&session.role==="admin");},[badges,session]);
+  useEffect(()=>{window._badgesWd=badges;window._estAdmin=!!(unlocked&&session&&session.role==="admin");},[badges,session]);
   useEffect(()=>{if(!wdCache||!badges||badges.length<1||!session||session.role!=="admin")return;
     const m=wdMinimiser(wdCache,badges);if(Object.keys(m).length<Object.keys(wdCache).length){setWdCache(m);
       (async()=>{try{if(sb)await sb.from("lp24_settings").upsert({id:2,data:JSON.stringify(m)});}catch(e){}})();}},[wdCache,badges.length,session&&session.role]);
@@ -6318,6 +6368,7 @@ function LoginScreen({onUnlock,authError}){
         inscription?"Déjà un compte ? ":"Première connexion ? ",
         React.createElement("button",{onClick:()=>changerMode(inscription?"login":"signup"),style:{background:"none",border:"none",padding:0,color:"var(--accent)",fontWeight:700,fontSize:13,cursor:"pointer"}},inscription?"Se connecter":"Créer mon compte")),
       !inscription&&React.createElement("p",{style:{fontSize:11,color:"var(--text3)",marginTop:10}},"Mot de passe oublié ? Demande à l'administrateur de le réinitialiser."),
+      React.createElement(LienLegal,{style:{marginTop:16}}),
       
       React.createElement("style",null,"@keyframes shake{0%,100%{transform:translateX(0)}20%,60%{transform:translateX(-8px)}40%,80%{transform:translateX(8px)}}")
     )
@@ -9335,6 +9386,7 @@ const AIDE_SECTIONS=[
     ["Une personne demande ses données","Ouvre sa fiche : « 📄 Exporter ses données » produit le fichier de tout ce qui la concerne."],
     ["Une personne demande l'effacement","Ouvre sa fiche : « 🗑️ Tout effacer » (administrateur) supprime définitivement toutes ses données."],
     ["Contact","conformite.france@allianceautomotive.fr"],
+    ["Textes officiels","Mentions légales et politique de confidentialité : lien en bas de l'écran de connexion et du menu (sur iPhone : Plus)."],
     ["Prestataires","Supabase (base de données), EmailJS (envoi des mails), GitHub (hébergement de la page)."]]},
   {id:"_faq",t:"Questions fréquentes",ico:"aide",l:[
     ["Le rappel de badge part-il avant la date de retour ?","Non. Il part seulement à partir du lendemain de la date de retour prévue."],
@@ -9357,6 +9409,52 @@ function AidePageBouton({page}){
   if(!AIDE_PAGE[page])return null;
   return React.createElement("button",{type:"button",className:"aide-q",title:"Aide sur cette page","aria-label":"Aide sur cette page",onClick:e=>{e.stopPropagation();window.dispatchEvent(new CustomEvent("aide-page",{detail:page}));}},"?");
 }
+
+// ── Mentions légales et politique de confidentialité ──
+const LEGAL_DEFAUT={mentions:"## Application\n« Gestion Collaborateurs » est une application interne, réservée aux personnes autorisées, utilisée pour la gestion de l'accueil du site [nom du site].\n\n## Éditeur\nAlliance Automotive Group France — [forme juridique et capital]\n[Adresse du siège]\nRCS [ville et numéro]\nResponsable de l'application : [Prénom NOM], [fonction]\nDirecteur de la publication : [Prénom NOM]\n\n## Hébergement\nPage de l'application : GitHub Pages — GitHub, Inc., 88 Colin P. Kelly Jr. Street, San Francisco, CA 94107, États-Unis (github.com).\nBase de données : Supabase, Inc. (supabase.com) — région d'hébergement : [à vérifier dans Supabase → Project Settings → General].\nEnvoi des e-mails : EmailJS (emailjs.com).\n\n## Accès\nL'accès est strictement réservé aux comptes autorisés. Tout accès ou tentative d'accès non autorisé est interdit et peut être poursuivi (article 323-1 du Code pénal).\n\n## Contact\nconformite.france@allianceautomotive.fr",confidentialite:"## Responsable du traitement\nAlliance Automotive Group France. Pour toute question : conformite.france@allianceautomotive.fr\n\n## Données traitées\n- Collaborateurs : nom, prénom, matricule, e-mail professionnel, manager, n° de badge et de casier, dates d'arrivée et de départ.\n- Badges de prêt : nom de l'emprunteur, e-mail, dates de prêt et de retour.\n- Colis : nom du destinataire, dates de réception et de remise, signature à la remise.\nAucune donnée de santé, adresse personnelle, date de naissance ni donnée de salaire n'est enregistrée.\n\n## Finalités\nGestion de l'accueil du site : badges d'accès, casiers, colis, badges de prêt, arrivées et départs, demandes au service informatique (Field Support).\n\n## Base légale\nIntérêt légitime de l'entreprise à organiser l'accueil et la sécurité du site.\n\n## Destinataires\nUniquement les personnes disposant d'un compte dans l'application (accueil, services généraux, service informatique). Les données ne sont ni vendues ni transmises à des tiers à des fins commerciales.\n\n## Durée de conservation\nLes données d'une personne partie sont effacées automatiquement 24 mois après son départ (fiche, colis, prêts de badges, journaux).\n\n## Prestataires et transferts\nSupabase (base de données), EmailJS (envoi des e-mails), GitHub (hébergement de la page). Certains de ces prestataires peuvent être situés hors de l'Union européenne : [préciser les garanties, par exemple clauses contractuelles types].\n\n## Sécurité\nAccès réservé aux comptes autorisés, double authentification des comptes d'administration techniques, données fermées à toute personne non connectée, effacement automatique.\n\n## Vos droits\nVous disposez d'un droit d'accès, de rectification, d'effacement, de limitation et d'opposition. Pour les exercer : conformite.france@allianceautomotive.fr. Vous pouvez aussi introduire une réclamation auprès de la CNIL (cnil.fr).\n\nDernière mise à jour : [date]"};
+function legalHtml(t){const el=React.createElement;const out=[];let liste=null;
+  String(t||"").replace(/\r/g,"").split("\n").forEach((l,i)=>{const x=l.trim();
+    if(/^- /.test(x)){(liste=liste||[]).push(el("li",{key:i},x.slice(2)));return;}
+    if(liste){out.push(el("ul",{key:"u"+i,style:{margin:"0 0 10px",paddingLeft:20}},liste));liste=null;}
+    if(!x)return;
+    if(/^## /.test(x))out.push(el("h3",{key:i,style:{fontSize:15,fontWeight:800,margin:"18px 0 6px",color:"var(--text,#0F172A)"}},x.slice(3)));
+    else out.push(el("p",{key:i,style:{margin:"0 0 6px",lineHeight:1.55}},x));});
+  if(liste)out.push(el("ul",{key:"fin",style:{margin:"0 0 10px",paddingLeft:20}},liste));
+  return out;}
+function PageLegale(){
+  const el=React.createElement;
+  const[ouvert,setOuvert]=React.useState(null),[textes,setTextes]=React.useState({}),[edit,setEdit]=React.useState(false),[brouillon,setBrouillon]=React.useState(""),[msg,setMsg]=React.useState("");
+  React.useEffect(()=>{const f=e=>{setOuvert((e&&e.detail)||"mentions");setEdit(false);setMsg("");};window.addEventListener("ouvrir-legal",f);
+    const esc=e=>{if(e.key==="Escape")setOuvert(null);};window.addEventListener("keydown",esc);
+    return()=>{window.removeEventListener("ouvrir-legal",f);window.removeEventListener("keydown",esc);};},[]);
+  React.useEffect(()=>{if(!ouvert||!sb)return;sb.from("lp24_textes_publics").select("cle,texte,maj").then(({data})=>{const o={};(data||[]).forEach(r=>{if(r&&r.texte&&r.texte.trim())o[r.cle]=r;});setTextes(o);}).catch(()=>{});},[ouvert]);
+  if(!ouvert)return null;
+  const admin=!!window._estAdmin;
+  const texte=(textes[ouvert]&&textes[ouvert].texte)||LEGAL_DEFAUT[ouvert];
+  const titre=ouvert==="mentions"?"Mentions légales":"Politique de confidentialité";
+  const sauver=async()=>{setMsg("Enregistrement…");try{const{error}=await sb.from("lp24_textes_publics").upsert({cle:ouvert,texte:brouillon,maj:new Date().toISOString()});if(error)throw error;
+      setTextes(t=>({...t,[ouvert]:{cle:ouvert,texte:brouillon}}));setEdit(false);setMsg("✅ Enregistré");}
+    catch(e){setMsg("⚠️ Non enregistré : "+((e&&e.message)||e));}};
+  const ong=(id,l)=>el("button",{type:"button",onClick:()=>{setOuvert(id);setEdit(false);setMsg("");},style:{border:"none",background:ouvert===id?"#1E3A8A":"transparent",color:ouvert===id?"#fff":"var(--text2,#334155)",borderRadius:999,padding:"7px 14px",fontWeight:700,fontSize:13,cursor:"pointer"}},l);
+  return ReactDOM.createPortal(el("div",{className:"no-print",onClick:e=>{if(e.target===e.currentTarget)setOuvert(null);},style:{position:"fixed",inset:0,zIndex:3500,background:"rgba(15,23,42,.35)",display:"flex",alignItems:"center",justifyContent:"center",padding:16}},
+    el("div",{role:"dialog","aria-label":titre,style:{background:"var(--surface,#fff)",color:"var(--text,#0F172A)",borderRadius:16,width:"min(760px,100%)",maxHeight:"88vh",display:"flex",flexDirection:"column",boxShadow:"0 20px 60px rgba(15,23,42,.25)",overflow:"hidden"}},
+      el("div",{style:{display:"flex",alignItems:"center",gap:8,padding:"14px 16px",borderBottom:"1px solid var(--border,#E2E8F0)",flexWrap:"wrap"}},
+        ong("mentions","Mentions légales"),ong("confidentialite","Confidentialité"),
+        el("span",{style:{flex:1}}),
+        admin&&!edit&&el("button",{type:"button",className:"btn btn-outline",style:{fontSize:12,padding:"5px 10px"},onClick:()=>{setBrouillon(texte);setEdit(true);setMsg("");}},"✏️ Modifier"),
+        el("button",{type:"button","aria-label":"Fermer",onClick:()=>setOuvert(null),style:{background:"none",border:"none",fontSize:22,color:"#94A3B8",cursor:"pointer",padding:4}},"✕")),
+      el("div",{style:{padding:"6px 20px 20px",overflowY:"auto",fontSize:14,color:"var(--text2,#334155)"}},
+        el("h2",{style:{fontSize:20,fontWeight:800,margin:"12px 0 4px",color:"var(--text,#0F172A)"}},titre),
+        edit?el("div",null,
+            el("p",{style:{fontSize:12,color:"var(--text3,#64748B)",margin:"6px 0 8px"}},"« ## » en début de ligne = titre, « - » = liste. Les textes entre [crochets] sont à compléter."),
+            el("textarea",{value:brouillon,onChange:e=>setBrouillon(e.target.value),style:{width:"100%",minHeight:"50vh",boxSizing:"border-box",border:"1px solid var(--border,#E2E8F0)",borderRadius:10,padding:12,font:"13px/1.5 ui-monospace,Menlo,Consolas,monospace",background:"var(--surface,#fff)",color:"var(--text,#0F172A)"}}),
+            el("div",{style:{display:"flex",gap:8,marginTop:10}},el("button",{type:"button",className:"btn btn-primary",onClick:sauver},"💾 Enregistrer"),el("button",{type:"button",className:"btn btn-outline",onClick:()=>{setEdit(false);setMsg("");}},"Annuler")))
+          :el("div",null,legalHtml(texte)),
+        msg&&el("div",{style:{marginTop:10,fontSize:12.5}},msg)))),document.body);
+}
+function LienLegal({style}){const el=React.createElement;const a=(id,l)=>el("button",{type:"button",onClick:e=>{e.preventDefault();e.stopPropagation();window.dispatchEvent(new CustomEvent("ouvrir-legal",{detail:id}));},style:{background:"none",border:"none",padding:0,color:"inherit",textDecoration:"underline",cursor:"pointer",font:"inherit"}},l);
+  return el("div",{className:"lien-legal",style:Object.assign({fontSize:11,color:"var(--text3,#94A3B8)",textAlign:"center"},style||{})},a("mentions","Mentions légales")," · ",a("confidentialite","Confidentialité"));}
+(function(){try{setTimeout(function(){try{var d=document.createElement("div");d.id="legal-racine";document.body.appendChild(d);ReactDOM.createRoot(d).render(React.createElement(PageLegale));}catch(e){}},0);}catch(e){}})();
 function AidePanneau(){
   const el=React.createElement;
   const [page,setPage]=React.useState(null);
@@ -10821,11 +10919,12 @@ useEffect(()=>{
   const isBadge=session&&session.role==="badge";
   const visibleNav=nav.filter(n=>canAccess(n.id));
   window._pageAide=view;
+  window._estAdmin=!!(unlocked&&session&&session.role==="admin");
   useEffect(()=>{const f=()=>setView("aide");window.addEventListener("ouvrir-aide",f);return()=>window.removeEventListener("ouvrir-aide",f);},[]);
   const[menuOuvert,setMenuOuvert]=useState(false);
   useEffect(()=>{window._nbNotifs=canAccess("notifications")?notifs.length:0;},[notifs.length]);
   useEffect(()=>{const f=()=>{if(!isIT)setShowSettings(true);};window.addEventListener("ouvrir-reglages",f);return()=>window.removeEventListener("ouvrir-reglages",f);},[isIT]);
-  useEffect(()=>{window._badgesWd=badges;window._estAdmin=!!(session&&session.role==="admin");},[badges,session]);
+  useEffect(()=>{window._badgesWd=badges;window._estAdmin=!!(unlocked&&session&&session.role==="admin");},[badges,session]);
   useEffect(()=>{if(!wdCache||!badges||badges.length<1||!session||session.role!=="admin")return;
     const m=wdMinimiser(wdCache,badges);if(Object.keys(m).length<Object.keys(wdCache).length){setWdCache(m);
       (async()=>{try{if(sb)await sb.from("lp24_settings").upsert({id:2,data:JSON.stringify(m)});}catch(e){}})();}},[wdCache,badges.length,session&&session.role]);
@@ -10928,6 +11027,7 @@ useEffect(()=>{
     ),
     showMore&&React.createElement(IosSheet,{title:session&&session.label?("Connecté : "+session.label):null,onClose:()=>setShowMore(false),items:[
       ...moreTabs.filter(n=>n.id!=="impression").map(n=>({label:n.label,icon:n.id,onClick:()=>setView(n.id)})),
+      {label:"Mentions légales et confidentialité",onClick:()=>window.dispatchEvent(new CustomEvent("ouvrir-legal",{detail:"mentions"}))},
       session&&{label:"Déconnexion",icon:"logout",danger:true,onClick:logout}
     ]}),
     React.createElement("main",{style:{width:"100%",padding:"16px 20px"}},view==="accueil"&&React.createElement(CarteInstall,{showToast}),view==="accueil"&&React.createElement(CarteNotifs,{showToast}),view==="accueil"&&!isIT&&React.createElement(CompteurMails,{alerteSeule:true}),renderView())
