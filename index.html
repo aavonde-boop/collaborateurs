@@ -11023,5 +11023,54 @@ catch(e){document.getElementById("root").innerHTML='<div style="padding:40px;fon
     window.addEventListener('load',function(){navigator.serviceWorker.register('sw.js').catch(function(){});});
   }
 </script>
+<style id="lp-vivant">
+@keyframes lp-trace{to{stroke-dashoffset:0}}
+@keyframes lp-fond{from{opacity:0}to{opacity:.12}}
+@keyframes lp-entree{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
+.courbe path:last-child{stroke-dasharray:420;stroke-dashoffset:420;animation:lp-trace 1.2s .15s cubic-bezier(.3,.7,.2,1) forwards}
+.courbe path:first-child{opacity:0;animation:lp-fond .7s .9s ease-out forwards}
+.auj-kpi,.kpi-card,.kpi-std,.ga-col,.ml-it{animation:lp-entree .45s cubic-bezier(.2,.7,.2,1) both}
+.auj-kpi:nth-child(2),.kpi-card:nth-child(2),.kpi-std:nth-child(2){animation-delay:.05s}
+.auj-kpi:nth-child(3),.kpi-card:nth-child(3),.kpi-std:nth-child(3){animation-delay:.1s}
+.auj-kpi:nth-child(4),.kpi-card:nth-child(4),.kpi-std:nth-child(4){animation-delay:.15s}
+.auj-kpi:nth-child(5),.kpi-card:nth-child(5),.kpi-std:nth-child(5){animation-delay:.2s}
+.auj-kpi:nth-child(6),.kpi-card:nth-child(6),.kpi-std:nth-child(6){animation-delay:.25s}
+.ml-it{animation-duration:.3s}
+.auj-kpi,.kpi-card{transition:transform .18s ease,box-shadow .18s ease}
+.auj-kpi:hover,.kpi-card:hover{transform:translateY(-2px);box-shadow:0 8px 22px rgba(15,23,42,.08)}
+@media (prefers-reduced-motion:reduce){.courbe path,.auj-kpi,.kpi-card,.kpi-std,.ga-col,.ml-it{animation:none!important;stroke-dashoffset:0!important}.courbe path:first-child{opacity:.12!important}.auj-kpi:hover,.kpi-card:hover{transform:none}}
+</style>
+<script>
+// Chiffres qui défilent jusqu'à leur valeur (compteurs, cartes) — à l'apparition et quand ils changent
+(function(){
+  try{if(window.matchMedia&&matchMedia("(prefers-reduced-motion: reduce)").matches)return;}catch(e){}
+  var vus=new WeakMap(),enCours=new WeakSet(),moi=false;
+  function anime(el,de,a){
+    var t=el.firstChild;if(!t||t.nodeType!==3)return;
+    enCours.add(el);var d0=performance.now(),duree=Math.min(900,350+a*15);
+    function pas(now){var k=Math.min(1,(now-d0)/duree),v=Math.round(de+(a-de)*(1-Math.pow(1-k,3)));
+      if(t.parentNode!==el){enCours.delete(el);return;}
+      moi=true;t.nodeValue=String(k<1?v:a);moi=false;
+      if(k<1)requestAnimationFrame(pas);else enCours.delete(el);}
+    requestAnimationFrame(pas);
+  }
+  function examine(racine){
+    var liste=racine.querySelectorAll?racine.querySelectorAll(".auj-v,.kpi-card div,.kpi-std div,.spark-val .n,.kpi-row span"):[];
+    for(var i=0;i<liste.length;i++){var el=liste[i];
+      if(el.children.length||enCours.has(el))continue;
+      var txt=(el.textContent||"").trim();if(!/^\d{1,4}$/.test(txt))continue;
+      var n=parseInt(txt,10),avant=vus.get(el);
+      if(parseFloat(getComputedStyle(el).fontSize)<20){vus.set(el,n);continue;}
+      vus.set(el,n);
+      if(avant===undefined){if(n>0)anime(el,0,n);}else if(avant!==n)anime(el,avant,n);
+    }
+  }
+  var attente=null;
+  function lancer(){if(attente)return;attente=requestAnimationFrame(function(){attente=null;examine(document.body);});}
+  function demarrer(){var r=document.getElementById("root")||document.body;
+    new MutationObserver(function(){if(!moi)lancer();}).observe(r,{childList:true,subtree:true,characterData:true});lancer();}
+  if(document.readyState==="loading")document.addEventListener("DOMContentLoaded",demarrer);else demarrer();
+})();
+</script>
 </body>
 </html>
