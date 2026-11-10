@@ -2,6 +2,9 @@
 <html lang="fr">
 <head>
   <meta charset="UTF-8"/>
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' 'wasm-unsafe-eval' blob: https://unpkg.com https://cdn.jsdelivr.net; worker-src 'self' blob: https://cdn.jsdelivr.net https://unpkg.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' data: https://fonts.gstatic.com; img-src 'self' data: blob: https://jymobewqenhcjtzniytb.supabase.co https://aavonde-boop.github.io; connect-src 'self' data: blob: https://jymobewqenhcjtzniytb.supabase.co wss://jymobewqenhcjtzniytb.supabase.co https://api.emailjs.com https://cdn.jsdelivr.net https://unpkg.com https://tessdata.projectnaptha.com; media-src 'self' blob: data:; object-src 'none'; base-uri 'self'; form-action 'self'">
+<meta name="referrer" content="strict-origin-when-cross-origin">
+<script>if(window.top!==window.self){try{window.top.location.replace(window.location.href);}catch(e){document.documentElement.style.display="none";}}</script>
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover"/>
   <title>Gestion Collaborateurs</title>
   <link rel="icon" type="image/png" href="icons/favicon-64.png">
@@ -1140,7 +1143,6 @@ function sessionFromSettings(user,st){
   const entry=users.find(u=>String(u.email||"").toLowerCase()===em);
   if(!entry){
     // Tant qu'aucun administrateur n'est défini, le premier compte connecté l'est (pour pouvoir configurer).
-    if(!users.some(u=>u.role==="admin")&&em==="a.avonde@allianceautomotive.fr")return{role:"admin",email:user.email,label:"Arnaud AVONDE",perms:DEFAULT_PERMS,bootstrap:true};
     return null;
   }
   const role=entry.role||"user";
@@ -5114,7 +5116,7 @@ function App(){
   const[histo,setHisto]=useState([]);
   const[fssData,setFssData]=useState([]);
   const[newMats,setNewMats]=useState(new Set());
-  const[settings,setSettings]=useState({fssEmail:"",restaurantEmail:"placedeseine@11h59.fr",ccEmails:"a.avonde@allianceautomotive.fr,ju.poitier@allianceautomotive.fr",itEmail:"",users:[],bodyArriveeResto:"Bonjour,\n\nNous vous informons de l'arrivée d'un nouveau collaborateur :\n\nNom : {nom}\nPrénom : {prenom}\nMatricule : {matricule}\nEmail : {email}\nDate d'entrée : {date_entree}\nManager : {manager}\n\nMerci de bien vouloir l'ajouter à vos systèmes.\n\nCordialement",bodyArriveeIT:"Bonjour,\n\nNous vous informons de l'arrivée d'un nouveau collaborateur :\n\nNom : {nom}\nPrénom : {prenom}\nMatricule : {matricule}\nEmail : {email}\nDate d'entrée : {date_entree}\nManager : {manager} ({mail_manager})\n\nMerci de créer les accès nécessaires.\n\nCordialement",bodyDepartResto:"Bonjour,\n\nNous vous informons du départ du collaborateur suivant :\n\nNom : {nom}\nPrénom : {prenom}\nMatricule : {matricule}\nN° badge : {serie}\nDate de départ : {date_sortie_prevue}\nManager : {manager}\n\nMerci de bien vouloir le retirer de vos systèmes.\n\nCordialement,\nArnaud AVONDE\n07.85.42.37.24\nResponsable de site",bodyDepartIT:"Bonjour,\n\nNous vous informons du départ du collaborateur suivant :\n\nNom : {nom}\nPrénom : {prenom}\nMatricule : {matricule}\nN° badge : {serie}\nDate de sortie : {date_sortie_prevue}\nManager : {manager} ({mail_manager})\n\nMerci de supprimer les accès.\n\nCordialement"});
+  const[settings,setSettings]=useState({fssEmail:"",restaurantEmail:"",ccEmails:"",itEmail:"",users:[],bodyArriveeResto:"Bonjour,\n\nNous vous informons de l'arrivée d'un nouveau collaborateur :\n\nNom : {nom}\nPrénom : {prenom}\nMatricule : {matricule}\nEmail : {email}\nDate d'entrée : {date_entree}\nManager : {manager}\n\nMerci de bien vouloir l'ajouter à vos systèmes.\n\nCordialement",bodyArriveeIT:"Bonjour,\n\nNous vous informons de l'arrivée d'un nouveau collaborateur :\n\nNom : {nom}\nPrénom : {prenom}\nMatricule : {matricule}\nEmail : {email}\nDate d'entrée : {date_entree}\nManager : {manager} ({mail_manager})\n\nMerci de créer les accès nécessaires.\n\nCordialement",bodyDepartResto:"Bonjour,\n\nNous vous informons du départ du collaborateur suivant :\n\nNom : {nom}\nPrénom : {prenom}\nMatricule : {matricule}\nN° badge : {serie}\nDate de départ : {date_sortie_prevue}\nManager : {manager}\n\nMerci de bien vouloir le retirer de vos systèmes.\n\nCordialement,\nArnaud AVONDE\n07.85.42.37.24\nResponsable de site",bodyDepartIT:"Bonjour,\n\nNous vous informons du départ du collaborateur suivant :\n\nNom : {nom}\nPrénom : {prenom}\nMatricule : {matricule}\nN° badge : {serie}\nDate de sortie : {date_sortie_prevue}\nManager : {manager} ({mail_manager})\n\nMerci de supprimer les accès.\n\nCordialement"});
   const[showSettings,setShowSettings]=useState(false);
   const[settingsInitialTab,setSettingsInitialTab]=useState("emails");
   const openSettingsTab=useCallback(t=>{setSettingsInitialTab(t);setShowSettings(true);},[]);
@@ -6200,7 +6202,6 @@ function sessionFromSettings(user,st){
   const entry=users.find(u=>String(u.email||"").toLowerCase()===em);
   if(!entry){
     // Tant qu'aucun administrateur n'est défini, le premier compte connecté l'est (pour pouvoir configurer).
-    if(!users.some(u=>u.role==="admin")&&em==="a.avonde@allianceautomotive.fr")return{role:"admin",email:user.email,label:"Arnaud AVONDE",perms:DEFAULT_PERMS,bootstrap:true};
     return null;
   }
   const role=entry.role||"user";
@@ -10354,7 +10355,7 @@ function App(){
   const[histo,setHisto]=useState([]);
   const[fssData,setFssData]=useState([]);
   const[newMats,setNewMats]=useState(new Set());
-  const[settings,setSettings]=useState({fssEmail:"",restaurantEmail:"placedeseine@11h59.fr",ccEmails:"a.avonde@allianceautomotive.fr,ju.poitier@allianceautomotive.fr",itEmail:"",users:[],bodyArriveeResto:"Bonjour,\n\nNous vous informons de l'arrivée d'un nouveau collaborateur :\n\nNom : {nom}\nPrénom : {prenom}\nMatricule : {matricule}\nEmail : {email}\nDate d'entrée : {date_entree}\nManager : {manager}\n\nMerci de bien vouloir l'ajouter à vos systèmes.\n\nCordialement",bodyArriveeIT:"Bonjour,\n\nNous vous informons de l'arrivée d'un nouveau collaborateur :\n\nNom : {nom}\nPrénom : {prenom}\nMatricule : {matricule}\nEmail : {email}\nDate d'entrée : {date_entree}\nManager : {manager} ({mail_manager})\n\nMerci de créer les accès nécessaires.\n\nCordialement",bodyDepartResto:"Bonjour,\n\nNous vous informons du départ du collaborateur suivant :\n\nNom : {nom}\nPrénom : {prenom}\nMatricule : {matricule}\nN° badge : {serie}\nDate de départ : {date_sortie_prevue}\nManager : {manager}\n\nMerci de bien vouloir le retirer de vos systèmes.\n\nCordialement,\nArnaud AVONDE\n07.85.42.37.24\nResponsable de site",bodyDepartIT:"Bonjour,\n\nNous vous informons du départ du collaborateur suivant :\n\nNom : {nom}\nPrénom : {prenom}\nMatricule : {matricule}\nN° badge : {serie}\nDate de sortie : {date_sortie_prevue}\nManager : {manager} ({mail_manager})\n\nMerci de supprimer les accès.\n\nCordialement"});
+  const[settings,setSettings]=useState({fssEmail:"",restaurantEmail:"",ccEmails:"",itEmail:"",users:[],bodyArriveeResto:"Bonjour,\n\nNous vous informons de l'arrivée d'un nouveau collaborateur :\n\nNom : {nom}\nPrénom : {prenom}\nMatricule : {matricule}\nEmail : {email}\nDate d'entrée : {date_entree}\nManager : {manager}\n\nMerci de bien vouloir l'ajouter à vos systèmes.\n\nCordialement",bodyArriveeIT:"Bonjour,\n\nNous vous informons de l'arrivée d'un nouveau collaborateur :\n\nNom : {nom}\nPrénom : {prenom}\nMatricule : {matricule}\nEmail : {email}\nDate d'entrée : {date_entree}\nManager : {manager} ({mail_manager})\n\nMerci de créer les accès nécessaires.\n\nCordialement",bodyDepartResto:"Bonjour,\n\nNous vous informons du départ du collaborateur suivant :\n\nNom : {nom}\nPrénom : {prenom}\nMatricule : {matricule}\nN° badge : {serie}\nDate de départ : {date_sortie_prevue}\nManager : {manager}\n\nMerci de bien vouloir le retirer de vos systèmes.\n\nCordialement,\nArnaud AVONDE\n07.85.42.37.24\nResponsable de site",bodyDepartIT:"Bonjour,\n\nNous vous informons du départ du collaborateur suivant :\n\nNom : {nom}\nPrénom : {prenom}\nMatricule : {matricule}\nN° badge : {serie}\nDate de sortie : {date_sortie_prevue}\nManager : {manager} ({mail_manager})\n\nMerci de supprimer les accès.\n\nCordialement"});
   const[showSettings,setShowSettings]=useState(false);
   const[settingsInitialTab,setSettingsInitialTab]=useState("emails");
   const openSettingsTab=useCallback(t=>{setSettingsInitialTab(t);setShowSettings(true);},[]);
