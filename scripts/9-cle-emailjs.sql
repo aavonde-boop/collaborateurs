@@ -1,18 +1,26 @@
 -- ════════════════════════════════════════════════════════════════════
---  NOUVELLE CLÉ PUBLIQUE EMAILJS — Gestion Collaborateurs
---  À lancer APRÈS avoir régénéré la clé publique dans EmailJS.
---  Remplace COLLE_ICI_LA_NOUVELLE_CLE (ligne 8) par la nouvelle clé publique,
---  en gardant les guillemets simples, puis « Run ».
+--  NOUVELLES CLÉS EMAILJS — Gestion Collaborateurs
+--  1. Dans EmailJS (Account → General → API keys), clique « Refresh Keys ».
+--  2. Remplace ci-dessous COLLE_LA_PUBLIC_KEY et COLLE_LA_PRIVATE_KEY par les
+--     2 nouvelles clés (en gardant les guillemets simples), puis « Run ».
+--  La clé privée ne va QUE dans Supabase : ne l'envoie à personne.
 -- ════════════════════════════════════════════════════════════════════
 do $$
-declare cle text := 'COLLE_ICI_LA_NOUVELLE_CLE';
+declare
+  publique text := 'COLLE_LA_PUBLIC_KEY';
+  privee   text := 'COLLE_LA_PRIVATE_KEY';
 begin
-  if cle like 'COLLE%' or length(trim(cle)) < 8 then
-    raise exception 'Remplace d''abord COLLE_ICI_LA_NOUVELLE_CLE par la nouvelle clé publique';
+  if publique like 'COLLE%' or privee like 'COLLE%' or length(trim(publique)) < 8 or length(trim(privee)) < 8 then
+    raise exception 'Remplace d''abord COLLE_LA_PUBLIC_KEY et COLLE_LA_PRIVATE_KEY par les nouvelles clés';
   end if;
-  update public.lp24_mail_config set emailjs_public_key = trim(cle) where id = 1;
+  if trim(publique) = 'n04JbAxmU3mf9UuXz' then
+    raise exception 'C''est encore l''ancienne clé publique : clique d''abord « Refresh Keys » dans EmailJS';
+  end if;
+  update public.lp24_mail_config
+     set emailjs_public_key = trim(publique), emailjs_private_key = trim(privee)
+   where id = 1;
 end $$;
 
 select case when emailjs_public_key = 'n04JbAxmU3mf9UuXz' then 'NON : ancienne clé toujours en place'
-            else 'oui : nouvelle clé enregistrée' end as resultat
+            else 'oui : nouvelles clés enregistrées' end as resultat
 from public.lp24_mail_config where id = 1;

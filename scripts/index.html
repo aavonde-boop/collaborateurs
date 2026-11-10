@@ -14,7 +14,7 @@ pre{margin:0;background:var(--code);color:var(--codetx);padding:16px;overflow:au
 .how{margin-top:16px;color:var(--t2);font-size:13.5px}
 </style></head><body><div class="w"><h1>Scripts sécurité — Gestion Collaborateurs</h1>
 <p class="intro">Supabase → SQL Editor : « Copier le script », coller, puis « Run ». Ordre conseillé : 0, puis le script voulu, puis 0 pour vérifier.</p>
-<div class="tabs"><button class="tab on" data-i="0">8 · Mails envoyés par Supabase</button><button class="tab" data-i="1">9 · Nouvelle clé EmailJS</button></div><section class="sc on" id="s0"><div class="hd"><div><h2>8 · Mails envoyés par Supabase</h2><p>À lancer en premier. Le mail Field Support et les mails de test partent de Supabase avec la clé privée. Ne touche à aucune donnée.</p><small>8-mails-serveur.sql · 134 lignes</small></div><button class="cp" data-i="0">Copier le script</button></div><pre><code id="c0">-- ════════════════════════════════════════════════════════════════════
+<div class="tabs"><button class="tab on" data-i="0">8 · Mails envoyés par Supabase</button><button class="tab" data-i="1">9 · Nouvelles clés EmailJS</button></div><section class="sc on" id="s0"><div class="hd"><div><h2>8 · Mails envoyés par Supabase</h2><p>À lancer en premier. Le mail Field Support et les mails de test partent de Supabase avec la clé privée. Ne touche à aucune donnée.</p><small>8-mails-serveur.sql · 134 lignes</small></div><button class="cp" data-i="0">Copier le script</button></div><pre><code id="c0">-- ════════════════════════════════════════════════════════════════════
 --  MAILS ENVOYÉS UNIQUEMENT PAR SUPABASE — Gestion Collaborateurs
 --  À lancer une fois dans Supabase → SQL Editor (projet jymobewqenhcjtzniytb).
 --  Peut être relancé sans risque. Ne touche à aucune donnée.
@@ -147,23 +147,31 @@ select &#x27;Mails de test envoyés par Supabase&#x27;,
 union all
 select &#x27;Clé EmailJS privée configurée&#x27;,
        case when exists (select 1 from public.lp24_mail_config where id = 1 and actif and emailjs_private_key not like &#x27;&lt;&lt;%&#x27;) then &#x27;oui&#x27; else &#x27;NON&#x27; end;
-</code></pre></section><section class="sc" id="s1"><div class="hd"><div><h2>9 · Nouvelle clé EmailJS</h2><p>À lancer après avoir régénéré la clé publique dans EmailJS : remplace COLLE_ICI_LA_NOUVELLE_CLE par la nouvelle clé.</p><small>9-cle-emailjs.sql · 19 lignes</small></div><button class="cp" data-i="1">Copier le script</button></div><pre><code id="c1">-- ════════════════════════════════════════════════════════════════════
---  NOUVELLE CLÉ PUBLIQUE EMAILJS — Gestion Collaborateurs
---  À lancer APRÈS avoir régénéré la clé publique dans EmailJS.
---  Remplace COLLE_ICI_LA_NOUVELLE_CLE (ligne 8) par la nouvelle clé publique,
---  en gardant les guillemets simples, puis « Run ».
+</code></pre></section><section class="sc" id="s1"><div class="hd"><div><h2>9 · Nouvelles clés EmailJS</h2><p>Après « Refresh Keys » dans EmailJS : colle la nouvelle Public Key et la nouvelle Private Key à la place des 2 COLLE_…</p><small>9-cle-emailjs.sql · 27 lignes</small></div><button class="cp" data-i="1">Copier le script</button></div><pre><code id="c1">-- ════════════════════════════════════════════════════════════════════
+--  NOUVELLES CLÉS EMAILJS — Gestion Collaborateurs
+--  1. Dans EmailJS (Account → General → API keys), clique « Refresh Keys ».
+--  2. Remplace ci-dessous COLLE_LA_PUBLIC_KEY et COLLE_LA_PRIVATE_KEY par les
+--     2 nouvelles clés (en gardant les guillemets simples), puis « Run ».
+--  La clé privée ne va QUE dans Supabase : ne l&#x27;envoie à personne.
 -- ════════════════════════════════════════════════════════════════════
 do $$
-declare cle text := &#x27;COLLE_ICI_LA_NOUVELLE_CLE&#x27;;
+declare
+  publique text := &#x27;COLLE_LA_PUBLIC_KEY&#x27;;
+  privee   text := &#x27;COLLE_LA_PRIVATE_KEY&#x27;;
 begin
-  if cle like &#x27;COLLE%&#x27; or length(trim(cle)) &lt; 8 then
-    raise exception &#x27;Remplace d&#x27;&#x27;abord COLLE_ICI_LA_NOUVELLE_CLE par la nouvelle clé publique&#x27;;
+  if publique like &#x27;COLLE%&#x27; or privee like &#x27;COLLE%&#x27; or length(trim(publique)) &lt; 8 or length(trim(privee)) &lt; 8 then
+    raise exception &#x27;Remplace d&#x27;&#x27;abord COLLE_LA_PUBLIC_KEY et COLLE_LA_PRIVATE_KEY par les nouvelles clés&#x27;;
   end if;
-  update public.lp24_mail_config set emailjs_public_key = trim(cle) where id = 1;
+  if trim(publique) = &#x27;n04JbAxmU3mf9UuXz&#x27; then
+    raise exception &#x27;C&#x27;&#x27;est encore l&#x27;&#x27;ancienne clé publique : clique d&#x27;&#x27;abord « Refresh Keys » dans EmailJS&#x27;;
+  end if;
+  update public.lp24_mail_config
+     set emailjs_public_key = trim(publique), emailjs_private_key = trim(privee)
+   where id = 1;
 end $$;
 
 select case when emailjs_public_key = &#x27;n04JbAxmU3mf9UuXz&#x27; then &#x27;NON : ancienne clé toujours en place&#x27;
-            else &#x27;oui : nouvelle clé enregistrée&#x27; end as resultat
+            else &#x27;oui : nouvelles clés enregistrées&#x27; end as resultat
 from public.lp24_mail_config where id = 1;
 </code></pre></section>
 <p class="how">Lien Supabase : <a href="https://supabase.com/dashboard/project/jymobewqenhcjtzniytb/sql/new" style="color:var(--ac)">éditeur SQL du projet</a></p></div>
