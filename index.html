@@ -972,7 +972,15 @@ function EditeurTextesMails({settings,setSettings,showToast}){
       el("div",{style:{fontWeight:700,fontSize:13}},lib||""),
       modifie(cle)&&el("button",{type:"button",className:"btn",style:{fontSize:11,padding:"3px 8px"},
         onClick:()=>{setSettings(x=>{const n={...x};delete n[cle];return n;});showToast("Texte d'origine rétabli");}},"Rétablir l'origine")),
-    el("textarea",{value:texteMail(settings,cle),rows,className:"inp",onChange:e=>{const v=e.target.value;setSettings(x=>({...x,[cle]:v}));},
+    rows>1&&el("div",{style:{display:"flex",alignItems:"center",gap:8,margin:"2px 0 6px"}},
+      el("button",{type:"button",title:"Mettre en gras le texte sélectionné",onMouseDown:e=>e.preventDefault(),onClick:()=>{
+          const t=document.getElementById("tx-"+cle);if(!t)return;const v=t.value,a=t.selectionStart,b=t.selectionEnd;
+          if(a===b){showToast("Sélectionne d'abord le texte à mettre en gras");return;}
+          const sel=v.slice(a,b),dejà=/^\*\*[\s\S]*\*\*$/.test(sel);const nv=v.slice(0,a)+(dejà?sel.slice(2,-2):"**"+sel.trim()+"**"+(/\s$/.test(sel)?" ":""))+v.slice(b);
+          setSettings(x=>({...x,[cle]:nv}));setTimeout(()=>{try{t.focus();}catch(e){}},0);},
+        style:{border:"1px solid var(--border)",background:"var(--surface)",borderRadius:6,width:30,height:26,fontWeight:900,cursor:"pointer",fontSize:14,color:"var(--text)"}},"B"),
+      el("span",{style:{fontSize:11,color:"var(--text3)"}},"Sélectionne un texte puis B pour le mettre en gras (il apparaît entre ** dans l'éditeur).")),
+    el("textarea",{id:"tx-"+cle,value:texteMail(settings,cle),rows,className:"inp",onChange:e=>{const v=e.target.value;setSettings(x=>({...x,[cle]:v}));},
       style:{resize:"vertical",fontSize:13,lineHeight:1.45,fontFamily:"inherit",whiteSpace:"pre-wrap"}}),
     el("div",{style:{fontSize:11,color:"var(--text3)",marginTop:3}},"Variables : "+vars));
   const carte=m=>{const o=ouvert===m.id,mod=m.champs.some(c=>modifie(c[0]));
@@ -1027,14 +1035,15 @@ var URL_APPLI=(function(){try{if(/github\.io$/.test(location.hostname))return lo
 function mailEsc(t){return String(t==null?"":t).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;");}
 const MAIL_POLICE="font-family:Calibri,Arial,sans-serif;";
 // texte simple (avec retours à la ligne) → HTML lisible dans Outlook
+function mailGras(h){return String(h).replace(/\*\*([^*\n]+?)\*\*/g,"<b>$1</b>");}
 function mailTexteHtml(t){return String(t||"").replace(/\r/g,"").split(/\n[ \t]*\n+/).map(x=>x.trim()).filter(Boolean).map(x=>{
     const l=x.split("\n").map(y=>y.trim()).filter(Boolean);
     if(l.length>=2&&l.every(y=>/^[^:\n]{1,30} : ./.test(y)))return mailDetails(l.map(y=>{const k=y.indexOf(" : ");return [y.slice(0,k),y.slice(k+3)];}));
-    return '<p style="margin:0 0 12px;'+MAIL_POLICE+'font-size:11pt;line-height:1.45;color:#1f2937">'+mailEsc(x).replace(/\n/g,"<br>")+'</p>';}).join("");}
+    return '<p style="margin:0 0 12px;'+MAIL_POLICE+'font-size:11pt;line-height:1.45;color:#1f2937">'+mailGras(mailEsc(x)).replace(/\n/g,"<br>")+'</p>';}).join("");}
 function mailCadre(inner){return '<table role="presentation" cellpadding="0" cellspacing="0" border="0" style="border-collapse:collapse;max-width:620px"><tr><td style="'+MAIL_POLICE+'font-size:11pt;line-height:1.45;color:#1f2937">'+inner+'</td></tr></table>';}
 function mailDetails(rows){return '<table role="presentation" cellpadding="0" cellspacing="0" border="0" style="border-collapse:collapse;margin:2px 0 18px">'
-  +rows.map(([k,v])=>'<tr><td style="padding:7px 16px 7px 12px;border:1px solid #e5e7eb;background:#f5f7fa;'+MAIL_POLICE+'font-size:10.5pt;color:#6b7280;white-space:nowrap">'+mailEsc(k)+'</td>'
-    +'<td style="padding:7px 16px 7px 12px;border:1px solid #e5e7eb;'+MAIL_POLICE+'font-size:11pt;color:#111827;font-weight:bold">'+mailEsc(v||"—")+'</td></tr>').join("")+'</table>';}
+  +rows.map(([k,v])=>'<tr><td style="padding:7px 16px 7px 12px;border:1px solid #e5e7eb;background:#f5f7fa;'+MAIL_POLICE+'font-size:10.5pt;color:#6b7280;white-space:nowrap">'+mailGras(mailEsc(k))+'</td>'
+    +'<td style="padding:7px 16px 7px 12px;border:1px solid #e5e7eb;'+MAIL_POLICE+'font-size:11pt;color:#111827;font-weight:bold">'+mailGras(mailEsc(v||"—"))+'</td></tr>').join("")+'</table>';}
 function blocLienAppli(id){
   const url=URL_APPLI+(id!=null?"?fiche="+encodeURIComponent(id):"");
   return '<table role="presentation" cellpadding="0" cellspacing="0" border="0" style="border-collapse:collapse;margin:0 0 6px"><tr>'
@@ -3858,7 +3867,7 @@ async function envoyerBienvenue(b,settings,showToast,addLog){
     const b1="=_mix_"+Date.now(),b2="=_alt_"+Date.now();
     let eml="To: "+to+NL+"Subject: "+hdr(sujet)+NL+"X-Unsent: 1"+NL+"MIME-Version: 1.0"+NL+"Content-Type: multipart/mixed; boundary=\""+b1+"\""+NL+NL
       +"--"+b1+NL+"Content-Type: multipart/alternative; boundary=\""+b2+"\""+NL+NL
-      +"--"+b2+NL+"Content-Type: text/plain; charset=UTF-8"+NL+"Content-Transfer-Encoding: base64"+NL+NL+lignes(b64(texte.replace(/\n/g,"\r\n")))+NL
+      +"--"+b2+NL+"Content-Type: text/plain; charset=UTF-8"+NL+"Content-Transfer-Encoding: base64"+NL+NL+lignes(b64(texte.replace(/\*\*/g,"").replace(/\n/g,"\r\n")))+NL
       +"--"+b2+NL+"Content-Type: text/html; charset=UTF-8"+NL+"Content-Transfer-Encoding: base64"+NL+NL+lignes(b64(mailCadre(mailTexteHtml(texte))))+NL+"--"+b2+"--"+NL;
     pjs.forEach(x=>{const nm=hdr(x.nom||"piece-jointe");eml+="--"+b1+NL+"Content-Type: "+(x.type||"application/octet-stream")+"; name=\""+nm+"\""+NL+"Content-Transfer-Encoding: base64"+NL
       +"Content-Disposition: attachment; filename=\""+nm+"\""+NL+NL+lignes(x.data)+NL;});
@@ -3869,7 +3878,7 @@ async function envoyerBienvenue(b,settings,showToast,addLog){
     showToast("✉️ Mail prêt : ouvre le fichier téléchargé, il s'ouvre dans Outlook avec les pièces jointes");
     return;
   }
-  window.location.href="mailto:"+encodeURIComponent(to)+"?subject="+encodeURIComponent(sujet)+"&body="+encodeURIComponent(texte.replace(/\n/g,"\r\n"));
+  window.location.href="mailto:"+encodeURIComponent(to)+"?subject="+encodeURIComponent(sujet)+"&body="+encodeURIComponent(texte.replace(/\*\*/g,"").replace(/\n/g,"\r\n"));
   addLog&&addLog("Mail de bienvenue",(vars.prenom+" "+vars.nom).trim()+" ("+to+") — ouvert dans la messagerie");
   showToast(telephone?"✉️ Mail ouvert dans ta messagerie (les pièces jointes s'ajoutent depuis l'ordinateur)":"✉️ Mail ouvert dans ta messagerie : ajoute sa photo puis envoie");
 }
@@ -4117,7 +4126,8 @@ function memePersonne(liste,nom,prenom){
   return (liste||[]).filter(x=>{const xn=n(x.nom),xp=n(x.prenom);return b?((xn===a&&xp===b)||(xn===b&&xp===a)):xn===a;});
 }
 // Mails manuels de l'Accueil : mêmes textes (et même signature) que les mails automatiques
-function texteManuel(settings,cle,b){
+function texteManuel(settings,cle,b){return String(texteManuel0(settings,cle,b)).replace(/\*\*/g,"");}
+function texteManuel0(settings,cle,b){
   const fr=d=>{const m=String(d||"").match(/^(\d{4})-(\d{2})-(\d{2})/);return m?m[3]+"/"+m[2]+"/"+m[1]:"";};
   const cap=x=>String(x||"").toLowerCase().replace(/(^|[\s-])(\S)/g,(m,a,c)=>a+c.toUpperCase());
   const dep=/Depart$/.test(cle);
@@ -6140,7 +6150,15 @@ function EditeurTextesMails({settings,setSettings,showToast}){
       el("div",{style:{fontWeight:700,fontSize:13}},lib||""),
       modifie(cle)&&el("button",{type:"button",className:"btn",style:{fontSize:11,padding:"3px 8px"},
         onClick:()=>{setSettings(x=>{const n={...x};delete n[cle];return n;});showToast("Texte d'origine rétabli");}},"Rétablir l'origine")),
-    el("textarea",{value:texteMail(settings,cle),rows,className:"inp",onChange:e=>{const v=e.target.value;setSettings(x=>({...x,[cle]:v}));},
+    rows>1&&el("div",{style:{display:"flex",alignItems:"center",gap:8,margin:"2px 0 6px"}},
+      el("button",{type:"button",title:"Mettre en gras le texte sélectionné",onMouseDown:e=>e.preventDefault(),onClick:()=>{
+          const t=document.getElementById("tx-"+cle);if(!t)return;const v=t.value,a=t.selectionStart,b=t.selectionEnd;
+          if(a===b){showToast("Sélectionne d'abord le texte à mettre en gras");return;}
+          const sel=v.slice(a,b),dejà=/^\*\*[\s\S]*\*\*$/.test(sel);const nv=v.slice(0,a)+(dejà?sel.slice(2,-2):"**"+sel.trim()+"**"+(/\s$/.test(sel)?" ":""))+v.slice(b);
+          setSettings(x=>({...x,[cle]:nv}));setTimeout(()=>{try{t.focus();}catch(e){}},0);},
+        style:{border:"1px solid var(--border)",background:"var(--surface)",borderRadius:6,width:30,height:26,fontWeight:900,cursor:"pointer",fontSize:14,color:"var(--text)"}},"B"),
+      el("span",{style:{fontSize:11,color:"var(--text3)"}},"Sélectionne un texte puis B pour le mettre en gras (il apparaît entre ** dans l'éditeur).")),
+    el("textarea",{id:"tx-"+cle,value:texteMail(settings,cle),rows,className:"inp",onChange:e=>{const v=e.target.value;setSettings(x=>({...x,[cle]:v}));},
       style:{resize:"vertical",fontSize:13,lineHeight:1.45,fontFamily:"inherit",whiteSpace:"pre-wrap"}}),
     el("div",{style:{fontSize:11,color:"var(--text3)",marginTop:3}},"Variables : "+vars));
   const carte=m=>{const o=ouvert===m.id,mod=m.champs.some(c=>modifie(c[0]));
@@ -6195,14 +6213,15 @@ var URL_APPLI=(function(){try{if(/github\.io$/.test(location.hostname))return lo
 function mailEsc(t){return String(t==null?"":t).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;");}
 const MAIL_POLICE="font-family:Calibri,Arial,sans-serif;";
 // texte simple (avec retours à la ligne) → HTML lisible dans Outlook
+function mailGras(h){return String(h).replace(/\*\*([^*\n]+?)\*\*/g,"<b>$1</b>");}
 function mailTexteHtml(t){return String(t||"").replace(/\r/g,"").split(/\n[ \t]*\n+/).map(x=>x.trim()).filter(Boolean).map(x=>{
     const l=x.split("\n").map(y=>y.trim()).filter(Boolean);
     if(l.length>=2&&l.every(y=>/^[^:\n]{1,30} : ./.test(y)))return mailDetails(l.map(y=>{const k=y.indexOf(" : ");return [y.slice(0,k),y.slice(k+3)];}));
-    return '<p style="margin:0 0 12px;'+MAIL_POLICE+'font-size:11pt;line-height:1.45;color:#1f2937">'+mailEsc(x).replace(/\n/g,"<br>")+'</p>';}).join("");}
+    return '<p style="margin:0 0 12px;'+MAIL_POLICE+'font-size:11pt;line-height:1.45;color:#1f2937">'+mailGras(mailEsc(x)).replace(/\n/g,"<br>")+'</p>';}).join("");}
 function mailCadre(inner){return '<table role="presentation" cellpadding="0" cellspacing="0" border="0" style="border-collapse:collapse;max-width:620px"><tr><td style="'+MAIL_POLICE+'font-size:11pt;line-height:1.45;color:#1f2937">'+inner+'</td></tr></table>';}
 function mailDetails(rows){return '<table role="presentation" cellpadding="0" cellspacing="0" border="0" style="border-collapse:collapse;margin:2px 0 18px">'
-  +rows.map(([k,v])=>'<tr><td style="padding:7px 16px 7px 12px;border:1px solid #e5e7eb;background:#f5f7fa;'+MAIL_POLICE+'font-size:10.5pt;color:#6b7280;white-space:nowrap">'+mailEsc(k)+'</td>'
-    +'<td style="padding:7px 16px 7px 12px;border:1px solid #e5e7eb;'+MAIL_POLICE+'font-size:11pt;color:#111827;font-weight:bold">'+mailEsc(v||"—")+'</td></tr>').join("")+'</table>';}
+  +rows.map(([k,v])=>'<tr><td style="padding:7px 16px 7px 12px;border:1px solid #e5e7eb;background:#f5f7fa;'+MAIL_POLICE+'font-size:10.5pt;color:#6b7280;white-space:nowrap">'+mailGras(mailEsc(k))+'</td>'
+    +'<td style="padding:7px 16px 7px 12px;border:1px solid #e5e7eb;'+MAIL_POLICE+'font-size:11pt;color:#111827;font-weight:bold">'+mailGras(mailEsc(v||"—"))+'</td></tr>').join("")+'</table>';}
 function blocLienAppli(id){
   const url=URL_APPLI+(id!=null?"?fiche="+encodeURIComponent(id):"");
   return '<table role="presentation" cellpadding="0" cellspacing="0" border="0" style="border-collapse:collapse;margin:0 0 6px"><tr>'
@@ -9156,7 +9175,7 @@ async function envoyerBienvenue(b,settings,showToast,addLog){
     const b1="=_mix_"+Date.now(),b2="=_alt_"+Date.now();
     let eml="To: "+to+NL+"Subject: "+hdr(sujet)+NL+"X-Unsent: 1"+NL+"MIME-Version: 1.0"+NL+"Content-Type: multipart/mixed; boundary=\""+b1+"\""+NL+NL
       +"--"+b1+NL+"Content-Type: multipart/alternative; boundary=\""+b2+"\""+NL+NL
-      +"--"+b2+NL+"Content-Type: text/plain; charset=UTF-8"+NL+"Content-Transfer-Encoding: base64"+NL+NL+lignes(b64(texte.replace(/\n/g,"\r\n")))+NL
+      +"--"+b2+NL+"Content-Type: text/plain; charset=UTF-8"+NL+"Content-Transfer-Encoding: base64"+NL+NL+lignes(b64(texte.replace(/\*\*/g,"").replace(/\n/g,"\r\n")))+NL
       +"--"+b2+NL+"Content-Type: text/html; charset=UTF-8"+NL+"Content-Transfer-Encoding: base64"+NL+NL+lignes(b64(mailCadre(mailTexteHtml(texte))))+NL+"--"+b2+"--"+NL;
     pjs.forEach(x=>{const nm=hdr(x.nom||"piece-jointe");eml+="--"+b1+NL+"Content-Type: "+(x.type||"application/octet-stream")+"; name=\""+nm+"\""+NL+"Content-Transfer-Encoding: base64"+NL
       +"Content-Disposition: attachment; filename=\""+nm+"\""+NL+NL+lignes(x.data)+NL;});
@@ -9167,7 +9186,7 @@ async function envoyerBienvenue(b,settings,showToast,addLog){
     showToast("✉️ Mail prêt : ouvre le fichier téléchargé, il s'ouvre dans Outlook avec les pièces jointes");
     return;
   }
-  window.location.href="mailto:"+encodeURIComponent(to)+"?subject="+encodeURIComponent(sujet)+"&body="+encodeURIComponent(texte.replace(/\n/g,"\r\n"));
+  window.location.href="mailto:"+encodeURIComponent(to)+"?subject="+encodeURIComponent(sujet)+"&body="+encodeURIComponent(texte.replace(/\*\*/g,"").replace(/\n/g,"\r\n"));
   addLog&&addLog("Mail de bienvenue",(vars.prenom+" "+vars.nom).trim()+" ("+to+") — ouvert dans la messagerie");
   showToast(telephone?"✉️ Mail ouvert dans ta messagerie (les pièces jointes s'ajoutent depuis l'ordinateur)":"✉️ Mail ouvert dans ta messagerie : ajoute sa photo puis envoie");
 }
@@ -9415,7 +9434,8 @@ function memePersonne(liste,nom,prenom){
   return (liste||[]).filter(x=>{const xn=n(x.nom),xp=n(x.prenom);return b?((xn===a&&xp===b)||(xn===b&&xp===a)):xn===a;});
 }
 // Mails manuels de l'Accueil : mêmes textes (et même signature) que les mails automatiques
-function texteManuel(settings,cle,b){
+function texteManuel(settings,cle,b){return String(texteManuel0(settings,cle,b)).replace(/\*\*/g,"");}
+function texteManuel0(settings,cle,b){
   const fr=d=>{const m=String(d||"").match(/^(\d{4})-(\d{2})-(\d{2})/);return m?m[3]+"/"+m[2]+"/"+m[1]:"";};
   const cap=x=>String(x||"").toLowerCase().replace(/(^|[\s-])(\S)/g,(m,a,c)=>a+c.toUpperCase());
   const dep=/Depart$/.test(cle);
