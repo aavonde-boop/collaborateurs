@@ -5254,7 +5254,7 @@ function App(){
       setAuthError("Impossible de lire les droits du compte (réseau ?). Réessaie dans un instant.");
       return;
     }
-    settingsReadyRef.current=true;
+    settingsReadyRef.current=true;window._reglagesBase=st;
     const sess=sessionFromSettings(user,st);
     if(!sess){
       await sb.auth.signOut().catch(()=>{});
@@ -5463,14 +5463,45 @@ function App(){
   },[unlocked]);
 
   // ── Auto-save settings (users, emails) dans Supabase ──
+  // Enregistre seulement ce qui a changé sur CET appareil, fusionné avec la version en base :
+  // un autre appareil resté ouvert (téléphone, autre PC) ne peut plus écraser les textes modifiés ailleurs.
   const settingsTimer=useRef(null);
+  const settingsLatest=useRef(settings);settingsLatest.current=settings;
+  const lireReglagesBase=async()=>{const r=await sb.from("lp24_settings").select("*").eq("id",1).single();
+    if(r.error&&r.error.code!=="PGRST116")throw r.error;const d=r.data&&r.data.data;return d?(typeof d==="string"?JSON.parse(d):d):{};};
+  const memeValeur=(a,b)=>JSON.stringify(a===undefined?null:a)===JSON.stringify(b===undefined?null:b);
+  const clesModifiees=cur=>{const base=window._reglagesBase||{};return [...new Set([...Object.keys(cur||{}),...Object.keys(base)])].filter(k=>!memeValeur(cur[k],base[k]));};
   useEffect(()=>{
     if(!unlocked||!sb||!settingsReadyRef.current)return;
     if(settingsTimer.current)clearTimeout(settingsTimer.current);
     settingsTimer.current=setTimeout(()=>{
-      (async()=>{try{await sb.from("lp24_settings").upsert({id:1,data:JSON.stringify({...settings,users:(settings.users||[])})});}catch(e){}})();
+      (async()=>{
+        const cur=settingsLatest.current,cles=clesModifiees(cur);if(!cles.length)return;
+        try{
+          const serveur=await lireReglagesBase(),fusion={...serveur};
+          cles.forEach(k=>{if(cur[k]===undefined)delete fusion[k];else fusion[k]=cur[k];});
+          fusion.users=fusion.users||[];
+          const{error}=await sb.from("lp24_settings").upsert({id:1,data:JSON.stringify(fusion)});
+          if(error)throw error;
+          window._reglagesBase=fusion;
+          // On reprend aussi ce que les autres appareils ont changé, sans toucher à ce qui est en cours de saisie ici
+          setSettings(now=>{const n={...now};Object.keys(serveur).forEach(k=>{if(!cles.includes(k)&&memeValeur(now[k],cur[k]))n[k]=serveur[k];});return n;});
+        }catch(e){console.error("enregistrement réglages",e);showToast("⚠️ Réglages non enregistrés — "+messageErreurBase(e),"err");}
+      })();
     },1500);
   },[settings,unlocked]);
+  // Au retour sur l'appli (et toutes les 2 min) : reprendre les réglages changés depuis un autre appareil
+  useEffect(()=>{
+    if(!unlocked||!sb)return;
+    const maj=async()=>{if(document.visibilityState==="hidden"||!settingsReadyRef.current)return;
+      try{const serveur=await lireReglagesBase();const local=settingsLatest.current,base=window._reglagesBase||{};
+        const enCours=clesModifiees(local);
+        setSettings(now=>{const n={...now};Object.keys(serveur).forEach(k=>{if(!enCours.includes(k)&&!memeValeur(now[k],serveur[k]))n[k]=serveur[k];});return n;});
+        const nb={...base};Object.keys(serveur).forEach(k=>{if(!enCours.includes(k))nb[k]=serveur[k];});window._reglagesBase=nb;
+      }catch(e){}};
+    document.addEventListener("visibilitychange",maj);window.addEventListener("focus",maj);const t=setInterval(maj,120000);
+    return()=>{document.removeEventListener("visibilitychange",maj);window.removeEventListener("focus",maj);clearInterval(t);};
+  },[unlocked]);
 
   const showToast=(msg,type="ok")=>{if(toastTimer.current)clearTimeout(toastTimer.current);setToast({msg,type});toastTimer.current=setTimeout(()=>setToast(null),3500);};
   window.__sbErr=(label,e)=>showToast("⚠️ Pas sauvegardé ("+label+") — "+messageErreurBase(e),"err");
@@ -5523,7 +5554,7 @@ useEffect(()=>{
           const {data:sData}=await sb.from("lp24_settings").select("*").eq("id",1).single();
           if(sData&&sData.data){
             const parsed=typeof sData.data==="string"?JSON.parse(sData.data):sData.data;
-            setSettings(prev=>({...prev,...parsed}));
+            window._reglagesBase=parsed;setSettings(prev=>({...prev,...parsed}));
           }
         }catch(se){console.log("Settings non trouvés (normal au 1er démarrage)",se);}
         
@@ -10611,7 +10642,7 @@ function App(){
       setAuthError("Impossible de lire les droits du compte (réseau ?). Réessaie dans un instant.");
       return;
     }
-    settingsReadyRef.current=true;
+    settingsReadyRef.current=true;window._reglagesBase=st;
     const sess=sessionFromSettings(user,st);
     if(!sess){
       await sb.auth.signOut().catch(()=>{});
@@ -10820,14 +10851,45 @@ function App(){
   },[unlocked]);
 
   // ── Auto-save settings (users, emails) dans Supabase ──
+  // Enregistre seulement ce qui a changé sur CET appareil, fusionné avec la version en base :
+  // un autre appareil resté ouvert (téléphone, autre PC) ne peut plus écraser les textes modifiés ailleurs.
   const settingsTimer=useRef(null);
+  const settingsLatest=useRef(settings);settingsLatest.current=settings;
+  const lireReglagesBase=async()=>{const r=await sb.from("lp24_settings").select("*").eq("id",1).single();
+    if(r.error&&r.error.code!=="PGRST116")throw r.error;const d=r.data&&r.data.data;return d?(typeof d==="string"?JSON.parse(d):d):{};};
+  const memeValeur=(a,b)=>JSON.stringify(a===undefined?null:a)===JSON.stringify(b===undefined?null:b);
+  const clesModifiees=cur=>{const base=window._reglagesBase||{};return [...new Set([...Object.keys(cur||{}),...Object.keys(base)])].filter(k=>!memeValeur(cur[k],base[k]));};
   useEffect(()=>{
     if(!unlocked||!sb||!settingsReadyRef.current)return;
     if(settingsTimer.current)clearTimeout(settingsTimer.current);
     settingsTimer.current=setTimeout(()=>{
-      (async()=>{try{await sb.from("lp24_settings").upsert({id:1,data:JSON.stringify({...settings,users:(settings.users||[])})});}catch(e){}})();
+      (async()=>{
+        const cur=settingsLatest.current,cles=clesModifiees(cur);if(!cles.length)return;
+        try{
+          const serveur=await lireReglagesBase(),fusion={...serveur};
+          cles.forEach(k=>{if(cur[k]===undefined)delete fusion[k];else fusion[k]=cur[k];});
+          fusion.users=fusion.users||[];
+          const{error}=await sb.from("lp24_settings").upsert({id:1,data:JSON.stringify(fusion)});
+          if(error)throw error;
+          window._reglagesBase=fusion;
+          // On reprend aussi ce que les autres appareils ont changé, sans toucher à ce qui est en cours de saisie ici
+          setSettings(now=>{const n={...now};Object.keys(serveur).forEach(k=>{if(!cles.includes(k)&&memeValeur(now[k],cur[k]))n[k]=serveur[k];});return n;});
+        }catch(e){console.error("enregistrement réglages",e);showToast("⚠️ Réglages non enregistrés — "+messageErreurBase(e),"err");}
+      })();
     },1500);
   },[settings,unlocked]);
+  // Au retour sur l'appli (et toutes les 2 min) : reprendre les réglages changés depuis un autre appareil
+  useEffect(()=>{
+    if(!unlocked||!sb)return;
+    const maj=async()=>{if(document.visibilityState==="hidden"||!settingsReadyRef.current)return;
+      try{const serveur=await lireReglagesBase();const local=settingsLatest.current,base=window._reglagesBase||{};
+        const enCours=clesModifiees(local);
+        setSettings(now=>{const n={...now};Object.keys(serveur).forEach(k=>{if(!enCours.includes(k)&&!memeValeur(now[k],serveur[k]))n[k]=serveur[k];});return n;});
+        const nb={...base};Object.keys(serveur).forEach(k=>{if(!enCours.includes(k))nb[k]=serveur[k];});window._reglagesBase=nb;
+      }catch(e){}};
+    document.addEventListener("visibilitychange",maj);window.addEventListener("focus",maj);const t=setInterval(maj,120000);
+    return()=>{document.removeEventListener("visibilitychange",maj);window.removeEventListener("focus",maj);clearInterval(t);};
+  },[unlocked]);
 
   const showToast=(msg,type="ok")=>{if(toastTimer.current)clearTimeout(toastTimer.current);setToast({msg,type});toastTimer.current=setTimeout(()=>setToast(null),3500);};
   window.__sbErr=(label,e)=>showToast("⚠️ Pas sauvegardé ("+label+") — "+messageErreurBase(e),"err");
@@ -10880,7 +10942,7 @@ useEffect(()=>{
           const {data:sData}=await sb.from("lp24_settings").select("*").eq("id",1).single();
           if(sData&&sData.data){
             const parsed=typeof sData.data==="string"?JSON.parse(sData.data):sData.data;
-            setSettings(prev=>({...prev,...parsed}));
+            window._reglagesBase=parsed;setSettings(prev=>({...prev,...parsed}));
           }
         }catch(se){console.log("Settings non trouvés (normal au 1er démarrage)",se);}
         
