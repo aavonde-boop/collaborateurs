@@ -1035,7 +1035,7 @@ var URL_APPLI=(function(){try{if(/github\.io$/.test(location.hostname))return lo
 function mailEsc(t){return String(t==null?"":t).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;");}
 const MAIL_POLICE="font-family:Calibri,Arial,sans-serif;";
 // texte simple (avec retours à la ligne) → HTML lisible dans Outlook
-function mailGras(h){return String(h).replace(/\*\*([^*\n]+?)\*\*/g,"<b>$1</b>");}
+function mailGras(h){return String(h).replace(/\*\*([^*\n]+?)\*\*/g,"<b>$1</b>").replace(/(^|[\s(«])\*([^*\s][^*\n]*?)\*(?=$|[\s.,;:!?)»])/g,"$1<b>$2</b>");}
 // Lien lisible : une longue adresse devient « Ouvrir la page SharePoint » (cliquable)
 function mailLiens(h){return h.replace(/https?:\/\/[^\s<]+[^\s<.,;:!?)]/g,u=>{const brut=u.replace(/&amp;/g,"&");let lib="Ouvrir le lien";
   try{const x=new URL(brut);lib=/sharepoint\.com$/i.test(x.hostname)?"Ouvrir la page SharePoint":"Ouvrir "+x.hostname.replace(/^www\./,"");}catch(e){}
@@ -1047,13 +1047,13 @@ function mailTexteHtml(t){const P='margin:0 0 12px;'+MAIL_POLICE+'font-size:11pt
     if(l.length>=2&&l.every(y=>/^[^:\n]{1,30} : ./.test(y)))return mailDetails(l.map(y=>{const k=y.indexOf(" : ");return [y.slice(0,k),y.slice(k+3)];}));
     let out="";
     // Intertitre : ligne seule en gras (**Restauration**) ou courte et finie par « : » (Photo :)
-    const titre=l[0].match(/^\*\*([^*]{1,60})\*\*\s*:?$/)||(l.length>1||!/[.!?]/.test(l[0]))&&l[0].match(/^([^.!?:]{1,40}?)\s*:$/);
+    const titre=l[0].match(/^\*{1,2}([^*]{1,60})\*{1,2}\s*:?$/)||(l.length>1||!/[.!?]/.test(l[0]))&&l[0].match(/^([^.!?:]{1,40}?)\s*:$/);
     if(titre){out+='<p style="margin:18px 0 6px;'+MAIL_POLICE+'font-size:12pt;font-weight:bold;color:#1e3a8a;border-bottom:1px solid #dbe3f0;padding-bottom:3px">'+mailGras(mailEsc(titre[1]))+'</p>';l=l.slice(1);}
     // Lignes « • … » regroupées en liste à puces
     let txt=[],puces=[];
     const finTexte=()=>{if(txt.length)out+='<p style="'+P+'">'+txt.map(mailLigne).join("<br>")+'</p>';txt=[];};
     const finPuces=()=>{if(puces.length)out+='<ul style="margin:0 0 12px;padding-left:22px;'+MAIL_POLICE+'font-size:11pt;line-height:1.5;color:#1f2937">'+puces.map(y=>'<li style="margin:0 0 3px">'+mailLigne(y)+'</li>').join("")+'</ul>';puces=[];};
-    l.forEach(y=>{const m=y.match(/^[•\-–]\s*(.+)$/);if(m){finTexte();puces.push(m[1]);}else{finPuces();txt.push(y);}});
+    l.forEach(y=>{const m=y.match(/^(?:[•\-–·▪●]|\*(?=\s))\s*(.+)$/);if(m){finTexte();puces.push(m[1]);}else{finPuces();txt.push(y);}});
     finTexte();finPuces();return out;}).join("");}
 function mailCadre(inner){return '<table role="presentation" cellpadding="0" cellspacing="0" border="0" style="border-collapse:collapse;max-width:620px"><tr><td style="'+MAIL_POLICE+'font-size:11pt;line-height:1.45;color:#1f2937">'+inner+'</td></tr></table>';}
 function mailDetails(rows){return '<table role="presentation" cellpadding="0" cellspacing="0" border="0" style="border-collapse:collapse;margin:2px 0 18px">'
@@ -6259,7 +6259,7 @@ var URL_APPLI=(function(){try{if(/github\.io$/.test(location.hostname))return lo
 function mailEsc(t){return String(t==null?"":t).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;");}
 const MAIL_POLICE="font-family:Calibri,Arial,sans-serif;";
 // texte simple (avec retours à la ligne) → HTML lisible dans Outlook
-function mailGras(h){return String(h).replace(/\*\*([^*\n]+?)\*\*/g,"<b>$1</b>");}
+function mailGras(h){return String(h).replace(/\*\*([^*\n]+?)\*\*/g,"<b>$1</b>").replace(/(^|[\s(«])\*([^*\s][^*\n]*?)\*(?=$|[\s.,;:!?)»])/g,"$1<b>$2</b>");}
 // Lien lisible : une longue adresse devient « Ouvrir la page SharePoint » (cliquable)
 function mailLiens(h){return h.replace(/https?:\/\/[^\s<]+[^\s<.,;:!?)]/g,u=>{const brut=u.replace(/&amp;/g,"&");let lib="Ouvrir le lien";
   try{const x=new URL(brut);lib=/sharepoint\.com$/i.test(x.hostname)?"Ouvrir la page SharePoint":"Ouvrir "+x.hostname.replace(/^www\./,"");}catch(e){}
@@ -6271,13 +6271,13 @@ function mailTexteHtml(t){const P='margin:0 0 12px;'+MAIL_POLICE+'font-size:11pt
     if(l.length>=2&&l.every(y=>/^[^:\n]{1,30} : ./.test(y)))return mailDetails(l.map(y=>{const k=y.indexOf(" : ");return [y.slice(0,k),y.slice(k+3)];}));
     let out="";
     // Intertitre : ligne seule en gras (**Restauration**) ou courte et finie par « : » (Photo :)
-    const titre=l[0].match(/^\*\*([^*]{1,60})\*\*\s*:?$/)||(l.length>1||!/[.!?]/.test(l[0]))&&l[0].match(/^([^.!?:]{1,40}?)\s*:$/);
+    const titre=l[0].match(/^\*{1,2}([^*]{1,60})\*{1,2}\s*:?$/)||(l.length>1||!/[.!?]/.test(l[0]))&&l[0].match(/^([^.!?:]{1,40}?)\s*:$/);
     if(titre){out+='<p style="margin:18px 0 6px;'+MAIL_POLICE+'font-size:12pt;font-weight:bold;color:#1e3a8a;border-bottom:1px solid #dbe3f0;padding-bottom:3px">'+mailGras(mailEsc(titre[1]))+'</p>';l=l.slice(1);}
     // Lignes « • … » regroupées en liste à puces
     let txt=[],puces=[];
     const finTexte=()=>{if(txt.length)out+='<p style="'+P+'">'+txt.map(mailLigne).join("<br>")+'</p>';txt=[];};
     const finPuces=()=>{if(puces.length)out+='<ul style="margin:0 0 12px;padding-left:22px;'+MAIL_POLICE+'font-size:11pt;line-height:1.5;color:#1f2937">'+puces.map(y=>'<li style="margin:0 0 3px">'+mailLigne(y)+'</li>').join("")+'</ul>';puces=[];};
-    l.forEach(y=>{const m=y.match(/^[•\-–]\s*(.+)$/);if(m){finTexte();puces.push(m[1]);}else{finPuces();txt.push(y);}});
+    l.forEach(y=>{const m=y.match(/^(?:[•\-–·▪●]|\*(?=\s))\s*(.+)$/);if(m){finTexte();puces.push(m[1]);}else{finPuces();txt.push(y);}});
     finTexte();finPuces();return out;}).join("");}
 function mailCadre(inner){return '<table role="presentation" cellpadding="0" cellspacing="0" border="0" style="border-collapse:collapse;max-width:620px"><tr><td style="'+MAIL_POLICE+'font-size:11pt;line-height:1.45;color:#1f2937">'+inner+'</td></tr></table>';}
 function mailDetails(rows){return '<table role="presentation" cellpadding="0" cellspacing="0" border="0" style="border-collapse:collapse;margin:2px 0 18px">'
