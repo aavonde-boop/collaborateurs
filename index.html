@@ -5468,7 +5468,7 @@ function App(){
   const settingsTimer=useRef(null);
   const settingsLatest=useRef(settings);settingsLatest.current=settings;
   const lireReglagesBase=async()=>{const r=await sb.from("lp24_settings").select("*").eq("id",1).single();
-    if(r.error&&r.error.code!=="PGRST116")throw r.error;const d=r.data&&r.data.data;return d?(typeof d==="string"?JSON.parse(d):d):{};};
+    if(r.error&&r.error.code!=="PGRST116")throw r.error;window._reglagesExiste=!!r.data;const d=r.data&&r.data.data;return d?(typeof d==="string"?JSON.parse(d):d):{};};
   const memeValeur=(a,b)=>JSON.stringify(a===undefined?null:a)===JSON.stringify(b===undefined?null:b);
   const clesModifiees=cur=>{const base=window._reglagesBase||{};return [...new Set([...Object.keys(cur||{}),...Object.keys(base)])].filter(k=>!memeValeur(cur[k],base[k]));};
   useEffect(()=>{
@@ -5481,7 +5481,7 @@ function App(){
           const serveur=await lireReglagesBase(),fusion={...serveur};
           cles.forEach(k=>{if(cur[k]===undefined)delete fusion[k];else fusion[k]=cur[k];});
           fusion.users=fusion.users||[];
-          const{error}=await sb.from("lp24_settings").upsert({id:1,data:JSON.stringify(fusion)});
+          const{error}=window._reglagesExiste?await sb.from("lp24_settings").update({data:JSON.stringify(fusion)}).eq("id",1):await sb.from("lp24_settings").insert({id:1,data:JSON.stringify(fusion)});
           if(error)throw error;
           window._reglagesBase=fusion;
           // On reprend aussi ce que les autres appareils ont changé, sans toucher à ce qui est en cours de saisie ici
@@ -10856,7 +10856,7 @@ function App(){
   const settingsTimer=useRef(null);
   const settingsLatest=useRef(settings);settingsLatest.current=settings;
   const lireReglagesBase=async()=>{const r=await sb.from("lp24_settings").select("*").eq("id",1).single();
-    if(r.error&&r.error.code!=="PGRST116")throw r.error;const d=r.data&&r.data.data;return d?(typeof d==="string"?JSON.parse(d):d):{};};
+    if(r.error&&r.error.code!=="PGRST116")throw r.error;window._reglagesExiste=!!r.data;const d=r.data&&r.data.data;return d?(typeof d==="string"?JSON.parse(d):d):{};};
   const memeValeur=(a,b)=>JSON.stringify(a===undefined?null:a)===JSON.stringify(b===undefined?null:b);
   const clesModifiees=cur=>{const base=window._reglagesBase||{};return [...new Set([...Object.keys(cur||{}),...Object.keys(base)])].filter(k=>!memeValeur(cur[k],base[k]));};
   useEffect(()=>{
@@ -10869,7 +10869,7 @@ function App(){
           const serveur=await lireReglagesBase(),fusion={...serveur};
           cles.forEach(k=>{if(cur[k]===undefined)delete fusion[k];else fusion[k]=cur[k];});
           fusion.users=fusion.users||[];
-          const{error}=await sb.from("lp24_settings").upsert({id:1,data:JSON.stringify(fusion)});
+          const{error}=window._reglagesExiste?await sb.from("lp24_settings").update({data:JSON.stringify(fusion)}).eq("id",1):await sb.from("lp24_settings").insert({id:1,data:JSON.stringify(fusion)});
           if(error)throw error;
           window._reglagesBase=fusion;
           // On reprend aussi ce que les autres appareils ont changé, sans toucher à ce qui est en cours de saisie ici
