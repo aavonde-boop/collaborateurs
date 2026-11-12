@@ -1000,7 +1000,7 @@ function PiecesJointesBienvenue({showToast}){
   const charger=()=>{if(!sb)return;sb.from("lp24_pieces_jointes").select("slot,nom,taille,maj").order("slot").then(({data,error})=>{setPj(error?"erreur":(data||[]));});};
   React.useEffect(charger,[]);
   const taille=n=>n>1048576?(n/1048576).toFixed(1)+" Mo":Math.max(1,Math.round(n/1024))+" Ko";
-  const choisir=(slot,f)=>{if(!f)return;if(f.size>4*1048576){showToast("⚠️ Fichier trop lourd (4 Mo maximum)","err");return;}
+  const choisir=(slot,f)=>{if(!f)return;if(f.size>8*1048576){showToast("⚠️ Fichier trop lourd ("+(f.size/1048576).toFixed(1)+" Mo) : 8 Mo maximum","err");return;}
     setOccupe(slot);const r=new FileReader();r.onload=async()=>{try{const data=String(r.result).split(",")[1]||"";
       const{error}=await sb.from("lp24_pieces_jointes").upsert({slot,nom:f.name,type:f.type||"application/octet-stream",taille:f.size,data,maj:new Date().toISOString()});
       if(error)throw error;showToast("📎 Pièce jointe enregistrée");charger();}catch(e){showToast("⚠️ Non enregistrée : "+((e&&e.message)||e),"err");}setOccupe(0);};
@@ -1016,7 +1016,7 @@ function PiecesJointesBienvenue({showToast}){
       x&&el("button",{type:"button",className:"btn",style:{fontSize:12,padding:"4px 10px"},onClick:()=>retirer(slot)},"Retirer"));};
   return el("div",{style:{marginTop:14}},
     el("div",{style:{fontWeight:700,fontSize:13.5,color:"var(--text)"}},"Pièces jointes (toujours les mêmes)"),
-    el("div",{style:{fontSize:11.5,color:"var(--text3)",margin:"1px 0 8px"}},"Jointes automatiquement au mail de bienvenue depuis l'ordinateur. 4 Mo maximum par fichier."),
+    el("div",{style:{fontSize:11.5,color:"var(--text3)",margin:"1px 0 8px"}},"Jointes automatiquement au mail de bienvenue depuis l'ordinateur. 8 Mo maximum par fichier."),
     pj==="erreur"?el("div",{style:{fontSize:12,color:"var(--text3)"}},"⚠️ Pièces jointes indisponibles : le script Supabase n° 11 n'a pas encore été lancé.")
       :el("div",{style:{display:"grid",gap:8}},ligne(1),ligne(2)));
 }
@@ -6168,7 +6168,7 @@ function PiecesJointesBienvenue({showToast}){
   const charger=()=>{if(!sb)return;sb.from("lp24_pieces_jointes").select("slot,nom,taille,maj").order("slot").then(({data,error})=>{setPj(error?"erreur":(data||[]));});};
   React.useEffect(charger,[]);
   const taille=n=>n>1048576?(n/1048576).toFixed(1)+" Mo":Math.max(1,Math.round(n/1024))+" Ko";
-  const choisir=(slot,f)=>{if(!f)return;if(f.size>4*1048576){showToast("⚠️ Fichier trop lourd (4 Mo maximum)","err");return;}
+  const choisir=(slot,f)=>{if(!f)return;if(f.size>8*1048576){showToast("⚠️ Fichier trop lourd ("+(f.size/1048576).toFixed(1)+" Mo) : 8 Mo maximum","err");return;}
     setOccupe(slot);const r=new FileReader();r.onload=async()=>{try{const data=String(r.result).split(",")[1]||"";
       const{error}=await sb.from("lp24_pieces_jointes").upsert({slot,nom:f.name,type:f.type||"application/octet-stream",taille:f.size,data,maj:new Date().toISOString()});
       if(error)throw error;showToast("📎 Pièce jointe enregistrée");charger();}catch(e){showToast("⚠️ Non enregistrée : "+((e&&e.message)||e),"err");}setOccupe(0);};
@@ -6184,7 +6184,7 @@ function PiecesJointesBienvenue({showToast}){
       x&&el("button",{type:"button",className:"btn",style:{fontSize:12,padding:"4px 10px"},onClick:()=>retirer(slot)},"Retirer"));};
   return el("div",{style:{marginTop:14}},
     el("div",{style:{fontWeight:700,fontSize:13.5,color:"var(--text)"}},"Pièces jointes (toujours les mêmes)"),
-    el("div",{style:{fontSize:11.5,color:"var(--text3)",margin:"1px 0 8px"}},"Jointes automatiquement au mail de bienvenue depuis l'ordinateur. 4 Mo maximum par fichier."),
+    el("div",{style:{fontSize:11.5,color:"var(--text3)",margin:"1px 0 8px"}},"Jointes automatiquement au mail de bienvenue depuis l'ordinateur. 8 Mo maximum par fichier."),
     pj==="erreur"?el("div",{style:{fontSize:12,color:"var(--text3)"}},"⚠️ Pièces jointes indisponibles : le script Supabase n° 11 n'a pas encore été lancé.")
       :el("div",{style:{display:"grid",gap:8}},ligne(1),ligne(2)));
 }

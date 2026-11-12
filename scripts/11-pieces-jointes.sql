@@ -10,10 +10,13 @@ create table if not exists public.lp24_pieces_jointes (
   slot   int primary key check (slot in (1, 2)),
   nom    text not null,
   type   text not null default 'application/octet-stream',
-  taille int  not null default 0 check (taille <= 4194304),
+  taille int  not null default 0,
   data   text not null,
   maj    timestamptz not null default now()
 );
+-- taille maximale : 8 Mo par fichier
+alter table public.lp24_pieces_jointes drop constraint if exists lp24_pieces_jointes_taille_check;
+alter table public.lp24_pieces_jointes add constraint lp24_pieces_jointes_taille_check check (taille <= 8388608);
 alter table public.lp24_pieces_jointes enable row level security;
 do $$ declare p record; begin
   for p in select policyname from pg_policies where schemaname = 'public' and tablename = 'lp24_pieces_jointes' loop
@@ -26,7 +29,7 @@ revoke all on public.lp24_pieces_jointes from anon;
 grant select, insert, update, delete on public.lp24_pieces_jointes to authenticated;
 
 -- Vérification
-select 'Pièces jointes : table prête' as point, case when to_regclass('public.lp24_pieces_jointes') is not null then 'oui' else 'NON' end as ok
+select 'Pièces jointes : table prête (8 Mo max par fichier)' as point, case when to_regclass('public.lp24_pieces_jointes') is not null then 'oui' else 'NON' end as ok
 union all
 select 'Fermée sans connexion', case when not has_table_privilege('anon', 'public.lp24_pieces_jointes', 'select') then 'oui' else 'NON' end
 union all

@@ -57,7 +57,7 @@ select &#x27;Modification impossible sans compte&#x27;, case when not has_table_
 union all
 select &#x27;Modification réservée aux administrateurs&#x27;, case when exists (select 1 from pg_policies where tablename = &#x27;lp24_textes_publics&#x27; and policyname = &#x27;modif_admin&#x27;) then &#x27;oui&#x27; else &#x27;NON&#x27; end;
 </code></pre></section>
-<section class="sc" id="s1"><div class="hd"><div><h2>11 · Pièces jointes du mail de bienvenue</h2><p>Permet d&#x27;enregistrer les 2 pièces jointes fixes du mail de bienvenue. Réservé aux membres de l&#x27;appli.</p><small>11-pieces-jointes.sql · 34 lignes</small></div><button class="cp" data-i="1">Copier le script</button></div><pre><code id="c1">-- ════════════════════════════════════════════════════════════════════
+<section class="sc" id="s1"><div class="hd"><div><h2>11 · Pièces jointes du mail de bienvenue</h2><p>Permet d&#x27;enregistrer les 2 pièces jointes fixes du mail de bienvenue. Réservé aux membres de l&#x27;appli.</p><small>11-pieces-jointes.sql · 37 lignes</small></div><button class="cp" data-i="1">Copier le script</button></div><pre><code id="c1">-- ════════════════════════════════════════════════════════════════════
 --  PIÈCES JOINTES DU MAIL DE BIENVENUE — Gestion Collaborateurs
 --  À lancer une fois dans Supabase → SQL Editor (projet jymobewqenhcjtzniytb).
 --  Peut être relancé sans risque. Ne touche à aucune autre donnée.
@@ -69,10 +69,13 @@ create table if not exists public.lp24_pieces_jointes (
   slot   int primary key check (slot in (1, 2)),
   nom    text not null,
   type   text not null default &#x27;application/octet-stream&#x27;,
-  taille int  not null default 0 check (taille &lt;= 4194304),
+  taille int  not null default 0,
   data   text not null,
   maj    timestamptz not null default now()
 );
+-- taille maximale : 8 Mo par fichier
+alter table public.lp24_pieces_jointes drop constraint if exists lp24_pieces_jointes_taille_check;
+alter table public.lp24_pieces_jointes add constraint lp24_pieces_jointes_taille_check check (taille &lt;= 8388608);
 alter table public.lp24_pieces_jointes enable row level security;
 do $$ declare p record; begin
   for p in select policyname from pg_policies where schemaname = &#x27;public&#x27; and tablename = &#x27;lp24_pieces_jointes&#x27; loop
@@ -85,7 +88,7 @@ revoke all on public.lp24_pieces_jointes from anon;
 grant select, insert, update, delete on public.lp24_pieces_jointes to authenticated;
 
 -- Vérification
-select &#x27;Pièces jointes : table prête&#x27; as point, case when to_regclass(&#x27;public.lp24_pieces_jointes&#x27;) is not null then &#x27;oui&#x27; else &#x27;NON&#x27; end as ok
+select &#x27;Pièces jointes : table prête (8 Mo max par fichier)&#x27; as point, case when to_regclass(&#x27;public.lp24_pieces_jointes&#x27;) is not null then &#x27;oui&#x27; else &#x27;NON&#x27; end as ok
 union all
 select &#x27;Fermée sans connexion&#x27;, case when not has_table_privilege(&#x27;anon&#x27;, &#x27;public.lp24_pieces_jointes&#x27;, &#x27;select&#x27;) then &#x27;oui&#x27; else &#x27;NON&#x27; end
 union all
