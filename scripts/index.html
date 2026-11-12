@@ -14,7 +14,7 @@ pre{margin:0;background:var(--code);color:var(--codetx);padding:16px;overflow:au
 .how{margin-top:16px;color:var(--t2);font-size:13.5px}
 </style></head><body><div class="w"><h1>Scripts sécurité — Gestion Collaborateurs</h1>
 <p class="intro">Supabase → SQL Editor : « Copier le script », coller, puis « Run ». Ordre conseillé : 0, puis le script voulu, puis 0 pour vérifier.</p>
-<div class="tabs"><button class="tab on" data-i="0">10 · Mentions légales et confidentialité</button></div><section class="sc on" id="s0"><div class="hd"><div><h2>10 · Mentions légales et confidentialité</h2><p>Permet d&#x27;enregistrer tes textes avec le bouton « Modifier ». Lisibles par tous, modifiables seulement par un administrateur.</p><small>10-textes-publics.sql · 43 lignes</small></div><button class="cp" data-i="0">Copier le script</button></div><pre><code id="c0">-- ════════════════════════════════════════════════════════════════════
+<div class="tabs"><button class="tab on" data-i="0">10 · Mentions légales et confidentialité</button><button class="tab" data-i="1">11 · Pièces jointes du mail de bienvenue</button></div><section class="sc on" id="s0"><div class="hd"><div><h2>10 · Mentions légales et confidentialité</h2><p>Permet d&#x27;enregistrer tes textes avec le bouton « Modifier ». Lisibles par tous, modifiables seulement par un administrateur.</p><small>10-textes-publics.sql · 43 lignes</small></div><button class="cp" data-i="0">Copier le script</button></div><pre><code id="c0">-- ════════════════════════════════════════════════════════════════════
 --  MENTIONS LÉGALES ET CONFIDENTIALITÉ — Gestion Collaborateurs
 --  À lancer une fois dans Supabase → SQL Editor (projet jymobewqenhcjtzniytb).
 --  Peut être relancé sans risque. Ne touche à aucune autre donnée.
@@ -56,6 +56,40 @@ union all
 select &#x27;Modification impossible sans compte&#x27;, case when not has_table_privilege(&#x27;anon&#x27;, &#x27;public.lp24_textes_publics&#x27;, &#x27;insert&#x27;) and not has_table_privilege(&#x27;anon&#x27;, &#x27;public.lp24_textes_publics&#x27;, &#x27;update&#x27;) then &#x27;oui&#x27; else &#x27;NON&#x27; end
 union all
 select &#x27;Modification réservée aux administrateurs&#x27;, case when exists (select 1 from pg_policies where tablename = &#x27;lp24_textes_publics&#x27; and policyname = &#x27;modif_admin&#x27;) then &#x27;oui&#x27; else &#x27;NON&#x27; end;
+</code></pre></section>
+<section class="sc" id="s1"><div class="hd"><div><h2>11 · Pièces jointes du mail de bienvenue</h2><p>Permet d&#x27;enregistrer les 2 pièces jointes fixes du mail de bienvenue. Réservé aux membres de l&#x27;appli.</p><small>11-pieces-jointes.sql · 34 lignes</small></div><button class="cp" data-i="1">Copier le script</button></div><pre><code id="c1">-- ════════════════════════════════════════════════════════════════════
+--  PIÈCES JOINTES DU MAIL DE BIENVENUE — Gestion Collaborateurs
+--  À lancer une fois dans Supabase → SQL Editor (projet jymobewqenhcjtzniytb).
+--  Peut être relancé sans risque. Ne touche à aucune autre donnée.
+--
+--  Crée une petite table pour les 2 pièces jointes fixes du mail de bienvenue
+--  (Réglages → Textes des mails). Accès réservé aux membres de l&#x27;appli.
+-- ════════════════════════════════════════════════════════════════════
+create table if not exists public.lp24_pieces_jointes (
+  slot   int primary key check (slot in (1, 2)),
+  nom    text not null,
+  type   text not null default &#x27;application/octet-stream&#x27;,
+  taille int  not null default 0 check (taille &lt;= 4194304),
+  data   text not null,
+  maj    timestamptz not null default now()
+);
+alter table public.lp24_pieces_jointes enable row level security;
+do $$ declare p record; begin
+  for p in select policyname from pg_policies where schemaname = &#x27;public&#x27; and tablename = &#x27;lp24_pieces_jointes&#x27; loop
+    execute format(&#x27;drop policy %I on public.lp24_pieces_jointes&#x27;, p.policyname);
+  end loop;
+end $$;
+create policy &quot;membres_appli&quot; on public.lp24_pieces_jointes for all to authenticated
+  using ((select public.lp24_est_membre())) with check ((select public.lp24_est_membre()));
+revoke all on public.lp24_pieces_jointes from anon;
+grant select, insert, update, delete on public.lp24_pieces_jointes to authenticated;
+
+-- Vérification
+select &#x27;Pièces jointes : table prête&#x27; as point, case when to_regclass(&#x27;public.lp24_pieces_jointes&#x27;) is not null then &#x27;oui&#x27; else &#x27;NON&#x27; end as ok
+union all
+select &#x27;Fermée sans connexion&#x27;, case when not has_table_privilege(&#x27;anon&#x27;, &#x27;public.lp24_pieces_jointes&#x27;, &#x27;select&#x27;) then &#x27;oui&#x27; else &#x27;NON&#x27; end
+union all
+select &#x27;Réservée aux membres de l&#x27;&#x27;appli&#x27;, case when exists (select 1 from pg_policies where tablename = &#x27;lp24_pieces_jointes&#x27; and policyname = &#x27;membres_appli&#x27;) then &#x27;oui&#x27; else &#x27;NON&#x27; end;
 </code></pre></section>
 <p class="how">Lien Supabase : <a href="https://supabase.com/dashboard/project/jymobewqenhcjtzniytb/sql/new" style="color:var(--ac)">éditeur SQL du projet</a></p></div>
 <script>

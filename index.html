@@ -951,32 +951,74 @@ function texteDepartResto(modele,b){
 }
 // ── Réglages → Textes des mails : textes des mails automatiques (lus par la base au moment de l'envoi) ──
 function EditeurTextesMails({settings,setSettings,showToast}){
-  const champs=[
-    ["autoSignature","Signature","{signature} dans les textes ci-dessous",3],
-    ["autoHoraires","Horaires de l'accueil","{horaires} dans les mails de prêt",4],
-    ["autoITArrivee","IT — arrivée (la veille)","{nom} {prenom} {date} {email} {manager} {signature}",8],
-    ["autoITDepart","IT — départ (la veille)","{nom} {prenom} {date} {email} {manager} {signature}",8],
-    ["autoRestoArrivee","Restaurant — arrivée (le jour même)","{nom} {prenom} {date} {email} {badge} {signature}",8],
-    ["autoRestoDepart","Restaurant — départ (le jour même)","{nom} {prenom} {date} {email} {badge} {signature}",8],
-    ["autoPret","Badge de prêt — au moment du prêt","{emprunteur} {code} {badge_nom} {date_pret} {ligne_retour} {horaires} {signature}",10],
-    ["autoRappel","Badge de prêt — rappel (lendemain de la date de retour, ou après 24 h)","{emprunteur} {code} {badge_nom} {date_pret} {ligne_retour} {horaires} {signature}",9],
-    ["bienvenueSujet","Mail de bienvenue — objet","{prenom} {nom}",1],
-    ["bienvenueCorps","Mail de bienvenue — texte (le bouton de la fiche ouvre ce mail dans ta messagerie, tu y joins sa photo)","{prenom} {nom} {badge} {casier} {manager} {date} {horaires} {signature}",14],
-  ];
-  return React.createElement("div",{style:{display:"grid",gap:14}},
-    React.createElement("div",{style:{background:"var(--accentBg)",border:"1px solid var(--border)",borderRadius:8,padding:"10px 14px",fontSize:12,color:"var(--text2)"}},
-      "Textes des mails (automatiques et boutons ✉️ de l'Accueil). Modifiez-les ici : le prochain mail part avec le nouveau texte (enregistrement automatique). Les mots entre accolades, comme {nom}, sont remplacés au moment de l'envoi. Vérifiez le rendu avec « Envoyer les tests » dans l'onglet Adresses e-mail."),
-    champs.map(([cle,titre,vars,rows])=>{
-      const val=texteMail(settings,cle), modifie=val!==TEXTES_MAIL_DEFAUT[cle];
-      return React.createElement("div",{key:cle},
-        React.createElement("div",{style:{display:"flex",alignItems:"center",justifyContent:"space-between",gap:8,marginBottom:4}},
-          React.createElement(Lbl,null,titre+(modifie?" · modifié":"")),
-          modifie&&React.createElement("button",{type:"button",className:"btn",style:{fontSize:11,padding:"3px 8px"},
-            onClick:()=>{setSettings(s=>{const n={...s};delete n[cle];return n;});showToast("Texte d'origine rétabli");}},"Rétablir l'origine")),
-        React.createElement("textarea",{value:val,rows,className:"inp",onChange:e=>{const v=e.target.value;setSettings(s=>({...s,[cle]:v}));},
-          style:{resize:"vertical",fontSize:13,lineHeight:1.45,fontFamily:"inherit",whiteSpace:"pre-wrap"}}),
-        React.createElement("div",{style:{fontSize:11,color:"var(--text3)",marginTop:3}},"Variables : "+vars));
-    }));
+  const el=React.createElement;
+  const[ouvert,setOuvert]=React.useState(null);
+  const groupes=[
+    ["Commun à tous les mails",[
+      {id:"signature",titre:"Signature",quand:"Ajoutée à la fin des mails",icone:"✍️",champs:[["autoSignature",null,"{signature}",4]]},
+      {id:"horaires",titre:"Horaires de l'accueil",quand:"Repris dans les mails de prêt et de bienvenue",icone:"🕘",champs:[["autoHoraires",null,"{horaires}",5]]}]],
+    ["Mails automatiques",[
+      {id:"itA",titre:"IT — arrivée",quand:"La veille, vers 6 h, au service IT",icone:"💻",champs:[["autoITArrivee",null,"{nom} {prenom} {date} {email} {manager} {signature}",10]]},
+      {id:"itD",titre:"IT — départ",quand:"La veille, vers 6 h, au service IT",icone:"💻",champs:[["autoITDepart",null,"{nom} {prenom} {date} {email} {manager} {signature}",10]]},
+      {id:"rA",titre:"Restaurant — arrivée",quand:"Le jour même, vers 6 h",icone:"🍽️",champs:[["autoRestoArrivee",null,"{nom} {prenom} {date} {email} {badge} {signature}",10]]},
+      {id:"rD",titre:"Restaurant — départ",quand:"Le jour même, vers 6 h",icone:"🍽️",champs:[["autoRestoDepart",null,"{nom} {prenom} {date} {email} {badge} {signature}",10]]},
+      {id:"pret",titre:"Badge de prêt — remise",quand:"À l'emprunteur, dès le prêt",icone:"🔑",champs:[["autoPret",null,"{emprunteur} {code} {badge_nom} {date_pret} {ligne_retour} {horaires} {signature}",12]]},
+      {id:"rappel",titre:"Badge de prêt — rappel",quand:"Chaque matin après la date de retour",icone:"⏰",champs:[["autoRappel",null,"{emprunteur} {code} {badge_nom} {date_pret} {ligne_retour} {horaires} {signature}",11]]}]],
+    ["Envoyé depuis la fiche",[
+      {id:"bienvenue",titre:"Mail de bienvenue",quand:"Bouton ✉️ de la fiche collaborateur",icone:"👋",pj:true,champs:[["bienvenueSujet","Objet","{prenom} {nom}",1],["bienvenueCorps","Texte","{prenom} {nom} {badge} {casier} {manager} {date} {horaires} {signature}",14]]}]]];
+  const modifie=cle=>texteMail(settings,cle)!==TEXTES_MAIL_DEFAUT[cle];
+  const champ=([cle,lib,vars,rows])=>el("div",{key:cle,style:{marginTop:10}},
+    el("div",{style:{display:"flex",alignItems:"center",justifyContent:"space-between",gap:8,marginBottom:4}},
+      el("div",{style:{fontWeight:700,fontSize:13}},lib||""),
+      modifie(cle)&&el("button",{type:"button",className:"btn",style:{fontSize:11,padding:"3px 8px"},
+        onClick:()=>{setSettings(x=>{const n={...x};delete n[cle];return n;});showToast("Texte d'origine rétabli");}},"Rétablir l'origine")),
+    el("textarea",{value:texteMail(settings,cle),rows,className:"inp",onChange:e=>{const v=e.target.value;setSettings(x=>({...x,[cle]:v}));},
+      style:{resize:"vertical",fontSize:13,lineHeight:1.45,fontFamily:"inherit",whiteSpace:"pre-wrap"}}),
+    el("div",{style:{fontSize:11,color:"var(--text3)",marginTop:3}},"Variables : "+vars));
+  const carte=m=>{const o=ouvert===m.id,mod=m.champs.some(c=>modifie(c[0]));
+    return el("div",{key:m.id,id:"tm-"+m.id,style:{scrollMarginTop:12,gridColumn:o?"1 / -1":"auto",border:"1px solid "+(o?"var(--accent)":"var(--border)"),borderRadius:12,background:"var(--surface)",boxShadow:o?"0 6px 20px rgba(15,23,42,.08)":"none",overflow:"hidden"}},
+      el("button",{type:"button",onClick:()=>{setOuvert(o?null:m.id);if(!o)setTimeout(()=>{const n=document.getElementById("tm-"+m.id);if(n)n.scrollIntoView({behavior:"smooth",block:"start"});},60);},"aria-expanded":o,
+        style:{display:"flex",alignItems:"center",gap:10,width:"100%",padding:"12px 14px",background:"none",border:"none",cursor:"pointer",textAlign:"left",color:"var(--text)"}},
+        el("span",{style:{fontSize:20,width:28,textAlign:"center"}},m.icone),
+        el("span",{style:{flex:1,minWidth:0}},
+          el("span",{style:{display:"block",fontWeight:700,fontSize:13.5}},m.titre,mod&&el("span",{style:{marginLeft:8,fontSize:10.5,fontWeight:700,color:"var(--accent)",background:"var(--accentBg)",borderRadius:999,padding:"1px 7px"}},"modifié")),
+          el("span",{style:{display:"block",fontSize:11.5,color:"var(--text3)",marginTop:1}},m.quand)),
+        el("span",{style:{fontSize:12,fontWeight:700,color:"var(--accent)",flexShrink:0}},o?"Fermer ▲":"Modifier ›")),
+      o&&el("div",{style:{padding:"0 14px 14px",borderTop:"1px solid var(--border)"}},
+        m.champs.map(champ),m.pj&&el(PiecesJointesBienvenue,{showToast})));};
+  return el("div",{style:{display:"grid",gap:16}},
+    el("div",{style:{background:"var(--accentBg)",border:"1px solid var(--border)",borderRadius:8,padding:"10px 14px",fontSize:12,color:"var(--text2)"}},
+      "Clique sur un mail pour le modifier. Les modifications sont enregistrées automatiquement et servent dès le prochain envoi. Les mots entre accolades, comme {nom}, sont remplacés au moment de l'envoi."),
+    groupes.map(([g,liste])=>el("div",{key:g},
+      el("div",{style:{fontSize:11.5,fontWeight:800,letterSpacing:".05em",textTransform:"uppercase",color:"var(--text3)",margin:"0 2px 8px"}},g),
+      el("div",{style:{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(260px,1fr))",gap:10}},liste.map(carte)))));
+}
+// ── Pièces jointes fixes du mail de bienvenue (2 maximum), gardées dans Supabase ──
+function PiecesJointesBienvenue({showToast}){
+  const el=React.createElement;
+  const[pj,setPj]=React.useState(null),[occupe,setOccupe]=React.useState(0);
+  const charger=()=>{if(!sb)return;sb.from("lp24_pieces_jointes").select("slot,nom,taille,maj").order("slot").then(({data,error})=>{setPj(error?"erreur":(data||[]));});};
+  React.useEffect(charger,[]);
+  const taille=n=>n>1048576?(n/1048576).toFixed(1)+" Mo":Math.max(1,Math.round(n/1024))+" Ko";
+  const choisir=(slot,f)=>{if(!f)return;if(f.size>4*1048576){showToast("⚠️ Fichier trop lourd (4 Mo maximum)","err");return;}
+    setOccupe(slot);const r=new FileReader();r.onload=async()=>{try{const data=String(r.result).split(",")[1]||"";
+      const{error}=await sb.from("lp24_pieces_jointes").upsert({slot,nom:f.name,type:f.type||"application/octet-stream",taille:f.size,data,maj:new Date().toISOString()});
+      if(error)throw error;showToast("📎 Pièce jointe enregistrée");charger();}catch(e){showToast("⚠️ Non enregistrée : "+((e&&e.message)||e),"err");}setOccupe(0);};
+    r.onerror=()=>{setOccupe(0);showToast("⚠️ Lecture du fichier impossible","err");};r.readAsDataURL(f);};
+  const retirer=async slot=>{const{error}=await sb.from("lp24_pieces_jointes").delete().eq("slot",slot);if(error){showToast("⚠️ "+error.message,"err");return;}showToast("Pièce jointe retirée");charger();};
+  const ligne=slot=>{const x=Array.isArray(pj)?pj.find(r=>r.slot===slot):null;const id="pj-"+slot;
+    return el("div",{key:slot,style:{display:"flex",alignItems:"center",gap:10,padding:"9px 12px",border:"1px dashed var(--border)",borderRadius:10,background:"var(--surface2,#F8FAFC)"}},
+      el("span",{style:{fontSize:18}},"📎"),
+      el("div",{style:{flex:1,minWidth:0}},x?el("div",null,el("div",{style:{fontWeight:600,fontSize:13,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}},x.nom),el("div",{style:{fontSize:11,color:"var(--text3)"}},taille(x.taille||0)))
+        :el("div",{style:{fontSize:13,color:"var(--text3)"}},occupe===slot?"Enregistrement…":"Pièce jointe "+slot+" : aucune")),
+      el("input",{id,type:"file",style:{display:"none"},onChange:e=>{choisir(slot,e.target.files&&e.target.files[0]);e.target.value="";}}),
+      el("button",{type:"button",className:"btn btn-outline",style:{fontSize:12,padding:"4px 10px"},disabled:!!occupe,onClick:()=>document.getElementById(id).click()},x?"Remplacer":"Ajouter un fichier"),
+      x&&el("button",{type:"button",className:"btn",style:{fontSize:12,padding:"4px 10px"},onClick:()=>retirer(slot)},"Retirer"));};
+  return el("div",{style:{marginTop:14}},
+    el("div",{style:{fontWeight:700,fontSize:13.5,color:"var(--text)"}},"Pièces jointes (toujours les mêmes)"),
+    el("div",{style:{fontSize:11.5,color:"var(--text3)",margin:"1px 0 8px"}},"Jointes automatiquement au mail de bienvenue depuis l'ordinateur. 4 Mo maximum par fichier."),
+    pj==="erreur"?el("div",{style:{fontSize:12,color:"var(--text3)"}},"⚠️ Pièces jointes indisponibles : le script Supabase n° 11 n'a pas encore été lancé.")
+      :el("div",{style:{display:"grid",gap:8}},ligne(1),ligne(2)));
 }
 // ── Réglages : envoi des mails types sur une adresse de test (même modèle EmailJS que les envois automatiques) ──
 // ── Textes des mails automatiques (modifiables dans Réglages → Textes des mails ; identiques aux textes d'origine de la base) ──
@@ -3807,9 +3849,29 @@ async function envoyerBienvenue(b,settings,showToast,addLog){
   const sujet=remplirModele(T("bienvenueSujet"),vars);
   const texte=remplirModele(T("bienvenueCorps"),vars).split("\n").filter(l=>!(/^\s*[•\-]/.test(l)&&/:\s*$/.test(l))).join("\n");
   // Ouvre un nouveau mail dans la messagerie (Outlook sur PC, Mail sur iPhone) : il reste à joindre sa photo puis envoyer
+  let pjs=[];
+  const telephone=/iPhone|iPad|iPod|Android/i.test(navigator.userAgent)||window.innerWidth<760;
+  if(sb&&!telephone){try{const{data}=await sb.from("lp24_pieces_jointes").select("slot,nom,type,data").order("slot");pjs=(data||[]).filter(x=>x&&x.data);}catch(e){}}
+  if(pjs.length){
+    // Fichier .eml : s'ouvre dans Outlook comme un nouveau mail prêt à envoyer, avec les pièces jointes
+    const NL="\r\n",b64=t=>btoa(unescape(encodeURIComponent(t))),hdr=t=>/^[\x20-\x7e]*$/.test(t)?t:"=?UTF-8?B?"+b64(t)+"?=",lignes=x=>x.replace(/.{1,76}/g,"$&"+NL);
+    const b1="=_mix_"+Date.now(),b2="=_alt_"+Date.now();
+    let eml="To: "+to+NL+"Subject: "+hdr(sujet)+NL+"X-Unsent: 1"+NL+"MIME-Version: 1.0"+NL+"Content-Type: multipart/mixed; boundary=\""+b1+"\""+NL+NL
+      +"--"+b1+NL+"Content-Type: multipart/alternative; boundary=\""+b2+"\""+NL+NL
+      +"--"+b2+NL+"Content-Type: text/plain; charset=UTF-8"+NL+"Content-Transfer-Encoding: base64"+NL+NL+lignes(b64(texte.replace(/\n/g,"\r\n")))+NL
+      +"--"+b2+NL+"Content-Type: text/html; charset=UTF-8"+NL+"Content-Transfer-Encoding: base64"+NL+NL+lignes(b64(mailCadre(mailTexteHtml(texte))))+NL+"--"+b2+"--"+NL;
+    pjs.forEach(x=>{const nm=hdr(x.nom||"piece-jointe");eml+="--"+b1+NL+"Content-Type: "+(x.type||"application/octet-stream")+"; name=\""+nm+"\""+NL+"Content-Transfer-Encoding: base64"+NL
+      +"Content-Disposition: attachment; filename=\""+nm+"\""+NL+NL+lignes(x.data)+NL;});
+    eml+="--"+b1+"--"+NL;
+    const url=URL.createObjectURL(new Blob([eml],{type:"message/rfc822"}));const a=document.createElement("a");a.href=url;
+    a.download=("Bienvenue - "+vars.prenom+" "+vars.nom).replace(/[\\/:*?"<>|]/g,"").trim()+".eml";document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),60000);
+    addLog&&addLog("Mail de bienvenue",(vars.prenom+" "+vars.nom).trim()+" ("+to+") — préparé avec "+pjs.length+" pièce(s) jointe(s)");
+    showToast("✉️ Mail prêt : ouvre le fichier téléchargé, il s'ouvre dans Outlook avec les pièces jointes");
+    return;
+  }
   window.location.href="mailto:"+encodeURIComponent(to)+"?subject="+encodeURIComponent(sujet)+"&body="+encodeURIComponent(texte.replace(/\n/g,"\r\n"));
   addLog&&addLog("Mail de bienvenue",(vars.prenom+" "+vars.nom).trim()+" ("+to+") — ouvert dans la messagerie");
-  showToast("✉️ Mail ouvert dans ta messagerie : ajoute sa photo puis envoie");
+  showToast(telephone?"✉️ Mail ouvert dans ta messagerie (les pièces jointes s'ajoutent depuis l'ordinateur)":"✉️ Mail ouvert dans ta messagerie : ajoute sa photo puis envoie");
 }
 
 // ════════════════ COLIS : lecture de l'étiquette en photo ════════════════
@@ -6057,32 +6119,74 @@ function IosIndex({letters,prefix}){
 }
 // ── Réglages → Textes des mails : textes des mails automatiques (lus par la base au moment de l'envoi) ──
 function EditeurTextesMails({settings,setSettings,showToast}){
-  const champs=[
-    ["autoSignature","Signature","{signature} dans les textes ci-dessous",3],
-    ["autoHoraires","Horaires de l'accueil","{horaires} dans les mails de prêt",4],
-    ["autoITArrivee","IT — arrivée (la veille)","{nom} {prenom} {date} {email} {manager} {signature}",8],
-    ["autoITDepart","IT — départ (la veille)","{nom} {prenom} {date} {email} {manager} {signature}",8],
-    ["autoRestoArrivee","Restaurant — arrivée (le jour même)","{nom} {prenom} {date} {email} {badge} {signature}",8],
-    ["autoRestoDepart","Restaurant — départ (le jour même)","{nom} {prenom} {date} {email} {badge} {signature}",8],
-    ["autoPret","Badge de prêt — au moment du prêt","{emprunteur} {code} {badge_nom} {date_pret} {ligne_retour} {horaires} {signature}",10],
-    ["autoRappel","Badge de prêt — rappel (lendemain de la date de retour, ou après 24 h)","{emprunteur} {code} {badge_nom} {date_pret} {ligne_retour} {horaires} {signature}",9],
-    ["bienvenueSujet","Mail de bienvenue — objet","{prenom} {nom}",1],
-    ["bienvenueCorps","Mail de bienvenue — texte (le bouton de la fiche ouvre ce mail dans ta messagerie, tu y joins sa photo)","{prenom} {nom} {badge} {casier} {manager} {date} {horaires} {signature}",14],
-  ];
-  return React.createElement("div",{style:{display:"grid",gap:14}},
-    React.createElement("div",{style:{background:"var(--accentBg)",border:"1px solid var(--border)",borderRadius:8,padding:"10px 14px",fontSize:12,color:"var(--text2)"}},
-      "Textes des mails (automatiques et boutons ✉️ de l'Accueil). Modifiez-les ici : le prochain mail part avec le nouveau texte (enregistrement automatique). Les mots entre accolades, comme {nom}, sont remplacés au moment de l'envoi. Vérifiez le rendu avec « Envoyer les tests » dans l'onglet Adresses e-mail."),
-    champs.map(([cle,titre,vars,rows])=>{
-      const val=texteMail(settings,cle), modifie=val!==TEXTES_MAIL_DEFAUT[cle];
-      return React.createElement("div",{key:cle},
-        React.createElement("div",{style:{display:"flex",alignItems:"center",justifyContent:"space-between",gap:8,marginBottom:4}},
-          React.createElement(Lbl,null,titre+(modifie?" · modifié":"")),
-          modifie&&React.createElement("button",{type:"button",className:"btn",style:{fontSize:11,padding:"3px 8px"},
-            onClick:()=>{setSettings(s=>{const n={...s};delete n[cle];return n;});showToast("Texte d'origine rétabli");}},"Rétablir l'origine")),
-        React.createElement("textarea",{value:val,rows,className:"inp",onChange:e=>{const v=e.target.value;setSettings(s=>({...s,[cle]:v}));},
-          style:{resize:"vertical",fontSize:13,lineHeight:1.45,fontFamily:"inherit",whiteSpace:"pre-wrap"}}),
-        React.createElement("div",{style:{fontSize:11,color:"var(--text3)",marginTop:3}},"Variables : "+vars));
-    }));
+  const el=React.createElement;
+  const[ouvert,setOuvert]=React.useState(null);
+  const groupes=[
+    ["Commun à tous les mails",[
+      {id:"signature",titre:"Signature",quand:"Ajoutée à la fin des mails",icone:"✍️",champs:[["autoSignature",null,"{signature}",4]]},
+      {id:"horaires",titre:"Horaires de l'accueil",quand:"Repris dans les mails de prêt et de bienvenue",icone:"🕘",champs:[["autoHoraires",null,"{horaires}",5]]}]],
+    ["Mails automatiques",[
+      {id:"itA",titre:"IT — arrivée",quand:"La veille, vers 6 h, au service IT",icone:"💻",champs:[["autoITArrivee",null,"{nom} {prenom} {date} {email} {manager} {signature}",10]]},
+      {id:"itD",titre:"IT — départ",quand:"La veille, vers 6 h, au service IT",icone:"💻",champs:[["autoITDepart",null,"{nom} {prenom} {date} {email} {manager} {signature}",10]]},
+      {id:"rA",titre:"Restaurant — arrivée",quand:"Le jour même, vers 6 h",icone:"🍽️",champs:[["autoRestoArrivee",null,"{nom} {prenom} {date} {email} {badge} {signature}",10]]},
+      {id:"rD",titre:"Restaurant — départ",quand:"Le jour même, vers 6 h",icone:"🍽️",champs:[["autoRestoDepart",null,"{nom} {prenom} {date} {email} {badge} {signature}",10]]},
+      {id:"pret",titre:"Badge de prêt — remise",quand:"À l'emprunteur, dès le prêt",icone:"🔑",champs:[["autoPret",null,"{emprunteur} {code} {badge_nom} {date_pret} {ligne_retour} {horaires} {signature}",12]]},
+      {id:"rappel",titre:"Badge de prêt — rappel",quand:"Chaque matin après la date de retour",icone:"⏰",champs:[["autoRappel",null,"{emprunteur} {code} {badge_nom} {date_pret} {ligne_retour} {horaires} {signature}",11]]}]],
+    ["Envoyé depuis la fiche",[
+      {id:"bienvenue",titre:"Mail de bienvenue",quand:"Bouton ✉️ de la fiche collaborateur",icone:"👋",pj:true,champs:[["bienvenueSujet","Objet","{prenom} {nom}",1],["bienvenueCorps","Texte","{prenom} {nom} {badge} {casier} {manager} {date} {horaires} {signature}",14]]}]]];
+  const modifie=cle=>texteMail(settings,cle)!==TEXTES_MAIL_DEFAUT[cle];
+  const champ=([cle,lib,vars,rows])=>el("div",{key:cle,style:{marginTop:10}},
+    el("div",{style:{display:"flex",alignItems:"center",justifyContent:"space-between",gap:8,marginBottom:4}},
+      el("div",{style:{fontWeight:700,fontSize:13}},lib||""),
+      modifie(cle)&&el("button",{type:"button",className:"btn",style:{fontSize:11,padding:"3px 8px"},
+        onClick:()=>{setSettings(x=>{const n={...x};delete n[cle];return n;});showToast("Texte d'origine rétabli");}},"Rétablir l'origine")),
+    el("textarea",{value:texteMail(settings,cle),rows,className:"inp",onChange:e=>{const v=e.target.value;setSettings(x=>({...x,[cle]:v}));},
+      style:{resize:"vertical",fontSize:13,lineHeight:1.45,fontFamily:"inherit",whiteSpace:"pre-wrap"}}),
+    el("div",{style:{fontSize:11,color:"var(--text3)",marginTop:3}},"Variables : "+vars));
+  const carte=m=>{const o=ouvert===m.id,mod=m.champs.some(c=>modifie(c[0]));
+    return el("div",{key:m.id,id:"tm-"+m.id,style:{scrollMarginTop:12,gridColumn:o?"1 / -1":"auto",border:"1px solid "+(o?"var(--accent)":"var(--border)"),borderRadius:12,background:"var(--surface)",boxShadow:o?"0 6px 20px rgba(15,23,42,.08)":"none",overflow:"hidden"}},
+      el("button",{type:"button",onClick:()=>{setOuvert(o?null:m.id);if(!o)setTimeout(()=>{const n=document.getElementById("tm-"+m.id);if(n)n.scrollIntoView({behavior:"smooth",block:"start"});},60);},"aria-expanded":o,
+        style:{display:"flex",alignItems:"center",gap:10,width:"100%",padding:"12px 14px",background:"none",border:"none",cursor:"pointer",textAlign:"left",color:"var(--text)"}},
+        el("span",{style:{fontSize:20,width:28,textAlign:"center"}},m.icone),
+        el("span",{style:{flex:1,minWidth:0}},
+          el("span",{style:{display:"block",fontWeight:700,fontSize:13.5}},m.titre,mod&&el("span",{style:{marginLeft:8,fontSize:10.5,fontWeight:700,color:"var(--accent)",background:"var(--accentBg)",borderRadius:999,padding:"1px 7px"}},"modifié")),
+          el("span",{style:{display:"block",fontSize:11.5,color:"var(--text3)",marginTop:1}},m.quand)),
+        el("span",{style:{fontSize:12,fontWeight:700,color:"var(--accent)",flexShrink:0}},o?"Fermer ▲":"Modifier ›")),
+      o&&el("div",{style:{padding:"0 14px 14px",borderTop:"1px solid var(--border)"}},
+        m.champs.map(champ),m.pj&&el(PiecesJointesBienvenue,{showToast})));};
+  return el("div",{style:{display:"grid",gap:16}},
+    el("div",{style:{background:"var(--accentBg)",border:"1px solid var(--border)",borderRadius:8,padding:"10px 14px",fontSize:12,color:"var(--text2)"}},
+      "Clique sur un mail pour le modifier. Les modifications sont enregistrées automatiquement et servent dès le prochain envoi. Les mots entre accolades, comme {nom}, sont remplacés au moment de l'envoi."),
+    groupes.map(([g,liste])=>el("div",{key:g},
+      el("div",{style:{fontSize:11.5,fontWeight:800,letterSpacing:".05em",textTransform:"uppercase",color:"var(--text3)",margin:"0 2px 8px"}},g),
+      el("div",{style:{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(260px,1fr))",gap:10}},liste.map(carte)))));
+}
+// ── Pièces jointes fixes du mail de bienvenue (2 maximum), gardées dans Supabase ──
+function PiecesJointesBienvenue({showToast}){
+  const el=React.createElement;
+  const[pj,setPj]=React.useState(null),[occupe,setOccupe]=React.useState(0);
+  const charger=()=>{if(!sb)return;sb.from("lp24_pieces_jointes").select("slot,nom,taille,maj").order("slot").then(({data,error})=>{setPj(error?"erreur":(data||[]));});};
+  React.useEffect(charger,[]);
+  const taille=n=>n>1048576?(n/1048576).toFixed(1)+" Mo":Math.max(1,Math.round(n/1024))+" Ko";
+  const choisir=(slot,f)=>{if(!f)return;if(f.size>4*1048576){showToast("⚠️ Fichier trop lourd (4 Mo maximum)","err");return;}
+    setOccupe(slot);const r=new FileReader();r.onload=async()=>{try{const data=String(r.result).split(",")[1]||"";
+      const{error}=await sb.from("lp24_pieces_jointes").upsert({slot,nom:f.name,type:f.type||"application/octet-stream",taille:f.size,data,maj:new Date().toISOString()});
+      if(error)throw error;showToast("📎 Pièce jointe enregistrée");charger();}catch(e){showToast("⚠️ Non enregistrée : "+((e&&e.message)||e),"err");}setOccupe(0);};
+    r.onerror=()=>{setOccupe(0);showToast("⚠️ Lecture du fichier impossible","err");};r.readAsDataURL(f);};
+  const retirer=async slot=>{const{error}=await sb.from("lp24_pieces_jointes").delete().eq("slot",slot);if(error){showToast("⚠️ "+error.message,"err");return;}showToast("Pièce jointe retirée");charger();};
+  const ligne=slot=>{const x=Array.isArray(pj)?pj.find(r=>r.slot===slot):null;const id="pj-"+slot;
+    return el("div",{key:slot,style:{display:"flex",alignItems:"center",gap:10,padding:"9px 12px",border:"1px dashed var(--border)",borderRadius:10,background:"var(--surface2,#F8FAFC)"}},
+      el("span",{style:{fontSize:18}},"📎"),
+      el("div",{style:{flex:1,minWidth:0}},x?el("div",null,el("div",{style:{fontWeight:600,fontSize:13,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}},x.nom),el("div",{style:{fontSize:11,color:"var(--text3)"}},taille(x.taille||0)))
+        :el("div",{style:{fontSize:13,color:"var(--text3)"}},occupe===slot?"Enregistrement…":"Pièce jointe "+slot+" : aucune")),
+      el("input",{id,type:"file",style:{display:"none"},onChange:e=>{choisir(slot,e.target.files&&e.target.files[0]);e.target.value="";}}),
+      el("button",{type:"button",className:"btn btn-outline",style:{fontSize:12,padding:"4px 10px"},disabled:!!occupe,onClick:()=>document.getElementById(id).click()},x?"Remplacer":"Ajouter un fichier"),
+      x&&el("button",{type:"button",className:"btn",style:{fontSize:12,padding:"4px 10px"},onClick:()=>retirer(slot)},"Retirer"));};
+  return el("div",{style:{marginTop:14}},
+    el("div",{style:{fontWeight:700,fontSize:13.5,color:"var(--text)"}},"Pièces jointes (toujours les mêmes)"),
+    el("div",{style:{fontSize:11.5,color:"var(--text3)",margin:"1px 0 8px"}},"Jointes automatiquement au mail de bienvenue depuis l'ordinateur. 4 Mo maximum par fichier."),
+    pj==="erreur"?el("div",{style:{fontSize:12,color:"var(--text3)"}},"⚠️ Pièces jointes indisponibles : le script Supabase n° 11 n'a pas encore été lancé.")
+      :el("div",{style:{display:"grid",gap:8}},ligne(1),ligne(2)));
 }
 // ── Réglages : envoi des mails types sur une adresse de test (même modèle EmailJS que les envois automatiques) ──
 // ── Textes des mails automatiques (modifiables dans Réglages → Textes des mails ; identiques aux textes d'origine de la base) ──
@@ -9043,9 +9147,29 @@ async function envoyerBienvenue(b,settings,showToast,addLog){
   const sujet=remplirModele(T("bienvenueSujet"),vars);
   const texte=remplirModele(T("bienvenueCorps"),vars).split("\n").filter(l=>!(/^\s*[•\-]/.test(l)&&/:\s*$/.test(l))).join("\n");
   // Ouvre un nouveau mail dans la messagerie (Outlook sur PC, Mail sur iPhone) : il reste à joindre sa photo puis envoyer
+  let pjs=[];
+  const telephone=/iPhone|iPad|iPod|Android/i.test(navigator.userAgent)||window.innerWidth<760;
+  if(sb&&!telephone){try{const{data}=await sb.from("lp24_pieces_jointes").select("slot,nom,type,data").order("slot");pjs=(data||[]).filter(x=>x&&x.data);}catch(e){}}
+  if(pjs.length){
+    // Fichier .eml : s'ouvre dans Outlook comme un nouveau mail prêt à envoyer, avec les pièces jointes
+    const NL="\r\n",b64=t=>btoa(unescape(encodeURIComponent(t))),hdr=t=>/^[\x20-\x7e]*$/.test(t)?t:"=?UTF-8?B?"+b64(t)+"?=",lignes=x=>x.replace(/.{1,76}/g,"$&"+NL);
+    const b1="=_mix_"+Date.now(),b2="=_alt_"+Date.now();
+    let eml="To: "+to+NL+"Subject: "+hdr(sujet)+NL+"X-Unsent: 1"+NL+"MIME-Version: 1.0"+NL+"Content-Type: multipart/mixed; boundary=\""+b1+"\""+NL+NL
+      +"--"+b1+NL+"Content-Type: multipart/alternative; boundary=\""+b2+"\""+NL+NL
+      +"--"+b2+NL+"Content-Type: text/plain; charset=UTF-8"+NL+"Content-Transfer-Encoding: base64"+NL+NL+lignes(b64(texte.replace(/\n/g,"\r\n")))+NL
+      +"--"+b2+NL+"Content-Type: text/html; charset=UTF-8"+NL+"Content-Transfer-Encoding: base64"+NL+NL+lignes(b64(mailCadre(mailTexteHtml(texte))))+NL+"--"+b2+"--"+NL;
+    pjs.forEach(x=>{const nm=hdr(x.nom||"piece-jointe");eml+="--"+b1+NL+"Content-Type: "+(x.type||"application/octet-stream")+"; name=\""+nm+"\""+NL+"Content-Transfer-Encoding: base64"+NL
+      +"Content-Disposition: attachment; filename=\""+nm+"\""+NL+NL+lignes(x.data)+NL;});
+    eml+="--"+b1+"--"+NL;
+    const url=URL.createObjectURL(new Blob([eml],{type:"message/rfc822"}));const a=document.createElement("a");a.href=url;
+    a.download=("Bienvenue - "+vars.prenom+" "+vars.nom).replace(/[\\/:*?"<>|]/g,"").trim()+".eml";document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),60000);
+    addLog&&addLog("Mail de bienvenue",(vars.prenom+" "+vars.nom).trim()+" ("+to+") — préparé avec "+pjs.length+" pièce(s) jointe(s)");
+    showToast("✉️ Mail prêt : ouvre le fichier téléchargé, il s'ouvre dans Outlook avec les pièces jointes");
+    return;
+  }
   window.location.href="mailto:"+encodeURIComponent(to)+"?subject="+encodeURIComponent(sujet)+"&body="+encodeURIComponent(texte.replace(/\n/g,"\r\n"));
   addLog&&addLog("Mail de bienvenue",(vars.prenom+" "+vars.nom).trim()+" ("+to+") — ouvert dans la messagerie");
-  showToast("✉️ Mail ouvert dans ta messagerie : ajoute sa photo puis envoie");
+  showToast(telephone?"✉️ Mail ouvert dans ta messagerie (les pièces jointes s'ajoutent depuis l'ordinateur)":"✉️ Mail ouvert dans ta messagerie : ajoute sa photo puis envoie");
 }
 
 // ════════════════ COLIS : lecture de l'étiquette en photo ════════════════
