@@ -3145,8 +3145,38 @@ function VueImpression({badges,settings,setSettings}){
         *{-webkit-print-color-adjust:exact!important;print-color-adjust:exact!important;}
       }
       .print-only{display:none;}
+      .et-grille{display:grid;grid-template-columns:minmax(0,1fr) auto;column-gap:20px;align-items:start;grid-auto-flow:row dense}
+      .et-grille>*{grid-column:1/-1}
+      .et-grille>.et-zone-g{grid-column:2;grid-row:span 2}
+      .et-grille>.et-zone-d{grid-column:1}
+      .et-haut{display:flex;flex-direction:column;gap:14px}
+      .et-liste{border-top:1px solid #E5E7EB;padding-top:12px;display:flex;flex-direction:column}
+      .et-liste-t{display:flex;justify-content:space-between;align-items:center;font-size:12px;color:#374151;margin-bottom:6px}
+      .et-liste-t span{color:#9CA3AF;font-weight:600}
+      .et-liste-c{max-height:340px;overflow-y:auto;display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:4px 12px;align-content:start}
+      .et-p{display:flex;align-items:center;gap:8px;padding:5px 8px;border-radius:7px;cursor:pointer;font-size:12px;color:#9CA3AF}
+      .et-p:hover{background:#F3F4F6}
+      .et-p.on{color:#0F172A}
+      .et-ck{width:16px;height:16px;flex:0 0 16px;border-radius:4px;border:1.5px solid #CBD5E1;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:700;color:#fff}
+      .et-p.on .et-ck{background:#002E8A;border-color:#002E8A}
+      .et-n{flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-weight:600}
+      .et-m{font-size:11px;color:#9CA3AF}
+      .et-x{border:0;background:none;color:#DC2626;cursor:pointer;font-size:12px;padding:0 2px}
+      .et-apercu-t{display:flex;align-items:baseline;gap:10px;font-weight:700;font-size:13px;color:#374151;margin:4px 0 10px}
+      .et-apercu-t span{font-weight:500;font-size:12px;color:#9CA3AF}
+      .et-pages{display:flex;flex-wrap:wrap;gap:20px;margin-bottom:16px}
+      .et-page{position:relative;width:440px;max-width:100%;aspect-ratio:210/297;background:#fff;border-radius:4px;box-shadow:0 1px 3px rgba(15,23,42,.08),0 8px 24px rgba(15,23,42,.08)}
+      .et-num{position:absolute;top:-1px;left:50%;transform:translate(-50%,-100%);font-size:11px;color:#9CA3AF;padding-bottom:3px;display:none}
+      .et-case{position:absolute;box-sizing:border-box;border-radius:4px;display:flex;align-items:center;justify-content:center;font-size:10px}
+      .et-vide{border:1.5px dashed #D1D5DB;color:#CBD5E1}
+      .et-prise{background:repeating-linear-gradient(135deg,#FEF2F2 0 6px,#FEE2E2 6px 12px);color:#E74C3C;font-weight:600}
+      .et-pleine{cursor:pointer;overflow:hidden;display:block}
+      .et-pleine:hover{outline:2px solid #DC2626;outline-offset:1px}
+      @media(max-width:1200px){.et-grille{display:block}}
+      .et-zone-g .et-pages{flex-direction:column}
+      .et-zone-d .m-grid-2>*{min-width:0}.et-zone-d input{width:100%;box-sizing:border-box;min-width:0}
     `),
-    React.createElement("div",{className:"no-print"},
+    React.createElement("div",{className:"no-print et-grille"},
       React.createElement(PageHero,{icone:"🏷️",titre:"Impression étiquettes",sousTitre:"étiquettes de badge à imprimer"}),
       React.createElement("div",{style:{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:16,flexWrap:"wrap",gap:8}},
         React.createElement("div",{style:{fontSize:13,color:"var(--text2)"}},search.trim()?"Recherche : coche les étiquettes à réimprimer":listeAImprimer.length+" étiquette(s) à imprimer — nouveaux arrivants (30 derniers jours et à venir) et fiches modifiées"),
@@ -3164,17 +3194,33 @@ function VueImpression({badges,settings,setSettings}){
           React.createElement("span",{style:{fontSize:12,color:"#9CA3AF",marginLeft:"auto"}},toPrint.length+" étiq · "+Math.ceil((startPos+toPrint.length)/PER_PAGE)+" page(s)")
         )
       ),
-      React.createElement(Card,{style:{marginBottom:12,padding:12}},
-        React.createElement("div",{style:{marginBottom:8}},
+      React.createElement(Card,{className:"et-zone-d",style:{marginBottom:12,padding:12}},
+        React.createElement("div",{className:"et-haut"},
+        React.createElement("div",{style:{flex:"0 0 auto"}},
           React.createElement("div",{style:{fontWeight:700,fontSize:12,color:"#374151",marginBottom:6}},"📍 Position de départ sur la plaquette"),
-          React.createElement("div",{style:{fontSize:11,color:"#9CA3AF",marginBottom:8}},"Cliquez sur la case à partir de laquelle commencer l'impression (cases rouges = déjà utilisées)"),
-          React.createElement("div",{style:{display:"grid",gridTemplateColumns:"repeat(5,1fr)",gap:6,maxWidth:280}},
+          React.createElement("div",{style:{fontSize:11,color:"#9CA3AF",marginBottom:8}},"Clique sur la case où commencer (rouge = déjà utilisée)"),
+          React.createElement("div",{style:{display:"grid",gridTemplateColumns:"repeat(5,1fr)",gap:6,width:280}},
             ...posGrid
           ),
-          startPos>0&&React.createElement("div",{style:{marginTop:8,fontSize:12,color:"#0891B2",fontWeight:600}},"▶ Impression démarrant à la case "+(startPos+1)+" ("+startPos+" case(s) vide(s) en début)")
-        )
+          startPos>0&&React.createElement("div",{style:{marginTop:8,fontSize:12,color:"#0891B2",fontWeight:600}},"▶ Départ case "+(startPos+1)+" ("+startPos+" case(s) déjà utilisée(s))")
+        ),
+        // Personnes : cocher / décocher ici
+        React.createElement("div",{className:"et-liste"},
+          React.createElement("div",{className:"et-liste-t"},React.createElement("b",null,"Personnes sélectionnées"),React.createElement("span",null,toPrint.length+" / "+(filtered.length+manualEtiqs.length))),
+          React.createElement("div",{className:"et-liste-c"},
+            manualEtiqs.map(m=>React.createElement("div",{key:m.id,className:"et-p on"},
+              React.createElement("span",{className:"et-ck"},"✓"),
+              React.createElement("span",{className:"et-n"},((m.prenom||"")+" "+(m.nom||"")).trim()),
+              React.createElement("span",{className:"et-m"},"manuelle"),
+              React.createElement("button",{type:"button",className:"et-x",title:"Retirer",onClick:()=>setManualEtiqs(l=>l.filter(x=>x.id!==m.id))},"✕"))),
+            filtered.map(b=>{const on=selected.has(b.id);return React.createElement("div",{key:b.id,className:"et-p"+(on?" on":""),onClick:()=>toggleSel(b.id)},
+              React.createElement("span",{className:"et-ck"},on?"✓":""),
+              React.createElement("span",{className:"et-n"},(String(b.prenom||"")+" "+String(b.nom||"").toUpperCase()).trim()),
+              React.createElement("span",{className:"et-m"},b.matricule&&String(b.matricule)!=="0"?b.matricule:"NC"));}),
+            filtered.length===0&&!manualEtiqs.length&&React.createElement("div",{style:{padding:16,textAlign:"center",color:"#9CA3AF",fontSize:12}},search.trim()?"Aucun collaborateur trouvé.":"✅ Toutes les étiquettes sont imprimées. Tape un nom pour en réimprimer une."))
+        ))
       ),
-      React.createElement(Card,{style:{marginBottom:12,padding:12}},
+      React.createElement(Card,{className:"et-zone-d",style:{marginBottom:12,padding:12}},
         React.createElement("div",{style:{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:showManual?10:0}},
           React.createElement("div",{style:{fontWeight:700,fontSize:12,color:"#374151"}},"✏️ Étiquette manuelle (sans collaborateur)"),
           React.createElement("button",{onClick:()=>setShowManual(v=>!v),style:{background:"none",border:"1px solid #D1D5DB",borderRadius:6,padding:"3px 10px",fontSize:11,cursor:"pointer",color:"#374151"}},showManual?"▲ Masquer":"▼ Ajouter")
@@ -3186,39 +3232,24 @@ function VueImpression({badges,settings,setSettings}){
             React.createElement("input",{value:manualForm.matricule,onChange:e=>setManualForm(f=>({...f,matricule:e.target.value.toUpperCase()})),placeholder:"Matricule",style:{padding:"6px 8px",borderRadius:6,border:"1px solid #D1D5DB",fontSize:12}}),
             React.createElement("button",{onClick:()=>{if(!manualForm.prenom&&!manualForm.nom)return;setManualEtiqs(l=>[...l,{...manualForm,id:"manual_"+Date.now()}]);setManualForm({prenom:"",nom:"",matricule:""});},style:{background:"#002E8A",color:"#fff",border:"none",borderRadius:6,padding:"6px 14px",fontSize:12,fontWeight:700,cursor:"pointer"}},"+ Ajouter")
           ),
-          React.createElement("div",{style:{fontSize:10,color:"#9CA3AF"}},"Les étiquettes ajoutées apparaissent ci-dessous avec les collaborateurs — cliquez dessus pour les retirer.")
+          React.createElement("div",{style:{fontSize:10,color:"#9CA3AF"}},"Les étiquettes ajoutées apparaissent dans la liste et sur l'aperçu.")
         )
       ),
-      manualEtiqs.length>0&&React.createElement("div",{style:{fontSize:11,fontWeight:700,color:"#374151",marginBottom:6}},"🏷️ Étiquettes manuelles ("+manualEtiqs.length+") — cliquer pour retirer"),
-      React.createElement("div",{style:{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(200px,1fr))",gap:8,marginBottom:8}},
-        manualEtiqs.map(m=>React.createElement("div",{key:m.id,onClick:()=>setManualEtiqs(l=>l.filter(x=>x.id!==m.id)),title:"Cliquer pour retirer cette étiquette",style:{
-          border:"2px solid #002E8A",borderRadius:10,overflow:"hidden",background:"#fff",cursor:"pointer",
-          position:"relative",transition:"all .15s",boxShadow:"0 1px 3px rgba(0,0,0,.06)"}},
-          renderEtiqPreview(m),
-          React.createElement("div",{style:{position:"absolute",top:6,right:6,background:"#DC2626",color:"#fff",borderRadius:"50%",width:20,height:20,display:"flex",alignItems:"center",justifyContent:"center",fontSize:11,fontWeight:700,boxShadow:"0 1px 3px rgba(0,0,0,.3)"}},"✕"),
-          React.createElement("div",{style:{padding:"6px 10px",display:"flex",justifyContent:"space-between",alignItems:"center",borderTop:"1px solid #F3F4F6"}},
-            React.createElement("span",{style:{fontSize:10,color:"#002E8A",fontWeight:600}},"Étiquette manuelle"),
-            React.createElement("span",{style:{background:"#002E8A",color:"#fff",borderRadius:"50%",width:18,height:18,display:"flex",alignItems:"center",justifyContent:"center",fontSize:10,fontWeight:700}},"✓")
-          )
-        )),
-        filtered.map(b=>{
-          const isSel=selected.has(b.id);
-          const checked=selected.has(b.id);
-          return React.createElement("div",{key:b.id,onClick:()=>toggleSel(b.id),style:{
-            border:"2px solid "+(checked?"#002E8A":isSel&&selected.size===0?"#D1D5DB":"#E5E7EB"),
-            borderRadius:10,overflow:"hidden",background:"#fff",cursor:"pointer",
-            opacity:!isSel?.4:1,transition:"all .15s",
-            boxShadow:checked?"0 0 0 2px #93C5FD":"0 1px 3px rgba(0,0,0,.06)"}},
-            renderEtiqPreview(b),
-            React.createElement("div",{style:{padding:"6px 10px",display:"flex",justifyContent:"space-between",alignItems:"center",borderTop:"1px solid #F3F4F6"}},
-              React.createElement("span",{style:{fontSize:10,color:"#6B7280"}},(b.casier||"")+(b.serie?" · "+b.serie:"")),
-              checked?React.createElement("span",{style:{background:"#002E8A",color:"#fff",borderRadius:"50%",width:18,height:18,display:"flex",alignItems:"center",justifyContent:"center",fontSize:10,fontWeight:700}},"✓"):
-              React.createElement("span",{style:{background:"#E5E7EB",borderRadius:"50%",width:18,height:18}})
-            )
-          );
-        }),
-        filtered.length===0&&React.createElement("div",{style:{gridColumn:"1/-1",textAlign:"center",padding:48,color:"#9CA3AF",fontSize:14}},search.trim()?"Aucun collaborateur trouvé.":"✅ Toutes les étiquettes sont imprimées. Tape un nom ci-dessus pour en réimprimer une.")
-      )
+      // Aperçu en direct de la (des) plaquette(s) telle(s) qu'elle(s) sortira/sortiront
+      React.createElement("div",{className:"et-zone-g"},React.createElement("div",{className:"et-apercu-t"},"Aperçu avant impression",React.createElement("span",null,Math.max(1,Math.ceil((startPos+toPrint.length)/PER_PAGE))+" plaquette(s)")),
+      React.createElement("div",{className:"et-pages"},
+        Array.from({length:Math.max(1,Math.ceil((startPos+toPrint.length)/PER_PAGE))},(_,p)=>React.createElement("div",{key:p,className:"et-page"},
+          React.createElement("span",{className:"et-num"},"Plaquette "+(p+1)),
+          Array.from({length:PER_PAGE},(_,k)=>{const i=p*PER_PAGE+k,r=Math.floor(k/2),c=k%2;
+            const pos={left:((19.70+c*95)/210*100)+"%",top:((13.42+r*55.53)/297*100)+"%",width:(80/210*100)+"%",height:(50/297*100)+"%"};
+            if(i<startPos)return React.createElement("div",{key:k,className:"et-case et-prise",style:pos},"déjà utilisée");
+            const b=toPrint[i-startPos];
+            if(!b)return React.createElement("div",{key:k,className:"et-case et-vide",style:pos},"Case "+(k+1));
+            const retirer=()=>String(b.id).indexOf("manual_")===0?setManualEtiqs(l=>l.filter(x=>x.id!==b.id)):toggleSel(b.id);
+            return React.createElement("div",{key:k,className:"et-case et-pleine",style:pos,title:"Cliquer pour retirer",onClick:retirer},renderEtiqPreview(b));
+          })
+        ))
+      ))
     ),
     React.createElement("div",{className:"print-only"},...pages)
   );
@@ -8481,8 +8512,38 @@ function VueImpression({badges,settings,setSettings}){
         *{-webkit-print-color-adjust:exact!important;print-color-adjust:exact!important;}
       }
       .print-only{display:none;}
+      .et-grille{display:grid;grid-template-columns:minmax(0,1fr) auto;column-gap:20px;align-items:start;grid-auto-flow:row dense}
+      .et-grille>*{grid-column:1/-1}
+      .et-grille>.et-zone-g{grid-column:2;grid-row:span 2}
+      .et-grille>.et-zone-d{grid-column:1}
+      .et-haut{display:flex;flex-direction:column;gap:14px}
+      .et-liste{border-top:1px solid #E5E7EB;padding-top:12px;display:flex;flex-direction:column}
+      .et-liste-t{display:flex;justify-content:space-between;align-items:center;font-size:12px;color:#374151;margin-bottom:6px}
+      .et-liste-t span{color:#9CA3AF;font-weight:600}
+      .et-liste-c{max-height:340px;overflow-y:auto;display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:4px 12px;align-content:start}
+      .et-p{display:flex;align-items:center;gap:8px;padding:5px 8px;border-radius:7px;cursor:pointer;font-size:12px;color:#9CA3AF}
+      .et-p:hover{background:#F3F4F6}
+      .et-p.on{color:#0F172A}
+      .et-ck{width:16px;height:16px;flex:0 0 16px;border-radius:4px;border:1.5px solid #CBD5E1;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:700;color:#fff}
+      .et-p.on .et-ck{background:#002E8A;border-color:#002E8A}
+      .et-n{flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-weight:600}
+      .et-m{font-size:11px;color:#9CA3AF}
+      .et-x{border:0;background:none;color:#DC2626;cursor:pointer;font-size:12px;padding:0 2px}
+      .et-apercu-t{display:flex;align-items:baseline;gap:10px;font-weight:700;font-size:13px;color:#374151;margin:4px 0 10px}
+      .et-apercu-t span{font-weight:500;font-size:12px;color:#9CA3AF}
+      .et-pages{display:flex;flex-wrap:wrap;gap:20px;margin-bottom:16px}
+      .et-page{position:relative;width:440px;max-width:100%;aspect-ratio:210/297;background:#fff;border-radius:4px;box-shadow:0 1px 3px rgba(15,23,42,.08),0 8px 24px rgba(15,23,42,.08)}
+      .et-num{position:absolute;top:-1px;left:50%;transform:translate(-50%,-100%);font-size:11px;color:#9CA3AF;padding-bottom:3px;display:none}
+      .et-case{position:absolute;box-sizing:border-box;border-radius:4px;display:flex;align-items:center;justify-content:center;font-size:10px}
+      .et-vide{border:1.5px dashed #D1D5DB;color:#CBD5E1}
+      .et-prise{background:repeating-linear-gradient(135deg,#FEF2F2 0 6px,#FEE2E2 6px 12px);color:#E74C3C;font-weight:600}
+      .et-pleine{cursor:pointer;overflow:hidden;display:block}
+      .et-pleine:hover{outline:2px solid #DC2626;outline-offset:1px}
+      @media(max-width:1200px){.et-grille{display:block}}
+      .et-zone-g .et-pages{flex-direction:column}
+      .et-zone-d .m-grid-2>*{min-width:0}.et-zone-d input{width:100%;box-sizing:border-box;min-width:0}
     `),
-    React.createElement("div",{className:"no-print"},
+    React.createElement("div",{className:"no-print et-grille"},
       React.createElement("div",{style:{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:16,flexWrap:"wrap",gap:8}},
         React.createElement("h1",{className:"ios-large",style:{fontSize:22,fontWeight:700,color:"#0F172A"}},"🏷️ Étiquettes"),
         React.createElement(Btn,{onClick:()=>{if(!toPrint.length)return;if(collaborateursToPrint.length)setAConfirmer(collaborateursToPrint);doPrintEtiquettes(toPrint,startPos,IMG_BG,IMG_LOGO,BLUE);},color:"#002E8A",style:{fontSize:13,opacity:toPrint.length?1:.5}},"🖨️ Imprimer "+(toPrint.length)+" étiquette(s)")
@@ -8499,17 +8560,33 @@ function VueImpression({badges,settings,setSettings}){
           React.createElement("span",{style:{fontSize:12,color:"#9CA3AF",marginLeft:"auto"}},toPrint.length+" étiq · "+Math.ceil((startPos+toPrint.length)/PER_PAGE)+" page(s)")
         )
       ),
-      React.createElement(Card,{style:{marginBottom:12,padding:12}},
-        React.createElement("div",{style:{marginBottom:8}},
+      React.createElement(Card,{className:"et-zone-d",style:{marginBottom:12,padding:12}},
+        React.createElement("div",{className:"et-haut"},
+        React.createElement("div",{style:{flex:"0 0 auto"}},
           React.createElement("div",{style:{fontWeight:700,fontSize:12,color:"#374151",marginBottom:6}},"📍 Position de départ sur la plaquette"),
-          React.createElement("div",{style:{fontSize:11,color:"#9CA3AF",marginBottom:8}},"Cliquez sur la case à partir de laquelle commencer l'impression (cases rouges = déjà utilisées)"),
-          React.createElement("div",{style:{display:"grid",gridTemplateColumns:"repeat(5,1fr)",gap:6,maxWidth:280}},
+          React.createElement("div",{style:{fontSize:11,color:"#9CA3AF",marginBottom:8}},"Clique sur la case où commencer (rouge = déjà utilisée)"),
+          React.createElement("div",{style:{display:"grid",gridTemplateColumns:"repeat(5,1fr)",gap:6,width:280}},
             ...posGrid
           ),
-          startPos>0&&React.createElement("div",{style:{marginTop:8,fontSize:12,color:"#0891B2",fontWeight:600}},"▶ Impression démarrant à la case "+(startPos+1)+" ("+startPos+" case(s) vide(s) en début)")
-        )
+          startPos>0&&React.createElement("div",{style:{marginTop:8,fontSize:12,color:"#0891B2",fontWeight:600}},"▶ Départ case "+(startPos+1)+" ("+startPos+" case(s) déjà utilisée(s))")
+        ),
+        // Personnes : cocher / décocher ici
+        React.createElement("div",{className:"et-liste"},
+          React.createElement("div",{className:"et-liste-t"},React.createElement("b",null,"Personnes sélectionnées"),React.createElement("span",null,toPrint.length+" / "+(filtered.length+manualEtiqs.length))),
+          React.createElement("div",{className:"et-liste-c"},
+            manualEtiqs.map(m=>React.createElement("div",{key:m.id,className:"et-p on"},
+              React.createElement("span",{className:"et-ck"},"✓"),
+              React.createElement("span",{className:"et-n"},((m.prenom||"")+" "+(m.nom||"")).trim()),
+              React.createElement("span",{className:"et-m"},"manuelle"),
+              React.createElement("button",{type:"button",className:"et-x",title:"Retirer",onClick:()=>setManualEtiqs(l=>l.filter(x=>x.id!==m.id))},"✕"))),
+            filtered.map(b=>{const on=selected.has(b.id);return React.createElement("div",{key:b.id,className:"et-p"+(on?" on":""),onClick:()=>toggleSel(b.id)},
+              React.createElement("span",{className:"et-ck"},on?"✓":""),
+              React.createElement("span",{className:"et-n"},(String(b.prenom||"")+" "+String(b.nom||"").toUpperCase()).trim()),
+              React.createElement("span",{className:"et-m"},b.matricule&&String(b.matricule)!=="0"?b.matricule:"NC"));}),
+            filtered.length===0&&!manualEtiqs.length&&React.createElement("div",{style:{padding:16,textAlign:"center",color:"#9CA3AF",fontSize:12}},search.trim()?"Aucun collaborateur trouvé.":"✅ Toutes les étiquettes sont imprimées. Tape un nom pour en réimprimer une."))
+        ))
       ),
-      React.createElement(Card,{style:{marginBottom:12,padding:12}},
+      React.createElement(Card,{className:"et-zone-d",style:{marginBottom:12,padding:12}},
         React.createElement("div",{style:{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:showManual?10:0}},
           React.createElement("div",{style:{fontWeight:700,fontSize:12,color:"#374151"}},"✏️ Étiquette manuelle (sans collaborateur)"),
           React.createElement("button",{onClick:()=>setShowManual(v=>!v),style:{background:"none",border:"1px solid #D1D5DB",borderRadius:6,padding:"3px 10px",fontSize:11,cursor:"pointer",color:"#374151"}},showManual?"▲ Masquer":"▼ Ajouter")
@@ -8521,39 +8598,24 @@ function VueImpression({badges,settings,setSettings}){
             React.createElement("input",{value:manualForm.matricule,onChange:e=>setManualForm(f=>({...f,matricule:e.target.value.toUpperCase()})),placeholder:"Matricule",style:{padding:"6px 8px",borderRadius:6,border:"1px solid #D1D5DB",fontSize:12}}),
             React.createElement("button",{onClick:()=>{if(!manualForm.prenom&&!manualForm.nom)return;setManualEtiqs(l=>[...l,{...manualForm,id:"manual_"+Date.now()}]);setManualForm({prenom:"",nom:"",matricule:""});},style:{background:"#002E8A",color:"#fff",border:"none",borderRadius:6,padding:"6px 14px",fontSize:12,fontWeight:700,cursor:"pointer"}},"+ Ajouter")
           ),
-          React.createElement("div",{style:{fontSize:10,color:"#9CA3AF"}},"Les étiquettes ajoutées apparaissent ci-dessous avec les collaborateurs — cliquez dessus pour les retirer.")
+          React.createElement("div",{style:{fontSize:10,color:"#9CA3AF"}},"Les étiquettes ajoutées apparaissent dans la liste et sur l'aperçu.")
         )
       ),
-      manualEtiqs.length>0&&React.createElement("div",{style:{fontSize:11,fontWeight:700,color:"#374151",marginBottom:6}},"🏷️ Étiquettes manuelles ("+manualEtiqs.length+") — cliquer pour retirer"),
-      React.createElement("div",{style:{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(200px,1fr))",gap:8,marginBottom:8}},
-        manualEtiqs.map(m=>React.createElement("div",{key:m.id,onClick:()=>setManualEtiqs(l=>l.filter(x=>x.id!==m.id)),title:"Cliquer pour retirer cette étiquette",style:{
-          border:"2px solid #002E8A",borderRadius:10,overflow:"hidden",background:"#fff",cursor:"pointer",
-          position:"relative",transition:"all .15s",boxShadow:"0 1px 3px rgba(0,0,0,.06)"}},
-          renderEtiqPreview(m),
-          React.createElement("div",{style:{position:"absolute",top:6,right:6,background:"#DC2626",color:"#fff",borderRadius:"50%",width:20,height:20,display:"flex",alignItems:"center",justifyContent:"center",fontSize:11,fontWeight:700,boxShadow:"0 1px 3px rgba(0,0,0,.3)"}},"✕"),
-          React.createElement("div",{style:{padding:"6px 10px",display:"flex",justifyContent:"space-between",alignItems:"center",borderTop:"1px solid #F3F4F6"}},
-            React.createElement("span",{style:{fontSize:10,color:"#002E8A",fontWeight:600}},"Étiquette manuelle"),
-            React.createElement("span",{style:{background:"#002E8A",color:"#fff",borderRadius:"50%",width:18,height:18,display:"flex",alignItems:"center",justifyContent:"center",fontSize:10,fontWeight:700}},"✓")
-          )
-        )),
-        filtered.map(b=>{
-          const isSel=selected.has(b.id);
-          const checked=selected.has(b.id);
-          return React.createElement("div",{key:b.id,onClick:()=>toggleSel(b.id),style:{
-            border:"2px solid "+(checked?"#002E8A":isSel&&selected.size===0?"#D1D5DB":"#E5E7EB"),
-            borderRadius:10,overflow:"hidden",background:"#fff",cursor:"pointer",
-            opacity:!isSel?.4:1,transition:"all .15s",
-            boxShadow:checked?"0 0 0 2px #93C5FD":"0 1px 3px rgba(0,0,0,.06)"}},
-            renderEtiqPreview(b),
-            React.createElement("div",{style:{padding:"6px 10px",display:"flex",justifyContent:"space-between",alignItems:"center",borderTop:"1px solid #F3F4F6"}},
-              React.createElement("span",{style:{fontSize:10,color:"#6B7280"}},(b.casier||"")+(b.serie?" · "+b.serie:"")),
-              checked?React.createElement("span",{style:{background:"#002E8A",color:"#fff",borderRadius:"50%",width:18,height:18,display:"flex",alignItems:"center",justifyContent:"center",fontSize:10,fontWeight:700}},"✓"):
-              React.createElement("span",{style:{background:"#E5E7EB",borderRadius:"50%",width:18,height:18}})
-            )
-          );
-        }),
-        filtered.length===0&&React.createElement("div",{style:{gridColumn:"1/-1",textAlign:"center",padding:48,color:"#9CA3AF",fontSize:14}},search.trim()?"Aucun collaborateur trouvé.":"✅ Toutes les étiquettes sont imprimées. Tape un nom ci-dessus pour en réimprimer une.")
-      )
+      // Aperçu en direct de la (des) plaquette(s) telle(s) qu'elle(s) sortira/sortiront
+      React.createElement("div",{className:"et-zone-g"},React.createElement("div",{className:"et-apercu-t"},"Aperçu avant impression",React.createElement("span",null,Math.max(1,Math.ceil((startPos+toPrint.length)/PER_PAGE))+" plaquette(s)")),
+      React.createElement("div",{className:"et-pages"},
+        Array.from({length:Math.max(1,Math.ceil((startPos+toPrint.length)/PER_PAGE))},(_,p)=>React.createElement("div",{key:p,className:"et-page"},
+          React.createElement("span",{className:"et-num"},"Plaquette "+(p+1)),
+          Array.from({length:PER_PAGE},(_,k)=>{const i=p*PER_PAGE+k,r=Math.floor(k/2),c=k%2;
+            const pos={left:((19.70+c*95)/210*100)+"%",top:((13.42+r*55.53)/297*100)+"%",width:(80/210*100)+"%",height:(50/297*100)+"%"};
+            if(i<startPos)return React.createElement("div",{key:k,className:"et-case et-prise",style:pos},"déjà utilisée");
+            const b=toPrint[i-startPos];
+            if(!b)return React.createElement("div",{key:k,className:"et-case et-vide",style:pos},"Case "+(k+1));
+            const retirer=()=>String(b.id).indexOf("manual_")===0?setManualEtiqs(l=>l.filter(x=>x.id!==b.id)):toggleSel(b.id);
+            return React.createElement("div",{key:k,className:"et-case et-pleine",style:pos,title:"Cliquer pour retirer",onClick:retirer},renderEtiqPreview(b));
+          })
+        ))
+      ))
     ),
     React.createElement("div",{className:"print-only"},...pages)
   );
