@@ -3357,7 +3357,7 @@ function fssLimite(){return isoLocal(new Date(Date.now()+FSS_FENETRE*864e5));}
 (function(){try{var st=document.createElement("style");st.textContent=".fss-tard{cursor:pointer;background:var(--surface2,#F8FAFC)}.fss-tard td{padding:10px 12px;font-size:12px;font-weight:600;color:var(--text2,#475569);border-top:2px solid var(--border,#E2E8F0)}.fss-tard:hover td{color:var(--text,#0F172A)}.fss-tard-f{display:inline-block;width:16px;color:var(--text3,#94A3B8)}.fss-tard-a{float:right;font-weight:600;color:#2563EB}";document.head.appendChild(st);}catch(e){}})();
 function fssPlusTard(f){if(!f||f.cloture)return false;const d=String(f.dateEvt||"").slice(0,10);return /^\d{4}-\d{2}-\d{2}$/.test(d)&&d>fssLimite();}
 // ── Calendrier du site : arrivées, départs, colis et badges de prêt ──
-function VueCalendrier({fssData,canAccess,setView}){
+function VueCalendrier({fssData,badges,canAccess,setView}){
   const el=React.createElement;
   const auj=new Date();const[mois,setMois]=React.useState(()=>new Date(auj.getFullYear(),auj.getMonth(),1));
   const[colis,setColis]=React.useState([]);const[prets,setPrets]=React.useState([]);
@@ -3366,11 +3366,19 @@ function VueCalendrier({fssData,canAccess,setView}){
     sb.from("lp24_colis").select("*").then(r=>{if(!r.error&&r.data)setColis(r.data);}).catch(()=>{});
     sb.from("badges_pret").select("*").then(r=>{if(!r.error&&r.data)setPrets(r.data);}).catch(()=>{});},[]);
   const iso=d=>d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0");
-  const jour=x=>{const d=String(x||"").slice(0,10);return /^\d{4}-\d{2}-\d{2}$/.test(d)?d:"";};
+  const jour=x=>{const t=String(x||"").trim();let m=t.match(/^(\d{4})-(\d{2})-(\d{2})/);if(m)return m[1]+"-"+m[2]+"-"+m[3];
+    m=t.match(/^(\d{1,2})[\/.-](\d{1,2})[\/.-](\d{4})/);return m?m[3]+"-"+m[2].padStart(2,"0")+"-"+m[1].padStart(2,"0"):"";};
+  const cleNom=(p,n)=>(String(p||"")+" "+String(n||"")).toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g,"").replace(/[^a-z]/g,"");
+  const deja=new Set();
   const nomCourt=(p,n)=>((String(p||"").trim().charAt(0)?String(p).trim().charAt(0).toUpperCase()+". ":"")+String(n||"").toUpperCase()).trim();
   const ev=[];
   (fssData||[]).forEach(f=>{const d=jour(f.dateEvt);if(!d)return;const t=f.situation==="Départ"?"dep":"arr";
+    deja.add(t+d+cleNom(f.prenom,f.nom));
     ev.push({d,t,txt:nomCourt(f.prenom,f.nom),titre:(t==="arr"?"Arrivée":"Départ")+" · "+(f.prenom||"")+" "+(f.nom||""),fini:!!f.cloture,vue:"field_support"});});
+  // Fiches collaborateurs : date d'arrivée et date de départ (même sans fiche Field Support)
+  (badges||[]).forEach(b=>{if(b.statut==="Archivé"&&!b.date_sortie)return;
+    [["arr",b.date_entree],["dep",b.date_sortie_prevue||b.date_sortie]].forEach(([t,x])=>{const d=jour(x);if(!d)return;const k=t+d+cleNom(b.prenom,b.nom);if(deja.has(k))return;deja.add(k);
+      ev.push({d,t,txt:nomCourt(b.prenom,b.nom),titre:(t==="arr"?"Arrivée":"Départ")+" · "+(b.prenom||"")+" "+(b.nom||""),fini:false,vue:"collaborateurs"});});});
   colis.forEach(c=>{const d=jour(c.recu_le);if(!d)return;
     ev.push({d,t:"colis",txt:"📦 "+nomCourt(c.prenom,c.nom),titre:"Colis "+("#"+String(c.numero||0).padStart(3,"0"))+" reçu · "+(c.prenom||"")+" "+(c.nom||""),fini:c.statut==="recupere",vue:"colis"});});
   prets.forEach(b=>{const st=String(b.statut||"").toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g,"");if(!/^(pret|emprunt)/.test(st))return;const d=jour(b.date_retour_prevu);if(!d)return;
@@ -5894,7 +5902,7 @@ useEffect(()=>{
       case "casiers": return React.createElement(VueCasiers,props);
       case "rapport": return React.createElement(VueRapport,{badges,fssData,setBadges,setFssData,showToast,addLog,setView,setPendingOpen});
       case "impression": return React.createElement(VueImpression,{badges,settings,setSettings});
-      case "calendrier": return React.createElement(VueCalendrier,{fssData,canAccess,setView});
+      case "calendrier": return React.createElement(VueCalendrier,{fssData,badges,canAccess,setView});
       case "gestion_accueil": case "badges_pret": case "colis": return React.createElement(VueGestionAccueil,{onglet:view,setView,canAccess,showToast,addLog,badges});
       case "historique_pret": return React.createElement(VueHistoriquePret,null);
       case "aide": return React.createElement(VueAide,{canAccess,peutReglages:!isIT&&!isBadgeOnly});
@@ -8786,7 +8794,7 @@ function fssLimite(){return isoLocal(new Date(Date.now()+FSS_FENETRE*864e5));}
 (function(){try{var st=document.createElement("style");st.textContent=".fss-tard{cursor:pointer;background:var(--surface2,#F8FAFC)}.fss-tard td{padding:10px 12px;font-size:12px;font-weight:600;color:var(--text2,#475569);border-top:2px solid var(--border,#E2E8F0)}.fss-tard:hover td{color:var(--text,#0F172A)}.fss-tard-f{display:inline-block;width:16px;color:var(--text3,#94A3B8)}.fss-tard-a{float:right;font-weight:600;color:#2563EB}";document.head.appendChild(st);}catch(e){}})();
 function fssPlusTard(f){if(!f||f.cloture)return false;const d=String(f.dateEvt||"").slice(0,10);return /^\d{4}-\d{2}-\d{2}$/.test(d)&&d>fssLimite();}
 // ── Calendrier du site : arrivées, départs, colis et badges de prêt ──
-function VueCalendrier({fssData,canAccess,setView}){
+function VueCalendrier({fssData,badges,canAccess,setView}){
   const el=React.createElement;
   const auj=new Date();const[mois,setMois]=React.useState(()=>new Date(auj.getFullYear(),auj.getMonth(),1));
   const[colis,setColis]=React.useState([]);const[prets,setPrets]=React.useState([]);
@@ -8795,11 +8803,19 @@ function VueCalendrier({fssData,canAccess,setView}){
     sb.from("lp24_colis").select("*").then(r=>{if(!r.error&&r.data)setColis(r.data);}).catch(()=>{});
     sb.from("badges_pret").select("*").then(r=>{if(!r.error&&r.data)setPrets(r.data);}).catch(()=>{});},[]);
   const iso=d=>d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0");
-  const jour=x=>{const d=String(x||"").slice(0,10);return /^\d{4}-\d{2}-\d{2}$/.test(d)?d:"";};
+  const jour=x=>{const t=String(x||"").trim();let m=t.match(/^(\d{4})-(\d{2})-(\d{2})/);if(m)return m[1]+"-"+m[2]+"-"+m[3];
+    m=t.match(/^(\d{1,2})[\/.-](\d{1,2})[\/.-](\d{4})/);return m?m[3]+"-"+m[2].padStart(2,"0")+"-"+m[1].padStart(2,"0"):"";};
+  const cleNom=(p,n)=>(String(p||"")+" "+String(n||"")).toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g,"").replace(/[^a-z]/g,"");
+  const deja=new Set();
   const nomCourt=(p,n)=>((String(p||"").trim().charAt(0)?String(p).trim().charAt(0).toUpperCase()+". ":"")+String(n||"").toUpperCase()).trim();
   const ev=[];
   (fssData||[]).forEach(f=>{const d=jour(f.dateEvt);if(!d)return;const t=f.situation==="Départ"?"dep":"arr";
+    deja.add(t+d+cleNom(f.prenom,f.nom));
     ev.push({d,t,txt:nomCourt(f.prenom,f.nom),titre:(t==="arr"?"Arrivée":"Départ")+" · "+(f.prenom||"")+" "+(f.nom||""),fini:!!f.cloture,vue:"field_support"});});
+  // Fiches collaborateurs : date d'arrivée et date de départ (même sans fiche Field Support)
+  (badges||[]).forEach(b=>{if(b.statut==="Archivé"&&!b.date_sortie)return;
+    [["arr",b.date_entree],["dep",b.date_sortie_prevue||b.date_sortie]].forEach(([t,x])=>{const d=jour(x);if(!d)return;const k=t+d+cleNom(b.prenom,b.nom);if(deja.has(k))return;deja.add(k);
+      ev.push({d,t,txt:nomCourt(b.prenom,b.nom),titre:(t==="arr"?"Arrivée":"Départ")+" · "+(b.prenom||"")+" "+(b.nom||""),fini:false,vue:"collaborateurs"});});});
   colis.forEach(c=>{const d=jour(c.recu_le);if(!d)return;
     ev.push({d,t:"colis",txt:"📦 "+nomCourt(c.prenom,c.nom),titre:"Colis "+("#"+String(c.numero||0).padStart(3,"0"))+" reçu · "+(c.prenom||"")+" "+(c.nom||""),fini:c.statut==="recupere",vue:"colis"});});
   prets.forEach(b=>{const st=String(b.statut||"").toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g,"");if(!/^(pret|emprunt)/.test(st))return;const d=jour(b.date_retour_prevu);if(!d)return;
@@ -11411,7 +11427,7 @@ useEffect(()=>{
       case "casiers": return React.createElement(VueCasiers,props);
       case "rapport": return React.createElement(VueRapport,{badges,fssData,setBadges,setFssData,showToast,addLog,setView,setPendingOpen});
       case "impression": return React.createElement(VueImpression,{badges,settings,setSettings});
-      case "calendrier": return React.createElement(VueCalendrier,{fssData,canAccess,setView});
+      case "calendrier": return React.createElement(VueCalendrier,{fssData,badges,canAccess,setView});
       case "gestion_accueil": case "badges_pret": case "colis": return React.createElement(VueGestionAccueil,{onglet:view,setView,canAccess,showToast,addLog,badges});
       case "aide": return React.createElement(VueAide,{canAccess,peutReglages:!isIT&&!isBadgeOnly});
       case "notifications": return React.createElement(VueNotifications,{histo,items:notifs,supprimer:supprimerNotif,toutSupprimer:toutSupprimerNotifs,restaurer:restaurerNotifs,nbSupprimees:notifsToutes.length-notifs.length,setView});
