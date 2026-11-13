@@ -1425,7 +1425,7 @@ function mailsAnnonces({apres,avant,fss,pret}){
   if(fss&&st.envoiFSS!==false&&(window._mailIT||window._fssNotifEmail))L.push("• Maintenant : mail Field Support ("+fss.toLowerCase()+" de "+qui(apres)+") à "+(window._mailIT||window._fssNotifEmail));
   if(pret){if(st.envoiPret!==false&&String(pret.email||"").trim())L.push("• Maintenant : mail de prêt du badge "+pret.code+" à "+pret.email);
     if(st.envoiRappel!==false&&String(pret.email||"").trim())L.push("• Puis un rappel chaque matin s'il n'est pas rendu"+(ok(pret.retour)?", à partir du "+fr(ouvre(dec(pret.retour.slice(0,10),1))):" (après 24 h)"));}
-  if(apres&&!apres.vip&&apres.statut!=="Badge VIP"&&apres.statut!=="Archivé"){
+  if(apres&&!apres.vip&&!apres.sans_mail_auto&&apres.statut!=="Badge VIP"&&apres.statut!=="Archivé"){
     const fssExiste=sit=>st.envoiFSS!==false&&(fss===sit||(window._fssData||[]).some(f=>String(f.nom||"").trim().toUpperCase()===String(apres.nom||"").trim().toUpperCase()&&String(f.prenom||"").trim().toLowerCase()===String(apres.prenom||"").trim().toLowerCase()&&f.situation===sit));
     [["date_entree","Arrivée",true],["date_sortie_prevue","Départ",false]].forEach(([k,sit,arr])=>{
       const d=ok(apres[k])?String(apres[k]).slice(0,10):"";if(!d)return;
@@ -2205,7 +2205,7 @@ function VueCollaborateurs({badges,casiers,setBadges,setCasiers,showToast,wdCach
     if(editing){
       const old=badges.find(b=>b.id===editing);const updated={...old,...form};
       setBadges(p=>p.map(b=>b.id===editing?updated:b));
-      if(sb){try{const{error}=await sb.from("lp24_badges").upsert(updated);if(error)throw error;}catch(e){console.error("save badge",e);showToast("⚠️ Pas sauvegardé — "+messageErreurBase(e),"err");return;}}
+      if(sb){try{const{error}=await sbEcrireCollab(updated,false);if(error)throw error;}catch(e){console.error("save badge",e);showToast("⚠️ Pas sauvegardé — "+messageErreurBase(e),"err");return;}}
       await syncCasier(old.casier,form.casier,form.nom,form.prenom,form.matricule);
       addLog("Modification",form.prenom+" "+form.nom);showToast("✅ Collaborateur mis à jour");
     }else{
@@ -2214,7 +2214,7 @@ function VueCollaborateurs({badges,casiers,setBadges,setCasiers,showToast,wdCach
       if(sb){
         const{id,...row}=nb;
         try{
-          const{data,error}=await sb.from("lp24_badges").insert(row).select("id").single();
+          const{data,error}=await sbEcrireCollab(row,true);
           if(error)throw error;
           // On reprend l'identifiant réel donné par la base, sinon les modifications suivantes
           // écriraient sur une autre ligne.
@@ -2267,7 +2267,7 @@ function VueCollaborateurs({badges,casiers,setBadges,setCasiers,showToast,wdCach
       ),
       React.createElement(Btn,{onClick:()=>{window._verifierWorkday&&window._verifierWorkday();},color:"#0369a1",variant:"outline",title:"Compléter les fiches (e-mail, manager, date d'entrée, matricule) avec le dernier fichier Workday"},"📡 Vérifier avec Workday"),
       nbDbl>0&&React.createElement(Btn,{onClick:()=>setShowDbl(true),color:C.orange,variant:"outline"},"🔁 Doublons ("+nbDbl+")"),
-      React.createElement(Btn,{onClick:()=>{setForm(empty);setEditing(null);setShowForm(!showForm);},color:C.blue},"+ Nouveau collaborateur"),
+      React.createElement(Btn,{onClick:()=>{setForm({...empty,sans_mail_auto:true});setEditing(null);setShowForm(!showForm);},color:C.blue},"+ Nouveau collaborateur"),
       showDbl&&React.createElement(FenetreDoublons,{badges,setBadges,onClose:()=>setShowDbl(false),showToast,addLog})
     ),
     // Modal formulaire
@@ -2289,6 +2289,16 @@ function VueCollaborateurs({badges,casiers,setBadges,setCasiers,showToast,wdCach
           React.createElement("div",{style:{fontSize:12,color:"var(--text2)",flex:"1 1 200px"}},"Ouvre le mail de bienvenue dans ta messagerie : joins sa photo puis envoie. Texte modifiable dans Réglages → Textes des mails."),
           React.createElement("button",{type:"button",className:"btn btn-primary",disabled:!String(form.email||"").trim(),title:String(form.email||"").trim()?"Ouvrir le mail de bienvenue pour "+form.email:"Ajoute d'abord l'e-mail",
             onClick:()=>envoyerBienvenue({...form},settings,showToast,addLog),style:{fontSize:12,opacity:String(form.email||"").trim()?1:.5}},"✉️ Mail de bienvenue")),
+        React.createElement("div",{className:"cm-mails"},
+          React.createElement("div",{className:"cm-t"},
+            React.createElement("span",null,form.sans_mail_auto?"Aucun mail automatique pour cette personne : envoie-les ici quand tu veux.":"Mails automatiques : IT la veille, restaurant le jour même (arrivée et départ)."),
+            React.createElement("label",{style:{display:"flex",alignItems:"center",gap:6,fontWeight:600,cursor:"pointer"}},
+              React.createElement("input",{type:"checkbox",checked:!form.sans_mail_auto,onChange:e=>setForm(f=>({...f,sans_mail_auto:!e.target.checked}))}),"Mails automatiques")),
+          React.createElement("div",{className:"cm-b"},
+            React.createElement("button",{type:"button",className:"btn btn-outline",onClick:()=>ouvrirMailManuel(settings,"it",false,form,showToast,addLog)},"💻 IT — arrivée"),
+            React.createElement("button",{type:"button",className:"btn btn-outline",onClick:()=>ouvrirMailManuel(settings,"resto",false,form,showToast,addLog)},"🍽️ Restaurant — arrivée"),
+            String(form.date_sortie_prevue||"").trim()&&React.createElement("button",{type:"button",className:"btn btn-outline",onClick:()=>ouvrirMailManuel(settings,"it",true,form,showToast,addLog)},"💻 IT — départ"),
+            String(form.date_sortie_prevue||"").trim()&&React.createElement("button",{type:"button",className:"btn btn-outline",onClick:()=>ouvrirMailManuel(settings,"resto",true,form,showToast,addLog)},"🍽️ Restaurant — départ"))),
         (()=>{const d=trouverDoublons(badges,form,editing||null);return d.length?React.createElement("div",{style:{background:"#FFF7ED",border:"1px solid #FDBA74",color:"#9A3412",borderRadius:8,padding:"8px 12px",fontSize:12,marginBottom:10,whiteSpace:"pre-line",lineHeight:1.5}},React.createElement("b",null,"⚠️ Déjà dans le tableau :"),"\n"+texteDoublons(d)):null;})(),
         React.createElement("div",{style:{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(160px,1fr))",gap:10,marginBottom:10}},
           React.createElement("div",null,React.createElement(Lbl,null,"Nom *"),React.createElement(Inp,{value:form.nom,onChange:v=>updateForm("nom",v),placeholder:"DUPONT"})),
@@ -2315,7 +2325,7 @@ function VueCollaborateurs({badges,casiers,setBadges,setCasiers,showToast,wdCach
         React.createElement("div",{style:{display:"flex",gap:8}},
           React.createElement(Btn,{onClick:save,color:C.blue},"💾 Enregistrer"),
           React.createElement(Btn,{onClick:()=>{setShowForm(false);setEditing(null);},variant:"outline",color:C.gray},"Annuler")
-        ),React.createElement(NoteAide,{style:{width:"100%"}},form.vip?"Fiche VIP : aucun mail automatique.":"Nouvelle date d'entrée ou de sortie : mail à l'IT la veille et au restaurant le jour même (une fenêtre te le confirme avant).")
+        ),React.createElement(NoteAide,{style:{width:"100%"}},form.vip?"Fiche VIP : aucun mail automatique.":form.sans_mail_auto?"Aucun mail automatique pour cette fiche : utilise les boutons IT et Restaurant ci-dessus.":"Nouvelle date d'entrée ou de sortie : mail à l'IT la veille et au restaurant le jour même (une fenêtre te le confirme avant).")
       )
     ),
     // Filtres
@@ -3414,6 +3424,166 @@ function VueCalendrier({fssData,badges,canAccess,setView}){
 (function(){try{var st=document.createElement("style");st.textContent=".fcal{background:var(--surface,#fff);border:1px solid var(--border,#E2E8F0);border-radius:var(--radius-lg,14px);overflow:hidden}.fcal-h{display:flex;align-items:center;gap:8px;padding:12px 14px;border-bottom:1px solid var(--border,#E2E8F0)}.fcal-h b{font-size:15px;min-width:150px;text-align:center}.fcal-nav{width:30px;height:30px;border-radius:8px;border:1px solid var(--border,#E2E8F0);background:var(--surface,#fff);font-size:18px;line-height:1;cursor:pointer;color:var(--text2,#475569)}.fcal-auj{margin-left:6px;border:1px solid var(--border,#E2E8F0);background:var(--surface,#fff);border-radius:8px;padding:6px 10px;font-family:inherit;font-weight:600;font-size:12px;cursor:pointer;color:var(--text2,#475569)}.fcal-tot{margin-left:auto;display:flex;align-items:center;gap:6px;font-size:12px;color:var(--text2,#475569)}.fcal-tot i{margin-left:8px}"
 +".fcal-pt{display:inline-block;width:8px;height:8px;border-radius:50%}.fcal-pt.arr{background:#16A34A}.fcal-pt.dep{background:#DC2626}.fcal-g{display:grid;grid-template-columns:repeat(7,minmax(0,1fr))}.fcal-j{padding:8px 10px;font-size:11px;font-weight:700;color:var(--text3,#94A3B8);text-transform:uppercase;letter-spacing:.4px;border-bottom:1px solid var(--border,#E2E8F0)}.fcal-c{min-height:104px;padding:6px;border-right:1px solid var(--border,#EEF2F6);border-bottom:1px solid var(--border,#EEF2F6);display:flex;flex-direction:column;gap:3px;min-width:0}.fcal-c:nth-child(7n){border-right:0}.fcal-c.we{background:var(--surface2,#FAFBFC)}.fcal-c.hors .fcal-n{color:var(--text3,#CBD5E1)}.fcal-c.hors .fcal-e{opacity:.5}"
 +".fcal-n{font-size:12px;font-weight:600;color:var(--text2,#475569);width:24px;height:24px;display:flex;align-items:center;justify-content:center;border-radius:50%}.fcal-c.fcal-today .fcal-n{background:#2563EB;color:#fff}.fcal-e{display:block;width:100%;text-align:left;border:0;border-left:3px solid;border-radius:4px;padding:3px 6px;font-family:inherit;font-weight:600;font-size:11px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;cursor:pointer}.fcal-e.arr{background:#ECFDF5;border-color:#16A34A;color:#166534}.fcal-e.dep{background:#FEF2F2;border-color:#DC2626;color:#991B1B}.fcal-e.fini{opacity:.55;text-decoration:line-through}.fcal-e:hover{filter:brightness(.96)}.fcal-plus{font-size:11px;color:var(--text3,#94A3B8);padding-left:4px}.fcal-e.colis{background:#EFF6FF;border-color:#2563EB;color:#1E40AF}.fcal-e.pret{background:#FFF7ED;border-color:#EA580C;color:#9A3412}.fcal-e.retard{background:#FEF2F2;border-color:#DC2626;color:#991B1B}.fcal-pt.colis{background:#2563EB}.fcal-pt.pret{background:#EA580C}.fcal-f{display:flex;gap:6px;flex-wrap:wrap;padding:10px 14px;border-bottom:1px solid var(--border,#E2E8F0)}.fcal-f button{display:inline-flex;align-items:center;gap:6px;border:1px solid var(--border,#E2E8F0);background:var(--surface,#fff);border-radius:999px;padding:5px 11px;font-family:inherit;font-weight:600;font-size:12px;color:var(--text2,#475569);cursor:pointer}.fcal-f button.off{opacity:.45}.fcal-f b{font-weight:700;color:var(--text,#0F172A)}@media(max-width:760px){.fcal-c{min-height:70px;padding:3px}.fcal-e{font-size:9px;padding:2px 3px;border-left-width:2px}.fcal-j{padding:6px 4px;font-size:9px}.fcal-h{flex-wrap:wrap}.fcal-tot{display:none}}";document.head.appendChild(st);}catch(e){}})();
+function lireInvitation(brut,dateImposee){
+  let t=String(brut||"").replace(/\r/g,"");
+  // ICS : déplier les lignes et décoder
+  t=t.replace(/\n[ \t]/g,"");
+  const ics=k=>{const m=t.match(new RegExp("^"+k+"(?:;[^:\\n]*)?:(.*)$","mi"));return m?m[1].replace(/\\n/gi,"\n").replace(/\\,/g,",").replace(/\;/g,";").trim():"";};
+  const sujetIcs=ics("SUMMARY"),dtIcs=ics("DTSTART"),descIcs=ics("DESCRIPTION"),lieuIcs=ics("LOCATION");
+  const sujetTxt=(t.match(/^(?:Objet|Subject|Sujet)\s*:\s*(.+)$/mi)||[])[1]||"";
+  const sujet=(sujetIcs||sujetTxt||t.split("\n").map(x=>x.trim()).find(Boolean)||"").trim();
+  const corps=descIcs?descIcs+"\n"+t:t;
+  const res={prenom:"",nom:"",dateEvt:"",manager:"",lieu:"",situation:/d[ée]part|sortie|offboarding/i.test(sujet)?"Départ":"Arrivée"};
+  // ── Date ──
+  const MOIS={janvier:1,"février":2,fevrier:2,mars:3,avril:4,mai:5,juin:6,juillet:7,"août":8,aout:8,septembre:9,octobre:10,novembre:11,"décembre":12,decembre:12,january:1,february:2,march:3,april:4,may:5,june:6,july:7,august:8,september:9,october:10,november:11,december:12};
+  const p2=n=>String(n).padStart(2,"0");const an=new Date().getFullYear();
+  const dates=[];
+  if(/^\d{8}/.test(dtIcs))dates.push({d:dtIcs.slice(0,4)+"-"+dtIcs.slice(4,6)+"-"+dtIcs.slice(6,8),poids:3});
+  const txt=sujet+"\n"+corps;
+  const poids=i=>{const av=txt.slice(Math.max(0,i-60),i).toLowerCase();return /arriv|début|debut|prise de poste|démarr|demarr|commence|départ|depart|sortie|quand|when|heure|date|d[ée]but/.test(av)?2:1;};
+  let m;const re1=/(\d{1,2})\s*(?:er)?\s+(janvier|février|fevrier|mars|avril|mai|juin|juillet|août|aout|septembre|octobre|novembre|décembre|decembre|january|february|march|april|may|june|july|august|september|october|november|december)\.?\s*(\d{4})?/gi;
+  while((m=re1.exec(txt)))dates.push({d:(m[3]||an)+"-"+p2(MOIS[m[2].toLowerCase()])+"-"+p2(m[1]),poids:poids(m.index)+.5});
+  const re2=/\b(\d{1,2})[\/.\-](\d{1,2})(?:[\/.\-](\d{2,4}))?\b/g;
+  while((m=re2.exec(txt))){const j=+m[1],mo=+m[2];if(j<1||j>31||mo<1||mo>12)continue;let y=m[3]?(m[3].length===2?"20"+m[3]:m[3]):an;dates.push({d:y+"-"+p2(mo)+"-"+p2(j),poids:poids(m.index)});}
+  const re3=/\b(\d{4})-(\d{2})-(\d{2})\b/g;while((m=re3.exec(txt)))dates.push({d:m[0],poids:poids(m.index)});
+  if(dateImposee)res.dateEvt=dateImposee;else if(dates.length){dates.sort((a,b)=>b.poids-a.poids);res.dateEvt=dates[0].d;}
+  // ── Nom et prénom ──
+  const motNom="([A-ZÀ-ÖØ-Þ][A-Za-zÀ-ÖØ-öø-ÿ'’\\-]+(?:\\s+[A-ZÀ-ÖØ-Þ][A-Za-zÀ-ÖØ-öø-ÿ'’\\-]+){1,2})";
+  const cles="(?:arriv[ée]e?s?|nouvel(?:le)?\\s+arrivant(?:e)?|nouveau\\s+collaborateur|nouvelle\\s+collaboratrice|onboarding|int[ée]gration|accueil|bienvenue(?:\\s+[àa])?|d[ée]part|offboarding|sortie)";
+  const essais=[sujet,corps];let nomTrouve="";
+  for(const z of essais){m=z.match(new RegExp(cles+"\\s*(?:de|d'|du|:|-|–|—|pour)?\\s*(?:M\\.|Mme|Mr|Mlle|Monsieur|Madame)?\\s*"+motNom,"i"));if(m){nomTrouve=m[1];break;}}
+  if(!nomTrouve){m=corps.match(new RegExp("(?:Nom|Collaborateur|Collaboratrice|Nouvel arrivant|Arrivant)\\s*:\\s*"+motNom,"i"));if(m)nomTrouve=m[1];}
+  if(nomTrouve){const mots=nomTrouve.trim().replace(/\s*\(.*$/,"").split(/\s+/).filter(w=>!/^(le|la|les|du|de|des|au|chez|sur|site|aag|alliance|pas|basé|base)$/.test(w));
+    const maj=mots.filter(w=>w.length>1&&w===w.toUpperCase()),autres=mots.filter(w=>!(w.length>1&&w===w.toUpperCase()));
+    if(maj.length&&autres.length){res.nom=maj.join(" ");res.prenom=autres.join(" ");}
+    else{res.prenom=mots[0]||"";res.nom=mots.slice(1).join(" ");}
+    res.nom=res.nom.toUpperCase();res.prenom=res.prenom.charAt(0).toUpperCase()+res.prenom.slice(1).toLowerCase().replace(/([\-\s])(\w)/g,(a,b,c)=>b+c.toUpperCase());}
+  const prenomSeul=corps.match(/Pr[ée]nom\s*:\s*([^\n]+)/i),nomSeul=corps.match(/(?:^|\n)\s*Nom\s*:\s*([^\n]+)/i);
+  if(prenomSeul&&nomSeul){res.prenom=prenomSeul[1].trim();res.nom=nomSeul[1].trim().toUpperCase();}
+  // ── Manager et lieu ──
+  m=corps.match(/(?:Manager|Responsable|N\+1|Rattach[ée]e?\s+[àa])\s*:?\s*([A-ZÀ-ÖØ-Þ][^\n,;()]{2,40})/);if(m)res.manager=m[1].trim();
+  const l=(lieuIcs+" "+txt).match(/levallois|hexagone/i);if(l)res.lieu=l[0].charAt(0).toUpperCase()+l[0].slice(1).toLowerCase();
+  return res;
+}
+// Lit le texte d'un fichier d'invitation (.ics, .eml, .txt, ou .msg Outlook)
+async function texteFichierInvitation(f){
+  const buf=new Uint8Array(await f.arrayBuffer());
+  if(/\.msg$/i.test(f.name)){ // fichier Outlook : on récupère les morceaux de texte lisibles
+    // Date de début de la réunion (propriété 0x0060, format FILETIME)
+    let date="";for(let i=0;i+16<=buf.length;i++){if(buf[i]===0x40&&buf[i+1]===0x00&&buf[i+2]===0x60&&buf[i+3]===0x00){
+      const lo=(buf[i+8]|buf[i+9]<<8|buf[i+10]<<16|buf[i+11]<<24)>>>0,hi=(buf[i+12]|buf[i+13]<<8|buf[i+14]<<16|buf[i+15]<<24)>>>0;
+      const d=new Date((hi*4294967296+lo)/1e4-11644473600000);if(d.getFullYear()>2015&&d.getFullYear()<2100){date=isoLocal(d);break;}}}
+    let u="";for(let i=0;i+1<buf.length;i+=2){const c=buf[i]|(buf[i+1]<<8);u+=(c===10||c===13||c===9||(c>=32&&c<0xFFFE))?String.fromCharCode(c):"\n";}
+    let a="";for(let i=0;i<buf.length;i++){const c=buf[i];a+=(c===10||c===13||c===9||c>=32)?String.fromCharCode(c):"\n";}
+    const garder=x=>x.split(/\n+/).filter(l=>/[A-Za-zÀ-ÿ]{3,}/.test(l)&&l.length<400).join("\n");
+    return{texte:garder(u)+"\n"+garder(a),date};}
+  let t=new TextDecoder("utf-8").decode(buf);
+  if(/Content-Transfer-Encoding:\s*quoted-printable/i.test(t))t=t.replace(/=\r?\n/g,"").replace(/(=[0-9A-F]{2})+/gi,x=>{try{return decodeURIComponent(x.replace(/=/g,"%"));}catch(e){return x;}});
+  t=t.replace(/<style[\s\S]*?<\/style>/gi,"").replace(/<br\s*\/?>|<\/p>|<\/div>|<\/tr>/gi,"\n").replace(/<[^>]+>/g," ").replace(/&nbsp;/g," ").replace(/&amp;/g,"&");
+  return{texte:t,date:""};
+}
+function ImportInvitation({onLire,onClose}){
+  const el=React.createElement;const[txt,setTxt]=React.useState("");const[survol,setSurvol]=React.useState(false);const[msg,setMsg]=React.useState("");const[dateFic,setDateFic]=React.useState("");
+  const fichier=async f=>{if(!f)return;try{const x=await texteFichierInvitation(f);setTxt(x.texte);setDateFic(x.date||"");setMsg("📎 "+f.name+" lu");}catch(e){setMsg("⚠️ Fichier illisible");}};
+  const r=txt.trim()?lireInvitation(txt,dateFic):null;
+  return el("div",{className:"inv-fond",onClick:e=>{if(e.target===e.currentTarget)onClose();}},
+    el("div",{className:"inv-boite",role:"dialog","aria-label":"Arrivée depuis une invitation Outlook"},
+      el("div",{className:"inv-t"},el("b",null,"Nouvelle arrivée depuis une invitation Outlook"),el("button",{type:"button",className:"inv-x",onClick:onClose,"aria-label":"Fermer"},"×")),
+      el("p",{className:"inv-aide"},"Le plus simple : glisse l'invitation depuis ta boîte ou ton calendrier Outlook dans le cadre. Sinon, copie l'objet et la ligne « Heure » de l'invitation et colle-les ici."),
+      el("div",{className:"inv-zone"+(survol?" survol":""),onDragOver:e=>{e.preventDefault();setSurvol(true);},onDragLeave:()=>setSurvol(false),
+        onDrop:e=>{e.preventDefault();setSurvol(false);const f=e.dataTransfer.files&&e.dataTransfer.files[0];if(f)fichier(f);else{const t=e.dataTransfer.getData("text");if(t)setTxt(t);}}},
+        el("textarea",{value:txt,onChange:e=>{setTxt(e.target.value);setDateFic("");},placeholder:"Colle ici le texte de l'invitation…",rows:7}),
+        el("label",{className:"inv-fic"},"ou choisir un fichier (.msg, .ics, .eml)",el("input",{type:"file",accept:".msg,.ics,.eml,.txt",onChange:e=>fichier(e.target.files[0])}))),
+      msg&&el("div",{className:"inv-msg"},msg),
+      r&&el("div",{className:"inv-res"},
+        [["Situation",r.situation],["Prénom",r.prenom],["Nom",r.nom],["Date",r.dateEvt?r.dateEvt.split("-").reverse().join("/"):""],["Manager",r.manager],["Lieu",r.lieu]].map(([k,v])=>
+          el("div",{key:k},el("span",null,k),el("b",{className:v?"":"vide"},v||"non trouvé")))),
+      el("div",{className:"inv-b"},
+        el("button",{type:"button",className:"btn btn-outline",onClick:onClose},"Annuler"),
+        el("button",{type:"button",className:"btn btn-primary",disabled:!r||!(r.nom||r.prenom),onClick:()=>onLire(r)},"Préparer la fiche"))));
+}
+(function(){try{var st=document.createElement("style");st.textContent=".inv-fond{position:fixed;inset:0;background:rgba(15,23,42,.45);z-index:9500;display:flex;align-items:center;justify-content:center;padding:16px}.inv-boite{background:var(--surface,#fff);color:var(--text,#0F172A);border-radius:16px;width:min(620px,100%);max-height:92vh;overflow:auto;padding:18px 20px;box-shadow:0 20px 60px rgba(15,23,42,.25)}.inv-t{display:flex;align-items:center;justify-content:space-between;font-size:15px}.inv-x{border:0;background:none;font-size:22px;cursor:pointer;color:var(--text3,#94A3B8)}.inv-aide{font-size:12px;color:var(--text2,#64748B);margin:6px 0 10px}.inv-zone{border:1.5px dashed var(--border2,#CBD5E1);border-radius:12px;padding:8px}.inv-zone.survol{border-color:#2563EB;background:#EFF6FF}.inv-zone textarea{width:100%;box-sizing:border-box;border:0;outline:0;resize:vertical;font:inherit;font-size:12px;background:transparent;color:inherit}.inv-fic{display:inline-block;font-size:12px;color:#2563EB;cursor:pointer;margin:4px 2px}.inv-fic input{display:none}.inv-msg{font-size:12px;color:var(--text2,#64748B);margin-top:6px}.inv-res{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:12px}.inv-res>div{background:var(--surface2,#F8FAFC);border-radius:8px;padding:7px 10px;display:flex;flex-direction:column;gap:2px}.inv-res span{font-size:10px;text-transform:uppercase;letter-spacing:.4px;color:var(--text3,#94A3B8);font-weight:700}.inv-res b{font-size:13px}.inv-res b.vide{color:#D97706;font-weight:600}.inv-b{display:flex;justify-content:flex-end;gap:8px;margin-top:14px}@media(max-width:600px){.inv-res{grid-template-columns:1fr 1fr}}";document.head.appendChild(st);}catch(e){}})();
+// ── Mails ouverts à la main depuis une fiche (Outlook / Mail) ──
+function ouvrirMailManuel(settings,cible,dep,b,showToast,addLog){
+  const st=settings||{};const dest=String(cible==="it"?st.itEmail:st.restaurantEmail||"").trim();
+  if(!dest){showToast&&showToast("⚠️ Adresse "+(cible==="it"?"IT":"restaurant")+" non renseignée dans Réglages","err");return;}
+  const cle=(cible==="it"?"autoIT":"autoResto")+(dep?"Depart":"Arrivee");const cc=String(st.ccEmails||"").trim();
+  const sujet=(dep?"Départ":"Arrivée")+" — "+String(b.prenom||"")+" "+String(b.nom||"").toUpperCase();
+  window.open("mailto:"+encodeURIComponent(dest)+"?"+(cc?"cc="+encodeURIComponent(cc)+"&":"")+"subject="+encodeURIComponent(sujet)+"&body="+encodeURIComponent(texteManuel(st,cle,b)));
+  addLog&&addLog("Mail "+(cible==="it"?"IT":"restaurant")+" (à la main)",String(b.prenom||"")+" "+String(b.nom||""));
+}
+// Enregistre une fiche collaborateur ; si la base ne connaît pas encore « sans_mail_auto », réessaie sans
+async function sbEcrireCollab(row,insert){
+  const go=r=>insert?sb.from("lp24_badges").insert(r).select("id").single():sb.from("lp24_badges").upsert(r);
+  let res=await go(row);
+  if(res.error&&/sans_mail_auto/.test(String(res.error.message||""))){const{sans_mail_auto,...r2}=row;res=await go(r2);res.sansColonne=true;}
+  return res;
+}
+// ── Onglet Arrivées / Départs ──
+function VueArriveesDeparts({badges,setBadges,fssData,settings,canAccess,setView,showToast,addLog}){
+  const el=React.createElement;
+  const[voirInvit,setVoirInvit]=React.useState(false);const[prep,setPrep]=React.useState(null);const[voirPasse,setVoirPasse]=React.useState(false);
+  const auj=isoLocal(new Date());const il30=isoLocal(new Date(Date.now()-30*864e5));
+  const jour=x=>{const t=String(x||"").trim();let m=t.match(/^(\d{4})-(\d{2})-(\d{2})/);if(m)return m[0];m=t.match(/^(\d{1,2})[\/.-](\d{1,2})[\/.-](\d{4})/);return m?m[3]+"-"+m[2].padStart(2,"0")+"-"+m[1].padStart(2,"0"):"";};
+  const cle=(p,n)=>(String(p||"")+" "+String(n||"")).toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g,"").replace(/[^a-z]/g,"");
+  const lignes={arr:{},dep:{}};
+  (badges||[]).forEach(b=>{[["arr",b.date_entree],["dep",b.date_sortie_prevue||b.date_sortie]].forEach(([t,x])=>{const d=jour(x);if(!d)return;
+    const k=d+cle(b.prenom,b.nom);lignes[t][k]={d,prenom:b.prenom,nom:b.nom,manager:b.manager,collab:b,fss:null};});});
+  (fssData||[]).forEach(f=>{const d=jour(f.dateEvt);if(!d)return;const t=f.situation==="Départ"?"dep":"arr";const k=d+cle(f.prenom,f.nom);
+    const l=lignes[t][k]||(lignes[t][k]={d,prenom:f.prenom,nom:f.nom,manager:f.manager,collab:null,fss:null});l.fss=f;if(!l.manager)l.manager=f.manager;});
+  const fr=d=>new Date(d+"T12:00:00").toLocaleDateString("fr-FR",{weekday:"short",day:"2-digit",month:"2-digit"});
+  const cap=x=>String(x||"").toLowerCase().replace(/(^|[\s-])(\S)/g,(m,a,c)=>a+c.toUpperCase());
+  const ligne=(t,l)=>{const f=l.fss,c=l.collab;
+    return el("div",{key:t+l.d+l.nom+l.prenom,className:"ad-l"+(l.d<auj?" passe":"")+(l.d===auj?" auj":"")},
+      el("div",{className:"ad-d"},fr(l.d)),
+      el("div",{className:"ad-n"},el("b",null,cap(l.prenom)+" "+String(l.nom||"").toUpperCase()),l.manager&&l.manager!=="NC"?el("span",null,"Manager : "+l.manager):null),
+      el("div",{className:"ad-e"},
+        el("button",{type:"button",className:"ad-p "+(c?"ok":"non"),title:c?"Ouvrir les collaborateurs":"Pas encore dans le tableau",onClick:()=>{if(c&&canAccess("collaborateurs"))setView("collaborateurs");}},c?"Tableau ✓":"Pas dans le tableau"),
+        el("button",{type:"button",className:"ad-p "+(f?(f.cloture||f.statut==="Terminée"?"ok":"att"):"non"),onClick:()=>{if(f&&canAccess("field_support"))setView("field_support");}},
+          f?"Field Support : "+(f.cloture?"Terminée":f.statut==="A traiter"?"À traiter":f.statut||"—"):"Pas de fiche Field Support"),
+        c&&c.sans_mail_auto?el("span",{className:"ad-p muet",title:"Aucun mail automatique : envoi depuis la fiche"},"Mails à la main"):null));};
+  const colonne=(t,titre)=>{const toutes=Object.values(lignes[t]).sort((a,b)=>a.d<b.d?-1:1);
+    const avenir=toutes.filter(l=>l.d>=auj),passees=toutes.filter(l=>l.d<auj&&l.d>=il30).reverse();
+    return el("div",{className:"ad-col"},
+      el("div",{className:"ad-t"},el("i",{className:"ad-pt "+t}),titre,el("span",null,avenir.length+" à venir")),
+      avenir.length?avenir.map(l=>ligne(t,l)):el("div",{className:"ad-vide"},"Rien de prévu"),
+      passees.length?el("button",{type:"button",className:"ad-plus",onClick:()=>setVoirPasse(v=>!v)},(voirPasse?"▾ ":"▸ ")+passees.length+" "+(t==="arr"?"arrivée":"départ")+(passees.length>1?"s":"")+" ces 30 derniers jours"):null,
+      voirPasse?passees.map(l=>ligne(t,l)):null);};
+  const valider=async()=>{const p=prep;if(!p.nom.trim()){showToast("⚠️ Le nom est obligatoire","err");return;}
+    const dep=p.situation==="Départ";const memes=(badges||[]).filter(b=>b.statut!=="Archivé"&&cle(b.prenom,b.nom)===cle(p.prenom,p.nom));
+    if(p.tableau){
+      if(dep){if(!memes.length){showToast("⚠️ "+p.prenom+" "+p.nom+" n'est pas dans le tableau : départ non noté","err");}
+        else{const up={...memes[0],date_sortie_prevue:p.dateEvt,sans_mail_auto:true};setBadges(x=>x.map(b=>b.id===up.id?up:b));
+          if(sb){const r=await sbEcrireCollab(up,false);if(r.error){showToast("⚠️ Pas sauvegardé — "+messageErreurBase(r.error),"err");return;}}}}
+      else if(memes.length&&!confirm("⚠️ "+p.prenom+" "+p.nom+" est déjà dans le tableau. L'ajouter quand même ?")){}
+      else{const row={matricule:"",nom:p.nom.toUpperCase(),prenom:p.prenom,email:"",serie:"",casier:"",manager:p.manager||"",statut:"Actif",badge_donne:false,date_entree:p.dateEvt||"",date_sortie_prevue:"",commentaire:"Ajouté depuis une invitation Outlook",date_ajout:isoLocal(new Date()),etiquette_imprimee:false,sans_mail_auto:true};
+        const tmp={...row,id:"tmp_"+Date.now()};setBadges(x=>[...x,tmp]);
+        if(sb){const r=await sbEcrireCollab(row,true);if(r.error){setBadges(x=>x.filter(b=>b!==tmp));showToast("⚠️ Pas sauvegardé — "+messageErreurBase(r.error),"err");return;}
+          if(r.data&&r.data.id!=null)setBadges(x=>x.map(b=>b===tmp?{...tmp,id:r.data.id}:b));
+          if(r.sansColonne)showToast("⚠️ Lance le script 13 dans Supabase pour couper les mails automatiques","err");}}}
+    if(p.fss&&sb){const f={nom:p.nom.toUpperCase(),prenom:p.prenom,situation:p.situation,lieu:p.lieu||"",dateEvt:p.dateEvt||"",manager:p.manager||"",statut:"A traiter",cloture:false,is_new:true,date_ajout:isoLocal(new Date())};
+      const r=await sb.from("lp24_fss").insert([f]).select();if(r.error){showToast("⚠️ Fiche Field Support non créée — "+messageErreurBase(r.error),"err");return;}
+      if(window._setFssData&&r.data)window._setFssData(x=>[...(x||[]),...r.data]);}
+    addLog&&addLog((dep?"Départ":"Arrivée")+" (invitation Outlook)",p.prenom+" "+p.nom+(p.dateEvt?" le "+p.dateEvt:""));
+    showToast("✅ "+(dep?"Départ":"Arrivée")+" de "+p.prenom+" "+p.nom+" enregistré"+(dep?"":"e"));setPrep(null);};
+  const champ=(k,l,type)=>el("label",{className:"ad-f"},el("span",null,l),k==="situation"?el("select",{value:prep[k],onChange:e=>setPrep({...prep,[k]:e.target.value})},el("option",null,"Arrivée"),el("option",null,"Départ"))
+    :el("input",{type:type||"text",value:prep[k]||"",onChange:e=>setPrep({...prep,[k]:e.target.value})}));
+  return el("div",{className:"ad"},
+    el("div",{className:"ad-h"},el("p",null,"Arrivées et départs prévus, d'après le tableau des collaborateurs et les fiches Field Support."),
+      el("button",{type:"button",className:"btn btn-primary",onClick:()=>setVoirInvit(true)},"📅 Ajouter depuis Outlook")),
+    prep&&el("div",{className:"ad-prep"},
+      el("b",null,"Vérifie puis enregistre"),
+      el("div",{className:"ad-g"},champ("situation","Situation"),champ("prenom","Prénom"),champ("nom","Nom"),champ("dateEvt","Date","date"),champ("manager","Manager"),champ("lieu","Lieu")),
+      el("label",{className:"ad-c"},el("input",{type:"checkbox",checked:!!prep.tableau,onChange:e=>setPrep({...prep,tableau:e.target.checked})}),prep.situation==="Départ"?"Noter la date de départ dans le tableau des collaborateurs (sans mail)":"Ajouter au tableau des collaborateurs (sans mail)"),
+      canAccess("field_support")&&el("label",{className:"ad-c"},el("input",{type:"checkbox",checked:!!prep.fss,onChange:e=>setPrep({...prep,fss:e.target.checked})}),"Créer aussi la fiche Field Support (le service IT reçoit un mail tout de suite)"),
+      el("div",{className:"ad-b"},el("button",{type:"button",className:"btn btn-outline",onClick:()=>setPrep(null)},"Annuler"),el("button",{type:"button",className:"btn btn-primary",onClick:valider},"Enregistrer"))),
+    voirInvit&&el(ImportInvitation,{onClose:()=>setVoirInvit(false),onLire:r=>{setVoirInvit(false);setPrep({...r,tableau:true,fss:false});}}),
+    el("div",{className:"ad-cols"},colonne("arr","Arrivées"),colonne("dep","Départs")));
+}
+(function(){try{var st=document.createElement("style");st.textContent=".ad-h{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-bottom:14px}.ad-h p{margin:0;font-size:13px;color:var(--text2,#64748B)}.ad-cols{display:grid;grid-template-columns:1fr 1fr;gap:16px;align-items:start}@media(max-width:900px){.ad-cols{grid-template-columns:1fr}}.ad-col{background:var(--surface,#fff);border:1px solid var(--border,#E2E8F0);border-radius:var(--radius-lg,14px);overflow:hidden}.ad-t{display:flex;align-items:center;gap:8px;padding:12px 14px;font-weight:700;font-size:14px;border-bottom:1px solid var(--border,#E2E8F0)}.ad-t span{margin-left:auto;font-weight:500;font-size:12px;color:var(--text3,#94A3B8)}.ad-pt{width:9px;height:9px;border-radius:50%;display:inline-block}.ad-pt.arr{background:#16A34A}.ad-pt.dep{background:#DC2626}"
++".ad-l{display:grid;grid-template-columns:86px minmax(0,1fr);gap:4px 12px;padding:10px 14px;border-bottom:1px solid var(--border,#F1F5F9)}.ad-l.passe{opacity:.6}.ad-l.auj .ad-d{color:#2563EB}.ad-d{font-size:12px;font-weight:700;color:var(--text2,#475569);text-transform:capitalize;padding-top:1px}.ad-n{display:flex;flex-direction:column;min-width:0}.ad-n b{font-size:13px}.ad-n span{font-size:11px;color:var(--text3,#94A3B8)}.ad-e{grid-column:2;display:flex;gap:6px;flex-wrap:wrap}.ad-p{border:0;border-radius:999px;padding:3px 9px;font-family:inherit;font-size:11px;font-weight:600;cursor:pointer}.ad-p.ok{background:#ECFDF5;color:#166534}.ad-p.att{background:#FFF7ED;color:#9A3412}.ad-p.non{background:var(--surface2,#F1F5F9);color:var(--text3,#64748B);cursor:default}.ad-p.muet{background:#EFF6FF;color:#1E40AF;cursor:default}.ad-vide{padding:18px 14px;font-size:13px;color:var(--text3,#94A3B8)}.ad-plus{display:block;width:100%;text-align:left;border:0;background:var(--surface2,#F8FAFC);padding:9px 14px;font-family:inherit;font-size:12px;font-weight:600;color:var(--text2,#475569);cursor:pointer}"
++".ad-prep{background:var(--surface,#fff);border:1.5px solid #2563EB;border-radius:var(--radius-lg,14px);padding:14px 16px;margin-bottom:16px}.ad-g{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;margin:10px 0}@media(max-width:700px){.ad-g{grid-template-columns:1fr 1fr}}.ad-f{display:flex;flex-direction:column;gap:3px}.ad-f span{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.4px;color:var(--text3,#94A3B8)}.ad-f input,.ad-f select{padding:7px 9px;border:1px solid var(--border2,#CBD5E1);border-radius:8px;font-family:inherit;font-size:13px;background:var(--surface,#fff);color:inherit;min-width:0}.ad-c{display:flex;align-items:center;gap:8px;font-size:13px;margin-top:6px}.ad-b{display:flex;justify-content:flex-end;gap:8px;margin-top:12px}"
++".cm-mails{margin-bottom:12px;padding:10px 12px;background:var(--surface2);border:1px solid var(--border);border-radius:10px}.cm-mails .cm-t{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;font-size:12px;color:var(--text2)}.cm-mails .cm-b{display:flex;gap:6px;flex-wrap:wrap;margin-top:8px}.cm-mails .cm-b button{font-size:12px}";document.head.appendChild(st);}catch(e){}})();
 // ── FssStatusBadge ──
 const FssStatusBadge=({status})=>{
   const map={"Terminée":["fss-status-terminee","✓ Terminée"],"A traiter":["fss-status-atraiter","⚡ À traiter"],"En cours":["fss-status-encours","⏳ En cours"],"Suspendue":["fss-status-suspendue","⏸ Susp."]};
@@ -3455,6 +3625,7 @@ function VueFieldSupport({fssData,setFssData,showToast,addLog,badges,casiers,set
   const[sortCol,setSortCol]=useState("dateEvt");
   const[sortDir,setSortDir]=useState("desc");
   const[voirPlusTard,setVoirPlusTard]=useState(false);
+  const[voirInvit,setVoirInvit]=useState(false);
   const[selectedCard,setSelectedCard]=useState(null);
   const[editMode,setEditMode]=useState(false);
   const[editForm,setEditForm]=useState(null);
@@ -3603,6 +3774,11 @@ function VueFieldSupport({fssData,setFssData,showToast,addLog,badges,casiers,set
         )
       ),
       el("div",{style:{display:"flex",gap:8,flexWrap:"wrap"}},
+
+        voirInvit&&el(ImportInvitation,{onClose:()=>setVoirInvit(false),onLire:r=>{
+          setManuelForm(f=>({...f,nom:r.nom||"",prenom:r.prenom||"",situation:r.situation||"Arrivée",dateEvt:r.dateEvt||"",manager:r.manager||f.manager,lieu:r.lieu||f.lieu,statut:"A traiter"}));
+          setShowAddManuel(true);setVoirInvit(false);showToast("📅 Vérifie la fiche puis clique « Créer la fiche »");
+          setTimeout(()=>{try{const x=[...document.querySelectorAll("button")].find(b=>/Créer la fiche/.test(b.textContent));x&&x.scrollIntoView({behavior:"smooth",block:"center"});}catch(e){}},200);}}),
         el("button",{onClick:()=>{setShowAddManuel(!showAddManuel);},className:"btn btn-outline",style:{fontSize:12}},"✏️ Ajout manuel"),
         el("label",{className:"btn btn-outline",style:{cursor:"pointer",fontSize:12}},
           "📂 Importer CSV",el("input",{type:"file",ref:fssRef,accept:".csv",onChange:importFSS})
@@ -4546,6 +4722,7 @@ const ICONES_NAV={
   badges_pret:'<rect x="3" y="6" width="18" height="12" rx="2"/><circle cx="8.5" cy="12" r="2"/><path d="M13 10.5h5M13 13.5h3"/>',
   colis:'<path d="M21 8 12 3 3 8v8l9 5 9-5z"/><path d="M3 8l9 5 9-5M12 13v8"/>',
   historique_pret:'<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/>',
+  arrivees:'<path d="M4 12h11"/><path d="M11 7l5 5-5 5"/><path d="M15 4h4a1 1 0 0 1 1 1v14a1 1 0 0 1-1 1h-4"/>',
   calendrier:'<rect x="3.5" y="5" width="17" height="15.5" rx="2"/><path d="M3.5 9.5h17M8 3v4M16 3v4"/>',
   notifications:'<path d="M6 16V11a6 6 0 0 1 12 0v5l1.5 2h-15z"/><path d="M10 20a2 2 0 0 0 4 0"/>',
   aide:'<circle cx="12" cy="12" r="9"/><path d="M9.5 9.5a2.5 2.5 0 1 1 3.5 2.3c-.6.3-1 .8-1 1.5V14"/><circle cx="12" cy="17.2" r=".6" fill="currentColor"/>',
@@ -4566,7 +4743,7 @@ function Courbe({vals,col,w=104,h=34}){if(!vals||vals.length<2)return null;const
   const pts=vals.map((v,i)=>[i*w/(vals.length-1),h-2-(v-mn)/((mx-mn)||1)*(h-6)]);const d="M"+pts.map(p=>p[0].toFixed(1)+","+p[1].toFixed(1)).join(" L");
   return React.createElement("svg",{className:"courbe",width:w,height:h,viewBox:"0 0 "+w+" "+h},React.createElement("path",{d:d+" L"+w+","+h+" L0,"+h+" Z",fill:col,opacity:.12}),React.createElement("path",{d,fill:"none",stroke:col,strokeWidth:2,strokeLinecap:"round",strokeLinejoin:"round"}));}
 // ── Menu caché (☰) ──
-const MENU_SECTIONS=[["",["accueil"]],["Personnes",["collaborateurs","field_support"]],["Lieux",["casiers"]],["Accueil physique",["gestion_accueil","historique_pret"]],["Outils",["impression","rapport","calendrier"]]];
+const MENU_SECTIONS=[["",["accueil"]],["Personnes",["arrivees","collaborateurs","field_support"]],["Lieux",["casiers"]],["Accueil physique",["gestion_accueil","historique_pret"]],["Outils",["impression","rapport","calendrier"]]];
 function personneConnectee(session){
   const ROLES={admin:"Administrateur",user:"Utilisateur",it:"Service IT",badge:"Gestion des badges"};
   const role=ROLES[session&&session.role]||"Connecté";
@@ -5362,7 +5539,7 @@ function App(){
   const[casiers,setCasiers]=useState([]);
   const[wdCache,setWdCache]=useState(null);
   const[histo,setHisto]=useState([]);
-  const[fssData,setFssData]=useState([]);
+  const[fssData,setFssData]=useState([]);window._setFssData=setFssData;
   const[newMats,setNewMats]=useState(new Set());
   const[settings,setSettings]=useState({fssEmail:"",restaurantEmail:"",ccEmails:"",itEmail:"",users:[],bodyArriveeResto:"Bonjour,\n\nNous vous informons de l'arrivée d'un nouveau collaborateur :\n\nNom : {nom}\nPrénom : {prenom}\nMatricule : {matricule}\nEmail : {email}\nDate d'entrée : {date_entree}\nManager : {manager}\n\nMerci de bien vouloir l'ajouter à vos systèmes.\n\nCordialement",bodyArriveeIT:"Bonjour,\n\nNous vous informons de l'arrivée d'un nouveau collaborateur :\n\nNom : {nom}\nPrénom : {prenom}\nMatricule : {matricule}\nEmail : {email}\nDate d'entrée : {date_entree}\nManager : {manager} ({mail_manager})\n\nMerci de créer les accès nécessaires.\n\nCordialement",bodyDepartResto:"Bonjour,\n\nNous vous informons du départ du collaborateur suivant :\n\nNom : {nom}\nPrénom : {prenom}\nMatricule : {matricule}\nN° badge : {serie}\nDate de départ : {date_sortie_prevue}\nManager : {manager}\n\nMerci de bien vouloir le retirer de vos systèmes.\n\nCordialement,\nArnaud AVONDE\n07.85.42.37.24\nResponsable de site",bodyDepartIT:"Bonjour,\n\nNous vous informons du départ du collaborateur suivant :\n\nNom : {nom}\nPrénom : {prenom}\nMatricule : {matricule}\nN° badge : {serie}\nDate de sortie : {date_sortie_prevue}\nManager : {manager} ({mail_manager})\n\nMerci de supprimer les accès.\n\nCordialement"});
   const[showSettings,setShowSettings]=useState(false);
@@ -5845,6 +6022,7 @@ useEffect(()=>{
     {id:"casiers",label:"Casiers",icon:"🔐"},
     {id:"rapport",label:"Rapport",icon:"📊"},
     {id:"impression",label:"Étiquettes",icon:"🏷️"},
+    {id:"arrivees",label:"Arrivées / Départs",icon:"🧳"},
     {id:"gestion_accueil",label:"Gestion accueil",icon:"🛎️"},
     {id:"calendrier",label:"Calendrier",icon:"📅"},
     ...(isBadgeOnly?[{id:"historique_pret",label:"Historique des prêts",icon:"🕐"}]:[]),
@@ -5854,6 +6032,7 @@ useEffect(()=>{
   const fssOpenCount=fssData.filter(f=>!f.cloture&&f.statut!=="Terminée"&&!fssPlusTard(f)).length;
   const canAccess=useCallback(viewId=>{
     if(viewId==="aide"||viewId==="calendrier")return true;
+    if(viewId==="arrivees")return canAccess("collaborateurs")||canAccess("field_support");
     if(viewId==="gestion_accueil")return canAccess("badges_pret")||canAccess("colis");
     // Rôle badge : accès exclusif à badges_pret
     if(session&&session.role==="badge")return viewId==="badges_pret"||viewId==="historique_pret"||viewId==="colis";
@@ -5903,6 +6082,7 @@ useEffect(()=>{
       case "rapport": return React.createElement(VueRapport,{badges,fssData,setBadges,setFssData,showToast,addLog,setView,setPendingOpen});
       case "impression": return React.createElement(VueImpression,{badges,settings,setSettings});
       case "calendrier": return React.createElement(VueCalendrier,{fssData,badges,canAccess,setView});
+      case "arrivees": return React.createElement(VueArriveesDeparts,{badges,setBadges,fssData,settings,canAccess,setView,showToast,addLog});
       case "gestion_accueil": case "badges_pret": case "colis": return React.createElement(VueGestionAccueil,{onglet:view,setView,canAccess,showToast,addLog,badges});
       case "historique_pret": return React.createElement(VueHistoriquePret,null);
       case "aide": return React.createElement(VueAide,{canAccess,peutReglages:!isIT&&!isBadgeOnly});
@@ -6773,7 +6953,7 @@ function mailsAnnonces({apres,avant,fss,pret}){
   if(fss&&st.envoiFSS!==false&&(window._mailIT||window._fssNotifEmail))L.push("• Maintenant : mail Field Support ("+fss.toLowerCase()+" de "+qui(apres)+") à "+(window._mailIT||window._fssNotifEmail));
   if(pret){if(st.envoiPret!==false&&String(pret.email||"").trim())L.push("• Maintenant : mail de prêt du badge "+pret.code+" à "+pret.email);
     if(st.envoiRappel!==false&&String(pret.email||"").trim())L.push("• Puis un rappel chaque matin s'il n'est pas rendu"+(ok(pret.retour)?", à partir du "+fr(ouvre(dec(pret.retour.slice(0,10),1))):" (après 24 h)"));}
-  if(apres&&!apres.vip&&apres.statut!=="Badge VIP"&&apres.statut!=="Archivé"){
+  if(apres&&!apres.vip&&!apres.sans_mail_auto&&apres.statut!=="Badge VIP"&&apres.statut!=="Archivé"){
     const fssExiste=sit=>st.envoiFSS!==false&&(fss===sit||(window._fssData||[]).some(f=>String(f.nom||"").trim().toUpperCase()===String(apres.nom||"").trim().toUpperCase()&&String(f.prenom||"").trim().toLowerCase()===String(apres.prenom||"").trim().toLowerCase()&&f.situation===sit));
     [["date_entree","Arrivée",true],["date_sortie_prevue","Départ",false]].forEach(([k,sit,arr])=>{
       const d=ok(apres[k])?String(apres[k]).slice(0,10):"";if(!d)return;
@@ -7546,7 +7726,7 @@ function VueCollaborateurs({badges,casiers,setBadges,setCasiers,showToast,wdCach
     if(editing){
       const old=badges.find(b=>b.id===editing);const updated={...old,...form};
       setBadges(p=>p.map(b=>b.id===editing?updated:b));
-      if(sb){try{const{error}=await sb.from("lp24_badges").upsert(updated);if(error)throw error;}catch(e){console.error("save badge",e);showToast("⚠️ Pas sauvegardé — "+messageErreurBase(e),"err");return;}}
+      if(sb){try{const{error}=await sbEcrireCollab(updated,false);if(error)throw error;}catch(e){console.error("save badge",e);showToast("⚠️ Pas sauvegardé — "+messageErreurBase(e),"err");return;}}
       await syncCasier(old.casier,form.casier,form.nom,form.prenom,form.matricule);
       addLog("Modification",form.prenom+" "+form.nom);showToast("✅ Collaborateur mis à jour");
     }else{
@@ -7555,7 +7735,7 @@ function VueCollaborateurs({badges,casiers,setBadges,setCasiers,showToast,wdCach
       if(sb){
         const{id,...row}=nb;
         try{
-          const{data,error}=await sb.from("lp24_badges").insert(row).select("id").single();
+          const{data,error}=await sbEcrireCollab(row,true);
           if(error)throw error;
           // On reprend l'identifiant réel donné par la base, sinon les modifications suivantes
           // écriraient sur une autre ligne.
@@ -7685,7 +7865,7 @@ function VueCollaborateurs({badges,casiers,setBadges,setCasiers,showToast,wdCach
         React.createElement("button",{type:"button",className:"ios-link hide-m",onClick:()=>setTableMode(!tableMode)},tableMode?"Fiches":"Tableau"),
         React.createElement(Btn,{onClick:()=>{window._verifierWorkday&&window._verifierWorkday();},color:"#0369a1",variant:"outline",title:"Compléter les fiches (e-mail, manager, date d'entrée, matricule) avec le dernier fichier Workday"},"📡 Vérifier avec Workday"),
       nbDbl>0&&React.createElement(Btn,{onClick:()=>setShowDbl(true),color:C.orange,variant:"outline"},"🔁 Doublons ("+nbDbl+")"),
-      React.createElement(Btn,{onClick:()=>{setForm(empty);setEditing(null);setShowForm(!showForm);},color:C.blue},"+ Nouveau collaborateur"),
+      React.createElement(Btn,{onClick:()=>{setForm({...empty,sans_mail_auto:true});setEditing(null);setShowForm(!showForm);},color:C.blue},"+ Nouveau collaborateur"),
       showDbl&&React.createElement(FenetreDoublons,{badges,setBadges,onClose:()=>setShowDbl(false),showToast,addLog}))
     ),
     // Modal formulaire
@@ -7704,6 +7884,16 @@ function VueCollaborateurs({badges,casiers,setBadges,setCasiers,showToast,wdCach
           React.createElement("div",{style:{fontSize:12,color:"var(--text2)",flex:"1 1 200px"}},"Ouvre le mail de bienvenue dans ta messagerie : joins sa photo puis envoie. Texte modifiable dans Réglages → Textes des mails."),
           React.createElement("button",{type:"button",className:"btn btn-primary",disabled:!String(form.email||"").trim(),title:String(form.email||"").trim()?"Ouvrir le mail de bienvenue pour "+form.email:"Ajoute d'abord l'e-mail",
             onClick:()=>envoyerBienvenue({...form},settings,showToast,addLog),style:{fontSize:12,opacity:String(form.email||"").trim()?1:.5}},"✉️ Mail de bienvenue")),
+        React.createElement("div",{className:"cm-mails"},
+          React.createElement("div",{className:"cm-t"},
+            React.createElement("span",null,form.sans_mail_auto?"Aucun mail automatique pour cette personne : envoie-les ici quand tu veux.":"Mails automatiques : IT la veille, restaurant le jour même (arrivée et départ)."),
+            React.createElement("label",{style:{display:"flex",alignItems:"center",gap:6,fontWeight:600,cursor:"pointer"}},
+              React.createElement("input",{type:"checkbox",checked:!form.sans_mail_auto,onChange:e=>setForm(f=>({...f,sans_mail_auto:!e.target.checked}))}),"Mails automatiques")),
+          React.createElement("div",{className:"cm-b"},
+            React.createElement("button",{type:"button",className:"btn btn-outline",onClick:()=>ouvrirMailManuel(settings,"it",false,form,showToast,addLog)},"💻 IT — arrivée"),
+            React.createElement("button",{type:"button",className:"btn btn-outline",onClick:()=>ouvrirMailManuel(settings,"resto",false,form,showToast,addLog)},"🍽️ Restaurant — arrivée"),
+            String(form.date_sortie_prevue||"").trim()&&React.createElement("button",{type:"button",className:"btn btn-outline",onClick:()=>ouvrirMailManuel(settings,"it",true,form,showToast,addLog)},"💻 IT — départ"),
+            String(form.date_sortie_prevue||"").trim()&&React.createElement("button",{type:"button",className:"btn btn-outline",onClick:()=>ouvrirMailManuel(settings,"resto",true,form,showToast,addLog)},"🍽️ Restaurant — départ"))),
         (()=>{const d=trouverDoublons(badges,form,editing||null);return d.length?React.createElement("div",{style:{background:"#FFF7ED",border:"1px solid #FDBA74",color:"#9A3412",borderRadius:8,padding:"8px 12px",fontSize:12,marginBottom:10,whiteSpace:"pre-line",lineHeight:1.5}},React.createElement("b",null,"⚠️ Déjà dans le tableau :"),"\n"+texteDoublons(d)):null;})(),
         React.createElement("div",{style:{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(160px,1fr))",gap:10,marginBottom:10}},
           React.createElement("div",null,React.createElement(Lbl,null,"Nom *"),React.createElement(Inp,{value:form.nom,onChange:v=>updateForm("nom",v),placeholder:"DUPONT"})),
@@ -7730,7 +7920,7 @@ function VueCollaborateurs({badges,casiers,setBadges,setCasiers,showToast,wdCach
         React.createElement("div",{style:{display:"flex",gap:8}},
           React.createElement(Btn,{onClick:save,color:C.blue},"💾 Enregistrer"),
           React.createElement(Btn,{onClick:()=>{setShowForm(false);setEditing(null);},variant:"outline",color:C.gray},"Annuler")
-        ),React.createElement(NoteAide,{style:{width:"100%"}},form.vip?"Fiche VIP : aucun mail automatique.":"Nouvelle date d'entrée ou de sortie : mail à l'IT la veille et au restaurant le jour même (une fenêtre te le confirme avant).")
+        ),React.createElement(NoteAide,{style:{width:"100%"}},form.vip?"Fiche VIP : aucun mail automatique.":form.sans_mail_auto?"Aucun mail automatique pour cette fiche : utilise les boutons IT et Restaurant ci-dessus.":"Nouvelle date d'entrée ou de sortie : mail à l'IT la veille et au restaurant le jour même (une fenêtre te le confirme avant).")
       )
     ),
     // Filtres
@@ -8851,6 +9041,166 @@ function VueCalendrier({fssData,badges,canAccess,setView}){
 (function(){try{var st=document.createElement("style");st.textContent=".fcal{background:var(--surface,#fff);border:1px solid var(--border,#E2E8F0);border-radius:var(--radius-lg,14px);overflow:hidden}.fcal-h{display:flex;align-items:center;gap:8px;padding:12px 14px;border-bottom:1px solid var(--border,#E2E8F0)}.fcal-h b{font-size:15px;min-width:150px;text-align:center}.fcal-nav{width:30px;height:30px;border-radius:8px;border:1px solid var(--border,#E2E8F0);background:var(--surface,#fff);font-size:18px;line-height:1;cursor:pointer;color:var(--text2,#475569)}.fcal-auj{margin-left:6px;border:1px solid var(--border,#E2E8F0);background:var(--surface,#fff);border-radius:8px;padding:6px 10px;font-family:inherit;font-weight:600;font-size:12px;cursor:pointer;color:var(--text2,#475569)}.fcal-tot{margin-left:auto;display:flex;align-items:center;gap:6px;font-size:12px;color:var(--text2,#475569)}.fcal-tot i{margin-left:8px}"
 +".fcal-pt{display:inline-block;width:8px;height:8px;border-radius:50%}.fcal-pt.arr{background:#16A34A}.fcal-pt.dep{background:#DC2626}.fcal-g{display:grid;grid-template-columns:repeat(7,minmax(0,1fr))}.fcal-j{padding:8px 10px;font-size:11px;font-weight:700;color:var(--text3,#94A3B8);text-transform:uppercase;letter-spacing:.4px;border-bottom:1px solid var(--border,#E2E8F0)}.fcal-c{min-height:104px;padding:6px;border-right:1px solid var(--border,#EEF2F6);border-bottom:1px solid var(--border,#EEF2F6);display:flex;flex-direction:column;gap:3px;min-width:0}.fcal-c:nth-child(7n){border-right:0}.fcal-c.we{background:var(--surface2,#FAFBFC)}.fcal-c.hors .fcal-n{color:var(--text3,#CBD5E1)}.fcal-c.hors .fcal-e{opacity:.5}"
 +".fcal-n{font-size:12px;font-weight:600;color:var(--text2,#475569);width:24px;height:24px;display:flex;align-items:center;justify-content:center;border-radius:50%}.fcal-c.fcal-today .fcal-n{background:#2563EB;color:#fff}.fcal-e{display:block;width:100%;text-align:left;border:0;border-left:3px solid;border-radius:4px;padding:3px 6px;font-family:inherit;font-weight:600;font-size:11px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;cursor:pointer}.fcal-e.arr{background:#ECFDF5;border-color:#16A34A;color:#166534}.fcal-e.dep{background:#FEF2F2;border-color:#DC2626;color:#991B1B}.fcal-e.fini{opacity:.55;text-decoration:line-through}.fcal-e:hover{filter:brightness(.96)}.fcal-plus{font-size:11px;color:var(--text3,#94A3B8);padding-left:4px}.fcal-e.colis{background:#EFF6FF;border-color:#2563EB;color:#1E40AF}.fcal-e.pret{background:#FFF7ED;border-color:#EA580C;color:#9A3412}.fcal-e.retard{background:#FEF2F2;border-color:#DC2626;color:#991B1B}.fcal-pt.colis{background:#2563EB}.fcal-pt.pret{background:#EA580C}.fcal-f{display:flex;gap:6px;flex-wrap:wrap;padding:10px 14px;border-bottom:1px solid var(--border,#E2E8F0)}.fcal-f button{display:inline-flex;align-items:center;gap:6px;border:1px solid var(--border,#E2E8F0);background:var(--surface,#fff);border-radius:999px;padding:5px 11px;font-family:inherit;font-weight:600;font-size:12px;color:var(--text2,#475569);cursor:pointer}.fcal-f button.off{opacity:.45}.fcal-f b{font-weight:700;color:var(--text,#0F172A)}@media(max-width:760px){.fcal-c{min-height:70px;padding:3px}.fcal-e{font-size:9px;padding:2px 3px;border-left-width:2px}.fcal-j{padding:6px 4px;font-size:9px}.fcal-h{flex-wrap:wrap}.fcal-tot{display:none}}";document.head.appendChild(st);}catch(e){}})();
+function lireInvitation(brut,dateImposee){
+  let t=String(brut||"").replace(/\r/g,"");
+  // ICS : déplier les lignes et décoder
+  t=t.replace(/\n[ \t]/g,"");
+  const ics=k=>{const m=t.match(new RegExp("^"+k+"(?:;[^:\\n]*)?:(.*)$","mi"));return m?m[1].replace(/\\n/gi,"\n").replace(/\\,/g,",").replace(/\;/g,";").trim():"";};
+  const sujetIcs=ics("SUMMARY"),dtIcs=ics("DTSTART"),descIcs=ics("DESCRIPTION"),lieuIcs=ics("LOCATION");
+  const sujetTxt=(t.match(/^(?:Objet|Subject|Sujet)\s*:\s*(.+)$/mi)||[])[1]||"";
+  const sujet=(sujetIcs||sujetTxt||t.split("\n").map(x=>x.trim()).find(Boolean)||"").trim();
+  const corps=descIcs?descIcs+"\n"+t:t;
+  const res={prenom:"",nom:"",dateEvt:"",manager:"",lieu:"",situation:/d[ée]part|sortie|offboarding/i.test(sujet)?"Départ":"Arrivée"};
+  // ── Date ──
+  const MOIS={janvier:1,"février":2,fevrier:2,mars:3,avril:4,mai:5,juin:6,juillet:7,"août":8,aout:8,septembre:9,octobre:10,novembre:11,"décembre":12,decembre:12,january:1,february:2,march:3,april:4,may:5,june:6,july:7,august:8,september:9,october:10,november:11,december:12};
+  const p2=n=>String(n).padStart(2,"0");const an=new Date().getFullYear();
+  const dates=[];
+  if(/^\d{8}/.test(dtIcs))dates.push({d:dtIcs.slice(0,4)+"-"+dtIcs.slice(4,6)+"-"+dtIcs.slice(6,8),poids:3});
+  const txt=sujet+"\n"+corps;
+  const poids=i=>{const av=txt.slice(Math.max(0,i-60),i).toLowerCase();return /arriv|début|debut|prise de poste|démarr|demarr|commence|départ|depart|sortie|quand|when|heure|date|d[ée]but/.test(av)?2:1;};
+  let m;const re1=/(\d{1,2})\s*(?:er)?\s+(janvier|février|fevrier|mars|avril|mai|juin|juillet|août|aout|septembre|octobre|novembre|décembre|decembre|january|february|march|april|may|june|july|august|september|october|november|december)\.?\s*(\d{4})?/gi;
+  while((m=re1.exec(txt)))dates.push({d:(m[3]||an)+"-"+p2(MOIS[m[2].toLowerCase()])+"-"+p2(m[1]),poids:poids(m.index)+.5});
+  const re2=/\b(\d{1,2})[\/.\-](\d{1,2})(?:[\/.\-](\d{2,4}))?\b/g;
+  while((m=re2.exec(txt))){const j=+m[1],mo=+m[2];if(j<1||j>31||mo<1||mo>12)continue;let y=m[3]?(m[3].length===2?"20"+m[3]:m[3]):an;dates.push({d:y+"-"+p2(mo)+"-"+p2(j),poids:poids(m.index)});}
+  const re3=/\b(\d{4})-(\d{2})-(\d{2})\b/g;while((m=re3.exec(txt)))dates.push({d:m[0],poids:poids(m.index)});
+  if(dateImposee)res.dateEvt=dateImposee;else if(dates.length){dates.sort((a,b)=>b.poids-a.poids);res.dateEvt=dates[0].d;}
+  // ── Nom et prénom ──
+  const motNom="([A-ZÀ-ÖØ-Þ][A-Za-zÀ-ÖØ-öø-ÿ'’\\-]+(?:\\s+[A-ZÀ-ÖØ-Þ][A-Za-zÀ-ÖØ-öø-ÿ'’\\-]+){1,2})";
+  const cles="(?:arriv[ée]e?s?|nouvel(?:le)?\\s+arrivant(?:e)?|nouveau\\s+collaborateur|nouvelle\\s+collaboratrice|onboarding|int[ée]gration|accueil|bienvenue(?:\\s+[àa])?|d[ée]part|offboarding|sortie)";
+  const essais=[sujet,corps];let nomTrouve="";
+  for(const z of essais){m=z.match(new RegExp(cles+"\\s*(?:de|d'|du|:|-|–|—|pour)?\\s*(?:M\\.|Mme|Mr|Mlle|Monsieur|Madame)?\\s*"+motNom,"i"));if(m){nomTrouve=m[1];break;}}
+  if(!nomTrouve){m=corps.match(new RegExp("(?:Nom|Collaborateur|Collaboratrice|Nouvel arrivant|Arrivant)\\s*:\\s*"+motNom,"i"));if(m)nomTrouve=m[1];}
+  if(nomTrouve){const mots=nomTrouve.trim().replace(/\s*\(.*$/,"").split(/\s+/).filter(w=>!/^(le|la|les|du|de|des|au|chez|sur|site|aag|alliance|pas|basé|base)$/.test(w));
+    const maj=mots.filter(w=>w.length>1&&w===w.toUpperCase()),autres=mots.filter(w=>!(w.length>1&&w===w.toUpperCase()));
+    if(maj.length&&autres.length){res.nom=maj.join(" ");res.prenom=autres.join(" ");}
+    else{res.prenom=mots[0]||"";res.nom=mots.slice(1).join(" ");}
+    res.nom=res.nom.toUpperCase();res.prenom=res.prenom.charAt(0).toUpperCase()+res.prenom.slice(1).toLowerCase().replace(/([\-\s])(\w)/g,(a,b,c)=>b+c.toUpperCase());}
+  const prenomSeul=corps.match(/Pr[ée]nom\s*:\s*([^\n]+)/i),nomSeul=corps.match(/(?:^|\n)\s*Nom\s*:\s*([^\n]+)/i);
+  if(prenomSeul&&nomSeul){res.prenom=prenomSeul[1].trim();res.nom=nomSeul[1].trim().toUpperCase();}
+  // ── Manager et lieu ──
+  m=corps.match(/(?:Manager|Responsable|N\+1|Rattach[ée]e?\s+[àa])\s*:?\s*([A-ZÀ-ÖØ-Þ][^\n,;()]{2,40})/);if(m)res.manager=m[1].trim();
+  const l=(lieuIcs+" "+txt).match(/levallois|hexagone/i);if(l)res.lieu=l[0].charAt(0).toUpperCase()+l[0].slice(1).toLowerCase();
+  return res;
+}
+// Lit le texte d'un fichier d'invitation (.ics, .eml, .txt, ou .msg Outlook)
+async function texteFichierInvitation(f){
+  const buf=new Uint8Array(await f.arrayBuffer());
+  if(/\.msg$/i.test(f.name)){ // fichier Outlook : on récupère les morceaux de texte lisibles
+    // Date de début de la réunion (propriété 0x0060, format FILETIME)
+    let date="";for(let i=0;i+16<=buf.length;i++){if(buf[i]===0x40&&buf[i+1]===0x00&&buf[i+2]===0x60&&buf[i+3]===0x00){
+      const lo=(buf[i+8]|buf[i+9]<<8|buf[i+10]<<16|buf[i+11]<<24)>>>0,hi=(buf[i+12]|buf[i+13]<<8|buf[i+14]<<16|buf[i+15]<<24)>>>0;
+      const d=new Date((hi*4294967296+lo)/1e4-11644473600000);if(d.getFullYear()>2015&&d.getFullYear()<2100){date=isoLocal(d);break;}}}
+    let u="";for(let i=0;i+1<buf.length;i+=2){const c=buf[i]|(buf[i+1]<<8);u+=(c===10||c===13||c===9||(c>=32&&c<0xFFFE))?String.fromCharCode(c):"\n";}
+    let a="";for(let i=0;i<buf.length;i++){const c=buf[i];a+=(c===10||c===13||c===9||c>=32)?String.fromCharCode(c):"\n";}
+    const garder=x=>x.split(/\n+/).filter(l=>/[A-Za-zÀ-ÿ]{3,}/.test(l)&&l.length<400).join("\n");
+    return{texte:garder(u)+"\n"+garder(a),date};}
+  let t=new TextDecoder("utf-8").decode(buf);
+  if(/Content-Transfer-Encoding:\s*quoted-printable/i.test(t))t=t.replace(/=\r?\n/g,"").replace(/(=[0-9A-F]{2})+/gi,x=>{try{return decodeURIComponent(x.replace(/=/g,"%"));}catch(e){return x;}});
+  t=t.replace(/<style[\s\S]*?<\/style>/gi,"").replace(/<br\s*\/?>|<\/p>|<\/div>|<\/tr>/gi,"\n").replace(/<[^>]+>/g," ").replace(/&nbsp;/g," ").replace(/&amp;/g,"&");
+  return{texte:t,date:""};
+}
+function ImportInvitation({onLire,onClose}){
+  const el=React.createElement;const[txt,setTxt]=React.useState("");const[survol,setSurvol]=React.useState(false);const[msg,setMsg]=React.useState("");const[dateFic,setDateFic]=React.useState("");
+  const fichier=async f=>{if(!f)return;try{const x=await texteFichierInvitation(f);setTxt(x.texte);setDateFic(x.date||"");setMsg("📎 "+f.name+" lu");}catch(e){setMsg("⚠️ Fichier illisible");}};
+  const r=txt.trim()?lireInvitation(txt,dateFic):null;
+  return el("div",{className:"inv-fond",onClick:e=>{if(e.target===e.currentTarget)onClose();}},
+    el("div",{className:"inv-boite",role:"dialog","aria-label":"Arrivée depuis une invitation Outlook"},
+      el("div",{className:"inv-t"},el("b",null,"Nouvelle arrivée depuis une invitation Outlook"),el("button",{type:"button",className:"inv-x",onClick:onClose,"aria-label":"Fermer"},"×")),
+      el("p",{className:"inv-aide"},"Le plus simple : glisse l'invitation depuis ta boîte ou ton calendrier Outlook dans le cadre. Sinon, copie l'objet et la ligne « Heure » de l'invitation et colle-les ici."),
+      el("div",{className:"inv-zone"+(survol?" survol":""),onDragOver:e=>{e.preventDefault();setSurvol(true);},onDragLeave:()=>setSurvol(false),
+        onDrop:e=>{e.preventDefault();setSurvol(false);const f=e.dataTransfer.files&&e.dataTransfer.files[0];if(f)fichier(f);else{const t=e.dataTransfer.getData("text");if(t)setTxt(t);}}},
+        el("textarea",{value:txt,onChange:e=>{setTxt(e.target.value);setDateFic("");},placeholder:"Colle ici le texte de l'invitation…",rows:7}),
+        el("label",{className:"inv-fic"},"ou choisir un fichier (.msg, .ics, .eml)",el("input",{type:"file",accept:".msg,.ics,.eml,.txt",onChange:e=>fichier(e.target.files[0])}))),
+      msg&&el("div",{className:"inv-msg"},msg),
+      r&&el("div",{className:"inv-res"},
+        [["Situation",r.situation],["Prénom",r.prenom],["Nom",r.nom],["Date",r.dateEvt?r.dateEvt.split("-").reverse().join("/"):""],["Manager",r.manager],["Lieu",r.lieu]].map(([k,v])=>
+          el("div",{key:k},el("span",null,k),el("b",{className:v?"":"vide"},v||"non trouvé")))),
+      el("div",{className:"inv-b"},
+        el("button",{type:"button",className:"btn btn-outline",onClick:onClose},"Annuler"),
+        el("button",{type:"button",className:"btn btn-primary",disabled:!r||!(r.nom||r.prenom),onClick:()=>onLire(r)},"Préparer la fiche"))));
+}
+(function(){try{var st=document.createElement("style");st.textContent=".inv-fond{position:fixed;inset:0;background:rgba(15,23,42,.45);z-index:9500;display:flex;align-items:center;justify-content:center;padding:16px}.inv-boite{background:var(--surface,#fff);color:var(--text,#0F172A);border-radius:16px;width:min(620px,100%);max-height:92vh;overflow:auto;padding:18px 20px;box-shadow:0 20px 60px rgba(15,23,42,.25)}.inv-t{display:flex;align-items:center;justify-content:space-between;font-size:15px}.inv-x{border:0;background:none;font-size:22px;cursor:pointer;color:var(--text3,#94A3B8)}.inv-aide{font-size:12px;color:var(--text2,#64748B);margin:6px 0 10px}.inv-zone{border:1.5px dashed var(--border2,#CBD5E1);border-radius:12px;padding:8px}.inv-zone.survol{border-color:#2563EB;background:#EFF6FF}.inv-zone textarea{width:100%;box-sizing:border-box;border:0;outline:0;resize:vertical;font:inherit;font-size:12px;background:transparent;color:inherit}.inv-fic{display:inline-block;font-size:12px;color:#2563EB;cursor:pointer;margin:4px 2px}.inv-fic input{display:none}.inv-msg{font-size:12px;color:var(--text2,#64748B);margin-top:6px}.inv-res{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:12px}.inv-res>div{background:var(--surface2,#F8FAFC);border-radius:8px;padding:7px 10px;display:flex;flex-direction:column;gap:2px}.inv-res span{font-size:10px;text-transform:uppercase;letter-spacing:.4px;color:var(--text3,#94A3B8);font-weight:700}.inv-res b{font-size:13px}.inv-res b.vide{color:#D97706;font-weight:600}.inv-b{display:flex;justify-content:flex-end;gap:8px;margin-top:14px}@media(max-width:600px){.inv-res{grid-template-columns:1fr 1fr}}";document.head.appendChild(st);}catch(e){}})();
+// ── Mails ouverts à la main depuis une fiche (Outlook / Mail) ──
+function ouvrirMailManuel(settings,cible,dep,b,showToast,addLog){
+  const st=settings||{};const dest=String(cible==="it"?st.itEmail:st.restaurantEmail||"").trim();
+  if(!dest){showToast&&showToast("⚠️ Adresse "+(cible==="it"?"IT":"restaurant")+" non renseignée dans Réglages","err");return;}
+  const cle=(cible==="it"?"autoIT":"autoResto")+(dep?"Depart":"Arrivee");const cc=String(st.ccEmails||"").trim();
+  const sujet=(dep?"Départ":"Arrivée")+" — "+String(b.prenom||"")+" "+String(b.nom||"").toUpperCase();
+  window.open("mailto:"+encodeURIComponent(dest)+"?"+(cc?"cc="+encodeURIComponent(cc)+"&":"")+"subject="+encodeURIComponent(sujet)+"&body="+encodeURIComponent(texteManuel(st,cle,b)));
+  addLog&&addLog("Mail "+(cible==="it"?"IT":"restaurant")+" (à la main)",String(b.prenom||"")+" "+String(b.nom||""));
+}
+// Enregistre une fiche collaborateur ; si la base ne connaît pas encore « sans_mail_auto », réessaie sans
+async function sbEcrireCollab(row,insert){
+  const go=r=>insert?sb.from("lp24_badges").insert(r).select("id").single():sb.from("lp24_badges").upsert(r);
+  let res=await go(row);
+  if(res.error&&/sans_mail_auto/.test(String(res.error.message||""))){const{sans_mail_auto,...r2}=row;res=await go(r2);res.sansColonne=true;}
+  return res;
+}
+// ── Onglet Arrivées / Départs ──
+function VueArriveesDeparts({badges,setBadges,fssData,settings,canAccess,setView,showToast,addLog}){
+  const el=React.createElement;
+  const[voirInvit,setVoirInvit]=React.useState(false);const[prep,setPrep]=React.useState(null);const[voirPasse,setVoirPasse]=React.useState(false);
+  const auj=isoLocal(new Date());const il30=isoLocal(new Date(Date.now()-30*864e5));
+  const jour=x=>{const t=String(x||"").trim();let m=t.match(/^(\d{4})-(\d{2})-(\d{2})/);if(m)return m[0];m=t.match(/^(\d{1,2})[\/.-](\d{1,2})[\/.-](\d{4})/);return m?m[3]+"-"+m[2].padStart(2,"0")+"-"+m[1].padStart(2,"0"):"";};
+  const cle=(p,n)=>(String(p||"")+" "+String(n||"")).toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g,"").replace(/[^a-z]/g,"");
+  const lignes={arr:{},dep:{}};
+  (badges||[]).forEach(b=>{[["arr",b.date_entree],["dep",b.date_sortie_prevue||b.date_sortie]].forEach(([t,x])=>{const d=jour(x);if(!d)return;
+    const k=d+cle(b.prenom,b.nom);lignes[t][k]={d,prenom:b.prenom,nom:b.nom,manager:b.manager,collab:b,fss:null};});});
+  (fssData||[]).forEach(f=>{const d=jour(f.dateEvt);if(!d)return;const t=f.situation==="Départ"?"dep":"arr";const k=d+cle(f.prenom,f.nom);
+    const l=lignes[t][k]||(lignes[t][k]={d,prenom:f.prenom,nom:f.nom,manager:f.manager,collab:null,fss:null});l.fss=f;if(!l.manager)l.manager=f.manager;});
+  const fr=d=>new Date(d+"T12:00:00").toLocaleDateString("fr-FR",{weekday:"short",day:"2-digit",month:"2-digit"});
+  const cap=x=>String(x||"").toLowerCase().replace(/(^|[\s-])(\S)/g,(m,a,c)=>a+c.toUpperCase());
+  const ligne=(t,l)=>{const f=l.fss,c=l.collab;
+    return el("div",{key:t+l.d+l.nom+l.prenom,className:"ad-l"+(l.d<auj?" passe":"")+(l.d===auj?" auj":"")},
+      el("div",{className:"ad-d"},fr(l.d)),
+      el("div",{className:"ad-n"},el("b",null,cap(l.prenom)+" "+String(l.nom||"").toUpperCase()),l.manager&&l.manager!=="NC"?el("span",null,"Manager : "+l.manager):null),
+      el("div",{className:"ad-e"},
+        el("button",{type:"button",className:"ad-p "+(c?"ok":"non"),title:c?"Ouvrir les collaborateurs":"Pas encore dans le tableau",onClick:()=>{if(c&&canAccess("collaborateurs"))setView("collaborateurs");}},c?"Tableau ✓":"Pas dans le tableau"),
+        el("button",{type:"button",className:"ad-p "+(f?(f.cloture||f.statut==="Terminée"?"ok":"att"):"non"),onClick:()=>{if(f&&canAccess("field_support"))setView("field_support");}},
+          f?"Field Support : "+(f.cloture?"Terminée":f.statut==="A traiter"?"À traiter":f.statut||"—"):"Pas de fiche Field Support"),
+        c&&c.sans_mail_auto?el("span",{className:"ad-p muet",title:"Aucun mail automatique : envoi depuis la fiche"},"Mails à la main"):null));};
+  const colonne=(t,titre)=>{const toutes=Object.values(lignes[t]).sort((a,b)=>a.d<b.d?-1:1);
+    const avenir=toutes.filter(l=>l.d>=auj),passees=toutes.filter(l=>l.d<auj&&l.d>=il30).reverse();
+    return el("div",{className:"ad-col"},
+      el("div",{className:"ad-t"},el("i",{className:"ad-pt "+t}),titre,el("span",null,avenir.length+" à venir")),
+      avenir.length?avenir.map(l=>ligne(t,l)):el("div",{className:"ad-vide"},"Rien de prévu"),
+      passees.length?el("button",{type:"button",className:"ad-plus",onClick:()=>setVoirPasse(v=>!v)},(voirPasse?"▾ ":"▸ ")+passees.length+" "+(t==="arr"?"arrivée":"départ")+(passees.length>1?"s":"")+" ces 30 derniers jours"):null,
+      voirPasse?passees.map(l=>ligne(t,l)):null);};
+  const valider=async()=>{const p=prep;if(!p.nom.trim()){showToast("⚠️ Le nom est obligatoire","err");return;}
+    const dep=p.situation==="Départ";const memes=(badges||[]).filter(b=>b.statut!=="Archivé"&&cle(b.prenom,b.nom)===cle(p.prenom,p.nom));
+    if(p.tableau){
+      if(dep){if(!memes.length){showToast("⚠️ "+p.prenom+" "+p.nom+" n'est pas dans le tableau : départ non noté","err");}
+        else{const up={...memes[0],date_sortie_prevue:p.dateEvt,sans_mail_auto:true};setBadges(x=>x.map(b=>b.id===up.id?up:b));
+          if(sb){const r=await sbEcrireCollab(up,false);if(r.error){showToast("⚠️ Pas sauvegardé — "+messageErreurBase(r.error),"err");return;}}}}
+      else if(memes.length&&!confirm("⚠️ "+p.prenom+" "+p.nom+" est déjà dans le tableau. L'ajouter quand même ?")){}
+      else{const row={matricule:"",nom:p.nom.toUpperCase(),prenom:p.prenom,email:"",serie:"",casier:"",manager:p.manager||"",statut:"Actif",badge_donne:false,date_entree:p.dateEvt||"",date_sortie_prevue:"",commentaire:"Ajouté depuis une invitation Outlook",date_ajout:isoLocal(new Date()),etiquette_imprimee:false,sans_mail_auto:true};
+        const tmp={...row,id:"tmp_"+Date.now()};setBadges(x=>[...x,tmp]);
+        if(sb){const r=await sbEcrireCollab(row,true);if(r.error){setBadges(x=>x.filter(b=>b!==tmp));showToast("⚠️ Pas sauvegardé — "+messageErreurBase(r.error),"err");return;}
+          if(r.data&&r.data.id!=null)setBadges(x=>x.map(b=>b===tmp?{...tmp,id:r.data.id}:b));
+          if(r.sansColonne)showToast("⚠️ Lance le script 13 dans Supabase pour couper les mails automatiques","err");}}}
+    if(p.fss&&sb){const f={nom:p.nom.toUpperCase(),prenom:p.prenom,situation:p.situation,lieu:p.lieu||"",dateEvt:p.dateEvt||"",manager:p.manager||"",statut:"A traiter",cloture:false,is_new:true,date_ajout:isoLocal(new Date())};
+      const r=await sb.from("lp24_fss").insert([f]).select();if(r.error){showToast("⚠️ Fiche Field Support non créée — "+messageErreurBase(r.error),"err");return;}
+      if(window._setFssData&&r.data)window._setFssData(x=>[...(x||[]),...r.data]);}
+    addLog&&addLog((dep?"Départ":"Arrivée")+" (invitation Outlook)",p.prenom+" "+p.nom+(p.dateEvt?" le "+p.dateEvt:""));
+    showToast("✅ "+(dep?"Départ":"Arrivée")+" de "+p.prenom+" "+p.nom+" enregistré"+(dep?"":"e"));setPrep(null);};
+  const champ=(k,l,type)=>el("label",{className:"ad-f"},el("span",null,l),k==="situation"?el("select",{value:prep[k],onChange:e=>setPrep({...prep,[k]:e.target.value})},el("option",null,"Arrivée"),el("option",null,"Départ"))
+    :el("input",{type:type||"text",value:prep[k]||"",onChange:e=>setPrep({...prep,[k]:e.target.value})}));
+  return el("div",{className:"ad"},
+    el("div",{className:"ad-h"},el("p",null,"Arrivées et départs prévus, d'après le tableau des collaborateurs et les fiches Field Support."),
+      el("button",{type:"button",className:"btn btn-primary",onClick:()=>setVoirInvit(true)},"📅 Ajouter depuis Outlook")),
+    prep&&el("div",{className:"ad-prep"},
+      el("b",null,"Vérifie puis enregistre"),
+      el("div",{className:"ad-g"},champ("situation","Situation"),champ("prenom","Prénom"),champ("nom","Nom"),champ("dateEvt","Date","date"),champ("manager","Manager"),champ("lieu","Lieu")),
+      el("label",{className:"ad-c"},el("input",{type:"checkbox",checked:!!prep.tableau,onChange:e=>setPrep({...prep,tableau:e.target.checked})}),prep.situation==="Départ"?"Noter la date de départ dans le tableau des collaborateurs (sans mail)":"Ajouter au tableau des collaborateurs (sans mail)"),
+      canAccess("field_support")&&el("label",{className:"ad-c"},el("input",{type:"checkbox",checked:!!prep.fss,onChange:e=>setPrep({...prep,fss:e.target.checked})}),"Créer aussi la fiche Field Support (le service IT reçoit un mail tout de suite)"),
+      el("div",{className:"ad-b"},el("button",{type:"button",className:"btn btn-outline",onClick:()=>setPrep(null)},"Annuler"),el("button",{type:"button",className:"btn btn-primary",onClick:valider},"Enregistrer"))),
+    voirInvit&&el(ImportInvitation,{onClose:()=>setVoirInvit(false),onLire:r=>{setVoirInvit(false);setPrep({...r,tableau:true,fss:false});}}),
+    el("div",{className:"ad-cols"},colonne("arr","Arrivées"),colonne("dep","Départs")));
+}
+(function(){try{var st=document.createElement("style");st.textContent=".ad-h{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-bottom:14px}.ad-h p{margin:0;font-size:13px;color:var(--text2,#64748B)}.ad-cols{display:grid;grid-template-columns:1fr 1fr;gap:16px;align-items:start}@media(max-width:900px){.ad-cols{grid-template-columns:1fr}}.ad-col{background:var(--surface,#fff);border:1px solid var(--border,#E2E8F0);border-radius:var(--radius-lg,14px);overflow:hidden}.ad-t{display:flex;align-items:center;gap:8px;padding:12px 14px;font-weight:700;font-size:14px;border-bottom:1px solid var(--border,#E2E8F0)}.ad-t span{margin-left:auto;font-weight:500;font-size:12px;color:var(--text3,#94A3B8)}.ad-pt{width:9px;height:9px;border-radius:50%;display:inline-block}.ad-pt.arr{background:#16A34A}.ad-pt.dep{background:#DC2626}"
++".ad-l{display:grid;grid-template-columns:86px minmax(0,1fr);gap:4px 12px;padding:10px 14px;border-bottom:1px solid var(--border,#F1F5F9)}.ad-l.passe{opacity:.6}.ad-l.auj .ad-d{color:#2563EB}.ad-d{font-size:12px;font-weight:700;color:var(--text2,#475569);text-transform:capitalize;padding-top:1px}.ad-n{display:flex;flex-direction:column;min-width:0}.ad-n b{font-size:13px}.ad-n span{font-size:11px;color:var(--text3,#94A3B8)}.ad-e{grid-column:2;display:flex;gap:6px;flex-wrap:wrap}.ad-p{border:0;border-radius:999px;padding:3px 9px;font-family:inherit;font-size:11px;font-weight:600;cursor:pointer}.ad-p.ok{background:#ECFDF5;color:#166534}.ad-p.att{background:#FFF7ED;color:#9A3412}.ad-p.non{background:var(--surface2,#F1F5F9);color:var(--text3,#64748B);cursor:default}.ad-p.muet{background:#EFF6FF;color:#1E40AF;cursor:default}.ad-vide{padding:18px 14px;font-size:13px;color:var(--text3,#94A3B8)}.ad-plus{display:block;width:100%;text-align:left;border:0;background:var(--surface2,#F8FAFC);padding:9px 14px;font-family:inherit;font-size:12px;font-weight:600;color:var(--text2,#475569);cursor:pointer}"
++".ad-prep{background:var(--surface,#fff);border:1.5px solid #2563EB;border-radius:var(--radius-lg,14px);padding:14px 16px;margin-bottom:16px}.ad-g{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;margin:10px 0}@media(max-width:700px){.ad-g{grid-template-columns:1fr 1fr}}.ad-f{display:flex;flex-direction:column;gap:3px}.ad-f span{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.4px;color:var(--text3,#94A3B8)}.ad-f input,.ad-f select{padding:7px 9px;border:1px solid var(--border2,#CBD5E1);border-radius:8px;font-family:inherit;font-size:13px;background:var(--surface,#fff);color:inherit;min-width:0}.ad-c{display:flex;align-items:center;gap:8px;font-size:13px;margin-top:6px}.ad-b{display:flex;justify-content:flex-end;gap:8px;margin-top:12px}"
++".cm-mails{margin-bottom:12px;padding:10px 12px;background:var(--surface2);border:1px solid var(--border);border-radius:10px}.cm-mails .cm-t{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;font-size:12px;color:var(--text2)}.cm-mails .cm-b{display:flex;gap:6px;flex-wrap:wrap;margin-top:8px}.cm-mails .cm-b button{font-size:12px}";document.head.appendChild(st);}catch(e){}})();
 // ── FssStatusBadge ──
 const FssStatusBadge=({status})=>{
   const map={"Terminée":["fss-status-terminee","✓ Terminée"],"A traiter":["fss-status-atraiter","⚡ À traiter"],"En cours":["fss-status-encours","⏳ En cours"],"Suspendue":["fss-status-suspendue","⏸ Susp."]};
@@ -8892,6 +9242,7 @@ function VueFieldSupport({fssData,setFssData,showToast,addLog,badges,casiers,set
   const[sortCol,setSortCol]=useState("dateEvt");
   const[sortDir,setSortDir]=useState("desc");
   const[voirPlusTard,setVoirPlusTard]=useState(false);
+  const[voirInvit,setVoirInvit]=useState(false);
   const[selectedCard,setSelectedCard]=useState(null);
   const[editMode,setEditMode]=useState(false);
   const[editForm,setEditForm]=useState(null);
@@ -9067,6 +9418,11 @@ function VueFieldSupport({fssData,setFssData,showToast,addLog,badges,casiers,set
         )
       ),
       el("div",{style:{display:"flex",gap:8,flexWrap:"wrap"}},
+
+        voirInvit&&el(ImportInvitation,{onClose:()=>setVoirInvit(false),onLire:r=>{
+          setManuelForm(f=>({...f,nom:r.nom||"",prenom:r.prenom||"",situation:r.situation||"Arrivée",dateEvt:r.dateEvt||"",manager:r.manager||f.manager,lieu:r.lieu||f.lieu,statut:"A traiter"}));
+          setShowAddManuel(true);setVoirInvit(false);showToast("📅 Vérifie la fiche puis clique « Créer la fiche »");
+          setTimeout(()=>{try{const x=[...document.querySelectorAll("button")].find(b=>/Créer la fiche/.test(b.textContent));x&&x.scrollIntoView({behavior:"smooth",block:"center"});}catch(e){}},200);}}),
         el("button",{onClick:()=>{setShowAddManuel(!showAddManuel);},className:"btn btn-outline",style:{fontSize:12}},"✏️ Ajout manuel"),
         el("label",{className:"btn btn-outline",style:{cursor:"pointer",fontSize:12}},
           "📂 Importer CSV",el("input",{type:"file",ref:fssRef,accept:".csv",onChange:importFSS})
@@ -10024,6 +10380,7 @@ const ICONES_NAV={
   badges_pret:'<rect x="3" y="6" width="18" height="12" rx="2"/><circle cx="8.5" cy="12" r="2"/><path d="M13 10.5h5M13 13.5h3"/>',
   colis:'<path d="M21 8 12 3 3 8v8l9 5 9-5z"/><path d="M3 8l9 5 9-5M12 13v8"/>',
   historique_pret:'<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/>',
+  arrivees:'<path d="M4 12h11"/><path d="M11 7l5 5-5 5"/><path d="M15 4h4a1 1 0 0 1 1 1v14a1 1 0 0 1-1 1h-4"/>',
   calendrier:'<rect x="3.5" y="5" width="17" height="15.5" rx="2"/><path d="M3.5 9.5h17M8 3v4M16 3v4"/>',
   notifications:'<path d="M6 16V11a6 6 0 0 1 12 0v5l1.5 2h-15z"/><path d="M10 20a2 2 0 0 0 4 0"/>',
   aide:'<circle cx="12" cy="12" r="9"/><path d="M9.5 9.5a2.5 2.5 0 1 1 3.5 2.3c-.6.3-1 .8-1 1.5V14"/><circle cx="12" cy="17.2" r=".6" fill="currentColor"/>',
@@ -10044,7 +10401,7 @@ function Courbe({vals,col,w=104,h=34}){if(!vals||vals.length<2)return null;const
   const pts=vals.map((v,i)=>[i*w/(vals.length-1),h-2-(v-mn)/((mx-mn)||1)*(h-6)]);const d="M"+pts.map(p=>p[0].toFixed(1)+","+p[1].toFixed(1)).join(" L");
   return React.createElement("svg",{className:"courbe",width:w,height:h,viewBox:"0 0 "+w+" "+h},React.createElement("path",{d:d+" L"+w+","+h+" L0,"+h+" Z",fill:col,opacity:.12}),React.createElement("path",{d,fill:"none",stroke:col,strokeWidth:2,strokeLinecap:"round",strokeLinejoin:"round"}));}
 // ── Menu caché (☰) ──
-const MENU_SECTIONS=[["",["accueil"]],["Personnes",["collaborateurs","field_support"]],["Lieux",["casiers"]],["Accueil physique",["gestion_accueil","historique_pret"]],["Outils",["impression","rapport","calendrier"]]];
+const MENU_SECTIONS=[["",["accueil"]],["Personnes",["arrivees","collaborateurs","field_support"]],["Lieux",["casiers"]],["Accueil physique",["gestion_accueil","historique_pret"]],["Outils",["impression","rapport","calendrier"]]];
 function MenuLateral({visibleNav,navActif,setView,onClose,session,notifs,ouvrirReglages,peutReglages,logout}){
   const el=React.createElement;
   useEffect(()=>{const k=e=>{if(e.key==="Escape")onClose();};window.addEventListener("keydown",k);return()=>window.removeEventListener("keydown",k);},[]);
@@ -10887,7 +11244,7 @@ function App(){
   const[casiers,setCasiers]=useState([]);
   const[wdCache,setWdCache]=useState(null);
   const[histo,setHisto]=useState([]);
-  const[fssData,setFssData]=useState([]);
+  const[fssData,setFssData]=useState([]);window._setFssData=setFssData;
   const[newMats,setNewMats]=useState(new Set());
   const[settings,setSettings]=useState({fssEmail:"",restaurantEmail:"",ccEmails:"",itEmail:"",users:[],bodyArriveeResto:"Bonjour,\n\nNous vous informons de l'arrivée d'un nouveau collaborateur :\n\nNom : {nom}\nPrénom : {prenom}\nMatricule : {matricule}\nEmail : {email}\nDate d'entrée : {date_entree}\nManager : {manager}\n\nMerci de bien vouloir l'ajouter à vos systèmes.\n\nCordialement",bodyArriveeIT:"Bonjour,\n\nNous vous informons de l'arrivée d'un nouveau collaborateur :\n\nNom : {nom}\nPrénom : {prenom}\nMatricule : {matricule}\nEmail : {email}\nDate d'entrée : {date_entree}\nManager : {manager} ({mail_manager})\n\nMerci de créer les accès nécessaires.\n\nCordialement",bodyDepartResto:"Bonjour,\n\nNous vous informons du départ du collaborateur suivant :\n\nNom : {nom}\nPrénom : {prenom}\nMatricule : {matricule}\nN° badge : {serie}\nDate de départ : {date_sortie_prevue}\nManager : {manager}\n\nMerci de bien vouloir le retirer de vos systèmes.\n\nCordialement,\nArnaud AVONDE\n07.85.42.37.24\nResponsable de site",bodyDepartIT:"Bonjour,\n\nNous vous informons du départ du collaborateur suivant :\n\nNom : {nom}\nPrénom : {prenom}\nMatricule : {matricule}\nN° badge : {serie}\nDate de sortie : {date_sortie_prevue}\nManager : {manager} ({mail_manager})\n\nMerci de supprimer les accès.\n\nCordialement"});
   const[showSettings,setShowSettings]=useState(false);
@@ -11370,6 +11727,7 @@ useEffect(()=>{
     {id:"casiers",label:"Casiers",icon:"🔐"},
     {id:"rapport",label:"Rapport",icon:"📊"},
     {id:"impression",label:"Étiquettes",icon:"🏷️"},
+    {id:"arrivees",label:"Arrivées / Départs",icon:"🧳"},
     {id:"gestion_accueil",label:"Gestion accueil",icon:"🛎️"},
     {id:"calendrier",label:"Calendrier",icon:"📅"},
   ];
@@ -11378,6 +11736,7 @@ useEffect(()=>{
   const fssOpenCount=fssData.filter(f=>!f.cloture&&f.statut!=="Terminée"&&!fssPlusTard(f)).length;
   const canAccess=useCallback(viewId=>{
     if(viewId==="aide"||viewId==="calendrier")return true;
+    if(viewId==="arrivees")return canAccess("collaborateurs")||canAccess("field_support");
     if(viewId==="gestion_accueil")return canAccess("badges_pret")||canAccess("colis");
     // Rôle badge : accès exclusif à badges_pret
     if(session&&session.role==="badge")return viewId==="badges_pret"||viewId==="historique_pret"||viewId==="colis";
@@ -11428,6 +11787,7 @@ useEffect(()=>{
       case "rapport": return React.createElement(VueRapport,{badges,fssData,setBadges,setFssData,showToast,addLog,setView,setPendingOpen});
       case "impression": return React.createElement(VueImpression,{badges,settings,setSettings});
       case "calendrier": return React.createElement(VueCalendrier,{fssData,badges,canAccess,setView});
+      case "arrivees": return React.createElement(VueArriveesDeparts,{badges,setBadges,fssData,settings,canAccess,setView,showToast,addLog});
       case "gestion_accueil": case "badges_pret": case "colis": return React.createElement(VueGestionAccueil,{onglet:view,setView,canAccess,showToast,addLog,badges});
       case "aide": return React.createElement(VueAide,{canAccess,peutReglages:!isIT&&!isBadgeOnly});
       case "notifications": return React.createElement(VueNotifications,{histo,items:notifs,supprimer:supprimerNotif,toutSupprimer:toutSupprimerNotifs,restaurer:restaurerNotifs,nbSupprimees:notifsToutes.length-notifs.length,setView});

@@ -14,7 +14,42 @@ pre{margin:0;background:var(--code);color:var(--codetx);padding:16px;overflow:au
 .how{margin-top:16px;color:var(--t2);font-size:13.5px}
 </style></head><body><div class="w"><h1>Scripts sécurité — Gestion Collaborateurs</h1>
 <p class="intro">Supabase → SQL Editor : « Copier le script », coller, puis « Run ». Ordre conseillé : 0, puis le script voulu, puis 0 pour vérifier.</p>
-<div class="tabs"><button class="tab on" data-i="0">10 · Mentions légales et confidentialité</button><button class="tab" data-i="1">11 · Pièces jointes du mail de bienvenue</button><button class="tab" data-i="2">12 · Gras dans les mails</button></div><section class="sc on" id="s0"><div class="hd"><div><h2>10 · Mentions légales et confidentialité</h2><p>Permet d&#x27;enregistrer tes textes avec le bouton « Modifier ». Lisibles par tous, modifiables seulement par un administrateur.</p><small>10-textes-publics.sql · 43 lignes</small></div><button class="cp" data-i="0">Copier le script</button></div><pre><code id="c0">-- ════════════════════════════════════════════════════════════════════
+<div class="tabs"><button class="tab on" data-i="3">13 · Nouveau collaborateur sans mail</button><button class="tab" data-i="0">10 · Mentions légales et confidentialité</button><button class="tab" data-i="1">11 · Pièces jointes du mail de bienvenue</button><button class="tab" data-i="2">12 · Gras dans les mails</button></div><section class="sc on" id="s3"><div class="hd"><div><h2>13 · Nouveau collaborateur sans mail</h2><p>Un collaborateur ajouté avec « Nouveau collaborateur » ou depuis Outlook ne déclenche aucun mail automatique. Les mails s'envoient depuis sa fiche.</p><small>13-sans-mail-auto.sql · 34 lignes</small></div><button class="cp" data-i="3">Copier le script</button></div><pre id="c3">-- ════════════════════════════════════════════════════════════════════
+--  13 · « Nouveau collaborateur » sans mail automatique
+--  Projet jymobewqenhcjtzniytb → SQL Editor → Run. Peut être relancé sans risque.
+--  Une fiche marquée « sans mail automatique » ne déclenche ni le mail IT
+--  ni le mail restaurant (arrivée et départ). Les mails s&#x27;envoient à la main
+--  depuis la fiche. Décocher la case sur la fiche réactive les envois.
+-- ════════════════════════════════════════════════════════════════════
+
+alter table public.lp24_badges add column if not exists sans_mail_auto boolean not null default false;
+
+-- Les envois automatiques sautent toute personne déjà présente dans le journal :
+-- on y inscrit donc la fiche comme « déjà traitée » (date ancienne, hors compteur du mois).
+create or replace function public.lp24_sans_mail_auto() returns trigger
+language plpgsql security definer set search_path = public as $f$
+begin
+  if coalesce(new.sans_mail_auto, false) then
+    insert into public.lp24_mails_auto(badge_id, type, nom, prenom, date_evt, destinataire, envoye_le, requete)
+    select new.id, t, new.nom, new.prenom, null, &#x27;coupé sur la fiche&#x27;, timestamptz &#x27;2000-01-01&#x27;, null
+      from unnest(array[&#x27;it_arrivee&#x27;,&#x27;it_depart&#x27;,&#x27;resto_arrivee&#x27;,&#x27;resto_depart&#x27;]) as t
+    on conflict (badge_id, type) do nothing;
+  elsif tg_op = &#x27;UPDATE&#x27; and coalesce(old.sans_mail_auto, false) then
+    delete from public.lp24_mails_auto where badge_id = new.id and destinataire = &#x27;coupé sur la fiche&#x27;;
+  end if;
+  return new;
+end
+$f$;
+
+drop trigger if exists lp24_sans_mail_auto on public.lp24_badges;
+create trigger lp24_sans_mail_auto after insert or update of sans_mail_auto on public.lp24_badges
+  for each row execute function public.lp24_sans_mail_auto();
+
+-- Vérification : doit afficher « prêt »
+select case when exists (select 1 from information_schema.columns where table_schema=&#x27;public&#x27; and table_name=&#x27;lp24_badges&#x27; and column_name=&#x27;sans_mail_auto&#x27;)
+             and exists (select 1 from pg_trigger where tgname=&#x27;lp24_sans_mail_auto&#x27;) then &#x27;prêt&#x27; else &#x27;à vérifier&#x27; end as resultat;
+</pre></section>
+<section class="sc" id="s0"><div class="hd"><div><h2>10 · Mentions légales et confidentialité</h2><p>Permet d&#x27;enregistrer tes textes avec le bouton « Modifier ». Lisibles par tous, modifiables seulement par un administrateur.</p><small>10-textes-publics.sql · 43 lignes</small></div><button class="cp" data-i="0">Copier le script</button></div><pre><code id="c0">-- ════════════════════════════════════════════════════════════════════
 --  MENTIONS LÉGALES ET CONFIDENTIALITÉ — Gestion Collaborateurs
 --  À lancer une fois dans Supabase → SQL Editor (projet jymobewqenhcjtzniytb).
 --  Peut être relancé sans risque. Ne touche à aucune autre donnée.
