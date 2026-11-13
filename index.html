@@ -1541,7 +1541,7 @@ function parseMSListsCSV(text){
 function buildBody(template, data){
   return (template||"").replace(/\{(\w+)\}/g, (_,k)=>data[k]||"NC");
 }
-function VueAccueil({notifExtra,badges,casiers,setView,wdCache,setBadges,setCasiers,showToast,addLog,settings,fssData,setFssData,isIT,histo,openHistorique,openDonnees,pendingOpen,setPendingOpen}){
+function VueAccueil({notifExtra,badges,casiers,setView,wdCache,setBadges,setCasiers,showToast,addLog,settings,fssData,setFssData,isIT,histo,openHistorique,openDonnees,pendingOpen,setPendingOpen,seulMouvements}){
   // ── Ouvre directement la fiche d'un collaborateur depuis l'accueil (au lieu de juste changer d'onglet) ──
   const openCollab=b=>{
     if(isIT)return;
@@ -1814,7 +1814,7 @@ function VueAccueil({notifExtra,badges,casiers,setView,wdCache,setBadges,setCasi
 
   const initials=b=>((b.prenom||"?").charAt(0)+(b.nom||"?").charAt(0)).toUpperCase();
 
-  return React.createElement("div",null,
+  return React.createElement("div",{className:seulMouvements?"acc-mvt-seul":"acc-normal"},
 
     // ══════════════ HEADER — salutation, horloge, recherche (collaborateur/badge), thème ══════════════
     React.createElement("div",{className:"hero",style:{marginBottom:12}},
@@ -3583,7 +3583,7 @@ function VueArriveesDeparts({badges,setBadges,fssData,settings,canAccess,setView
 (function(){try{var st=document.createElement("style");st.textContent=".ad-h{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-bottom:14px}.ad-h p{margin:0;font-size:13px;color:var(--text2,#64748B)}.ad-cols{display:grid;grid-template-columns:1fr 1fr;gap:16px;align-items:start}@media(max-width:900px){.ad-cols{grid-template-columns:1fr}}.ad-col{background:var(--surface,#fff);border:1px solid var(--border,#E2E8F0);border-radius:var(--radius-lg,14px);overflow:hidden}.ad-t{display:flex;align-items:center;gap:8px;padding:12px 14px;font-weight:700;font-size:14px;border-bottom:1px solid var(--border,#E2E8F0)}.ad-t span{margin-left:auto;font-weight:500;font-size:12px;color:var(--text3,#94A3B8)}.ad-pt{width:9px;height:9px;border-radius:50%;display:inline-block}.ad-pt.arr{background:#16A34A}.ad-pt.dep{background:#DC2626}"
 +".ad-l{display:grid;grid-template-columns:86px minmax(0,1fr);gap:4px 12px;padding:10px 14px;border-bottom:1px solid var(--border,#F1F5F9)}.ad-l.passe{opacity:.6}.ad-l.auj .ad-d{color:#2563EB}.ad-d{font-size:12px;font-weight:700;color:var(--text2,#475569);text-transform:capitalize;padding-top:1px}.ad-n{display:flex;flex-direction:column;min-width:0}.ad-n b{font-size:13px}.ad-n span{font-size:11px;color:var(--text3,#94A3B8)}.ad-e{grid-column:2;display:flex;gap:6px;flex-wrap:wrap}.ad-p{border:0;border-radius:999px;padding:3px 9px;font-family:inherit;font-size:11px;font-weight:600;cursor:pointer}.ad-p.ok{background:#ECFDF5;color:#166534}.ad-p.att{background:#FFF7ED;color:#9A3412}.ad-p.non{background:var(--surface2,#F1F5F9);color:var(--text3,#64748B);cursor:default}.ad-p.muet{background:#EFF6FF;color:#1E40AF;cursor:default}.ad-vide{padding:18px 14px;font-size:13px;color:var(--text3,#94A3B8)}.ad-plus{display:block;width:100%;text-align:left;border:0;background:var(--surface2,#F8FAFC);padding:9px 14px;font-family:inherit;font-size:12px;font-weight:600;color:var(--text2,#475569);cursor:pointer}"
 +".ad-prep{background:var(--surface,#fff);border:1.5px solid #2563EB;border-radius:var(--radius-lg,14px);padding:14px 16px;margin-bottom:16px}.ad-g{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;margin:10px 0}@media(max-width:700px){.ad-g{grid-template-columns:1fr 1fr}}.ad-f{display:flex;flex-direction:column;gap:3px}.ad-f span{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.4px;color:var(--text3,#94A3B8)}.ad-f input,.ad-f select{padding:7px 9px;border:1px solid var(--border2,#CBD5E1);border-radius:8px;font-family:inherit;font-size:13px;background:var(--surface,#fff);color:inherit;min-width:0}.ad-c{display:flex;align-items:center;gap:8px;font-size:13px;margin-top:6px}.ad-b{display:flex;justify-content:flex-end;gap:8px;margin-top:12px}"
-+".cm-mails{margin-bottom:12px;padding:10px 12px;background:var(--surface2);border:1px solid var(--border);border-radius:10px}.cm-mails .cm-t{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;font-size:12px;color:var(--text2)}.cm-mails .cm-b{display:flex;gap:6px;flex-wrap:wrap;margin-top:8px}.cm-mails .cm-b button{font-size:12px}";document.head.appendChild(st);}catch(e){}})();
++".acc-normal>.mvt-icon-row{display:none!important}.acc-mvt-seul>:not(.mvt-icon-row){display:none!important}.acc-mvt-seul>.mvt-icon-row{margin-bottom:16px!important}.cm-mails{margin-bottom:12px;padding:10px 12px;background:var(--surface2);border:1px solid var(--border);border-radius:10px}.cm-mails .cm-t{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;font-size:12px;color:var(--text2)}.cm-mails .cm-b{display:flex;gap:6px;flex-wrap:wrap;margin-top:8px}.cm-mails .cm-b button{font-size:12px}";document.head.appendChild(st);}catch(e){}})();
 // ── FssStatusBadge ──
 const FssStatusBadge=({status})=>{
   const map={"Terminée":["fss-status-terminee","✓ Terminée"],"A traiter":["fss-status-atraiter","⚡ À traiter"],"En cours":["fss-status-encours","⏳ En cours"],"Suspendue":["fss-status-suspendue","⏸ Susp."]};
@@ -6082,7 +6082,7 @@ useEffect(()=>{
       case "rapport": return React.createElement(VueRapport,{badges,fssData,setBadges,setFssData,showToast,addLog,setView,setPendingOpen});
       case "impression": return React.createElement(VueImpression,{badges,settings,setSettings});
       case "calendrier": return React.createElement(VueCalendrier,{fssData,badges,canAccess,setView});
-      case "arrivees": return React.createElement(VueArriveesDeparts,{badges,setBadges,fssData,settings,canAccess,setView,showToast,addLog});
+      case "arrivees": return React.createElement("div",null,!isIT&&React.createElement(VueAccueil,{...props,notifExtra,fssData,setFssData,isIT,histo,openHistorique:()=>{},openDonnees:()=>{},pendingOpen:null,setPendingOpen:()=>{},seulMouvements:true}),React.createElement(VueArriveesDeparts,{badges,setBadges,fssData,settings,canAccess,setView,showToast,addLog}));
       case "gestion_accueil": case "badges_pret": case "colis": return React.createElement(VueGestionAccueil,{onglet:view,setView,canAccess,showToast,addLog,badges});
       case "historique_pret": return React.createElement(VueHistoriquePret,null);
       case "aide": return React.createElement(VueAide,{canAccess,peutReglages:!isIT&&!isBadgeOnly});
@@ -7069,7 +7069,7 @@ function parseMSListsCSV(text){
 function buildBody(template, data){
   return (template||"").replace(/\{(\w+)\}/g, (_,k)=>data[k]||"NC");
 }
-function VueAccueil({notifExtra,badges,casiers,setView,wdCache,setBadges,setCasiers,showToast,addLog,settings,fssData,setFssData,isIT,histo,openHistorique,openDonnees,pendingOpen,setPendingOpen}){
+function VueAccueil({notifExtra,badges,casiers,setView,wdCache,setBadges,setCasiers,showToast,addLog,settings,fssData,setFssData,isIT,histo,openHistorique,openDonnees,pendingOpen,setPendingOpen,seulMouvements}){
   // ── Ouvre directement la fiche d'un collaborateur depuis l'accueil (au lieu de juste changer d'onglet) ──
   const openCollab=b=>{
     if(isIT)return;
@@ -7342,7 +7342,7 @@ function VueAccueil({notifExtra,badges,casiers,setView,wdCache,setBadges,setCasi
 
   const initials=b=>((b.prenom||"?").charAt(0)+(b.nom||"?").charAt(0)).toUpperCase();
 
-  return React.createElement("div",null,
+  return React.createElement("div",{className:seulMouvements?"acc-mvt-seul":"acc-normal"},
 
     // ══════════════ HEADER — salutation, horloge, recherche (collaborateur/badge), thème ══════════════
     React.createElement("div",{className:"ios-head"},
@@ -9200,7 +9200,7 @@ function VueArriveesDeparts({badges,setBadges,fssData,settings,canAccess,setView
 (function(){try{var st=document.createElement("style");st.textContent=".ad-h{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-bottom:14px}.ad-h p{margin:0;font-size:13px;color:var(--text2,#64748B)}.ad-cols{display:grid;grid-template-columns:1fr 1fr;gap:16px;align-items:start}@media(max-width:900px){.ad-cols{grid-template-columns:1fr}}.ad-col{background:var(--surface,#fff);border:1px solid var(--border,#E2E8F0);border-radius:var(--radius-lg,14px);overflow:hidden}.ad-t{display:flex;align-items:center;gap:8px;padding:12px 14px;font-weight:700;font-size:14px;border-bottom:1px solid var(--border,#E2E8F0)}.ad-t span{margin-left:auto;font-weight:500;font-size:12px;color:var(--text3,#94A3B8)}.ad-pt{width:9px;height:9px;border-radius:50%;display:inline-block}.ad-pt.arr{background:#16A34A}.ad-pt.dep{background:#DC2626}"
 +".ad-l{display:grid;grid-template-columns:86px minmax(0,1fr);gap:4px 12px;padding:10px 14px;border-bottom:1px solid var(--border,#F1F5F9)}.ad-l.passe{opacity:.6}.ad-l.auj .ad-d{color:#2563EB}.ad-d{font-size:12px;font-weight:700;color:var(--text2,#475569);text-transform:capitalize;padding-top:1px}.ad-n{display:flex;flex-direction:column;min-width:0}.ad-n b{font-size:13px}.ad-n span{font-size:11px;color:var(--text3,#94A3B8)}.ad-e{grid-column:2;display:flex;gap:6px;flex-wrap:wrap}.ad-p{border:0;border-radius:999px;padding:3px 9px;font-family:inherit;font-size:11px;font-weight:600;cursor:pointer}.ad-p.ok{background:#ECFDF5;color:#166534}.ad-p.att{background:#FFF7ED;color:#9A3412}.ad-p.non{background:var(--surface2,#F1F5F9);color:var(--text3,#64748B);cursor:default}.ad-p.muet{background:#EFF6FF;color:#1E40AF;cursor:default}.ad-vide{padding:18px 14px;font-size:13px;color:var(--text3,#94A3B8)}.ad-plus{display:block;width:100%;text-align:left;border:0;background:var(--surface2,#F8FAFC);padding:9px 14px;font-family:inherit;font-size:12px;font-weight:600;color:var(--text2,#475569);cursor:pointer}"
 +".ad-prep{background:var(--surface,#fff);border:1.5px solid #2563EB;border-radius:var(--radius-lg,14px);padding:14px 16px;margin-bottom:16px}.ad-g{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;margin:10px 0}@media(max-width:700px){.ad-g{grid-template-columns:1fr 1fr}}.ad-f{display:flex;flex-direction:column;gap:3px}.ad-f span{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.4px;color:var(--text3,#94A3B8)}.ad-f input,.ad-f select{padding:7px 9px;border:1px solid var(--border2,#CBD5E1);border-radius:8px;font-family:inherit;font-size:13px;background:var(--surface,#fff);color:inherit;min-width:0}.ad-c{display:flex;align-items:center;gap:8px;font-size:13px;margin-top:6px}.ad-b{display:flex;justify-content:flex-end;gap:8px;margin-top:12px}"
-+".cm-mails{margin-bottom:12px;padding:10px 12px;background:var(--surface2);border:1px solid var(--border);border-radius:10px}.cm-mails .cm-t{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;font-size:12px;color:var(--text2)}.cm-mails .cm-b{display:flex;gap:6px;flex-wrap:wrap;margin-top:8px}.cm-mails .cm-b button{font-size:12px}";document.head.appendChild(st);}catch(e){}})();
++".acc-normal>.mvt-icon-row{display:none!important}.acc-mvt-seul>:not(.mvt-icon-row){display:none!important}.acc-mvt-seul>.mvt-icon-row{margin-bottom:16px!important}.cm-mails{margin-bottom:12px;padding:10px 12px;background:var(--surface2);border:1px solid var(--border);border-radius:10px}.cm-mails .cm-t{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;font-size:12px;color:var(--text2)}.cm-mails .cm-b{display:flex;gap:6px;flex-wrap:wrap;margin-top:8px}.cm-mails .cm-b button{font-size:12px}";document.head.appendChild(st);}catch(e){}})();
 // ── FssStatusBadge ──
 const FssStatusBadge=({status})=>{
   const map={"Terminée":["fss-status-terminee","✓ Terminée"],"A traiter":["fss-status-atraiter","⚡ À traiter"],"En cours":["fss-status-encours","⏳ En cours"],"Suspendue":["fss-status-suspendue","⏸ Susp."]};
@@ -11787,7 +11787,7 @@ useEffect(()=>{
       case "rapport": return React.createElement(VueRapport,{badges,fssData,setBadges,setFssData,showToast,addLog,setView,setPendingOpen});
       case "impression": return React.createElement(VueImpression,{badges,settings,setSettings});
       case "calendrier": return React.createElement(VueCalendrier,{fssData,badges,canAccess,setView});
-      case "arrivees": return React.createElement(VueArriveesDeparts,{badges,setBadges,fssData,settings,canAccess,setView,showToast,addLog});
+      case "arrivees": return React.createElement("div",null,!isIT&&React.createElement(VueAccueil,{...props,notifExtra,fssData,setFssData,isIT,histo,openHistorique:()=>{},openDonnees:()=>{},pendingOpen:null,setPendingOpen:()=>{},seulMouvements:true}),React.createElement(VueArriveesDeparts,{badges,setBadges,fssData,settings,canAccess,setView,showToast,addLog}));
       case "gestion_accueil": case "badges_pret": case "colis": return React.createElement(VueGestionAccueil,{onglet:view,setView,canAccess,showToast,addLog,badges});
       case "aide": return React.createElement(VueAide,{canAccess,peutReglages:!isIT&&!isBadgeOnly});
       case "notifications": return React.createElement(VueNotifications,{histo,items:notifs,supprimer:supprimerNotif,toutSupprimer:toutSupprimerNotifs,restaurer:restaurerNotifs,nbSupprimees:notifsToutes.length-notifs.length,setView});
