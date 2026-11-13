@@ -4303,6 +4303,15 @@ function PageLegale(){
           :el("div",null,legalHtml(texte)),
         msg&&el("div",{style:{marginTop:10,fontSize:12.5}},msg)))),document.body);
 }
+const ESPACES=[["","Mon espace","Administrateur"],["badge","Accueil","Badges de prêt et colis"],["it","Field Support","Field Support et accueil en lecture"]];
+const ESPACES_PERMS={badge:()=>BADGE_PERMS,it:()=>IT_PERMS};
+function BandeauEspace(){const el=React.createElement;const[,maj]=React.useState(0);
+  React.useEffect(()=>{const f=()=>maj(x=>x+1);window.addEventListener("espace-change",f);return()=>window.removeEventListener("espace-change",f);},[]);
+  const e=window._espace;if(!e||!e.admin||!e.actuel)return null;const nom=(ESPACES.find(x=>x[0]===e.actuel)||[])[1]||e.actuel;
+  return el("div",{className:"bandeau-espace"},el("span",null,"Espace ",el("b",null,nom),el("i",{className:"be-long"}," — tu vois l'appli comme eux")),
+    el("button",{type:"button",onClick:()=>e.changer("")},"Revenir à mon espace"));}
+(function(){try{var st=document.createElement("style");st.textContent=".bandeau-espace{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(14px + env(safe-area-inset-bottom));z-index:9000;display:flex;align-items:center;gap:12px;background:#1E3A8A;color:#fff;padding:8px 8px 8px 16px;border-radius:999px;font:500 13px/1.2 -apple-system,Segoe UI,sans-serif;box-shadow:0 8px 24px rgba(15,23,42,.25);white-space:nowrap}.bandeau-espace button{background:#fff;color:#1E3A8A;border:0;border-radius:999px;padding:7px 12px;font:600 12px -apple-system,Segoe UI,sans-serif;cursor:pointer}.bandeau-espace i{font-style:normal}@media(max-width:760px){.bandeau-espace{bottom:calc(92px + env(safe-area-inset-bottom));font-size:13px}.bandeau-espace .be-long{display:none}}.ml-espace{display:flex;align-items:center;gap:8px;margin:8px 2px 0;font-size:12px;color:#64748B}.ml-espace select{flex:1;min-width:0;padding:6px 8px;border-radius:8px;border:1px solid #CBD5E1;background:#fff;color:#0F172A;font:inherit;font-size:12px}";document.head.appendChild(st);
+  setTimeout(function(){try{var d=document.createElement("div");d.id="espace-racine";document.body.appendChild(d);ReactDOM.createRoot(d).render(React.createElement(BandeauEspace));}catch(e){}},0);}catch(e){}})();
 function LienLegal({style}){const el=React.createElement;const a=(id,l)=>el("button",{type:"button",onClick:e=>{e.preventDefault();e.stopPropagation();window.dispatchEvent(new CustomEvent("ouvrir-legal",{detail:id}));},style:{background:"none",border:"none",padding:0,color:"inherit",textDecoration:"underline",cursor:"pointer",font:"inherit"}},l);
   return el("div",{className:"lien-legal",style:Object.assign({fontSize:11,color:"var(--text3,#94A3B8)",textAlign:"center"},style||{})},a("mentions","Mentions légales")," · ",a("confidentialite","Confidentialité"));}
 (function(){try{setTimeout(function(){try{var d=document.createElement("div");d.id="legal-racine";document.body.appendChild(d);ReactDOM.createRoot(d).render(React.createElement(PageLegale));}catch(e){}},0);}catch(e){}})();
@@ -4496,6 +4505,8 @@ function MenuLateral({visibleNav,navActif,setView,onClose,session,notifs,ouvrirR
         logout&&el("button",{type:"button",className:"ml-out",title:"Se déconnecter","aria-label":"Se déconnecter",onClick:()=>{onClose();logout();}},
           el("svg",{width:20,height:20,viewBox:"0 0 24 24",fill:"none",stroke:"currentColor",strokeWidth:2,strokeLinecap:"round",strokeLinejoin:"round"},
             el("path",{d:"M14 4h4a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2h-4"}),el("path",{d:"M9 8l-4 4 4 4"}),el("path",{d:"M5 12h11"}))));})(),
+      window._espace&&window._espace.admin&&el("label",{className:"ml-espace"},el("span",null,"Espace"),
+        el("select",{value:window._espace.actuel,onChange:e=>{window._espace.changer(e.target.value);}},ESPACES.map(([k,l])=>el("option",{key:k,value:k},l)))),
       el(LienLegal,{style:{margin:"10px 0 2px",color:"#64748B"}})));
 }
 // ── Page « Aujourd'hui » : compteurs avec courbe + frise de la journée ──
@@ -5239,7 +5250,11 @@ function VueHistoriquePret(){
 
 // ════════════════ APP ════════════════
 function App(){
-  const[unlocked,setUnlocked]=useState(false);const[session,setSession]=useState({role:"admin",label:"Admin"});
+  const[unlocked,setUnlocked]=useState(false);const[sessionReelle,setSession]=useState({role:"admin",label:"Admin"});
+  // Espace : un administrateur peut se mettre dans l'espace Accueil ou Field Support sans changer de compte
+  const[espace,setEspaceSt]=useState(()=>{try{return sessionStorage.getItem("lp-espace")||"";}catch(e){return "";}});
+  const session=useMemo(()=>{if(!sessionReelle||sessionReelle.role!=="admin"||!ESPACES_PERMS[espace])return sessionReelle;
+    return{...sessionReelle,role:espace,perms:ESPACES_PERMS[espace](),espace:true};},[sessionReelle,espace]);
   const isBadgeOnly=session&&session.role==="badge";
   const[view,setView]=useState("accueil");
   const[badges,setBadges]=useState([]);
@@ -5280,7 +5295,7 @@ function App(){
     if(sess.role==="badge")setView("badges_pret");
     if(sess.bootstrap)setTimeout(()=>showToast("⚠️ Aucun administrateur défini : ajoute ton compte en Administrateur dans Réglages → Comptes","err"),800);
   };
-  const logout=async()=>{try{await sb.auth.signOut();}catch(e){}setUnlocked(false);setSession(null);setBadges([]);setCasiers([]);};
+  const logout=async()=>{try{await sb.auth.signOut();}catch(e){}try{sessionStorage.removeItem("lp-espace");}catch(e){}setEspaceSt("");setUnlocked(false);setSession(null);setBadges([]);setCasiers([]);};
   useEffect(()=>{
     if(!sb){setAuthChecking(false);return;}
     let alive=true;
@@ -5748,6 +5763,10 @@ useEffect(()=>{
   },[session]);
 
   // Pour le rôle IT : accueil en lecture seule (pas de clic sur les éléments interactifs non-FS)
+  const changerEspace=k=>{const v=ESPACES_PERMS[k]?k:"";try{v?sessionStorage.setItem("lp-espace",v):sessionStorage.removeItem("lp-espace");}catch(e){}
+    setEspaceSt(v);setView(v==="badge"?"badges_pret":"accueil");};
+  window._espace={admin:!!(unlocked&&sessionReelle&&sessionReelle.role==="admin"),actuel:(unlocked&&sessionReelle&&sessionReelle.role==="admin"&&ESPACES_PERMS[espace])?espace:"",changer:changerEspace};
+  useEffect(()=>{window.dispatchEvent(new Event("espace-change"));},[espace,unlocked,sessionReelle]);
   const isIT=session&&session.role==="it";
   const isBadge=session&&session.role==="badge";
   const visibleNav=nav.filter(n=>canAccess(n.id));
@@ -5755,7 +5774,7 @@ useEffect(()=>{
   window._estAdmin=!!(unlocked&&session&&session.role==="admin");
   const[mlLarge,setMlLarge]=useState(()=>{try{return window.matchMedia("(min-width:1100px)").matches;}catch(e){return false;}});
   useEffect(()=>{let mq;try{mq=window.matchMedia("(min-width:1100px)");}catch(e){return;}const f=()=>setMlLarge(mq.matches);try{mq.addEventListener("change",f);}catch(e){mq.addListener(f);}return()=>{try{mq.removeEventListener("change",f);}catch(e){}};},[]);
-  useEffect(()=>{document.body.classList.toggle("ml-pin",!!mlLarge&&!!unlocked);},[mlLarge,unlocked]);
+  useEffect(()=>{document.body.classList.toggle("ml-pin",!!mlLarge&&!!unlocked&&!isBadgeOnly);},[mlLarge,unlocked,isBadgeOnly]);
   useEffect(()=>{const f=()=>setView("aide");window.addEventListener("ouvrir-aide",f);return()=>window.removeEventListener("ouvrir-aide",f);},[]);
   const[menuOuvert,setMenuOuvert]=useState(false);
   useEffect(()=>{window._badgesWd=badges;window._estAdmin=!!(unlocked&&session&&session.role==="admin");},[badges,session]);
@@ -9657,6 +9676,15 @@ function PageLegale(){
           :el("div",null,legalHtml(texte)),
         msg&&el("div",{style:{marginTop:10,fontSize:12.5}},msg)))),document.body);
 }
+const ESPACES=[["","Mon espace","Administrateur"],["badge","Accueil","Badges de prêt et colis"],["it","Field Support","Field Support et accueil en lecture"]];
+const ESPACES_PERMS={badge:()=>BADGE_PERMS,it:()=>IT_PERMS};
+function BandeauEspace(){const el=React.createElement;const[,maj]=React.useState(0);
+  React.useEffect(()=>{const f=()=>maj(x=>x+1);window.addEventListener("espace-change",f);return()=>window.removeEventListener("espace-change",f);},[]);
+  const e=window._espace;if(!e||!e.admin||!e.actuel)return null;const nom=(ESPACES.find(x=>x[0]===e.actuel)||[])[1]||e.actuel;
+  return el("div",{className:"bandeau-espace"},el("span",null,"Espace ",el("b",null,nom),el("i",{className:"be-long"}," — tu vois l'appli comme eux")),
+    el("button",{type:"button",onClick:()=>e.changer("")},"Revenir à mon espace"));}
+(function(){try{var st=document.createElement("style");st.textContent=".bandeau-espace{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(14px + env(safe-area-inset-bottom));z-index:9000;display:flex;align-items:center;gap:12px;background:#1E3A8A;color:#fff;padding:8px 8px 8px 16px;border-radius:999px;font:500 13px/1.2 -apple-system,Segoe UI,sans-serif;box-shadow:0 8px 24px rgba(15,23,42,.25);white-space:nowrap}.bandeau-espace button{background:#fff;color:#1E3A8A;border:0;border-radius:999px;padding:7px 12px;font:600 12px -apple-system,Segoe UI,sans-serif;cursor:pointer}.bandeau-espace i{font-style:normal}@media(max-width:760px){.bandeau-espace{bottom:calc(92px + env(safe-area-inset-bottom));font-size:13px}.bandeau-espace .be-long{display:none}}.ml-espace{display:flex;align-items:center;gap:8px;margin:8px 2px 0;font-size:12px;color:#64748B}.ml-espace select{flex:1;min-width:0;padding:6px 8px;border-radius:8px;border:1px solid #CBD5E1;background:#fff;color:#0F172A;font:inherit;font-size:12px}";document.head.appendChild(st);
+  setTimeout(function(){try{var d=document.createElement("div");d.id="espace-racine";document.body.appendChild(d);ReactDOM.createRoot(d).render(React.createElement(BandeauEspace));}catch(e){}},0);}catch(e){}})();
 function LienLegal({style}){const el=React.createElement;const a=(id,l)=>el("button",{type:"button",onClick:e=>{e.preventDefault();e.stopPropagation();window.dispatchEvent(new CustomEvent("ouvrir-legal",{detail:id}));},style:{background:"none",border:"none",padding:0,color:"inherit",textDecoration:"underline",cursor:"pointer",font:"inherit"}},l);
   return el("div",{className:"lien-legal",style:Object.assign({fontSize:11,color:"var(--text3,#94A3B8)",textAlign:"center"},style||{})},a("mentions","Mentions légales")," · ",a("confidentialite","Confidentialité"));}
 (function(){try{setTimeout(function(){try{var d=document.createElement("div");d.id="legal-racine";document.body.appendChild(d);ReactDOM.createRoot(d).render(React.createElement(PageLegale));}catch(e){}},0);}catch(e){}})();
@@ -10642,7 +10670,11 @@ function VueHistoriquePret(){
 
 // ════════════════ APP ════════════════
 function App(){
-  const[unlocked,setUnlocked]=useState(false);const[session,setSession]=useState({role:"admin",label:"Admin"});
+  const[unlocked,setUnlocked]=useState(false);const[sessionReelle,setSession]=useState({role:"admin",label:"Admin"});
+  // Espace : un administrateur peut se mettre dans l'espace Accueil ou Field Support sans changer de compte
+  const[espace,setEspaceSt]=useState(()=>{try{return sessionStorage.getItem("lp-espace")||"";}catch(e){return "";}});
+  const session=useMemo(()=>{if(!sessionReelle||sessionReelle.role!=="admin"||!ESPACES_PERMS[espace])return sessionReelle;
+    return{...sessionReelle,role:espace,perms:ESPACES_PERMS[espace](),espace:true};},[sessionReelle,espace]);
   const isBadgeOnly=session&&session.role==="badge";
   const[view,setView]=useState("accueil");const[showMore,setShowMore]=useState(false);
   const[badges,setBadges]=useState([]);
@@ -10683,7 +10715,7 @@ function App(){
     if(sess.role==="badge")setView("badges_pret");
     if(sess.bootstrap)setTimeout(()=>showToast("⚠️ Aucun administrateur défini : ajoute ton compte en Administrateur dans Réglages → Comptes","err"),800);
   };
-  const logout=async()=>{try{await sb.auth.signOut();}catch(e){}setUnlocked(false);setSession(null);setBadges([]);setCasiers([]);};
+  const logout=async()=>{try{await sb.auth.signOut();}catch(e){}try{sessionStorage.removeItem("lp-espace");}catch(e){}setEspaceSt("");setUnlocked(false);setSession(null);setBadges([]);setCasiers([]);};
   useEffect(()=>{
     if(!sb){setAuthChecking(false);return;}
     let alive=true;
@@ -11151,6 +11183,10 @@ useEffect(()=>{
   },[session]);
 
   // Pour le rôle IT : accueil en lecture seule (pas de clic sur les éléments interactifs non-FS)
+  const changerEspace=k=>{const v=ESPACES_PERMS[k]?k:"";try{v?sessionStorage.setItem("lp-espace",v):sessionStorage.removeItem("lp-espace");}catch(e){}
+    setEspaceSt(v);setView(v==="badge"?"badges_pret":"accueil");};
+  window._espace={admin:!!(unlocked&&sessionReelle&&sessionReelle.role==="admin"),actuel:(unlocked&&sessionReelle&&sessionReelle.role==="admin"&&ESPACES_PERMS[espace])?espace:"",changer:changerEspace};
+  useEffect(()=>{window.dispatchEvent(new Event("espace-change"));},[espace,unlocked,sessionReelle]);
   const isIT=session&&session.role==="it";
   const isBadge=session&&session.role==="badge";
   const visibleNav=nav.filter(n=>canAccess(n.id));
@@ -11263,6 +11299,7 @@ useEffect(()=>{
     ),
     showMore&&React.createElement(IosSheet,{title:session&&session.label?("Connecté : "+session.label):null,onClose:()=>setShowMore(false),items:[
       ...moreTabs.filter(n=>n.id!=="impression").map(n=>({label:n.label,icon:n.id,onClick:()=>setView(n.id)})),
+      ...(window._espace&&window._espace.admin?ESPACES.filter(([k])=>k!==window._espace.actuel).map(([k,l])=>({label:k?"Passer dans l'espace "+l:"Revenir à mon espace",icon:"accueil",onClick:()=>window._espace.changer(k)})):[]),
       {label:"Mentions légales et confidentialité",onClick:()=>window.dispatchEvent(new CustomEvent("ouvrir-legal",{detail:"mentions"}))},
       session&&{label:"Déconnexion",icon:"logout",danger:true,onClick:logout}
     ]}),
