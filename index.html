@@ -3506,20 +3506,36 @@ function ImportInvitation({onLire,onClose}){
 (function(){try{var st=document.createElement("style");st.textContent=".inv-fond{position:fixed;inset:0;background:rgba(15,23,42,.45);z-index:9500;display:flex;align-items:center;justify-content:center;padding:16px}.inv-boite{background:var(--surface,#fff);color:var(--text,#0F172A);border-radius:16px;width:min(620px,100%);max-height:92vh;overflow:auto;padding:18px 20px;box-shadow:0 20px 60px rgba(15,23,42,.25)}.inv-t{display:flex;align-items:center;justify-content:space-between;font-size:15px}.inv-x{border:0;background:none;font-size:22px;cursor:pointer;color:var(--text3,#94A3B8)}.inv-aide{font-size:12px;color:var(--text2,#64748B);margin:6px 0 10px}.inv-zone{border:1.5px dashed var(--border2,#CBD5E1);border-radius:12px;padding:8px}.inv-zone.survol{border-color:#2563EB;background:#EFF6FF}.inv-zone textarea{width:100%;box-sizing:border-box;border:0;outline:0;resize:vertical;font:inherit;font-size:12px;background:transparent;color:inherit}.inv-fic{display:inline-block;font-size:12px;color:#2563EB;cursor:pointer;margin:4px 2px}.inv-fic input{display:none}.inv-msg{font-size:12px;color:var(--text2,#64748B);margin-top:6px}.inv-res{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:12px}.inv-res>div{background:var(--surface2,#F8FAFC);border-radius:8px;padding:7px 10px;display:flex;flex-direction:column;gap:2px}.inv-res span{font-size:10px;text-transform:uppercase;letter-spacing:.4px;color:var(--text3,#94A3B8);font-weight:700}.inv-res b{font-size:13px}.inv-res b.vide{color:#D97706;font-weight:600}.inv-b{display:flex;justify-content:flex-end;gap:8px;margin-top:14px}@media(max-width:600px){.inv-res{grid-template-columns:1fr 1fr}}";document.head.appendChild(st);}catch(e){}})();
 // ── Même personne dans Collaborateurs et Field Support : un changement de nom/prénom suit des deux côtés ──
 function memeNom(a,b){return norm(a&&a.nom)===norm(b&&b.nom)&&norm(a&&a.prenom)===norm(b&&b.prenom);}
+// Champs repris d'un côté à l'autre : nom, prénom, date d'arrivée / de départ, manager
+function jourIso(x){const t=String(x||"").trim();let m=t.match(/^(\d{4})-(\d{2})-(\d{2})/);if(m)return m[0];m=t.match(/^(\d{1,2})[\/.-](\d{1,2})[\/.-](\d{4})/);return m?m[3]+"-"+m[2].padStart(2,"0")+"-"+m[1].padStart(2,"0"):"";}
 async function propagerNomVersFss(avant,apres,showToast){
-  if(memeNom(avant,apres))return;const liste=(window._fssData||[]).filter(f=>memeNom(f,avant));if(!liste.length)return;
-  const maj=f=>({...f,nom:String(apres.nom||"").toUpperCase(),prenom:apres.prenom||""});
-  window._setFssData&&window._setFssData(p=>(p||[]).map(f=>memeNom(f,avant)?maj(f):f));
-  if(sb)for(const f of liste){if(typeof f.id==="number"){const{error}=await sb.from("lp24_fss").update({nom:maj(f).nom,prenom:maj(f).prenom}).eq("id",f.id);if(error){showToast&&showToast("⚠️ Field Support non mis à jour — "+messageErreurBase(error),"err");return;}}}
-  showToast&&setTimeout(()=>showToast("✅ Nom mis à jour aussi dans Field Support ("+liste.length+" fiche"+(liste.length>1?"s":"")+")"),1800);
+  const nom=!memeNom(avant,apres);
+  const dA=jourIso(apres.date_entree)!==jourIso(avant.date_entree)?jourIso(apres.date_entree):"";
+  const dD=jourIso(apres.date_sortie_prevue)!==jourIso(avant.date_sortie_prevue)?jourIso(apres.date_sortie_prevue):"";
+  const mg=String(apres.manager||"").trim()!==String(avant.manager||"").trim()?String(apres.manager||"").trim():"";
+  if(!nom&&!dA&&!dD&&!mg)return;
+  const patchs=[];(window._fssData||[]).forEach(f=>{if(!memeNom(f,avant))return;const p={};
+    if(nom){p.nom=String(apres.nom||"").toUpperCase();p.prenom=apres.prenom||"";}
+    if(!f.cloture){if(f.situation==="Arrivée"&&dA&&jourIso(f.dateEvt)!==dA)p.dateEvt=dA;if(f.situation==="Départ"&&dD&&jourIso(f.dateEvt)!==dD)p.dateEvt=dD;if(mg&&f.manager!==mg)p.manager=mg;}
+    if(Object.keys(p).length)patchs.push([f,p]);});
+  if(!patchs.length)return;
+  window._setFssData&&window._setFssData(x=>(x||[]).map(f=>{const q=patchs.find(([g])=>g.id===f.id);return q?{...f,...q[1]}:f;}));
+  if(sb)for(const[f,p]of patchs){if(typeof f.id==="number"){const{error}=await sb.from("lp24_fss").update(p).eq("id",f.id);if(error){showToast&&showToast("⚠️ Field Support non mis à jour — "+messageErreurBase(error),"err");return;}}}
+  showToast&&setTimeout(()=>showToast("✅ Field Support mis à jour aussi ("+patchs.length+" fiche"+(patchs.length>1?"s":"")+")"),1800);
 }
 async function propagerNomVersCollab(avant,apres,badges,setBadges,showToast){
-  if(memeNom(avant,apres))return;const liste=(badges||[]).filter(b=>b.statut!=="Archivé"&&memeNom(b,avant));if(!liste.length)return;
-  if(liste.length>1){showToast&&showToast("⚠️ Plusieurs collaborateurs au nom de "+avant.prenom+" "+avant.nom+" : change le nom dans Collaborateurs","err");return;}
-  const b=liste[0],u={...b,nom:String(apres.nom||"").toUpperCase(),prenom:apres.prenom||""};
-  setBadges&&setBadges(p=>p.map(x=>x.id===b.id?u:x));
+  const p={};
+  if(!memeNom(avant,apres)){p.nom=String(apres.nom||"").toUpperCase();p.prenom=apres.prenom||"";}
+  const d=jourIso(apres.dateEvt);if(d&&d!==jourIso(avant.dateEvt)){if(apres.situation==="Départ")p.date_sortie_prevue=d;else p.date_entree=d;}
+  const mg=String(apres.manager||"").trim();if(mg&&mg!==String(avant.manager||"").trim())p.manager=mg;
+  if(!Object.keys(p).length)return;
+  const liste=(badges||[]).filter(b=>b.statut!=="Archivé"&&memeNom(b,avant));if(!liste.length)return;
+  if(liste.length>1){showToast&&showToast("⚠️ Plusieurs collaborateurs au nom de "+avant.prenom+" "+avant.nom+" : fais le changement dans Collaborateurs","err");return;}
+  const b=liste[0];Object.keys(p).forEach(k=>{if(String(b[k]||"")===String(p[k]))delete p[k];});if(!Object.keys(p).length)return;
+  const u={...b,...p};
+  setBadges&&setBadges(x=>x.map(y=>y.id===b.id?u:y));
   if(sb){const r=await sbEcrireCollab(u,false);if(r.error){showToast&&showToast("⚠️ Collaborateur non mis à jour — "+messageErreurBase(r.error),"err");return;}}
-  showToast&&setTimeout(()=>showToast("✅ Nom mis à jour aussi dans Collaborateurs"),1800);
+  showToast&&setTimeout(()=>showToast("✅ Fiche collaborateur mise à jour aussi"),1800);
 }
 // ── Mails ouverts à la main depuis une fiche (Outlook / Mail) ──
 function ouvrirMailManuel(settings,cible,dep,b,showToast,addLog){
@@ -3697,7 +3713,7 @@ function VueFieldSupport({fssData,setFssData,showToast,addLog,badges,casiers,set
   const saveEdit=()=>{
     if(!editForm)return;
     const updated={...editForm,cloture:editForm.statut==="Terminée",is_new:editForm.statut==="A traiter"?editForm.is_new:false};
-    {const avant=(fssData||[]).find(f=>f.id===updated.id);if(avant&&!memeNom(avant,updated))propagerNomVersCollab(avant,updated,badges,setBadges,showToast);}
+    {const avant=(fssData||[]).find(f=>f.id===updated.id);if(avant)propagerNomVersCollab(avant,updated,badges,setBadges,showToast);}
     setFssData(p=>p.map(f=>f.id===updated.id?updated:f));
     setSelectedCard(updated);setEditForm({...updated});setEditMode(false);
     if(sb){const isRealId=updated.id&&typeof updated.id==="number";
@@ -9142,20 +9158,36 @@ function ImportInvitation({onLire,onClose}){
 (function(){try{var st=document.createElement("style");st.textContent=".inv-fond{position:fixed;inset:0;background:rgba(15,23,42,.45);z-index:9500;display:flex;align-items:center;justify-content:center;padding:16px}.inv-boite{background:var(--surface,#fff);color:var(--text,#0F172A);border-radius:16px;width:min(620px,100%);max-height:92vh;overflow:auto;padding:18px 20px;box-shadow:0 20px 60px rgba(15,23,42,.25)}.inv-t{display:flex;align-items:center;justify-content:space-between;font-size:15px}.inv-x{border:0;background:none;font-size:22px;cursor:pointer;color:var(--text3,#94A3B8)}.inv-aide{font-size:12px;color:var(--text2,#64748B);margin:6px 0 10px}.inv-zone{border:1.5px dashed var(--border2,#CBD5E1);border-radius:12px;padding:8px}.inv-zone.survol{border-color:#2563EB;background:#EFF6FF}.inv-zone textarea{width:100%;box-sizing:border-box;border:0;outline:0;resize:vertical;font:inherit;font-size:12px;background:transparent;color:inherit}.inv-fic{display:inline-block;font-size:12px;color:#2563EB;cursor:pointer;margin:4px 2px}.inv-fic input{display:none}.inv-msg{font-size:12px;color:var(--text2,#64748B);margin-top:6px}.inv-res{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:12px}.inv-res>div{background:var(--surface2,#F8FAFC);border-radius:8px;padding:7px 10px;display:flex;flex-direction:column;gap:2px}.inv-res span{font-size:10px;text-transform:uppercase;letter-spacing:.4px;color:var(--text3,#94A3B8);font-weight:700}.inv-res b{font-size:13px}.inv-res b.vide{color:#D97706;font-weight:600}.inv-b{display:flex;justify-content:flex-end;gap:8px;margin-top:14px}@media(max-width:600px){.inv-res{grid-template-columns:1fr 1fr}}";document.head.appendChild(st);}catch(e){}})();
 // ── Même personne dans Collaborateurs et Field Support : un changement de nom/prénom suit des deux côtés ──
 function memeNom(a,b){return norm(a&&a.nom)===norm(b&&b.nom)&&norm(a&&a.prenom)===norm(b&&b.prenom);}
+// Champs repris d'un côté à l'autre : nom, prénom, date d'arrivée / de départ, manager
+function jourIso(x){const t=String(x||"").trim();let m=t.match(/^(\d{4})-(\d{2})-(\d{2})/);if(m)return m[0];m=t.match(/^(\d{1,2})[\/.-](\d{1,2})[\/.-](\d{4})/);return m?m[3]+"-"+m[2].padStart(2,"0")+"-"+m[1].padStart(2,"0"):"";}
 async function propagerNomVersFss(avant,apres,showToast){
-  if(memeNom(avant,apres))return;const liste=(window._fssData||[]).filter(f=>memeNom(f,avant));if(!liste.length)return;
-  const maj=f=>({...f,nom:String(apres.nom||"").toUpperCase(),prenom:apres.prenom||""});
-  window._setFssData&&window._setFssData(p=>(p||[]).map(f=>memeNom(f,avant)?maj(f):f));
-  if(sb)for(const f of liste){if(typeof f.id==="number"){const{error}=await sb.from("lp24_fss").update({nom:maj(f).nom,prenom:maj(f).prenom}).eq("id",f.id);if(error){showToast&&showToast("⚠️ Field Support non mis à jour — "+messageErreurBase(error),"err");return;}}}
-  showToast&&setTimeout(()=>showToast("✅ Nom mis à jour aussi dans Field Support ("+liste.length+" fiche"+(liste.length>1?"s":"")+")"),1800);
+  const nom=!memeNom(avant,apres);
+  const dA=jourIso(apres.date_entree)!==jourIso(avant.date_entree)?jourIso(apres.date_entree):"";
+  const dD=jourIso(apres.date_sortie_prevue)!==jourIso(avant.date_sortie_prevue)?jourIso(apres.date_sortie_prevue):"";
+  const mg=String(apres.manager||"").trim()!==String(avant.manager||"").trim()?String(apres.manager||"").trim():"";
+  if(!nom&&!dA&&!dD&&!mg)return;
+  const patchs=[];(window._fssData||[]).forEach(f=>{if(!memeNom(f,avant))return;const p={};
+    if(nom){p.nom=String(apres.nom||"").toUpperCase();p.prenom=apres.prenom||"";}
+    if(!f.cloture){if(f.situation==="Arrivée"&&dA&&jourIso(f.dateEvt)!==dA)p.dateEvt=dA;if(f.situation==="Départ"&&dD&&jourIso(f.dateEvt)!==dD)p.dateEvt=dD;if(mg&&f.manager!==mg)p.manager=mg;}
+    if(Object.keys(p).length)patchs.push([f,p]);});
+  if(!patchs.length)return;
+  window._setFssData&&window._setFssData(x=>(x||[]).map(f=>{const q=patchs.find(([g])=>g.id===f.id);return q?{...f,...q[1]}:f;}));
+  if(sb)for(const[f,p]of patchs){if(typeof f.id==="number"){const{error}=await sb.from("lp24_fss").update(p).eq("id",f.id);if(error){showToast&&showToast("⚠️ Field Support non mis à jour — "+messageErreurBase(error),"err");return;}}}
+  showToast&&setTimeout(()=>showToast("✅ Field Support mis à jour aussi ("+patchs.length+" fiche"+(patchs.length>1?"s":"")+")"),1800);
 }
 async function propagerNomVersCollab(avant,apres,badges,setBadges,showToast){
-  if(memeNom(avant,apres))return;const liste=(badges||[]).filter(b=>b.statut!=="Archivé"&&memeNom(b,avant));if(!liste.length)return;
-  if(liste.length>1){showToast&&showToast("⚠️ Plusieurs collaborateurs au nom de "+avant.prenom+" "+avant.nom+" : change le nom dans Collaborateurs","err");return;}
-  const b=liste[0],u={...b,nom:String(apres.nom||"").toUpperCase(),prenom:apres.prenom||""};
-  setBadges&&setBadges(p=>p.map(x=>x.id===b.id?u:x));
+  const p={};
+  if(!memeNom(avant,apres)){p.nom=String(apres.nom||"").toUpperCase();p.prenom=apres.prenom||"";}
+  const d=jourIso(apres.dateEvt);if(d&&d!==jourIso(avant.dateEvt)){if(apres.situation==="Départ")p.date_sortie_prevue=d;else p.date_entree=d;}
+  const mg=String(apres.manager||"").trim();if(mg&&mg!==String(avant.manager||"").trim())p.manager=mg;
+  if(!Object.keys(p).length)return;
+  const liste=(badges||[]).filter(b=>b.statut!=="Archivé"&&memeNom(b,avant));if(!liste.length)return;
+  if(liste.length>1){showToast&&showToast("⚠️ Plusieurs collaborateurs au nom de "+avant.prenom+" "+avant.nom+" : fais le changement dans Collaborateurs","err");return;}
+  const b=liste[0];Object.keys(p).forEach(k=>{if(String(b[k]||"")===String(p[k]))delete p[k];});if(!Object.keys(p).length)return;
+  const u={...b,...p};
+  setBadges&&setBadges(x=>x.map(y=>y.id===b.id?u:y));
   if(sb){const r=await sbEcrireCollab(u,false);if(r.error){showToast&&showToast("⚠️ Collaborateur non mis à jour — "+messageErreurBase(r.error),"err");return;}}
-  showToast&&setTimeout(()=>showToast("✅ Nom mis à jour aussi dans Collaborateurs"),1800);
+  showToast&&setTimeout(()=>showToast("✅ Fiche collaborateur mise à jour aussi"),1800);
 }
 // ── Mails ouverts à la main depuis une fiche (Outlook / Mail) ──
 function ouvrirMailManuel(settings,cible,dep,b,showToast,addLog){
@@ -9333,7 +9365,7 @@ function VueFieldSupport({fssData,setFssData,showToast,addLog,badges,casiers,set
   const saveEdit=()=>{
     if(!editForm)return;
     const updated={...editForm,cloture:editForm.statut==="Terminée",is_new:editForm.statut==="A traiter"?editForm.is_new:false};
-    {const avant=(fssData||[]).find(f=>f.id===updated.id);if(avant&&!memeNom(avant,updated))propagerNomVersCollab(avant,updated,badges,setBadges,showToast);}
+    {const avant=(fssData||[]).find(f=>f.id===updated.id);if(avant)propagerNomVersCollab(avant,updated,badges,setBadges,showToast);}
     setFssData(p=>p.map(f=>f.id===updated.id?updated:f));
     setSelectedCard(updated);setEditForm({...updated});setEditMode(false);
     if(sb){const isRealId=updated.id&&typeof updated.id==="number";
