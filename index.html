@@ -1560,7 +1560,7 @@ function VueAccueil({notifExtra,badges,casiers,setView,wdCache,setBadges,setCasi
   // ── Badges à récupérer en retard (depuis plus de 2 jours) : déclenche la banderole "bravo" / la tâche urgente ──
   const overdueRecup=useMemo(()=>aRecuperer.filter(b=>b.date_sortie_prevue&&b.date_sortie_prevue<=(()=>{const d=new Date();d.setDate(d.getDate()-2);return isoLocal(d);})()),[aRecuperer]);
   // ── Futurs collaborateurs sans badge (pas encore donné) ──
-  const futursSansBadge=useMemo(()=>badges.filter(b=>b.statut!=="Archivé"&&b.statut!=="À récupérer"&&!b.serie&&!b.badge_donne&&(b.statut==="Futur arrivant"||(b.date_entree&&b.date_entree>=today))).sort((a,b)=>(a.date_entree||"").localeCompare(b.date_entree||"")),[badges,today]);
+  const futursSansBadge=useMemo(()=>{const il30=isoLocal(new Date(Date.now()-30*864e5));return badges.filter(b=>b.statut!=="Archivé"&&b.statut!=="À récupérer"&&!String(b.serie||"").trim()&&(b.statut==="Futur arrivant"||(b.date_entree&&String(b.date_entree).slice(0,10)>=il30))).sort((a,b)=>(a.date_entree||"").localeCompare(b.date_entree||""));},[badges,today]);
   // ── Suivi Workday : juste un repère discret en bas de page ──
   const wdImportMeta=settings&&settings.wdImportMeta;
   const wdAutoUpdateMeta=settings&&settings.wdAutoUpdateMeta;
@@ -1853,7 +1853,7 @@ function VueAccueil({notifExtra,badges,casiers,setView,wdCache,setBadges,setCasi
       React.createElement(NewsCard,{icon:"📝",count:histoToday.length,title:"Saisies aujourd'hui",sub:histoToday.length?"actions enregistrées":"Aucune saisie pour l'instant",color:C.blue,onClick:()=>setModal("saisies")}),
       React.createElement(NewsCard,{icon:"📡",count:wdAutoUpdateMeta?wdAutoUpdateMeta.count:0,title:"Nouveautés Workday",sub:wdAutoUpdateMeta&&wdAutoUpdateMeta.count>0?"fiche(s) complétée(s) automatiquement":"Aucune nouveauté pour l'instant",when:wdImportMeta?("Dernier import : "+fmtDT(wdImportMeta.date)):null,color:C.cyan,onClick:()=>setModal("workday")}),
       React.createElement(NewsCard,{icon:"⚠️",count:aCompleterCount,title:"Fiches à compléter",sub:"matricule ou badge manquant",color:"#CA8A04",onClick:()=>setModal("completer")}),
-      React.createElement(NewsCard,{icon:"🎒",count:futursSansBadge.length,title:"Futurs sans badge",sub:"pas encore reçu son badge",color:C.orange,onClick:()=>setModal("sansBadge")})
+      React.createElement(NewsCard,{icon:"🎒",count:futursSansBadge.length,title:"Sans badge",sub:"arrivées récentes et à venir",color:C.orange,onClick:()=>setModal("sansBadge")})
     ),
 
     // ══════════════ Bannières : bravo / astuce du jour (l'anniversaire est affiché dans l'en-tête bleu) ══════════════
@@ -2081,7 +2081,7 @@ function VueAccueil({notifExtra,badges,casiers,setView,wdCache,setBadges,setCasi
       React.createElement("button",{onClick:()=>{closeModal();goCollab();},className:"btn btn-outline",style:{marginTop:10}},"Aller à Collaborateurs →")
     ),
 
-    modal==="sansBadge"&&React.createElement(AccueilModal,{title:"Futurs collaborateurs sans badge",icon:"🎒",onClose:closeModal},
+    modal==="sansBadge"&&React.createElement(AccueilModal,{title:"Sans badge — arrivées des 30 derniers jours et à venir",icon:"🎒",onClose:closeModal},
       futursSansBadge.length===0?React.createElement("div",{style:{padding:"10px 4px",color:"var(--text3)",fontSize:13}},"Aucun cas en attente.")
         :React.createElement("div",null,futursSansBadge.map(b=>React.createElement(ModalRow,{key:"fb"+b.id,b,right:b.date_entree?fmt(b.date_entree):b.statut}))),
       React.createElement("button",{onClick:()=>{closeModal();goCollab();},className:"btn btn-outline",style:{marginTop:10}},"Aller à Collaborateurs →")
@@ -7192,7 +7192,7 @@ function VueAccueil({notifExtra,badges,casiers,setView,wdCache,setBadges,setCasi
   // ── Badges à récupérer en retard (depuis plus de 2 jours) : déclenche la banderole "bravo" / la tâche urgente ──
   const overdueRecup=useMemo(()=>aRecuperer.filter(b=>b.date_sortie_prevue&&b.date_sortie_prevue<=(()=>{const d=new Date();d.setDate(d.getDate()-2);return isoLocal(d);})()),[aRecuperer]);
   // ── Futurs collaborateurs sans badge (pas encore donné) ──
-  const futursSansBadge=useMemo(()=>badges.filter(b=>b.statut!=="Archivé"&&b.statut!=="À récupérer"&&!b.serie&&!b.badge_donne&&(b.statut==="Futur arrivant"||(b.date_entree&&b.date_entree>=today))).sort((a,b)=>(a.date_entree||"").localeCompare(b.date_entree||"")),[badges,today]);
+  const futursSansBadge=useMemo(()=>{const il30=isoLocal(new Date(Date.now()-30*864e5));return badges.filter(b=>b.statut!=="Archivé"&&b.statut!=="À récupérer"&&!String(b.serie||"").trim()&&(b.statut==="Futur arrivant"||(b.date_entree&&String(b.date_entree).slice(0,10)>=il30))).sort((a,b)=>(a.date_entree||"").localeCompare(b.date_entree||""));},[badges,today]);
   // ── Suivi Workday : juste un repère discret en bas de page ──
   const wdImportMeta=settings&&settings.wdImportMeta;
   const wdAutoUpdateMeta=settings&&settings.wdAutoUpdateMeta;
@@ -7495,7 +7495,7 @@ function VueAccueil({notifExtra,badges,casiers,setView,wdCache,setBadges,setCasi
       React.createElement(NewsCard,{icon:"📝",count:histoToday.length,title:"Saisies aujourd'hui",sub:histoToday.length?"actions enregistrées":"Aucune saisie pour l'instant",color:C.blue,onClick:()=>setModal("saisies")}),
       React.createElement(NewsCard,{icon:"📡",count:wdAutoUpdateMeta?wdAutoUpdateMeta.count:0,title:"Nouveautés Workday",sub:wdAutoUpdateMeta&&wdAutoUpdateMeta.count>0?"fiche(s) complétée(s) automatiquement":"Aucune nouveauté pour l'instant",when:wdImportMeta?("Dernier import : "+fmtDT(wdImportMeta.date)):null,color:C.cyan,onClick:()=>setModal("workday")}),
       React.createElement(NewsCard,{icon:"⚠️",count:aCompleterCount,title:"Fiches à compléter",sub:"matricule ou badge manquant",color:"#CA8A04",onClick:()=>setModal("completer")}),
-      React.createElement(NewsCard,{icon:"🎒",count:futursSansBadge.length,title:"Futurs sans badge",sub:"pas encore reçu son badge",color:C.orange,onClick:()=>setModal("sansBadge")})
+      React.createElement(NewsCard,{icon:"🎒",count:futursSansBadge.length,title:"Sans badge",sub:"arrivées récentes et à venir",color:C.orange,onClick:()=>setModal("sansBadge")})
     ),
 
     // ══════════════ Bannières : bravo / astuce du jour (l'anniversaire est affiché dans l'en-tête bleu) ══════════════
@@ -7706,7 +7706,7 @@ function VueAccueil({notifExtra,badges,casiers,setView,wdCache,setBadges,setCasi
       React.createElement("button",{onClick:()=>{closeModal();goCollab();},className:"btn btn-outline",style:{marginTop:10}},"Aller à Collaborateurs →")
     ),
 
-    modal==="sansBadge"&&React.createElement(AccueilModal,{title:"Futurs collaborateurs sans badge",icon:"🎒",onClose:closeModal},
+    modal==="sansBadge"&&React.createElement(AccueilModal,{title:"Sans badge — arrivées des 30 derniers jours et à venir",icon:"🎒",onClose:closeModal},
       futursSansBadge.length===0?React.createElement("div",{style:{padding:"10px 4px",color:"var(--text3)",fontSize:13}},"Aucun cas en attente.")
         :React.createElement("div",null,futursSansBadge.map(b=>React.createElement(ModalRow,{key:"fb"+b.id,b,right:b.date_entree?fmt(b.date_entree):b.statut}))),
       React.createElement("button",{onClick:()=>{closeModal();goCollab();},className:"btn btn-outline",style:{marginTop:10}},"Aller à Collaborateurs →")
