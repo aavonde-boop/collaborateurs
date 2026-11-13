@@ -2274,7 +2274,7 @@ function VueCollaborateurs({badges,casiers,setBadges,setCasiers,showToast,wdCach
     // Modal formulaire
     showForm&&React.createElement("div",{className:"panneau-fond",style:{position:"fixed",inset:0,background:"rgba(0,0,0,.5)",zIndex:1000,display:"flex",alignItems:"center",justifyContent:"center",padding:16},onClick:e=>{if(e.target===e.currentTarget){setShowForm(false);setEditing(null);}}},
       React.createElement("div",{className:"panneau",style:{background:"var(--surface)",borderRadius:14,boxShadow:"0 8px 40px rgba(0,0,0,.25)",padding:24,width:"100%",maxWidth:820,maxHeight:"90vh",overflowY:"auto",borderTop:"4px solid "+C.blue}},
-        editing&&React.createElement("div",{style:{display:"flex",alignItems:"center",gap:14,marginBottom:14}},React.createElement(Avatar,{prenom:form.prenom,nom:form.nom,size:56}),
+        editing&&React.createElement("div",{style:{display:"flex",alignItems:"center",gap:14,marginBottom:14}},React.createElement(Avatar,{prenom:form.prenom,nom:form.nom,size:56,couleur:couleurEtat(form)}),
           React.createElement("div",null,React.createElement("div",{style:{fontSize:22,fontWeight:800,letterSpacing:"-.02em"}},String(form.prenom||"").toLowerCase().replace(/(^|[\s-])(\S)/g,(m,x,c)=>x+c.toUpperCase())+" "+String(form.nom||"").toUpperCase()),
             React.createElement("div",{style:{color:"var(--text3)",fontSize:13}},[form.matricule&&"Matricule "+form.matricule,form.serie&&"Badge "+form.serie,form.casier&&"Casier "+form.casier].filter(Boolean).join(" · ")||"Fiche à compléter"))),
         React.createElement("div",{style:{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:12}},
@@ -2344,7 +2344,7 @@ function VueCollaborateurs({badges,casiers,setBadges,setCasiers,showToast,wdCach
         ),
         (search||fStat)&&React.createElement(Btn,{variant:"outline",color:C.gray,onClick:()=>{setSearch("");setFStat("");}},"✕ Effacer"),
         
-        React.createElement("span",{style:{fontSize:12,color:"#9CA3AF",marginLeft:"auto"}},filtered.length+" collaborateur(s)")
+        React.createElement("span",{className:"leg-etat"},[["#2563EB","complète"],["#F59E0B","à compléter"],["#94A3B8","parti / à récupérer"]].map(([c,l])=>React.createElement("span",{key:l},React.createElement("i",{style:{background:c}}),l))),React.createElement("span",{style:{fontSize:12,color:"#9CA3AF",marginLeft:"auto"}},filtered.length+" collaborateur(s)")
       )
     ),
     // Tableau
@@ -2386,7 +2386,7 @@ function VueCollaborateurs({badges,casiers,setBadges,setCasiers,showToast,wdCach
                 isNewMat?React.createElement("span",{title:"Nouveau matricule Workday",style:{background:C.blue,color:"#fff",borderRadius:4,padding:"1px 4px",fontSize:8,fontWeight:700}},"NEW"):i+1
               ),
               React.createElement("td",{style:{padding:"5px 5px",fontWeight:700,color:C.blue,fontSize:10}},!hasM?React.createElement("span",{style:{color:"#E74C3C",fontWeight:700,fontSize:9}},"NC"):b.matricule),
-              React.createElement("td",{style:{padding:"5px 5px",fontWeight:600,fontSize:11}},React.createElement("span",{className:"cell-nom"},React.createElement(Avatar,{prenom:b.prenom,nom:b.nom,size:26}),b.nom||"—"),b.vip&&React.createElement("span",{title:"VIP : pas de mails automatiques",style:{marginLeft:5,background:"#EDE9FE",color:"#7C3AED",borderRadius:4,padding:"0 4px",fontSize:9,fontWeight:700}},"⭐ VIP")),
+              React.createElement("td",{style:{padding:"5px 5px",fontWeight:600,fontSize:11}},React.createElement("span",{className:"cell-nom"},React.createElement(Avatar,{prenom:b.prenom,nom:b.nom,size:26,couleur:couleurEtat(b)}),b.nom||"—"),b.vip&&React.createElement("span",{title:"VIP : pas de mails automatiques",style:{marginLeft:5,background:"#EDE9FE",color:"#7C3AED",borderRadius:4,padding:"0 4px",fontSize:9,fontWeight:700}},"⭐ VIP")),
               React.createElement("td",{style:{padding:"5px 5px",fontSize:11}},b.prenom||"—"),
               React.createElement("td",{style:{padding:"5px 5px",fontSize:9,color:"#6B7280",maxWidth:120,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}},b.email||"—"),
               React.createElement("td",{style:{padding:"5px 5px"}},hasB?React.createElement("span",null,React.createElement("code",{style:{background:doublon?"#FEF3C7":"#F3F4F6",color:doublon?"#92400E":"inherit",padding:"1px 4px",borderRadius:3,fontSize:9,border:doublon?"1px solid #F59E0B":"none"}},b.serie),doublon&&React.createElement("span",{title:"Badge attribué à plusieurs !",style:{marginLeft:2,color:"#F59E0B",fontSize:10}},"⚠️")):"—"),
@@ -4836,9 +4836,13 @@ function IconeNav({id,size=17}){const d=ICONES_NAV[id];if(!d)return null;
 
 // ════════════════ NOUVEAU LOOK ════════════════
 const AV_COULEURS=["#2563EB","#7C3AED","#DB2777","#EA580C","#0891B2","#475569","#CA8A04","#4F46E5","#0E7490","#9333EA"];
+// Couleur de la pastille d'un collaborateur : bleu = fiche complète, orange = à compléter (matricule ou badge), gris = parti / à récupérer
+function couleurEtat(b){b=b||{};if(b.statut==="Archivé"||b.statut==="À récupérer")return "#94A3B8";const m=String(b.matricule||"").trim();
+  if(!m||m==="0"||m.toUpperCase()==="NC"||!String(b.serie||"").trim())return "#F59E0B";return "#2563EB";}
+(function(){try{if(document.getElementById("st-leg-etat"))return;var st=document.createElement("style");st.id="st-leg-etat";st.textContent=".leg-etat{display:inline-flex;gap:12px;flex-wrap:wrap;font-size:11px;color:var(--text2,#64748B);margin-left:auto}.leg-etat span{display:inline-flex;align-items:center;gap:5px}.leg-etat i{width:9px;height:9px;border-radius:50%;display:inline-block}.leg-etat+span{margin-left:12px!important}";document.head.appendChild(st);}catch(e){}})();
 function couleurAvatar(t){t=String(t||"");let h=0;for(let i=0;i<t.length;i++)h=(h*31+t.charCodeAt(i))>>>0;return AV_COULEURS[h%AV_COULEURS.length];}
 function initiales(prenom,nom){const a=String(prenom||"").trim(),b=String(nom||"").trim();return ((a[0]||"")+(b[0]||"")).toUpperCase()||"?";}
-function Avatar({prenom,nom,size=30}){return React.createElement("span",{className:"avatar",style:{width:size,height:size,fontSize:Math.round(size*.38),background:couleurAvatar(String(prenom||"")+" "+String(nom||""))}},initiales(prenom,nom));}
+function Avatar({prenom,nom,size=30,couleur}){return React.createElement("span",{className:"avatar",style:{width:size,height:size,fontSize:Math.round(size*.38),background:couleur||couleurAvatar(String(prenom||"")+" "+String(nom||""))}},initiales(prenom,nom));}
 // Petite courbe des compteurs
 function Courbe({vals,col,w=104,h=34}){if(!vals||vals.length<2)return null;const mx=Math.max(...vals),mn=Math.min(...vals);
   const pts=vals.map((v,i)=>[i*w/(vals.length-1),h-2-(v-mn)/((mx-mn)||1)*(h-6)]);const d="M"+pts.map(p=>p[0].toFixed(1)+","+p[1].toFixed(1)).join(" L");
@@ -7896,7 +7900,7 @@ function VueCollaborateurs({badges,casiers,setBadges,setCasiers,showToast,wdCach
         React.createElement("button",{type:"button",className:"ios-link",onClick:close},"‹ Collaborateurs"),
         !arch&&React.createElement("button",{type:"button",className:"ios-link",onClick:edit},"Modifier")),
       React.createElement("div",{className:"cc-top"},
-        React.createElement("div",{className:"cc-av",style:{backgroundImage:"linear-gradient("+couleurAvatar(String(b.prenom||"")+" "+String(b.nom||""))+","+couleurAvatar(String(b.prenom||"")+" "+String(b.nom||""))+")",border:"none"}},ctInit(b)),
+        React.createElement("div",{className:"cc-av",style:{backgroundImage:"linear-gradient("+couleurEtat(b)+","+couleurEtat(b)+")",border:"none"}},ctInit(b)),
         React.createElement("div",{style:{flex:1,minWidth:0}},
           React.createElement("div",{className:"cc-nm"},ctCap(b.prenom)+" "+String(b.nom||"").toUpperCase()),
           React.createElement("div",{className:"cc-st"},React.createElement("span",{style:{color:statCol,fontWeight:600}},b.statut),stLine.slice(String(b.statut).length))),
@@ -7925,7 +7929,7 @@ function VueCollaborateurs({badges,casiers,setBadges,setCasiers,showToast,wdCach
   const ctRow=b=>{
     const statCol=statC[b.statut]||C.gray;const hasM=b.matricule&&String(b.matricule)!=="0";const isNew=b.from_accueil&&!b.serie;
     return React.createElement("div",{key:b.id,className:"ct-row"+(ctSelB&&ctSelB.id===b.id?" sel":""),onClick:()=>{setCtSel(b.id);setCtMobile(b.id);}},
-      React.createElement("div",{className:"ct-av",style:{background:couleurAvatar(String(b.prenom||"")+" "+String(b.nom||""))}},ctInit(b)),
+      React.createElement("div",{className:"ct-av",style:{background:couleurEtat(b)}},ctInit(b)),
       React.createElement("div",{style:{minWidth:0,flex:1}},
         React.createElement("div",{className:"ct-nm"},ctCap(b.prenom)+" ",React.createElement("b",null,String(b.nom||"").toUpperCase()),
           b.statut!=="Actif"&&React.createElement("span",{className:"ct-pill",style:{background:statCol+"22",color:statCol}},b.statut),
@@ -8043,7 +8047,7 @@ function VueCollaborateurs({badges,casiers,setBadges,setCasiers,showToast,wdCach
         ),
         (search||fStat)&&React.createElement(Btn,{variant:"outline",color:C.gray,onClick:()=>{setSearch("");setFStat("");}},"✕ Effacer"),
         
-        React.createElement("span",{style:{fontSize:12,color:"#9CA3AF",marginLeft:"auto"}},filtered.length+" collaborateur(s)")
+        React.createElement("span",{className:"leg-etat"},[["#2563EB","complète"],["#F59E0B","à compléter"],["#94A3B8","parti / à récupérer"]].map(([c,l])=>React.createElement("span",{key:l},React.createElement("i",{style:{background:c}}),l))),React.createElement("span",{style:{fontSize:12,color:"#9CA3AF",marginLeft:"auto"}},filtered.length+" collaborateur(s)")
       )
     ),
     // Tableau
@@ -8085,7 +8089,7 @@ function VueCollaborateurs({badges,casiers,setBadges,setCasiers,showToast,wdCach
                 isNewMat?React.createElement("span",{title:"Nouveau matricule Workday",style:{background:C.blue,color:"#fff",borderRadius:4,padding:"1px 4px",fontSize:8,fontWeight:700}},"NEW"):i+1
               ),
               React.createElement("td",{style:{padding:"5px 5px",fontWeight:700,color:C.blue,fontSize:10}},!hasM?React.createElement("span",{style:{color:"#E74C3C",fontWeight:700,fontSize:9}},"NC"):b.matricule),
-              React.createElement("td",{style:{padding:"5px 5px",fontWeight:600,fontSize:11}},React.createElement("span",{className:"cell-nom"},React.createElement(Avatar,{prenom:b.prenom,nom:b.nom,size:26}),b.nom||"—"),b.vip&&React.createElement("span",{title:"VIP : pas de mails automatiques",style:{marginLeft:5,background:"#EDE9FE",color:"#7C3AED",borderRadius:4,padding:"0 4px",fontSize:9,fontWeight:700}},"⭐ VIP")),
+              React.createElement("td",{style:{padding:"5px 5px",fontWeight:600,fontSize:11}},React.createElement("span",{className:"cell-nom"},React.createElement(Avatar,{prenom:b.prenom,nom:b.nom,size:26,couleur:couleurEtat(b)}),b.nom||"—"),b.vip&&React.createElement("span",{title:"VIP : pas de mails automatiques",style:{marginLeft:5,background:"#EDE9FE",color:"#7C3AED",borderRadius:4,padding:"0 4px",fontSize:9,fontWeight:700}},"⭐ VIP")),
               React.createElement("td",{style:{padding:"5px 5px",fontSize:11}},b.prenom||"—"),
               React.createElement("td",{style:{padding:"5px 5px",fontSize:9,color:"#6B7280",maxWidth:120,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}},b.email||"—"),
               React.createElement("td",{style:{padding:"5px 5px"}},hasB?React.createElement("span",null,React.createElement("code",{style:{background:doublon?"#FEF3C7":"#F3F4F6",color:doublon?"#92400E":"inherit",padding:"1px 4px",borderRadius:3,fontSize:9,border:doublon?"1px solid #F59E0B":"none"}},b.serie),doublon&&React.createElement("span",{title:"Badge attribué à plusieurs !",style:{marginLeft:2,color:"#F59E0B",fontSize:10}},"⚠️")):"—"),
@@ -10600,9 +10604,13 @@ function IconeNav({id,size=17}){const d=ICONES_NAV[id];if(!d)return null;
 
 // ════════════════ NOUVEAU LOOK ════════════════
 const AV_COULEURS=["#2563EB","#7C3AED","#DB2777","#EA580C","#0891B2","#475569","#CA8A04","#4F46E5","#0E7490","#9333EA"];
+// Couleur de la pastille d'un collaborateur : bleu = fiche complète, orange = à compléter (matricule ou badge), gris = parti / à récupérer
+function couleurEtat(b){b=b||{};if(b.statut==="Archivé"||b.statut==="À récupérer")return "#94A3B8";const m=String(b.matricule||"").trim();
+  if(!m||m==="0"||m.toUpperCase()==="NC"||!String(b.serie||"").trim())return "#F59E0B";return "#2563EB";}
+(function(){try{if(document.getElementById("st-leg-etat"))return;var st=document.createElement("style");st.id="st-leg-etat";st.textContent=".leg-etat{display:inline-flex;gap:12px;flex-wrap:wrap;font-size:11px;color:var(--text2,#64748B);margin-left:auto}.leg-etat span{display:inline-flex;align-items:center;gap:5px}.leg-etat i{width:9px;height:9px;border-radius:50%;display:inline-block}.leg-etat+span{margin-left:12px!important}";document.head.appendChild(st);}catch(e){}})();
 function couleurAvatar(t){t=String(t||"");let h=0;for(let i=0;i<t.length;i++)h=(h*31+t.charCodeAt(i))>>>0;return AV_COULEURS[h%AV_COULEURS.length];}
 function initiales(prenom,nom){const a=String(prenom||"").trim(),b=String(nom||"").trim();return ((a[0]||"")+(b[0]||"")).toUpperCase()||"?";}
-function Avatar({prenom,nom,size=30}){return React.createElement("span",{className:"avatar",style:{width:size,height:size,fontSize:Math.round(size*.38),background:couleurAvatar(String(prenom||"")+" "+String(nom||""))}},initiales(prenom,nom));}
+function Avatar({prenom,nom,size=30,couleur}){return React.createElement("span",{className:"avatar",style:{width:size,height:size,fontSize:Math.round(size*.38),background:couleur||couleurAvatar(String(prenom||"")+" "+String(nom||""))}},initiales(prenom,nom));}
 // Petite courbe des compteurs
 function Courbe({vals,col,w=104,h=34}){if(!vals||vals.length<2)return null;const mx=Math.max(...vals),mn=Math.min(...vals);
   const pts=vals.map((v,i)=>[i*w/(vals.length-1),h-2-(v-mn)/((mx-mn)||1)*(h-6)]);const d="M"+pts.map(p=>p[0].toFixed(1)+","+p[1].toFixed(1)).join(" L");
