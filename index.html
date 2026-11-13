@@ -1213,7 +1213,7 @@ function sessionFromSettings(user,st){
   const perms=role==="admin"?DEFAULT_PERMS:role==="it"?IT_PERMS:role==="badge"?BADGE_PERMS:(entry.perms||DEFAULT_PERMS);
   return{role,email:user.email,label:entry.label||user.email,perms};
 }
-const IT_PERMS={accueil:PERM_READ,collaborateurs:PERM_NONE,casiers:PERM_NONE,rapport:PERM_NONE,impression:PERM_NONE,historique:PERM_NONE,archives:PERM_NONE,field_support:PERM_WRITE,colis:PERM_NONE};
+const IT_PERMS={accueil:PERM_READ,collaborateurs:PERM_NONE,casiers:PERM_NONE,rapport:PERM_READ,impression:PERM_NONE,historique:PERM_NONE,archives:PERM_NONE,field_support:PERM_WRITE,colis:PERM_NONE};
 const norm=s=>String(s||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toUpperCase().trim();
 const findInWD=(wdCache,nom,prenom)=>{if(!wdCache)return null;const n=norm(nom),p=norm(prenom);return Object.values(wdCache).find(w=>{const wn=norm(w.nom),wp=norm(w.prenom);return(!n||(wn.includes(n)||n.includes(wn)))&&(!p||(wp.includes(p)||p.includes(wp)));});};
 const nxId=arr=>Math.max(0,...arr.map(x=>x.id||0))+1;
@@ -3396,6 +3396,32 @@ const FSS_FENETRE=30;
 function fssLimite(){return isoLocal(new Date(Date.now()+FSS_FENETRE*864e5));}
 (function(){try{var st=document.createElement("style");st.textContent=".fss-tard{cursor:pointer;background:var(--surface2,#F8FAFC)}.fss-tard td{padding:10px 12px;font-size:12px;font-weight:600;color:var(--text2,#475569);border-top:2px solid var(--border,#E2E8F0)}.fss-tard:hover td{color:var(--text,#0F172A)}.fss-tard-f{display:inline-block;width:16px;color:var(--text3,#94A3B8)}.fss-tard-a{float:right;font-weight:600;color:#2563EB}";document.head.appendChild(st);}catch(e){}})();
 function fssPlusTard(f){if(!f||f.cloture)return false;const d=String(f.dateEvt||"").slice(0,10);return /^\d{4}-\d{2}-\d{2}$/.test(d)&&d>fssLimite();}
+// ── Historique des colis : tous les événements (réception, prévenu, récupéré…) ──
+function VueHistoriqueColis(){
+  const el=React.createElement;const[lignes,setLignes]=React.useState(null);const[colis,setColis]=React.useState({});const[q,setQ]=React.useState("");const[err,setErr]=React.useState(false);
+  React.useEffect(()=>{if(!sb){setLignes([]);return;}(async()=>{try{
+    const[j,c]=await Promise.all([sb.from("lp24_colis_journal").select("*").order("le",{ascending:false}).limit(1000),sb.from("lp24_colis").select("id,numero,nom,prenom")]);
+    if(j.error){setErr(true);setLignes([]);return;}const m={};(c.data||[]).forEach(x=>m[x.id]=x);setColis(m);setLignes(j.data||[]);}catch(e){setErr(true);setLignes([]);}})();},[]);
+  const dt=d=>{try{return new Date(d).toLocaleString("fr-FR",{day:"2-digit",month:"2-digit",year:"numeric",hour:"2-digit",minute:"2-digit"});}catch(e){return "";}};
+  const qui=l=>{const c=colis[l.colis_id]||{};const a=l.apres||{};return{num:c.numero!=null?c.numero:a.numero,nom:(String(c.prenom||a.prenom||"")+" "+String(c.nom||a.nom||"").toUpperCase()).trim()};};
+  const vis=(lignes||[]).filter(l=>{if(!q.trim())return true;const x=qui(l);return chercheTexte(q,x.nom,String(x.num||""),l.action,l.par);});
+  return el("div",null,
+    el("div",{style:{display:"flex",alignItems:"center",gap:10,marginBottom:12,flexWrap:"wrap"}},
+      el("input",{className:"inp",value:q,onChange:e=>setQ(e.target.value),placeholder:"🔍 Nom, n° de colis…",style:{maxWidth:320}}),
+      el("span",{style:{fontSize:12,color:"var(--text3)"}},lignes?vis.length+" événement"+(vis.length>1?"s":""):"")),
+    el("div",{style:{background:"var(--surface)",border:"1px solid var(--border)",borderRadius:"var(--radius-lg)",overflow:"auto"}},
+      err?el("div",{style:{padding:24,fontSize:13,color:"var(--text3)"}},"Historique pas encore activé (script colis-historique.sql à lancer dans Supabase)."):
+      !lignes?el("div",{style:{padding:24,fontSize:13,color:"var(--text3)"}},"Chargement…"):
+      el("table",{style:{width:"100%",borderCollapse:"collapse",fontSize:12}},
+        el("thead",null,el("tr",{style:{background:"var(--surface2)"}},["Date","Colis","Destinataire","Action","Par"].map(h=>el("th",{key:h,style:{textAlign:"left",padding:"8px 12px",fontSize:10,fontWeight:700,textTransform:"uppercase",letterSpacing:".4px",color:"var(--text2)"}},h)))),
+        el("tbody",null,vis.length?vis.map((l,i)=>{const x=qui(l);return el("tr",{key:i,style:{borderTop:"1px solid var(--border)"}},
+          el("td",{style:{padding:"8px 12px",whiteSpace:"nowrap",color:"var(--text2)"}},dt(l.le)),
+          el("td",{style:{padding:"8px 12px",fontWeight:700,color:"#2563EB"}},x.num!=null?"#"+String(x.num).padStart(3,"0"):"—"),
+          el("td",{style:{padding:"8px 12px",fontWeight:600}},x.nom||"—"),
+          el("td",{style:{padding:"8px 12px"}},l.action||""),
+          el("td",{style:{padding:"8px 12px",color:"var(--text3)"}},l.par||""));})
+          :el("tr",null,el("td",{colSpan:5,style:{padding:24,textAlign:"center",color:"var(--text3)"}},"Aucun événement"))))));
+}
 // ── Calendrier du site : arrivées, départs, colis et badges de prêt ──
 function VueCalendrier({fssData,badges,canAccess,setView}){
   const el=React.createElement;
@@ -4787,6 +4813,7 @@ const ICONES_NAV={
   colis:'<path d="M21 8 12 3 3 8v8l9 5 9-5z"/><path d="M3 8l9 5 9-5M12 13v8"/>',
   historique_pret:'<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/>',
   arrivees:'<path d="M4 12h11"/><path d="M11 7l5 5-5 5"/><path d="M15 4h4a1 1 0 0 1 1 1v14a1 1 0 0 1-1 1h-4"/>',
+  historique_colis:'<path d="M4 8l8-4 8 4v8l-8 4-8-4z"/><path d="M4 8l8 4 8-4M12 12v8"/>',
   calendrier:'<rect x="3.5" y="5" width="17" height="15.5" rx="2"/><path d="M3.5 9.5h17M8 3v4M16 3v4"/>',
   notifications:'<path d="M6 16V11a6 6 0 0 1 12 0v5l1.5 2h-15z"/><path d="M10 20a2 2 0 0 0 4 0"/>',
   aide:'<circle cx="12" cy="12" r="9"/><path d="M9.5 9.5a2.5 2.5 0 1 1 3.5 2.3c-.6.3-1 .8-1 1.5V14"/><circle cx="12" cy="17.2" r=".6" fill="currentColor"/>',
@@ -4807,7 +4834,7 @@ function Courbe({vals,col,w=104,h=34}){if(!vals||vals.length<2)return null;const
   const pts=vals.map((v,i)=>[i*w/(vals.length-1),h-2-(v-mn)/((mx-mn)||1)*(h-6)]);const d="M"+pts.map(p=>p[0].toFixed(1)+","+p[1].toFixed(1)).join(" L");
   return React.createElement("svg",{className:"courbe",width:w,height:h,viewBox:"0 0 "+w+" "+h},React.createElement("path",{d:d+" L"+w+","+h+" L0,"+h+" Z",fill:col,opacity:.12}),React.createElement("path",{d,fill:"none",stroke:col,strokeWidth:2,strokeLinecap:"round",strokeLinejoin:"round"}));}
 // ── Menu caché (☰) ──
-const MENU_SECTIONS=[["",["accueil"]],["Personnes",["arrivees","collaborateurs","field_support"]],["Lieux",["casiers"]],["Accueil physique",["gestion_accueil","historique_pret"]],["Outils",["impression","rapport","calendrier"]]];
+const MENU_SECTIONS=[["",["accueil"]],["Personnes",["arrivees","collaborateurs","field_support"]],["Lieux",["casiers"]],["Accueil physique",["gestion_accueil","historique_pret","historique_colis"]],["Outils",["impression","rapport","calendrier"]]];
 function personneConnectee(session){
   const ROLES={admin:"Administrateur",user:"Utilisateur",it:"Service IT",badge:"Gestion des badges"};
   const role=ROLES[session&&session.role]||"Connecté";
@@ -6088,8 +6115,9 @@ useEffect(()=>{
     {id:"impression",label:"Étiquettes",icon:"🏷️"},
     {id:"arrivees",label:"Arrivées / Départs",icon:"🧳"},
     {id:"gestion_accueil",label:"Gestion accueil",icon:"🛎️"},
+    {id:"historique_pret",label:"Historique des prêts",icon:"🕐"},
+    {id:"historique_colis",label:"Historique des colis",icon:"📦"},
     {id:"calendrier",label:"Calendrier",icon:"📅"},
-    ...(isBadgeOnly?[{id:"historique_pret",label:"Historique des prêts",icon:"🕐"}]:[]),
   ];
   const archivesCount=badges.filter(b=>b.statut==="Archivé").length;
   const histoCount=histo.length;
@@ -6099,6 +6127,7 @@ useEffect(()=>{
     if(viewId==="arrivees")return canAccess("collaborateurs")||canAccess("field_support");
     if(viewId==="gestion_accueil")return canAccess("badges_pret")||canAccess("colis");
     // Rôle badge : accès exclusif à badges_pret
+    if(viewId==="historique_colis")return canAccess("colis");
     if(session&&session.role==="badge")return viewId==="badges_pret"||viewId==="historique_pret"||viewId==="colis";
     // Autres rôles : pas accès à badges_pret
     if(viewId==="badges_pret")return session&&session.role==="admin";
@@ -6145,10 +6174,11 @@ useEffect(()=>{
       case "casiers": return React.createElement(VueCasiers,props);
       case "rapport": return React.createElement(VueRapport,{badges,fssData,setBadges,setFssData,showToast,addLog,setView,setPendingOpen});
       case "impression": return React.createElement(VueImpression,{badges,settings,setSettings});
+      case "historique_pret": return React.createElement(VueHistoriquePret,null);
+      case "historique_colis": return React.createElement(VueHistoriqueColis,null);
       case "calendrier": return React.createElement(VueCalendrier,{fssData,badges,canAccess,setView});
       case "arrivees": return React.createElement("div",null,!isIT&&React.createElement(VueAccueil,{...props,notifExtra,fssData,setFssData,isIT,histo,openHistorique:()=>{},openDonnees:()=>{},pendingOpen:null,setPendingOpen:()=>{},seulMouvements:true}),React.createElement(VueArriveesDeparts,{badges,setBadges,fssData,settings,canAccess,setView,showToast,addLog}));
       case "gestion_accueil": case "badges_pret": case "colis": return React.createElement(VueGestionAccueil,{onglet:view,setView,canAccess,showToast,addLog,badges});
-      case "historique_pret": return React.createElement(VueHistoriquePret,null);
       case "aide": return React.createElement(VueAide,{canAccess,peutReglages:!isIT&&!isBadgeOnly});
       case "notifications": return React.createElement(VueNotifications,{histo,items:notifs,supprimer:supprimerNotif,toutSupprimer:toutSupprimerNotifs,restaurer:restaurerNotifs,nbSupprimees:notifsToutes.length-notifs.length,setView});
       default: return null;
@@ -6805,7 +6835,7 @@ function sessionFromSettings(user,st){
   const perms=role==="admin"?DEFAULT_PERMS:role==="it"?IT_PERMS:role==="badge"?BADGE_PERMS:(entry.perms||DEFAULT_PERMS);
   return{role,email:user.email,label:entry.label||user.email,perms};
 }
-const IT_PERMS={accueil:PERM_READ,collaborateurs:PERM_NONE,casiers:PERM_NONE,rapport:PERM_NONE,impression:PERM_NONE,historique:PERM_NONE,archives:PERM_NONE,field_support:PERM_WRITE,colis:PERM_NONE};
+const IT_PERMS={accueil:PERM_READ,collaborateurs:PERM_NONE,casiers:PERM_NONE,rapport:PERM_READ,impression:PERM_NONE,historique:PERM_NONE,archives:PERM_NONE,field_support:PERM_WRITE,colis:PERM_NONE};
 const norm=s=>String(s||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toUpperCase().trim();
 const findInWD=(wdCache,nom,prenom)=>{if(!wdCache)return null;const n=norm(nom),p=norm(prenom);return Object.values(wdCache).find(w=>{const wn=norm(w.nom),wp=norm(w.prenom);return(!n||(wn.includes(n)||n.includes(wn)))&&(!p||(wp.includes(p)||p.includes(wp)));});};
 const nxId=arr=>Math.max(0,...arr.map(x=>x.id||0))+1;
@@ -9077,6 +9107,32 @@ const FSS_FENETRE=30;
 function fssLimite(){return isoLocal(new Date(Date.now()+FSS_FENETRE*864e5));}
 (function(){try{var st=document.createElement("style");st.textContent=".fss-tard{cursor:pointer;background:var(--surface2,#F8FAFC)}.fss-tard td{padding:10px 12px;font-size:12px;font-weight:600;color:var(--text2,#475569);border-top:2px solid var(--border,#E2E8F0)}.fss-tard:hover td{color:var(--text,#0F172A)}.fss-tard-f{display:inline-block;width:16px;color:var(--text3,#94A3B8)}.fss-tard-a{float:right;font-weight:600;color:#2563EB}";document.head.appendChild(st);}catch(e){}})();
 function fssPlusTard(f){if(!f||f.cloture)return false;const d=String(f.dateEvt||"").slice(0,10);return /^\d{4}-\d{2}-\d{2}$/.test(d)&&d>fssLimite();}
+// ── Historique des colis : tous les événements (réception, prévenu, récupéré…) ──
+function VueHistoriqueColis(){
+  const el=React.createElement;const[lignes,setLignes]=React.useState(null);const[colis,setColis]=React.useState({});const[q,setQ]=React.useState("");const[err,setErr]=React.useState(false);
+  React.useEffect(()=>{if(!sb){setLignes([]);return;}(async()=>{try{
+    const[j,c]=await Promise.all([sb.from("lp24_colis_journal").select("*").order("le",{ascending:false}).limit(1000),sb.from("lp24_colis").select("id,numero,nom,prenom")]);
+    if(j.error){setErr(true);setLignes([]);return;}const m={};(c.data||[]).forEach(x=>m[x.id]=x);setColis(m);setLignes(j.data||[]);}catch(e){setErr(true);setLignes([]);}})();},[]);
+  const dt=d=>{try{return new Date(d).toLocaleString("fr-FR",{day:"2-digit",month:"2-digit",year:"numeric",hour:"2-digit",minute:"2-digit"});}catch(e){return "";}};
+  const qui=l=>{const c=colis[l.colis_id]||{};const a=l.apres||{};return{num:c.numero!=null?c.numero:a.numero,nom:(String(c.prenom||a.prenom||"")+" "+String(c.nom||a.nom||"").toUpperCase()).trim()};};
+  const vis=(lignes||[]).filter(l=>{if(!q.trim())return true;const x=qui(l);return chercheTexte(q,x.nom,String(x.num||""),l.action,l.par);});
+  return el("div",null,
+    el("div",{style:{display:"flex",alignItems:"center",gap:10,marginBottom:12,flexWrap:"wrap"}},
+      el("input",{className:"inp",value:q,onChange:e=>setQ(e.target.value),placeholder:"🔍 Nom, n° de colis…",style:{maxWidth:320}}),
+      el("span",{style:{fontSize:12,color:"var(--text3)"}},lignes?vis.length+" événement"+(vis.length>1?"s":""):"")),
+    el("div",{style:{background:"var(--surface)",border:"1px solid var(--border)",borderRadius:"var(--radius-lg)",overflow:"auto"}},
+      err?el("div",{style:{padding:24,fontSize:13,color:"var(--text3)"}},"Historique pas encore activé (script colis-historique.sql à lancer dans Supabase)."):
+      !lignes?el("div",{style:{padding:24,fontSize:13,color:"var(--text3)"}},"Chargement…"):
+      el("table",{style:{width:"100%",borderCollapse:"collapse",fontSize:12}},
+        el("thead",null,el("tr",{style:{background:"var(--surface2)"}},["Date","Colis","Destinataire","Action","Par"].map(h=>el("th",{key:h,style:{textAlign:"left",padding:"8px 12px",fontSize:10,fontWeight:700,textTransform:"uppercase",letterSpacing:".4px",color:"var(--text2)"}},h)))),
+        el("tbody",null,vis.length?vis.map((l,i)=>{const x=qui(l);return el("tr",{key:i,style:{borderTop:"1px solid var(--border)"}},
+          el("td",{style:{padding:"8px 12px",whiteSpace:"nowrap",color:"var(--text2)"}},dt(l.le)),
+          el("td",{style:{padding:"8px 12px",fontWeight:700,color:"#2563EB"}},x.num!=null?"#"+String(x.num).padStart(3,"0"):"—"),
+          el("td",{style:{padding:"8px 12px",fontWeight:600}},x.nom||"—"),
+          el("td",{style:{padding:"8px 12px"}},l.action||""),
+          el("td",{style:{padding:"8px 12px",color:"var(--text3)"}},l.par||""));})
+          :el("tr",null,el("td",{colSpan:5,style:{padding:24,textAlign:"center",color:"var(--text3)"}},"Aucun événement"))))));
+}
 // ── Calendrier du site : arrivées, départs, colis et badges de prêt ──
 function VueCalendrier({fssData,badges,canAccess,setView}){
   const el=React.createElement;
@@ -10509,6 +10565,7 @@ const ICONES_NAV={
   colis:'<path d="M21 8 12 3 3 8v8l9 5 9-5z"/><path d="M3 8l9 5 9-5M12 13v8"/>',
   historique_pret:'<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/>',
   arrivees:'<path d="M4 12h11"/><path d="M11 7l5 5-5 5"/><path d="M15 4h4a1 1 0 0 1 1 1v14a1 1 0 0 1-1 1h-4"/>',
+  historique_colis:'<path d="M4 8l8-4 8 4v8l-8 4-8-4z"/><path d="M4 8l8 4 8-4M12 12v8"/>',
   calendrier:'<rect x="3.5" y="5" width="17" height="15.5" rx="2"/><path d="M3.5 9.5h17M8 3v4M16 3v4"/>',
   notifications:'<path d="M6 16V11a6 6 0 0 1 12 0v5l1.5 2h-15z"/><path d="M10 20a2 2 0 0 0 4 0"/>',
   aide:'<circle cx="12" cy="12" r="9"/><path d="M9.5 9.5a2.5 2.5 0 1 1 3.5 2.3c-.6.3-1 .8-1 1.5V14"/><circle cx="12" cy="17.2" r=".6" fill="currentColor"/>',
@@ -10529,7 +10586,7 @@ function Courbe({vals,col,w=104,h=34}){if(!vals||vals.length<2)return null;const
   const pts=vals.map((v,i)=>[i*w/(vals.length-1),h-2-(v-mn)/((mx-mn)||1)*(h-6)]);const d="M"+pts.map(p=>p[0].toFixed(1)+","+p[1].toFixed(1)).join(" L");
   return React.createElement("svg",{className:"courbe",width:w,height:h,viewBox:"0 0 "+w+" "+h},React.createElement("path",{d:d+" L"+w+","+h+" L0,"+h+" Z",fill:col,opacity:.12}),React.createElement("path",{d,fill:"none",stroke:col,strokeWidth:2,strokeLinecap:"round",strokeLinejoin:"round"}));}
 // ── Menu caché (☰) ──
-const MENU_SECTIONS=[["",["accueil"]],["Personnes",["arrivees","collaborateurs","field_support"]],["Lieux",["casiers"]],["Accueil physique",["gestion_accueil","historique_pret"]],["Outils",["impression","rapport","calendrier"]]];
+const MENU_SECTIONS=[["",["accueil"]],["Personnes",["arrivees","collaborateurs","field_support"]],["Lieux",["casiers"]],["Accueil physique",["gestion_accueil","historique_pret","historique_colis"]],["Outils",["impression","rapport","calendrier"]]];
 function MenuLateral({visibleNav,navActif,setView,onClose,session,notifs,ouvrirReglages,peutReglages,logout}){
   const el=React.createElement;
   useEffect(()=>{const k=e=>{if(e.key==="Escape")onClose();};window.addEventListener("keydown",k);return()=>window.removeEventListener("keydown",k);},[]);
@@ -11857,6 +11914,8 @@ useEffect(()=>{
     {id:"impression",label:"Étiquettes",icon:"🏷️"},
     {id:"arrivees",label:"Arrivées / Départs",icon:"🧳"},
     {id:"gestion_accueil",label:"Gestion accueil",icon:"🛎️"},
+    {id:"historique_pret",label:"Historique des prêts",icon:"🕐"},
+    {id:"historique_colis",label:"Historique des colis",icon:"📦"},
     {id:"calendrier",label:"Calendrier",icon:"📅"},
   ];
   const archivesCount=badges.filter(b=>b.statut==="Archivé").length;
@@ -11867,6 +11926,7 @@ useEffect(()=>{
     if(viewId==="arrivees")return canAccess("collaborateurs")||canAccess("field_support");
     if(viewId==="gestion_accueil")return canAccess("badges_pret")||canAccess("colis");
     // Rôle badge : accès exclusif à badges_pret
+    if(viewId==="historique_colis")return canAccess("colis");
     if(session&&session.role==="badge")return viewId==="badges_pret"||viewId==="historique_pret"||viewId==="colis";
     // Autres rôles : pas accès à badges_pret
     if(viewId==="badges_pret")return session&&session.role==="admin";
@@ -11914,6 +11974,8 @@ useEffect(()=>{
       case "casiers": return React.createElement(VueCasiers,props);
       case "rapport": return React.createElement(VueRapport,{badges,fssData,setBadges,setFssData,showToast,addLog,setView,setPendingOpen});
       case "impression": return React.createElement(VueImpression,{badges,settings,setSettings});
+      case "historique_pret": return React.createElement(VueHistoriquePret,null);
+      case "historique_colis": return React.createElement(VueHistoriqueColis,null);
       case "calendrier": return React.createElement(VueCalendrier,{fssData,badges,canAccess,setView});
       case "arrivees": return React.createElement("div",null,!isIT&&React.createElement(VueAccueil,{...props,notifExtra,fssData,setFssData,isIT,histo,openHistorique:()=>{},openDonnees:()=>{},pendingOpen:null,setPendingOpen:()=>{},seulMouvements:true}),React.createElement(VueArriveesDeparts,{badges,setBadges,fssData,settings,canAccess,setView,showToast,addLog}));
       case "gestion_accueil": case "badges_pret": case "colis": return React.createElement(VueGestionAccueil,{onglet:view,setView,canAccess,showToast,addLog,badges});
