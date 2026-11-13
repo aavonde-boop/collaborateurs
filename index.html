@@ -8572,7 +8572,9 @@ function VueRapport({badges,fssData,setBadges,setFssData,showToast,addLog,setVie
         React.createElement("div",{className:"t1"},iosCap(m.prenom)+" ",React.createElement("b",null,String(m.nom||"").toUpperCase())),
         React.createElement("div",{className:"t2"},React.createElement("span",{style:{color,fontWeight:600}},fmtD(m.date)),(m.manager?" · "+m.manager:"")+(m.matricule?" · "+m.matricule:""))),
       React.createElement("div",{className:"il-src"},src(m.hasBadge,"badges_pret","Badge collaborateur"),src(m.hasFss,"field_support","Fiche Field Support")),
-      mismatch&&React.createElement("button",{type:"button",className:"il-btn",onClick:()=>resolveMismatch(m,category),title:(m.hasBadge?"Créer la fiche Field Support manquante":"Créer le badge collaborateur manquant"),style:{background:"rgba(255,149,0,.16)",color:"#C93400"}},"Créer"));
+      (()=>{const paire=(category==="arrivee"?pairesA:pairesD)[m.key];return paire?[choix&&choix.rows===paire&&m.key===paire[0].key&&fenetreChoix(),
+        React.createElement("button",{key:"p",type:"button",className:"il-btn",onClick:()=>setChoix({rows:paire,cat:category}),style:{background:"rgba(0,122,255,.12)",color:"#0A60D6"}},"Fusionner")]:null;})(),
+      mismatch&&!(category==="arrivee"?pairesA:pairesD)[m.key]&&React.createElement("button",{type:"button",className:"il-btn",onClick:()=>resolveMismatch(m,category),title:(m.hasBadge?"Créer la fiche Field Support manquante":"Créer le badge collaborateur manquant"),style:{background:"rgba(255,149,0,.16)",color:"#C93400"}},"Créer"));
   }));
   // Colonne Action dédiée pour le bouton d'incohérence : jamais tronquée par le texte de la colonne Source.
   const renderTable=(list,color,category)=>React.createElement("table",{style:tblStyle},
