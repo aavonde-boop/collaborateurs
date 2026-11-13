@@ -2761,6 +2761,32 @@ function VueRapport({badges,fssData,setBadges,setFssData,showToast,addLog,setVie
   };
   const arrivees=useMemo(()=>mergeSide(futuresArrivees,fssArrivees,"date_entree",allFssArriveeKeys),[futuresArrivees,fssArrivees,allFssArriveeKeys,allBadgeKeys]);
   const departs=useMemo(()=>mergeSide(futursDeparts,fssDeparts,"date_sortie_prevue",allFssDepartKeys),[futursDeparts,fssDeparts,allFssDepartKeys,allBadgeKeys]);
+  // Deux lignes « seules » avec le même nom de famille et la même date : sans doute la même personne écrite différemment
+  const paires=list=>{const p={};list.forEach(a=>{if(!(a.hasBadge&&!a.hasFss))return;const b=list.find(x=>x.hasFss&&!x.hasBadge&&norm(x.nom)===norm(a.nom)&&String(x.date||"").slice(0,10)===String(a.date||"").slice(0,10));if(b){p[a.key]={collab:a,fss:b};p[b.key]={collab:a,fss:b};}});return p;};
+  const pairesA=useMemo(()=>paires(arrivees),[arrivees]),pairesD=useMemo(()=>paires(departs),[departs]);
+  const[choix,setChoix]=useState(null);
+  const unifier=async(c,f,garder)=>{
+    const bon=garder==="fss"?{nom:f.nom,prenom:f.prenom}:{nom:c.nom,prenom:c.prenom};setChoix(null);
+    if(garder==="fss"){
+      const liste=badges.filter(b=>b.statut!=="Archivé"&&memeNom(b,c));if(liste.length!==1){showToast("⚠️ "+liste.length+" fiches collaborateur au nom de "+c.prenom+" "+c.nom+" : corrige dans Collaborateurs","err");return;}
+      const b=liste[0],u={...b,nom:String(bon.nom||"").toUpperCase(),prenom:bon.prenom};setBadges(p=>p.map(x=>x.id===b.id?u:x));
+      if(sb){const r=await sbEcrireCollab(u,false);if(r.error){showToast("⚠️ Pas sauvegardé — "+messageErreurBase(r.error),"err");return;}}
+      await propagerNomVersFss(b,u,null);
+    }else{
+      const liste=(fssData||[]).filter(x=>memeNom(x,f));const nv={nom:String(bon.nom||"").toUpperCase(),prenom:bon.prenom};
+      setFssData(p=>(p||[]).map(x=>memeNom(x,f)?{...x,...nv}:x));
+      if(sb)for(const x of liste){if(typeof x.id==="number"){const{error}=await sb.from("lp24_fss").update(nv).eq("id",x.id);if(error){showToast("⚠️ Pas sauvegardé — "+messageErreurBase(error),"err");return;}}}
+    }
+    addLog&&addLog("Fiches unifiées (Rapport)",bon.prenom+" "+bon.nom);showToast("✅ Fiches unifiées : "+bon.prenom+" "+String(bon.nom||"").toUpperCase());
+  };
+  const fenetreChoix=()=>choix&&React.createElement(Portal,null,React.createElement("div",{className:"inv-fond",onClick:e=>{if(e.target===e.currentTarget)setChoix(null);}},
+      React.createElement("div",{className:"inv-boite",style:{width:"min(480px,100%)",textAlign:"left",whiteSpace:"normal"}},
+        React.createElement("div",{className:"inv-t"},React.createElement("b",null,"Même personne ?"),React.createElement("button",{type:"button",className:"inv-x",onClick:()=>setChoix(null)},"×")),
+        React.createElement("p",{className:"inv-aide"},"La fiche collaborateur et la fiche Field Support ont le même nom de famille et la même date ("+fmtD(choix.collab.date)+"), mais pas le même prénom. Choisis l'orthographe juste : l'autre fiche sera renommée."),
+        React.createElement("div",{style:{display:"flex",flexDirection:"column",gap:8,marginTop:6}},
+          React.createElement("button",{type:"button",className:"btn btn-primary",onClick:()=>unifier(choix.collab,choix.fss,"fss")},"Garder « "+choix.fss.prenom+" "+choix.fss.nom+" » (Field Support)"),
+          React.createElement("button",{type:"button",className:"btn btn-primary",onClick:()=>unifier(choix.collab,choix.fss,"collab")},"Garder « "+choix.collab.prenom+" "+choix.collab.nom+" » (fiche collaborateur)"),
+          React.createElement("button",{type:"button",className:"btn btn-outline",onClick:()=>setChoix(null)},"Ce sont deux personnes différentes")))));
   const mismatchCount=list=>list.filter(m=>!(m.hasBadge&&m.hasFss)).length;
 
   // ── Résoudre une incohérence : créer la fiche manquante (FSS ou badge) et ouvrir directement pour compléter ──
@@ -2829,7 +2855,7 @@ function VueRapport({badges,fssData,setBadges,setFssData,showToast,addLog,setVie
       ["Nom Prénom","Matricule","Source","Manager","Date",""].map(h=>React.createElement("th",{key:h||"action",style:thS},h))
     )),
     React.createElement("tbody",null,list.map((m,i)=>{
-      const mismatch=!(m.hasBadge&&m.hasFss);
+      const mismatch=!(m.hasBadge&&m.hasFss);const paire=(category==="arrivee"?pairesA:pairesD)[m.key];
       return React.createElement("tr",{key:m.key,style:{background:i%2===0?"transparent":"var(--surface2)",
         boxShadow:mismatch?"inset 3px 0 0 #D97706":"none"}},
         React.createElement("td",{style:{...tdS,fontWeight:700}},m.prenom+" "+m.nom),
@@ -2841,7 +2867,10 @@ function VueRapport({badges,fssData,setBadges,setFssData,showToast,addLog,setVie
         React.createElement("td",{style:{...tdS,color:"var(--text2)"}},m.manager||"—"),
         React.createElement("td",{style:{...tdS,fontWeight:600,color}},fmtD(m.date)),
         React.createElement("td",{style:{...tdS,overflow:"visible",textAlign:"right"}},
-          mismatch&&React.createElement("button",{key:"w",
+          choix&&paire&&choix===paire&&m.key===paire.collab.key&&fenetreChoix(),
+          mismatch&&paire&&React.createElement("button",{key:"p",onClick:()=>setChoix(paire),title:"Ces deux lignes sont peut-être la même personne",
+            style:{display:"inline-flex",alignItems:"center",gap:4,color:"#1D4ED8",fontSize:11,fontWeight:700,background:"rgba(37,99,235,.10)",border:"1px solid rgba(37,99,235,.35)",borderRadius:999,padding:"3px 9px",cursor:"pointer",whiteSpace:"nowrap"}},"Même personne ?"),
+          mismatch&&!paire&&React.createElement("button",{key:"w",
             onClick:()=>resolveMismatch(m,category),
             title:(m.hasBadge?"Créer la fiche Field Support manquante":"Créer le badge collaborateur manquant"),
             style:{display:"inline-flex",alignItems:"center",gap:4,color:"#D97706",fontSize:11,fontWeight:700,
@@ -8403,6 +8432,32 @@ function VueRapport({badges,fssData,setBadges,setFssData,showToast,addLog,setVie
   };
   const arrivees=useMemo(()=>mergeSide(futuresArrivees,fssArrivees,"date_entree",allFssArriveeKeys),[futuresArrivees,fssArrivees,allFssArriveeKeys,allBadgeKeys]);
   const departs=useMemo(()=>mergeSide(futursDeparts,fssDeparts,"date_sortie_prevue",allFssDepartKeys),[futursDeparts,fssDeparts,allFssDepartKeys,allBadgeKeys]);
+  // Deux lignes « seules » avec le même nom de famille et la même date : sans doute la même personne écrite différemment
+  const paires=list=>{const p={};list.forEach(a=>{if(!(a.hasBadge&&!a.hasFss))return;const b=list.find(x=>x.hasFss&&!x.hasBadge&&norm(x.nom)===norm(a.nom)&&String(x.date||"").slice(0,10)===String(a.date||"").slice(0,10));if(b){p[a.key]={collab:a,fss:b};p[b.key]={collab:a,fss:b};}});return p;};
+  const pairesA=useMemo(()=>paires(arrivees),[arrivees]),pairesD=useMemo(()=>paires(departs),[departs]);
+  const[choix,setChoix]=useState(null);
+  const unifier=async(c,f,garder)=>{
+    const bon=garder==="fss"?{nom:f.nom,prenom:f.prenom}:{nom:c.nom,prenom:c.prenom};setChoix(null);
+    if(garder==="fss"){
+      const liste=badges.filter(b=>b.statut!=="Archivé"&&memeNom(b,c));if(liste.length!==1){showToast("⚠️ "+liste.length+" fiches collaborateur au nom de "+c.prenom+" "+c.nom+" : corrige dans Collaborateurs","err");return;}
+      const b=liste[0],u={...b,nom:String(bon.nom||"").toUpperCase(),prenom:bon.prenom};setBadges(p=>p.map(x=>x.id===b.id?u:x));
+      if(sb){const r=await sbEcrireCollab(u,false);if(r.error){showToast("⚠️ Pas sauvegardé — "+messageErreurBase(r.error),"err");return;}}
+      await propagerNomVersFss(b,u,null);
+    }else{
+      const liste=(fssData||[]).filter(x=>memeNom(x,f));const nv={nom:String(bon.nom||"").toUpperCase(),prenom:bon.prenom};
+      setFssData(p=>(p||[]).map(x=>memeNom(x,f)?{...x,...nv}:x));
+      if(sb)for(const x of liste){if(typeof x.id==="number"){const{error}=await sb.from("lp24_fss").update(nv).eq("id",x.id);if(error){showToast("⚠️ Pas sauvegardé — "+messageErreurBase(error),"err");return;}}}
+    }
+    addLog&&addLog("Fiches unifiées (Rapport)",bon.prenom+" "+bon.nom);showToast("✅ Fiches unifiées : "+bon.prenom+" "+String(bon.nom||"").toUpperCase());
+  };
+  const fenetreChoix=()=>choix&&React.createElement(Portal,null,React.createElement("div",{className:"inv-fond",onClick:e=>{if(e.target===e.currentTarget)setChoix(null);}},
+      React.createElement("div",{className:"inv-boite",style:{width:"min(480px,100%)",textAlign:"left",whiteSpace:"normal"}},
+        React.createElement("div",{className:"inv-t"},React.createElement("b",null,"Même personne ?"),React.createElement("button",{type:"button",className:"inv-x",onClick:()=>setChoix(null)},"×")),
+        React.createElement("p",{className:"inv-aide"},"La fiche collaborateur et la fiche Field Support ont le même nom de famille et la même date ("+fmtD(choix.collab.date)+"), mais pas le même prénom. Choisis l'orthographe juste : l'autre fiche sera renommée."),
+        React.createElement("div",{style:{display:"flex",flexDirection:"column",gap:8,marginTop:6}},
+          React.createElement("button",{type:"button",className:"btn btn-primary",onClick:()=>unifier(choix.collab,choix.fss,"fss")},"Garder « "+choix.fss.prenom+" "+choix.fss.nom+" » (Field Support)"),
+          React.createElement("button",{type:"button",className:"btn btn-primary",onClick:()=>unifier(choix.collab,choix.fss,"collab")},"Garder « "+choix.collab.prenom+" "+choix.collab.nom+" » (fiche collaborateur)"),
+          React.createElement("button",{type:"button",className:"btn btn-outline",onClick:()=>setChoix(null)},"Ce sont deux personnes différentes")))));
   const mismatchCount=list=>list.filter(m=>!(m.hasBadge&&m.hasFss)).length;
 
   // ── Résoudre une incohérence : créer la fiche manquante (FSS ou badge) et ouvrir directement pour compléter ──
@@ -8483,7 +8538,7 @@ function VueRapport({badges,fssData,setBadges,setFssData,showToast,addLog,setVie
       ["Nom Prénom","Matricule","Source","Manager","Date",""].map(h=>React.createElement("th",{key:h||"action",style:thS},h))
     )),
     React.createElement("tbody",null,list.map((m,i)=>{
-      const mismatch=!(m.hasBadge&&m.hasFss);
+      const mismatch=!(m.hasBadge&&m.hasFss);const paire=(category==="arrivee"?pairesA:pairesD)[m.key];
       return React.createElement("tr",{key:m.key,style:{background:i%2===0?"transparent":"var(--surface2)",
         boxShadow:mismatch?"inset 3px 0 0 #D97706":"none"}},
         React.createElement("td",{style:{...tdS,fontWeight:700}},m.prenom+" "+m.nom),
@@ -8495,7 +8550,10 @@ function VueRapport({badges,fssData,setBadges,setFssData,showToast,addLog,setVie
         React.createElement("td",{style:{...tdS,color:"var(--text2)"}},m.manager||"—"),
         React.createElement("td",{style:{...tdS,fontWeight:600,color}},fmtD(m.date)),
         React.createElement("td",{style:{...tdS,overflow:"visible",textAlign:"right"}},
-          mismatch&&React.createElement("button",{key:"w",
+          choix&&paire&&choix===paire&&m.key===paire.collab.key&&fenetreChoix(),
+          mismatch&&paire&&React.createElement("button",{key:"p",onClick:()=>setChoix(paire),title:"Ces deux lignes sont peut-être la même personne",
+            style:{display:"inline-flex",alignItems:"center",gap:4,color:"#1D4ED8",fontSize:11,fontWeight:700,background:"rgba(37,99,235,.10)",border:"1px solid rgba(37,99,235,.35)",borderRadius:999,padding:"3px 9px",cursor:"pointer",whiteSpace:"nowrap"}},"Même personne ?"),
+          mismatch&&!paire&&React.createElement("button",{key:"w",
             onClick:()=>resolveMismatch(m,category),
             title:(m.hasBadge?"Créer la fiche Field Support manquante":"Créer le badge collaborateur manquant"),
             style:{display:"inline-flex",alignItems:"center",gap:4,color:"#D97706",fontSize:11,fontWeight:700,
