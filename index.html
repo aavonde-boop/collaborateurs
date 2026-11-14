@@ -2119,7 +2119,7 @@ function VueAccueil({notifExtra,badges,casiers,setView,wdCache,setBadges,setCasi
 
 // ════════════════ VUE COLLABORATEURS ════════════════
 function VueCollaborateurs({badges,casiers,setBadges,setCasiers,showToast,wdCache,addLog,settings,newMats,setNewMats,pendingOpen,setPendingOpen}){
-  const[search,setSearch]=useState("");const[fStat,setFStat]=useState("");
+  const[search,setSearch]=useState(()=>{const f=window._filtreVue;return f&&f.vue==="collaborateurs"&&f.search||"";});const[fStat,setFStat]=useState(()=>{const f=lireFiltre("collaborateurs");return f&&f.fStat||"";});
   const[showForm,setShowForm]=useState(false);const[editing,setEditing]=useState(null);
   const[sortCol,setSortCol]=useState("date_ajout");const[sortDir,setSortDir]=useState("desc");
   const _newMats=newMats||new Set();
@@ -2139,6 +2139,7 @@ function VueCollaborateurs({badges,casiers,setBadges,setCasiers,showToast,wdCach
   const SortTh=({col,label,st})=>{const active=sortCol===col;return React.createElement("th",{className:"sortable"+(active?(sortDir==="asc"?" sort-asc":" sort-desc"):""),onClick:()=>handleSort(col),style:{padding:"7px 5px",textAlign:"left",fontWeight:600,whiteSpace:"nowrap",cursor:"pointer",...st}},label);};
   const filtered=useMemo(()=>{
     let r=badges.filter(b=>{
+      if(fStat==="a_completer")return aCompleter(b);
       if(fStat==="sans_matricule")return(!b.matricule||String(b.matricule)==="0")&&b.statut!=="Archivé";
       if(fStat==="badge_non_donne")return!b.badge_donne&&b.statut!=="Archivé";
       if(fStat==="sans_etiquette")return!b.etiquette_imprimee&&b.statut!=="Archivé";
@@ -2336,6 +2337,8 @@ function VueCollaborateurs({badges,casiers,setBadges,setCasiers,showToast,wdCach
         React.createElement("select",{value:fStat,onChange:e=>setFStat(e.target.value),className:"inp",style:{maxWidth:200,cursor:"pointer"}},
           React.createElement("option",{value:""},"Actifs (hors archivés)"),
           React.createElement("option",{value:"Actif"},"✅ Actif"),
+          React.createElement("option",{value:"a_completer"},"🟠 À compléter (matricule ou badge)"),
+          React.createElement("option",{value:"À récupérer"},"🎫 À récupérer"),
           React.createElement("option",{value:"sans_matricule"},"⚠️ Sans matricule"),
           React.createElement("option",{value:"badge_non_donne"},"🔲 Badge non donné"),
           React.createElement("option",{value:"sans_etiquette"},"🏷️ Sans étiquette"),
@@ -3719,7 +3722,7 @@ function VueFieldSupport({fssData,setFssData,showToast,addLog,badges,casiers,set
   // ── Etats ──
   const[search,setSearch]=useState("");
   const[filtSit,setFiltSit]=useState("");
-  const[filtStat,setFiltStat]=useState("");
+  const[filtStat,setFiltStat]=useState(()=>{const f=lireFiltre("field_support");return f&&f.filtStat||"";});
   const[filtDate,setFiltDate]=useState("");
   const[sortCol,setSortCol]=useState("dateEvt");
   const[sortDir,setSortDir]=useState("desc");
@@ -4338,23 +4341,26 @@ function calculerNotifications({badges,fssData,prets,colis,quota}){
   const fr=d=>{const m=String(d||"").match(/^(\d{4})-(\d{2})-(\d{2})/);return m?m[3]+"/"+m[2]+"/"+m[1]:"";};
   const jours=d=>{const x=new Date(String(d).slice(0,10)+"T00:00:00");return Math.floor((new Date(t+"T00:00:00")-x)/86400000);};
   (badges||[]).forEach(b=>{if(b.statut==="Archivé")return;
-    if(String(b.date_entree||"").slice(0,10)===t)L.push({id:"arr-"+b.id+"-"+t,cat:"Aujourd'hui",icone:"🟢",titre:"Arrivée de "+nomB(b),raison:"Sa date d'entrée est aujourd'hui."+(b.serie?"":" Badge pas encore attribué.")+(b.casier?"":" Pas de casier."),vue:"collaborateurs"});
-    if(String(b.date_sortie_prevue||"").slice(0,10)===t)L.push({id:"dep-"+b.id+"-"+t,cat:"Aujourd'hui",icone:"🔴",titre:"Départ de "+nomB(b),raison:"Sa date de sortie est aujourd'hui : récupérer le badge"+(b.casier?", vider le casier "+b.casier:"")+" et le matériel.",vue:"collaborateurs"});
+    if(String(b.date_entree||"").slice(0,10)===t)L.push({id:"arr-"+b.id+"-"+t,cat:"Aujourd'hui",icone:"🟢",titre:"Arrivée de "+nomB(b),raison:"Sa date d'entrée est aujourd'hui."+(b.serie?"":" Badge pas encore attribué.")+(b.casier?"":" Pas de casier."),vue:"collaborateurs",filtre:{search:String(b.nom||"")}});
+    if(String(b.date_sortie_prevue||"").slice(0,10)===t)L.push({id:"dep-"+b.id+"-"+t,cat:"Aujourd'hui",icone:"🔴",titre:"Départ de "+nomB(b),raison:"Sa date de sortie est aujourd'hui : récupérer le badge"+(b.casier?", vider le casier "+b.casier:"")+" et le matériel.",vue:"collaborateurs",filtre:{search:String(b.nom||"")}});
     if(b.statut==="À récupérer"&&b.date_sortie_prevue&&String(b.date_sortie_prevue).slice(0,10)<t){const j=jours(b.date_sortie_prevue);
-      if(j>=1)L.push({id:"recup-"+b.id+"-"+String(b.date_sortie_prevue).slice(0,10),cat:"À relancer",icone:"🎫",titre:"Badge non récupéré : "+nomB(b),raison:"Parti le "+fr(b.date_sortie_prevue)+" (il y a "+j+" jour"+(j>1?"s":"")+"), badge"+(b.serie?" "+b.serie:"")+" toujours « à récupérer ».",vue:"collaborateurs"});}
+      if(j>=1)L.push({id:"recup-"+b.id+"-"+String(b.date_sortie_prevue).slice(0,10),cat:"À relancer",icone:"🎫",titre:"Badge non récupéré : "+nomB(b),raison:"Parti le "+fr(b.date_sortie_prevue)+" (il y a "+j+" jour"+(j>1?"s":"")+"), badge"+(b.serie?" "+b.serie:"")+" toujours « à récupérer ».",vue:"collaborateurs",filtre:{fStat:"À récupérer",search:String(b.nom||"")}});}
   });
   (prets||[]).forEach(x=>{const d=x.pret_le||x.date_emprunt;if(!d)return;const h=(Date.now()-new Date(d).getTime())/3600000;if(h<24)return;
-    L.push({id:"pret-"+x.id+"-"+String(d).slice(0,16),cat:"À relancer",icone:"🪪",titre:"Badge de prêt "+(x.code||"")+" non rendu",raison:"Prêté à "+(x.emprunteur||"?")+" depuis le "+fr(d)+" ("+Math.floor(h/24)+" j). Un rappel part chaque matin.",vue:"badges_pret"});});
+    L.push({id:"pret-"+x.id+"-"+String(d).slice(0,16),cat:"À relancer",icone:"🪪",titre:"Badge de prêt "+(x.code||"")+" non rendu",raison:"Prêté à "+(x.emprunteur||"?")+" depuis le "+fr(d)+" ("+Math.floor(h/24)+" j). Un rappel part chaque matin.",vue:"badges_pret",filtre:{search:String(x.code||"")}});});
   (colis||[]).forEach(c=>{const n="#"+String(c.numero||0).padStart(3,"0");const qui=((c.prenom||"")+" "+String(c.nom||"").toUpperCase()).trim();
-    if(c.statut==="recu")L.push({id:"colis-"+c.id+"-recu",cat:"Colis",icone:"📦",titre:"Colis "+n+" à prévenir",raison:"Reçu le "+fr(c.recu_le)+" pour "+qui+" : le destinataire n'a pas encore été prévenu.",vue:"colis"});
-    else if(c.statut==="prevenu"&&c.prevenu_le&&jours(c.prevenu_le)>=3)L.push({id:"colis-"+c.id+"-attente",cat:"Colis",icone:"📦",titre:"Colis "+n+" pas encore récupéré",raison:qui+" a été prévenu le "+fr(c.prevenu_le)+" ("+jours(c.prevenu_le)+" jours) et n'est pas venu le chercher.",vue:"colis"});});
+    if(c.statut==="recu")L.push({id:"colis-"+c.id+"-recu",cat:"Colis",icone:"📦",titre:"Colis "+n+" à prévenir",raison:"Reçu le "+fr(c.recu_le)+" pour "+qui+" : le destinataire n'a pas encore été prévenu.",vue:"colis",filtre:{q:String(c.nom||"")}});
+    else if(c.statut==="prevenu"&&c.prevenu_le&&jours(c.prevenu_le)>=3)L.push({id:"colis-"+c.id+"-attente",cat:"Colis",icone:"📦",titre:"Colis "+n+" pas encore récupéré",raison:qui+" a été prévenu le "+fr(c.prevenu_le)+" ("+jours(c.prevenu_le)+" jours) et n'est pas venu le chercher.",vue:"colis",filtre:{q:String(c.nom||"")}});});
   const fss=(fssData||[]).filter(f=>!f.cloture&&f.statut==="A traiter"&&!fssPlusTard(f)).length;
-  if(fss)L.push({id:"fss-"+fss,cat:"À traiter",icone:"📋",titre:fss+" fiche"+(fss>1?"s":"")+" Field Support à traiter",raison:"Fiches non clôturées au statut « À traiter » (c'est le chiffre rouge sur l'onglet Field Support).",vue:"field_support"});
+  if(fss)L.push({id:"fss-"+fss,cat:"À traiter",icone:"📋",titre:fss+" fiche"+(fss>1?"s":"")+" Field Support à traiter",raison:"Fiches non clôturées au statut « À traiter » (c'est le chiffre rouge sur l'onglet Field Support).",vue:"field_support",filtre:{filtStat:"A traiter"}});
   const acomp=(badges||[]).filter(aCompleter).length;
-  if(acomp)L.push({id:"acomp-"+acomp,cat:"À traiter",icone:"⚠️",titre:acomp+" fiche"+(acomp>1?"s":"")+" à compléter",raison:"Collaborateurs non archivés sans matricule ou sans numéro de badge (même chiffre que la carte de l'Accueil).",vue:"collaborateurs"});
+  if(acomp)L.push({id:"acomp-"+acomp,cat:"À traiter",icone:"⚠️",titre:acomp+" fiche"+(acomp>1?"s":"")+" à compléter",raison:"Collaborateurs non archivés sans matricule ou sans numéro de badge (même chiffre que la carte de l'Accueil).",vue:"collaborateurs",filtre:{fStat:"a_completer"}});
   if(quota&&quota.total>=QUOTA_MAILS*0.8)L.push({id:"quota-"+Math.floor(quota.total/10),cat:"À traiter",icone:"📧",titre:"Quota mails : "+quota.total+" / "+QUOTA_MAILS,raison:quota.total>=QUOTA_MAILS?"Quota EmailJS atteint : les mails automatiques ne partent plus jusqu'au mois prochain.":"Plus de 80 % du quota EmailJS du mois est utilisé.",vue:"accueil"});
   return L;
 }
+// Ouvrir une page déjà filtrée sur le souci signalé (lu une fois par la page à son ouverture)
+function allerFiltre(setView,vue,filtre){window._filtreVue=filtre?{vue,...filtre,t:Date.now()}:null;setView(vue);}
+function lireFiltre(vue){const f=window._filtreVue;if(f&&f.vue===vue&&Date.now()-f.t<8000){window._filtreVue=null;return f;}return null;}
 function VueNotifications({histo,items,supprimer,toutSupprimer,restaurer,nbSupprimees,setView}){
   const histoFS=(histo||[]).filter(h=>h.action&&/FSS|Field Support|Départ|Arrivée/i.test(h.action));
   const el=React.createElement;const ios=document.documentElement.classList.contains("ios-ui");
@@ -4373,10 +4379,10 @@ function VueNotifications({histo,items,supprimer,toutSupprimer,restaurer,nbSuppr
         el("div",{className:"card",style:{border:"1px solid var(--border)",borderRadius:12,padding:0,overflow:"hidden"}},
           L.map((x,i)=>el("div",{key:x.id,style:{display:"flex",alignItems:"center",gap:12,padding:"11px 14px",borderTop:i?"1px solid var(--border)":"none"}},
             el("div",{style:{fontSize:22,flexShrink:0}},x.icone),
-            el("div",{style:{flex:1,minWidth:0,cursor:"pointer"},onClick:()=>setView(x.vue)},
+            el("div",{style:{flex:1,minWidth:0,cursor:"pointer"},onClick:()=>allerFiltre(setView,x.vue,x.filtre)},
               el("div",{style:{fontWeight:700,fontSize:14,color:"var(--text)"}},x.titre),
               el("div",{style:{fontSize:12,color:"var(--text2)",marginTop:2}},x.raison)),
-            el("button",{type:"button",className:"btn btn-outline",style:{fontSize:12,padding:"4px 10px",flexShrink:0},onClick:()=>setView(x.vue)},"Voir"),
+            el("button",{type:"button",className:"btn btn-outline",style:{fontSize:12,padding:"4px 10px",flexShrink:0},onClick:()=>allerFiltre(setView,x.vue,x.filtre)},"Voir"),
             el("button",{type:"button",title:"Supprimer cette notification","aria-label":"Supprimer",onClick:()=>supprimer(x.id),style:{background:"var(--surface3)",border:"none",borderRadius:8,width:32,height:32,fontSize:15,cursor:"pointer",color:"var(--text3)",flexShrink:0}},"✕")))));
     }),
     el("div",{style:{marginTop:22}},
@@ -5146,7 +5152,7 @@ function VueBadgesPret({showToast,addLog}){
   const todayISO=()=>isoLocal(new Date());
 
   const[badges,setBadges]=useState(INITIAL_BADGES);
-  const[search,setSearch]=useState("");
+  const[search,setSearch]=useState(()=>{const f=lireFiltre("badges_pret");return f&&f.search||"";});
   const[filtreStatut,setFiltreStatut]=useState("");
   const[annuaire,setAnnuaire]=useState([]);
   const[selected,setSelected]=useState(null);
@@ -5406,7 +5412,7 @@ function VueColis({showToast,addLog,badges}){
   const fd=d=>{if(!d)return "—";const m=String(d).match(/^(\d{4})-(\d{2})-(\d{2})/);if(m&&String(d).length<=10)return m[3]+"/"+m[2]+"/"+m[1];try{return new Date(d).toLocaleDateString("fr-FR");}catch(e){return "—";}};
   const today=()=>{const x=new Date();return x.getFullYear()+"-"+String(x.getMonth()+1).padStart(2,"0")+"-"+String(x.getDate()).padStart(2,"0");};
   const[liste,setListe]=useState([]);const[loading,setLoading]=useState(true);const[erreurTable,setErreurTable]=useState(false);
-  const[q,setQ]=useState("");const[filtre,setFiltre]=useState("encours");
+  const[q,setQ]=useState(()=>{const f=lireFiltre("colis");return f&&f.q||"";});const[filtre,setFiltre]=useState("encours");
   const[form,setForm]=useState(null);const[retrait,setRetrait]=useState(null);const[ocr,setOcr]=useState("");
   const lireEtiquette=async file=>{if(!file)return;setOcr("📷 Lecture de l'étiquette…");
     try{await chargerTesseract();
@@ -7748,7 +7754,7 @@ function VueAccueil({notifExtra,badges,casiers,setView,wdCache,setBadges,setCasi
 
 // ════════════════ VUE COLLABORATEURS ════════════════
 function VueCollaborateurs({badges,casiers,setBadges,setCasiers,showToast,wdCache,addLog,settings,newMats,setNewMats,pendingOpen,setPendingOpen,setView}){
-  const[search,setSearch]=useState("");const[fStat,setFStat]=useState("");
+  const[search,setSearch]=useState(()=>{const f=window._filtreVue;return f&&f.vue==="collaborateurs"&&f.search||"";});const[fStat,setFStat]=useState(()=>{const f=lireFiltre("collaborateurs");return f&&f.fStat||"";});
   const[showForm,setShowForm]=useState(false);const[editing,setEditing]=useState(null);
   const[sortCol,setSortCol]=useState("date_ajout");const[sortDir,setSortDir]=useState("desc");
   const _newMats=newMats||new Set();
@@ -7768,6 +7774,7 @@ function VueCollaborateurs({badges,casiers,setBadges,setCasiers,showToast,wdCach
   const SortTh=({col,label,st})=>{const active=sortCol===col;return React.createElement("th",{className:"sortable"+(active?(sortDir==="asc"?" sort-asc":" sort-desc"):""),onClick:()=>handleSort(col),style:{padding:"7px 5px",textAlign:"left",fontWeight:600,whiteSpace:"nowrap",cursor:"pointer",...st}},label);};
   const filtered=useMemo(()=>{
     let r=badges.filter(b=>{
+      if(fStat==="a_completer")return aCompleter(b);
       if(fStat==="sans_matricule")return(!b.matricule||String(b.matricule)==="0")&&b.statut!=="Archivé";
       if(fStat==="badge_non_donne")return!b.badge_donne&&b.statut!=="Archivé";
       if(fStat==="sans_etiquette")return!b.etiquette_imprimee&&b.statut!=="Archivé";
@@ -8039,6 +8046,8 @@ function VueCollaborateurs({badges,casiers,setBadges,setCasiers,showToast,wdCach
         React.createElement("select",{value:fStat,onChange:e=>setFStat(e.target.value),className:"inp",style:{maxWidth:200,cursor:"pointer"}},
           React.createElement("option",{value:""},"Actifs (hors archivés)"),
           React.createElement("option",{value:"Actif"},"✅ Actif"),
+          React.createElement("option",{value:"a_completer"},"🟠 À compléter (matricule ou badge)"),
+          React.createElement("option",{value:"À récupérer"},"🎫 À récupérer"),
           React.createElement("option",{value:"sans_matricule"},"⚠️ Sans matricule"),
           React.createElement("option",{value:"badge_non_donne"},"🔲 Badge non donné"),
           React.createElement("option",{value:"sans_etiquette"},"🏷️ Sans étiquette"),
@@ -9446,7 +9455,7 @@ function VueFieldSupport({fssData,setFssData,showToast,addLog,badges,casiers,set
   // ── Etats ──
   const[search,setSearch]=useState("");
   const[filtSit,setFiltSit]=useState("");
-  const[filtStat,setFiltStat]=useState("");
+  const[filtStat,setFiltStat]=useState(()=>{const f=lireFiltre("field_support");return f&&f.filtStat||"";});
   const[filtDate,setFiltDate]=useState("");
   const[sortCol,setSortCol]=useState("dateEvt");
   const[sortDir,setSortDir]=useState("desc");
@@ -10106,23 +10115,26 @@ function calculerNotifications({badges,fssData,prets,colis,quota}){
   const fr=d=>{const m=String(d||"").match(/^(\d{4})-(\d{2})-(\d{2})/);return m?m[3]+"/"+m[2]+"/"+m[1]:"";};
   const jours=d=>{const x=new Date(String(d).slice(0,10)+"T00:00:00");return Math.floor((new Date(t+"T00:00:00")-x)/86400000);};
   (badges||[]).forEach(b=>{if(b.statut==="Archivé")return;
-    if(String(b.date_entree||"").slice(0,10)===t)L.push({id:"arr-"+b.id+"-"+t,cat:"Aujourd'hui",icone:"🟢",titre:"Arrivée de "+nomB(b),raison:"Sa date d'entrée est aujourd'hui."+(b.serie?"":" Badge pas encore attribué.")+(b.casier?"":" Pas de casier."),vue:"collaborateurs"});
-    if(String(b.date_sortie_prevue||"").slice(0,10)===t)L.push({id:"dep-"+b.id+"-"+t,cat:"Aujourd'hui",icone:"🔴",titre:"Départ de "+nomB(b),raison:"Sa date de sortie est aujourd'hui : récupérer le badge"+(b.casier?", vider le casier "+b.casier:"")+" et le matériel.",vue:"collaborateurs"});
+    if(String(b.date_entree||"").slice(0,10)===t)L.push({id:"arr-"+b.id+"-"+t,cat:"Aujourd'hui",icone:"🟢",titre:"Arrivée de "+nomB(b),raison:"Sa date d'entrée est aujourd'hui."+(b.serie?"":" Badge pas encore attribué.")+(b.casier?"":" Pas de casier."),vue:"collaborateurs",filtre:{search:String(b.nom||"")}});
+    if(String(b.date_sortie_prevue||"").slice(0,10)===t)L.push({id:"dep-"+b.id+"-"+t,cat:"Aujourd'hui",icone:"🔴",titre:"Départ de "+nomB(b),raison:"Sa date de sortie est aujourd'hui : récupérer le badge"+(b.casier?", vider le casier "+b.casier:"")+" et le matériel.",vue:"collaborateurs",filtre:{search:String(b.nom||"")}});
     if(b.statut==="À récupérer"&&b.date_sortie_prevue&&String(b.date_sortie_prevue).slice(0,10)<t){const j=jours(b.date_sortie_prevue);
-      if(j>=1)L.push({id:"recup-"+b.id+"-"+String(b.date_sortie_prevue).slice(0,10),cat:"À relancer",icone:"🎫",titre:"Badge non récupéré : "+nomB(b),raison:"Parti le "+fr(b.date_sortie_prevue)+" (il y a "+j+" jour"+(j>1?"s":"")+"), badge"+(b.serie?" "+b.serie:"")+" toujours « à récupérer ».",vue:"collaborateurs"});}
+      if(j>=1)L.push({id:"recup-"+b.id+"-"+String(b.date_sortie_prevue).slice(0,10),cat:"À relancer",icone:"🎫",titre:"Badge non récupéré : "+nomB(b),raison:"Parti le "+fr(b.date_sortie_prevue)+" (il y a "+j+" jour"+(j>1?"s":"")+"), badge"+(b.serie?" "+b.serie:"")+" toujours « à récupérer ».",vue:"collaborateurs",filtre:{fStat:"À récupérer",search:String(b.nom||"")}});}
   });
   (prets||[]).forEach(x=>{const d=x.pret_le||x.date_emprunt;if(!d)return;const h=(Date.now()-new Date(d).getTime())/3600000;if(h<24)return;
-    L.push({id:"pret-"+x.id+"-"+String(d).slice(0,16),cat:"À relancer",icone:"🪪",titre:"Badge de prêt "+(x.code||"")+" non rendu",raison:"Prêté à "+(x.emprunteur||"?")+" depuis le "+fr(d)+" ("+Math.floor(h/24)+" j). Un rappel part chaque matin.",vue:"badges_pret"});});
+    L.push({id:"pret-"+x.id+"-"+String(d).slice(0,16),cat:"À relancer",icone:"🪪",titre:"Badge de prêt "+(x.code||"")+" non rendu",raison:"Prêté à "+(x.emprunteur||"?")+" depuis le "+fr(d)+" ("+Math.floor(h/24)+" j). Un rappel part chaque matin.",vue:"badges_pret",filtre:{search:String(x.code||"")}});});
   (colis||[]).forEach(c=>{const n="#"+String(c.numero||0).padStart(3,"0");const qui=((c.prenom||"")+" "+String(c.nom||"").toUpperCase()).trim();
-    if(c.statut==="recu")L.push({id:"colis-"+c.id+"-recu",cat:"Colis",icone:"📦",titre:"Colis "+n+" à prévenir",raison:"Reçu le "+fr(c.recu_le)+" pour "+qui+" : le destinataire n'a pas encore été prévenu.",vue:"colis"});
-    else if(c.statut==="prevenu"&&c.prevenu_le&&jours(c.prevenu_le)>=3)L.push({id:"colis-"+c.id+"-attente",cat:"Colis",icone:"📦",titre:"Colis "+n+" pas encore récupéré",raison:qui+" a été prévenu le "+fr(c.prevenu_le)+" ("+jours(c.prevenu_le)+" jours) et n'est pas venu le chercher.",vue:"colis"});});
+    if(c.statut==="recu")L.push({id:"colis-"+c.id+"-recu",cat:"Colis",icone:"📦",titre:"Colis "+n+" à prévenir",raison:"Reçu le "+fr(c.recu_le)+" pour "+qui+" : le destinataire n'a pas encore été prévenu.",vue:"colis",filtre:{q:String(c.nom||"")}});
+    else if(c.statut==="prevenu"&&c.prevenu_le&&jours(c.prevenu_le)>=3)L.push({id:"colis-"+c.id+"-attente",cat:"Colis",icone:"📦",titre:"Colis "+n+" pas encore récupéré",raison:qui+" a été prévenu le "+fr(c.prevenu_le)+" ("+jours(c.prevenu_le)+" jours) et n'est pas venu le chercher.",vue:"colis",filtre:{q:String(c.nom||"")}});});
   const fss=(fssData||[]).filter(f=>!f.cloture&&f.statut==="A traiter"&&!fssPlusTard(f)).length;
-  if(fss)L.push({id:"fss-"+fss,cat:"À traiter",icone:"📋",titre:fss+" fiche"+(fss>1?"s":"")+" Field Support à traiter",raison:"Fiches non clôturées au statut « À traiter » (c'est le chiffre rouge sur l'onglet Field Support).",vue:"field_support"});
+  if(fss)L.push({id:"fss-"+fss,cat:"À traiter",icone:"📋",titre:fss+" fiche"+(fss>1?"s":"")+" Field Support à traiter",raison:"Fiches non clôturées au statut « À traiter » (c'est le chiffre rouge sur l'onglet Field Support).",vue:"field_support",filtre:{filtStat:"A traiter"}});
   const acomp=(badges||[]).filter(aCompleter).length;
-  if(acomp)L.push({id:"acomp-"+acomp,cat:"À traiter",icone:"⚠️",titre:acomp+" fiche"+(acomp>1?"s":"")+" à compléter",raison:"Collaborateurs non archivés sans matricule ou sans numéro de badge (même chiffre que la carte de l'Accueil).",vue:"collaborateurs"});
+  if(acomp)L.push({id:"acomp-"+acomp,cat:"À traiter",icone:"⚠️",titre:acomp+" fiche"+(acomp>1?"s":"")+" à compléter",raison:"Collaborateurs non archivés sans matricule ou sans numéro de badge (même chiffre que la carte de l'Accueil).",vue:"collaborateurs",filtre:{fStat:"a_completer"}});
   if(quota&&quota.total>=QUOTA_MAILS*0.8)L.push({id:"quota-"+Math.floor(quota.total/10),cat:"À traiter",icone:"📧",titre:"Quota mails : "+quota.total+" / "+QUOTA_MAILS,raison:quota.total>=QUOTA_MAILS?"Quota EmailJS atteint : les mails automatiques ne partent plus jusqu'au mois prochain.":"Plus de 80 % du quota EmailJS du mois est utilisé.",vue:"accueil"});
   return L;
 }
+// Ouvrir une page déjà filtrée sur le souci signalé (lu une fois par la page à son ouverture)
+function allerFiltre(setView,vue,filtre){window._filtreVue=filtre?{vue,...filtre,t:Date.now()}:null;setView(vue);}
+function lireFiltre(vue){const f=window._filtreVue;if(f&&f.vue===vue&&Date.now()-f.t<8000){window._filtreVue=null;return f;}return null;}
 function VueNotifications({histo,items,supprimer,toutSupprimer,restaurer,nbSupprimees,setView}){
   const histoFS=(histo||[]).filter(h=>h.action&&/FSS|Field Support|Départ|Arrivée/i.test(h.action));
   const el=React.createElement;const ios=document.documentElement.classList.contains("ios-ui");
@@ -10141,10 +10153,10 @@ function VueNotifications({histo,items,supprimer,toutSupprimer,restaurer,nbSuppr
         el("div",{className:"card",style:{border:"1px solid var(--border)",borderRadius:12,padding:0,overflow:"hidden"}},
           L.map((x,i)=>el("div",{key:x.id,style:{display:"flex",alignItems:"center",gap:12,padding:"11px 14px",borderTop:i?"1px solid var(--border)":"none"}},
             el("div",{style:{fontSize:22,flexShrink:0}},x.icone),
-            el("div",{style:{flex:1,minWidth:0,cursor:"pointer"},onClick:()=>setView(x.vue)},
+            el("div",{style:{flex:1,minWidth:0,cursor:"pointer"},onClick:()=>allerFiltre(setView,x.vue,x.filtre)},
               el("div",{style:{fontWeight:700,fontSize:14,color:"var(--text)"}},x.titre),
               el("div",{style:{fontSize:12,color:"var(--text2)",marginTop:2}},x.raison)),
-            el("button",{type:"button",className:"btn btn-outline",style:{fontSize:12,padding:"4px 10px",flexShrink:0},onClick:()=>setView(x.vue)},"Voir"),
+            el("button",{type:"button",className:"btn btn-outline",style:{fontSize:12,padding:"4px 10px",flexShrink:0},onClick:()=>allerFiltre(setView,x.vue,x.filtre)},"Voir"),
             el("button",{type:"button",title:"Supprimer cette notification","aria-label":"Supprimer",onClick:()=>supprimer(x.id),style:{background:"var(--surface3)",border:"none",borderRadius:8,width:32,height:32,fontSize:15,cursor:"pointer",color:"var(--text3)",flexShrink:0}},"✕")))));
     }),
     el("div",{style:{marginTop:22}},
@@ -10954,7 +10966,7 @@ function VueBadgesPret({showToast,addLog}){
   const todayISO=()=>isoLocal(new Date());
 
   const[badges,setBadges]=useState(INITIAL_BADGES);
-  const[search,setSearch]=useState("");
+  const[search,setSearch]=useState(()=>{const f=lireFiltre("badges_pret");return f&&f.search||"";});
   const[filtreStatut,setFiltreStatut]=useState("");
   const[annuaire,setAnnuaire]=useState([]);
   const[selected,setSelected]=useState(null);
@@ -11231,7 +11243,7 @@ function VueColis({showToast,addLog,badges}){
   const fd=d=>{if(!d)return "—";const m=String(d).match(/^(\d{4})-(\d{2})-(\d{2})/);if(m&&String(d).length<=10)return m[3]+"/"+m[2]+"/"+m[1];try{return new Date(d).toLocaleDateString("fr-FR");}catch(e){return "—";}};
   const today=()=>{const x=new Date();return x.getFullYear()+"-"+String(x.getMonth()+1).padStart(2,"0")+"-"+String(x.getDate()).padStart(2,"0");};
   const[liste,setListe]=useState([]);const[loading,setLoading]=useState(true);const[erreurTable,setErreurTable]=useState(false);
-  const[q,setQ]=useState("");const[filtre,setFiltre]=useState("encours");
+  const[q,setQ]=useState(()=>{const f=lireFiltre("colis");return f&&f.q||"";});const[filtre,setFiltre]=useState("encours");
   const[form,setForm]=useState(null);const[retrait,setRetrait]=useState(null);const[ocr,setOcr]=useState("");
   const lireEtiquette=async file=>{if(!file)return;setOcr("📷 Lecture de l'étiquette…");
     try{await chargerTesseract();
