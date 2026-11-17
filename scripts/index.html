@@ -14,7 +14,38 @@ pre{margin:0;background:var(--code);color:var(--codetx);padding:16px;overflow:au
 .how{margin-top:16px;color:var(--t2);font-size:13.5px}
 </style></head><body><div class="w"><h1>Scripts sécurité — Gestion Collaborateurs</h1>
 <p class="intro">Supabase → SQL Editor : « Copier le script », coller, puis « Run ». Ordre conseillé : 0, puis le script voulu, puis 0 pour vérifier.</p>
-<div class="tabs"><button class="tab on" data-i="3">13 · Nouveau collaborateur sans mail</button><button class="tab" data-i="0">10 · Mentions légales et confidentialité</button><button class="tab" data-i="1">11 · Pièces jointes du mail de bienvenue</button><button class="tab" data-i="2">12 · Gras dans les mails</button></div><section class="sc on" id="s3"><div class="hd"><div><h2>13 · Nouveau collaborateur sans mail</h2><p>Un collaborateur ajouté avec « Nouveau collaborateur » ou depuis Outlook ne déclenche aucun mail automatique. Les mails s'envoient depuis sa fiche.</p><small>13-sans-mail-auto.sql · 34 lignes</small></div><button class="cp" data-i="3">Copier le script</button></div><pre id="c3">-- ════════════════════════════════════════════════════════════════════
+<div class="tabs"><button class="tab on" data-i="4">14 · Accueil Hexagone</button><button class="tab" data-i="3">13 · Nouveau collaborateur sans mail</button><button class="tab" data-i="0">10 · Mentions légales et confidentialité</button><button class="tab" data-i="1">11 · Pièces jointes du mail de bienvenue</button><button class="tab" data-i="2">12 · Gras dans les mails</button></div><section class="sc on" id="s4"><div class="hd"><div><h2>14 · Accueil Hexagone</h2><p>Ajoute le site aux badges de prêt et aux colis (l'existant reste à Levallois) et crée les 51 badges de prêt d'Hexagone : visiteurs 1 à 10, AAG 1 à 13, intérimaires 1 à 28.</p><small>14-site-hexagone.sql · 30 lignes</small></div><button class="cp" data-i="4">Copier le script</button></div><pre id="c4">-- ════════════════════════════════════════════════════════════════════
+--  14 · Deuxième accueil : Hexagone
+--  Projet jymobewqenhcjtzniytb → SQL Editor → Run. Peut être relancé sans risque.
+--  • ajoute la colonne « site » aux badges de prêt, à leur historique et aux colis
+--    (tout ce qui existe déjà reste à Levallois) ;
+--  • crée les 51 badges de prêt d&#x27;Hexagone : visiteurs 1 à 10, AAG 1 à 13,
+--    intérimaires 1 à 28 (ceux qui existent déjà ne sont pas recréés).
+-- ════════════════════════════════════════════════════════════════════
+
+alter table public.badges_pret       add column if not exists site text not null default &#x27;Levallois&#x27;;
+alter table public.badges_pret_histo add column if not exists site text not null default &#x27;Levallois&#x27;;
+alter table public.lp24_colis        add column if not exists site text not null default &#x27;Levallois&#x27;;
+
+with liste(code, nom, ordre) as (
+  select &#x27;VIS-&#x27; || lpad(n::text, 2, &#x27;0&#x27;), &#x27;Badge visiteur &#x27; || n, n from generate_series(1, 10) n
+  union all
+  select &#x27;AAG-&#x27; || lpad(n::text, 2, &#x27;0&#x27;), &#x27;Badge AAG &#x27; || n, 100 + n from generate_series(1, 13) n
+  union all
+  select &#x27;INT-&#x27; || lpad(n::text, 2, &#x27;0&#x27;), &#x27;Badge intérimaire &#x27; || n, 200 + n from generate_series(1, 28) n
+), a_creer as (
+  select l.* from liste l
+  where not exists (select 1 from public.badges_pret b where b.site = &#x27;Hexagone&#x27; and b.code = l.code)
+)
+insert into public.badges_pret (id, code, nom, statut, emprunteur, date_emprunt, date_retour_prevu, commentaire, site)
+select (select coalesce(max(id), 0) from public.badges_pret) + row_number() over (order by ordre),
+       code, nom, &#x27;disponible&#x27;, &#x27;&#x27;, &#x27;&#x27;, &#x27;&#x27;, &#x27;&#x27;, &#x27;Hexagone&#x27;
+from a_creer;
+
+-- Vérification : doit afficher 51 badges pour Hexagone
+select site, count(*) as badges from public.badges_pret group by site order by site;
+</pre></section>
+<section class="sc" id="s3"><div class="hd"><div><h2>13 · Nouveau collaborateur sans mail</h2><p>Un collaborateur ajouté avec « Nouveau collaborateur » ou depuis Outlook ne déclenche aucun mail automatique. Les mails s'envoient depuis sa fiche.</p><small>13-sans-mail-auto.sql · 34 lignes</small></div><button class="cp" data-i="3">Copier le script</button></div><pre id="c3">-- ════════════════════════════════════════════════════════════════════
 --  13 · « Nouveau collaborateur » sans mail automatique
 --  Projet jymobewqenhcjtzniytb → SQL Editor → Run. Peut être relancé sans risque.
 --  Une fiche marquée « sans mail automatique » ne déclenche ni le mail IT
