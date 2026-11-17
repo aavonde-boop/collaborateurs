@@ -3409,6 +3409,45 @@ const FSS_FENETRE=30;
 function fssLimite(){return isoLocal(new Date(Date.now()+FSS_FENETRE*864e5));}
 (function(){try{var st=document.createElement("style");st.textContent=".fss-tard{cursor:pointer;background:var(--surface2,#F8FAFC)}.fss-tard td{padding:10px 12px;font-size:12px;font-weight:600;color:var(--text2,#475569);border-top:2px solid var(--border,#E2E8F0)}.fss-tard:hover td{color:var(--text,#0F172A)}.fss-tard-f{display:inline-block;width:16px;color:var(--text3,#94A3B8)}.fss-tard-a{float:right;font-weight:600;color:#2563EB}";document.head.appendChild(st);}catch(e){}})();
 function fssPlusTard(f){if(!f||f.cloture)return false;const d=String(f.dateEvt||"").slice(0,10);return /^\d{4}-\d{2}-\d{2}$/.test(d)&&d>fssLimite();}
+// ── Journal des connexions (Réglages → Journal, administrateurs) ──
+function appareilCourt(){const u=navigator.userAgent||"";
+  const os=/iPhone/.test(u)?"iPhone":/iPad/.test(u)?"iPad":/Android/.test(u)?"Android":/Mac OS X/.test(u)?"Mac":/Windows/.test(u)?"PC":"Ordinateur";
+  const nav=/Edg\//.test(u)?"Edge":/Chrome\//.test(u)&&!/Edg\//.test(u)?"Chrome":/Firefox\//.test(u)?"Firefox":/Safari\//.test(u)?"Safari":"";
+  const app=(window.matchMedia&&window.matchMedia("(display-mode: standalone)").matches)||navigator.standalone?" · appli":"";
+  return os+(nav?" · "+nav:"")+app;}
+function VueConnexions({users}){
+  const el=React.createElement;const[lignes,setLignes]=React.useState(null);const[err,setErr]=React.useState(false);
+  React.useEffect(()=>{if(!sb){setLignes([]);return;}sb.from("lp24_connexions").select("*").order("le",{ascending:false}).limit(1000).then(r=>{if(r.error){setErr(true);setLignes([]);}else setLignes(r.data||[]);},()=>{setErr(true);setLignes([]);});},[]);
+  const dt=d=>{try{return new Date(d).toLocaleString("fr-FR",{weekday:"short",day:"2-digit",month:"2-digit",year:"numeric",hour:"2-digit",minute:"2-digit"});}catch(e){return "";}};
+  const il30=Date.now()-30*864e5;
+  const comptes=(users||[]).map(u=>{const em=String(u.email||"").toLowerCase();const l=(lignes||[]).filter(x=>x.email===em);
+    return{nom:u.label||u.email,email:em,role:ROLE_LABELS[u.role||"user"]||u.role,site:u.site||"Levallois",der:l[0],nb:l.filter(x=>new Date(x.le).getTime()>=il30).length};})
+    .sort((a,b)=>(b.der?new Date(b.der.le).getTime():0)-(a.der?new Date(a.der.le).getTime():0));
+  const nomDe=em=>{const u=(users||[]).find(x=>String(x.email||"").toLowerCase()===em);return u?(u.label||u.email):em;};
+  const th=t=>el("th",{style:{textAlign:"left",padding:"8px 12px",fontSize:10,fontWeight:700,textTransform:"uppercase",letterSpacing:".4px",color:"var(--text2)"}},t);
+  const td=(t,st)=>el("td",{style:{padding:"8px 12px",fontSize:12,borderTop:"1px solid var(--border)",...st}},t);
+  if(err)return el("div",{style:{padding:24,fontSize:13,color:"var(--text3)"}},"Journal pas encore activé : lance le script 15 dans Supabase.");
+  if(!lignes)return el("div",{style:{padding:24,fontSize:13,color:"var(--text3)"}},"Chargement…");
+  return el("div",null,
+    el("div",{style:{fontSize:12,color:"var(--text3)",marginBottom:10}},"Une ligne chaque fois que quelqu'un ouvre l'appli (au plus une toutes les 30 minutes par appareil). Conservé un an."),
+    el("div",{style:{fontWeight:700,fontSize:13,margin:"4px 0 8px"}},"Par compte"),
+    el("div",{style:{border:"1px solid var(--border)",borderRadius:10,overflow:"auto",marginBottom:18}},
+      el("table",{style:{width:"100%",borderCollapse:"collapse"}},
+        el("thead",null,el("tr",{style:{background:"var(--surface2)"}},th("Compte"),th("Rôle"),th("Dernière connexion"),th("Appareil"),th("30 derniers jours"))),
+        el("tbody",null,comptes.map(c=>el("tr",{key:c.email},
+          td(el("div",null,el("b",null,c.nom),el("div",{style:{fontSize:11,color:"var(--text3)"}},c.email))),
+          td(c.role+(c.site!=="Levallois"?" · "+c.site:""),{color:"var(--text2)"}),
+          td(c.der?dt(c.der.le):el("span",{style:{color:"#D97706",fontWeight:600}},"Jamais connecté"),{whiteSpace:"nowrap"}),
+          td(c.der?c.der.appareil||"—":"—",{color:"var(--text2)"}),
+          td(c.nb?c.nb+" fois":"—",{color:"var(--text2)"})))))),
+    el("div",{style:{fontWeight:700,fontSize:13,margin:"4px 0 8px"}},"Dernières connexions"),
+    el("div",{style:{border:"1px solid var(--border)",borderRadius:10,overflow:"auto"}},
+      el("table",{style:{width:"100%",borderCollapse:"collapse"}},
+        el("thead",null,el("tr",{style:{background:"var(--surface2)"}},th("Quand"),th("Qui"),th("Appareil"))),
+        el("tbody",null,lignes.length?lignes.slice(0,150).map(l=>el("tr",{key:l.id},td(dt(l.le),{whiteSpace:"nowrap"}),td(nomDe(l.email),{fontWeight:600}),td(l.appareil||"—",{color:"var(--text2)"})))
+          :el("tr",null,td("Aucune connexion enregistrée pour l'instant.",{color:"var(--text3)",textAlign:"center",padding:20})))))
+  );
+}
 // ── Historique des colis : tous les événements (réception, prévenu, récupéré…) ──
 function VueHistoriqueColis({site}={}){
   const el=React.createElement;const[lignes,setLignes]=React.useState(null);const[colis,setColis]=React.useState({});const[q,setQ]=React.useState("");const[err,setErr]=React.useState(false);
@@ -5020,9 +5059,10 @@ function SettingsModal({settings,setSettings,showToast,setShowSettings,racineRef
     canArchives!==false&&{id:"archives",label:"🗃️ Archives"+(archivesCount>0?" ("+archivesCount+")":"")},
     {grp:"Journal"},
     canHistorique!==false&&{id:"historique",label:"🕐 Historique"+(histoCount>0?" ("+histoCount+")":"")},
-    canHistoriquePret!==false&&{id:"historique_pret",label:"🕐 Historique prêts"}
+    canHistoriquePret!==false&&{id:"historique_pret",label:"🕐 Historique prêts"},
+    window._estAdmin&&{id:"connexions",label:"🔑 Connexions"}
   ].filter(Boolean);
-  const wide=tab==="historique"||tab==="archives"||tab==="historique_pret";
+  const wide=tab==="historique"||tab==="archives"||tab==="historique_pret"||tab==="connexions";
   useEffect(()=>{
     if(racineRef.current)racineRef.current.onchange=e=>{if(e.target.files[0]){window._handleRacine&&window._handleRacine(e.target.files[0]);}e.target.value="";};
     if(hrRef.current)hrRef.current.onchange=e=>{if(e.target.files[0]){window._handleHR&&window._handleHR(e.target.files[0],"hr");}e.target.value="";};
@@ -5135,7 +5175,8 @@ function SettingsModal({settings,setSettings,showToast,setShowSettings,racineRef
         ),
         tab==="historique"&&React.createElement(VueHistorique,{histo:histo||[]}),
         tab==="archives"&&React.createElement(VueArchives,{badges,setBadges,showToast,addLog}),
-        tab==="historique_pret"&&React.createElement(VueHistoriquePret,{site:window._siteSession})
+        tab==="historique_pret"&&React.createElement(VueHistoriquePret,{site:window._siteSession}),
+        tab==="connexions"&&React.createElement(VueConnexions,{users:settings.users||[]})
       ),
       // Footer
       React.createElement("div",{className:"rg-foot",style:{padding:"14px 24px",borderTop:"1px solid var(--border)",display:"flex",justifyContent:"flex-end"}},
@@ -5703,6 +5744,7 @@ function App(){
       return;
     }
     setAuthError("");setSettings(prev=>({...prev,...st}));setSession(sess);setUnlocked(true);
+    try{sb.rpc("lp24_noter_connexion",{p_appareil:appareilCourt(),p_espace:sess.site||null}).then(()=>{},()=>{});}catch(e){}
     if(sess.role==="badge")setView("badges_pret");
     if(sess.bootstrap)setTimeout(()=>showToast("⚠️ Aucun administrateur défini : ajoute ton compte en Administrateur dans Réglages → Comptes","err"),800);
   };
@@ -9170,6 +9212,45 @@ const FSS_FENETRE=30;
 function fssLimite(){return isoLocal(new Date(Date.now()+FSS_FENETRE*864e5));}
 (function(){try{var st=document.createElement("style");st.textContent=".fss-tard{cursor:pointer;background:var(--surface2,#F8FAFC)}.fss-tard td{padding:10px 12px;font-size:12px;font-weight:600;color:var(--text2,#475569);border-top:2px solid var(--border,#E2E8F0)}.fss-tard:hover td{color:var(--text,#0F172A)}.fss-tard-f{display:inline-block;width:16px;color:var(--text3,#94A3B8)}.fss-tard-a{float:right;font-weight:600;color:#2563EB}";document.head.appendChild(st);}catch(e){}})();
 function fssPlusTard(f){if(!f||f.cloture)return false;const d=String(f.dateEvt||"").slice(0,10);return /^\d{4}-\d{2}-\d{2}$/.test(d)&&d>fssLimite();}
+// ── Journal des connexions (Réglages → Journal, administrateurs) ──
+function appareilCourt(){const u=navigator.userAgent||"";
+  const os=/iPhone/.test(u)?"iPhone":/iPad/.test(u)?"iPad":/Android/.test(u)?"Android":/Mac OS X/.test(u)?"Mac":/Windows/.test(u)?"PC":"Ordinateur";
+  const nav=/Edg\//.test(u)?"Edge":/Chrome\//.test(u)&&!/Edg\//.test(u)?"Chrome":/Firefox\//.test(u)?"Firefox":/Safari\//.test(u)?"Safari":"";
+  const app=(window.matchMedia&&window.matchMedia("(display-mode: standalone)").matches)||navigator.standalone?" · appli":"";
+  return os+(nav?" · "+nav:"")+app;}
+function VueConnexions({users}){
+  const el=React.createElement;const[lignes,setLignes]=React.useState(null);const[err,setErr]=React.useState(false);
+  React.useEffect(()=>{if(!sb){setLignes([]);return;}sb.from("lp24_connexions").select("*").order("le",{ascending:false}).limit(1000).then(r=>{if(r.error){setErr(true);setLignes([]);}else setLignes(r.data||[]);},()=>{setErr(true);setLignes([]);});},[]);
+  const dt=d=>{try{return new Date(d).toLocaleString("fr-FR",{weekday:"short",day:"2-digit",month:"2-digit",year:"numeric",hour:"2-digit",minute:"2-digit"});}catch(e){return "";}};
+  const il30=Date.now()-30*864e5;
+  const comptes=(users||[]).map(u=>{const em=String(u.email||"").toLowerCase();const l=(lignes||[]).filter(x=>x.email===em);
+    return{nom:u.label||u.email,email:em,role:ROLE_LABELS[u.role||"user"]||u.role,site:u.site||"Levallois",der:l[0],nb:l.filter(x=>new Date(x.le).getTime()>=il30).length};})
+    .sort((a,b)=>(b.der?new Date(b.der.le).getTime():0)-(a.der?new Date(a.der.le).getTime():0));
+  const nomDe=em=>{const u=(users||[]).find(x=>String(x.email||"").toLowerCase()===em);return u?(u.label||u.email):em;};
+  const th=t=>el("th",{style:{textAlign:"left",padding:"8px 12px",fontSize:10,fontWeight:700,textTransform:"uppercase",letterSpacing:".4px",color:"var(--text2)"}},t);
+  const td=(t,st)=>el("td",{style:{padding:"8px 12px",fontSize:12,borderTop:"1px solid var(--border)",...st}},t);
+  if(err)return el("div",{style:{padding:24,fontSize:13,color:"var(--text3)"}},"Journal pas encore activé : lance le script 15 dans Supabase.");
+  if(!lignes)return el("div",{style:{padding:24,fontSize:13,color:"var(--text3)"}},"Chargement…");
+  return el("div",null,
+    el("div",{style:{fontSize:12,color:"var(--text3)",marginBottom:10}},"Une ligne chaque fois que quelqu'un ouvre l'appli (au plus une toutes les 30 minutes par appareil). Conservé un an."),
+    el("div",{style:{fontWeight:700,fontSize:13,margin:"4px 0 8px"}},"Par compte"),
+    el("div",{style:{border:"1px solid var(--border)",borderRadius:10,overflow:"auto",marginBottom:18}},
+      el("table",{style:{width:"100%",borderCollapse:"collapse"}},
+        el("thead",null,el("tr",{style:{background:"var(--surface2)"}},th("Compte"),th("Rôle"),th("Dernière connexion"),th("Appareil"),th("30 derniers jours"))),
+        el("tbody",null,comptes.map(c=>el("tr",{key:c.email},
+          td(el("div",null,el("b",null,c.nom),el("div",{style:{fontSize:11,color:"var(--text3)"}},c.email))),
+          td(c.role+(c.site!=="Levallois"?" · "+c.site:""),{color:"var(--text2)"}),
+          td(c.der?dt(c.der.le):el("span",{style:{color:"#D97706",fontWeight:600}},"Jamais connecté"),{whiteSpace:"nowrap"}),
+          td(c.der?c.der.appareil||"—":"—",{color:"var(--text2)"}),
+          td(c.nb?c.nb+" fois":"—",{color:"var(--text2)"})))))),
+    el("div",{style:{fontWeight:700,fontSize:13,margin:"4px 0 8px"}},"Dernières connexions"),
+    el("div",{style:{border:"1px solid var(--border)",borderRadius:10,overflow:"auto"}},
+      el("table",{style:{width:"100%",borderCollapse:"collapse"}},
+        el("thead",null,el("tr",{style:{background:"var(--surface2)"}},th("Quand"),th("Qui"),th("Appareil"))),
+        el("tbody",null,lignes.length?lignes.slice(0,150).map(l=>el("tr",{key:l.id},td(dt(l.le),{whiteSpace:"nowrap"}),td(nomDe(l.email),{fontWeight:600}),td(l.appareil||"—",{color:"var(--text2)"})))
+          :el("tr",null,td("Aucune connexion enregistrée pour l'instant.",{color:"var(--text3)",textAlign:"center",padding:20})))))
+  );
+}
 // ── Historique des colis : tous les événements (réception, prévenu, récupéré…) ──
 function VueHistoriqueColis({site}={}){
   const el=React.createElement;const[lignes,setLignes]=React.useState(null);const[colis,setColis]=React.useState({});const[q,setQ]=React.useState("");const[err,setErr]=React.useState(false);
@@ -10862,9 +10943,10 @@ function SettingsModal({settings,setSettings,showToast,setShowSettings,racineRef
     canArchives!==false&&{id:"archives",label:"🗃️ Archives"+(archivesCount>0?" ("+archivesCount+")":"")},
     {grp:"Journal"},
     canHistorique!==false&&{id:"historique",label:"🕐 Historique"+(histoCount>0?" ("+histoCount+")":"")},
-    canHistoriquePret!==false&&{id:"historique_pret",label:"🕐 Historique prêts"}
+    canHistoriquePret!==false&&{id:"historique_pret",label:"🕐 Historique prêts"},
+    window._estAdmin&&{id:"connexions",label:"🔑 Connexions"}
   ].filter(Boolean);
-  const wide=tab==="historique"||tab==="archives"||tab==="historique_pret";
+  const wide=tab==="historique"||tab==="archives"||tab==="historique_pret"||tab==="connexions";
   useEffect(()=>{
     if(racineRef.current)racineRef.current.onchange=e=>{if(e.target.files[0]){window._handleRacine&&window._handleRacine(e.target.files[0]);}e.target.value="";};
     if(hrRef.current)hrRef.current.onchange=e=>{if(e.target.files[0]){window._handleHR&&window._handleHR(e.target.files[0],"hr");}e.target.value="";};
@@ -10977,7 +11059,8 @@ function SettingsModal({settings,setSettings,showToast,setShowSettings,racineRef
         ),
         tab==="historique"&&React.createElement(VueHistorique,{histo:histo||[]}),
         tab==="archives"&&React.createElement(VueArchives,{badges,setBadges,showToast,addLog}),
-        tab==="historique_pret"&&React.createElement(VueHistoriquePret,{site:window._siteSession})
+        tab==="historique_pret"&&React.createElement(VueHistoriquePret,{site:window._siteSession}),
+        tab==="connexions"&&React.createElement(VueConnexions,{users:settings.users||[]})
       ),
       // Footer
       React.createElement("div",{className:"rg-foot",style:{padding:"14px 24px",borderTop:"1px solid var(--border)",display:"flex",justifyContent:"flex-end"}},
@@ -11552,6 +11635,7 @@ function App(){
       return;
     }
     setAuthError("");setSettings(prev=>({...prev,...st}));setSession(sess);setUnlocked(true);
+    try{sb.rpc("lp24_noter_connexion",{p_appareil:appareilCourt(),p_espace:sess.site||null}).then(()=>{},()=>{});}catch(e){}
     if(sess.role==="badge")setView("badges_pret");
     if(sess.bootstrap)setTimeout(()=>showToast("⚠️ Aucun administrateur défini : ajoute ton compte en Administrateur dans Réglages → Comptes","err"),800);
   };
