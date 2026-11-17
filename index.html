@@ -5112,7 +5112,7 @@ function SettingsModal({settings,setSettings,showToast,setShowSettings,racineRef
                 React.createElement("div",{style:{fontSize:11,color:"var(--text3)"}},u.email),
                 React.createElement("select",{value:u.role||"user",onChange:e=>{const r=e.target.value;setSettings(s=>({...s,users:(s.users||[]).map((x,j)=>j===i?{...x,role:r}:x)}));},style:{marginTop:4,padding:"3px 6px",borderRadius:5,border:"1px solid var(--border2)",fontSize:11,background:"var(--surface)",color:"var(--text)"}},
                   Object.entries(ROLE_LABELS).map(([k,l])=>React.createElement("option",{key:k,value:k},l))),
-                (u.role==="badge"||(u.role||"user")==="user")&&React.createElement("select",{value:u.site||"Levallois",title:"Site de l'accueil",onChange:e=>{const v=e.target.value;setSettings(s=>({...s,users:(s.users||[]).map((x,j)=>j===i?{...x,site:v}:x)}));},style:{marginTop:4,marginLeft:6,padding:"3px 6px",borderRadius:5,border:"1px solid var(--border2)",fontSize:11,background:"var(--surface)",color:"var(--text)"}},
+                React.createElement("select",{value:u.site||"Levallois",title:"Site de l'accueil",onChange:e=>{const v=e.target.value;setSettings(s=>({...s,users:(s.users||[]).map((x,j)=>j===i?{...x,site:v}:x)}));},style:{marginTop:4,marginLeft:6,padding:"3px 6px",borderRadius:5,border:"1px solid var(--border2)",fontSize:11,background:"var(--surface)",color:"var(--text)"}},
                   ["Levallois","Hexagone"].map(v=>React.createElement("option",{key:v,value:v},"Site : "+v))),
                 (u.role||"user")==="user"&&u.perms&&Object.entries(u.perms).filter(([,v])=>v===PERM_NONE).length>0&&React.createElement("div",{style:{fontSize:10,color:"var(--red)",marginTop:2}},"🔒 Bloqué : "+Object.entries(u.perms).filter(([,v])=>v===PERM_NONE).map(([k])=>k).join(", "))
               ),
@@ -6311,7 +6311,7 @@ function AddUserForm({settings,setSettings,showToast}){
     if(!nu.email.trim()){showToast("⚠️ E-mail requis","err");return;}
     if((settings.users||[]).some(u=>String(u.email||"").toLowerCase()===nu.email.trim().toLowerCase())){showToast("⚠️ Ce compte existe déjà","err");return;}
     const perms={};allViews.forEach(v=>{perms[v]=blocked.has(v)?PERM_NONE:PERM_WRITE;});
-    setSettings(s=>({...s,users:[...(s.users||[]),{email:nu.email.trim(),label:nu.label,role:nu.role,...(nu.role==="user"?{perms}:{}),...((nu.role==="badge"||nu.role==="user")&&nu.site&&nu.site!=="Levallois"?{site:nu.site}:{})}]}));
+    setSettings(s=>({...s,users:[...(s.users||[]),{email:nu.email.trim(),label:nu.label,role:nu.role,...(nu.role==="user"?{perms}:{}),...(nu.site&&nu.site!=="Levallois"?{site:nu.site}:{})}]}));
     setNu({email:"",label:"",role:"it"});setBlocked(new Set());
     showToast("✅ Compte ajouté");
   };
@@ -6320,9 +6320,9 @@ function AddUserForm({settings,setSettings,showToast}){
     React.createElement("div",{style:{display:"grid",gridTemplateColumns:"1fr 1fr",gap:6,marginBottom:6}},
       React.createElement("input",{value:nu.label,onChange:e=>setNu(u=>({...u,label:e.target.value.toUpperCase()})),placeholder:"Nom affiché",style:{padding:"6px 8px",borderRadius:5,border:"1px solid #D1D5DB",fontSize:12}}),
       React.createElement("input",{type:"email",value:nu.email,onChange:e=>setNu(u=>({...u,email:e.target.value})),placeholder:"Email",style:{padding:"6px 8px",borderRadius:5,border:"1px solid #D1D5DB",fontSize:12}}),
-      React.createElement("select",{value:nu.role,onChange:e=>setNu(u=>({...u,role:e.target.value})),style:{padding:"6px 8px",borderRadius:5,border:"1px solid #D1D5DB",fontSize:12,gridColumn:nu.role==="badge"||nu.role==="user"?"auto":"1/-1",background:"#fff"}},
+      React.createElement("select",{value:nu.role,onChange:e=>setNu(u=>({...u,role:e.target.value})),style:{padding:"6px 8px",borderRadius:5,border:"1px solid #D1D5DB",fontSize:12,background:"#fff"}},
         Object.entries(ROLE_LABELS).map(([k,l])=>React.createElement("option",{key:k,value:k},l))),
-      (nu.role==="badge"||nu.role==="user")&&React.createElement("select",{value:nu.site||"Levallois",onChange:e=>setNu(u=>({...u,site:e.target.value})),style:{padding:"6px 8px",borderRadius:5,border:"1px solid #D1D5DB",fontSize:12,background:"#fff"}},
+      React.createElement("select",{value:nu.site||"Levallois",onChange:e=>setNu(u=>({...u,site:e.target.value})),style:{padding:"6px 8px",borderRadius:5,border:"1px solid #D1D5DB",fontSize:12,background:"#fff"}},
         ["Levallois","Hexagone"].map(v=>React.createElement("option",{key:v,value:v},"Site : "+v)))
     ),
     nu.role==="user"&&React.createElement("div",{style:{marginBottom:8}},
@@ -10954,7 +10954,7 @@ function SettingsModal({settings,setSettings,showToast,setShowSettings,racineRef
                 React.createElement("div",{style:{fontSize:11,color:"var(--text3)"}},u.email),
                 React.createElement("select",{value:u.role||"user",onChange:e=>{const r=e.target.value;setSettings(s=>({...s,users:(s.users||[]).map((x,j)=>j===i?{...x,role:r}:x)}));},style:{marginTop:4,padding:"3px 6px",borderRadius:5,border:"1px solid var(--border2)",fontSize:11,background:"var(--surface)",color:"var(--text)"}},
                   Object.entries(ROLE_LABELS).map(([k,l])=>React.createElement("option",{key:k,value:k},l))),
-                (u.role==="badge"||(u.role||"user")==="user")&&React.createElement("select",{value:u.site||"Levallois",title:"Site de l'accueil",onChange:e=>{const v=e.target.value;setSettings(s=>({...s,users:(s.users||[]).map((x,j)=>j===i?{...x,site:v}:x)}));},style:{marginTop:4,marginLeft:6,padding:"3px 6px",borderRadius:5,border:"1px solid var(--border2)",fontSize:11,background:"var(--surface)",color:"var(--text)"}},
+                React.createElement("select",{value:u.site||"Levallois",title:"Site de l'accueil",onChange:e=>{const v=e.target.value;setSettings(s=>({...s,users:(s.users||[]).map((x,j)=>j===i?{...x,site:v}:x)}));},style:{marginTop:4,marginLeft:6,padding:"3px 6px",borderRadius:5,border:"1px solid var(--border2)",fontSize:11,background:"var(--surface)",color:"var(--text)"}},
                   ["Levallois","Hexagone"].map(v=>React.createElement("option",{key:v,value:v},"Site : "+v))),
                 (u.role||"user")==="user"&&u.perms&&Object.entries(u.perms).filter(([,v])=>v===PERM_NONE).length>0&&React.createElement("div",{style:{fontSize:10,color:"var(--red)",marginTop:2}},"🔒 Bloqué : "+Object.entries(u.perms).filter(([,v])=>v===PERM_NONE).map(([k])=>k).join(", "))
               ),
@@ -12171,7 +12171,7 @@ function AddUserForm({settings,setSettings,showToast}){
     if(!nu.email.trim()){showToast("⚠️ E-mail requis","err");return;}
     if((settings.users||[]).some(u=>String(u.email||"").toLowerCase()===nu.email.trim().toLowerCase())){showToast("⚠️ Ce compte existe déjà","err");return;}
     const perms={};allViews.forEach(v=>{perms[v]=blocked.has(v)?PERM_NONE:PERM_WRITE;});
-    setSettings(s=>({...s,users:[...(s.users||[]),{email:nu.email.trim(),label:nu.label,role:nu.role,...(nu.role==="user"?{perms}:{}),...((nu.role==="badge"||nu.role==="user")&&nu.site&&nu.site!=="Levallois"?{site:nu.site}:{})}]}));
+    setSettings(s=>({...s,users:[...(s.users||[]),{email:nu.email.trim(),label:nu.label,role:nu.role,...(nu.role==="user"?{perms}:{}),...(nu.site&&nu.site!=="Levallois"?{site:nu.site}:{})}]}));
     setNu({email:"",label:"",role:"it"});setBlocked(new Set());
     showToast("✅ Compte ajouté");
   };
@@ -12180,9 +12180,9 @@ function AddUserForm({settings,setSettings,showToast}){
     React.createElement("div",{style:{display:"grid",gridTemplateColumns:"1fr 1fr",gap:6,marginBottom:6}},
       React.createElement("input",{value:nu.label,onChange:e=>setNu(u=>({...u,label:e.target.value.toUpperCase()})),placeholder:"Nom affiché",style:{padding:"6px 8px",borderRadius:5,border:"1px solid #D1D5DB",fontSize:12}}),
       React.createElement("input",{type:"email",value:nu.email,onChange:e=>setNu(u=>({...u,email:e.target.value})),placeholder:"Email",style:{padding:"6px 8px",borderRadius:5,border:"1px solid #D1D5DB",fontSize:12}}),
-      React.createElement("select",{value:nu.role,onChange:e=>setNu(u=>({...u,role:e.target.value})),style:{padding:"6px 8px",borderRadius:5,border:"1px solid #D1D5DB",fontSize:12,gridColumn:nu.role==="badge"||nu.role==="user"?"auto":"1/-1",background:"#fff"}},
+      React.createElement("select",{value:nu.role,onChange:e=>setNu(u=>({...u,role:e.target.value})),style:{padding:"6px 8px",borderRadius:5,border:"1px solid #D1D5DB",fontSize:12,background:"#fff"}},
         Object.entries(ROLE_LABELS).map(([k,l])=>React.createElement("option",{key:k,value:k},l))),
-      (nu.role==="badge"||nu.role==="user")&&React.createElement("select",{value:nu.site||"Levallois",onChange:e=>setNu(u=>({...u,site:e.target.value})),style:{padding:"6px 8px",borderRadius:5,border:"1px solid #D1D5DB",fontSize:12,background:"#fff"}},
+      React.createElement("select",{value:nu.site||"Levallois",onChange:e=>setNu(u=>({...u,site:e.target.value})),style:{padding:"6px 8px",borderRadius:5,border:"1px solid #D1D5DB",fontSize:12,background:"#fff"}},
         ["Levallois","Hexagone"].map(v=>React.createElement("option",{key:v,value:v},"Site : "+v)))
     ),
     nu.role==="user"&&React.createElement("div",{style:{marginBottom:8}},
