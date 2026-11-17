@@ -4830,7 +4830,7 @@ function VueGestionAccueil({onglet,setView,canAccess,showToast,addLog,badges,sit
   useEffect(()=>{if(onglet==="colis"&&voitPret&&refColis.current)setTimeout(()=>{try{refColis.current.scrollIntoView({behavior:"smooth",block:"start"});}catch(e){}},150);},[onglet]);
   const css=["5","10","20"].map(n=>'.ga-sec[data-max="'+n+'"] tbody>tr:nth-child(n+'+(+n+1)+'),.ga-sec[data-max="'+n+'"] .ios-group>.bp-swipe:nth-child(n+'+(+n+1)+'){display:none}').join("");
   return el("div",{className:"ga-wrap"+(voitPret&&voitColis?" ga-deux":"")},el("style",null,css),
-    voitPret&&el("div",{className:"ga-col ga-prets"},el("div",{className:"ga-titre"},"Badges de prêt"),el(GaLignes,{cle:"prets"},el(VueBadgesPret,{key:site||"L",showToast,addLog,site}))),
+    voitPret&&el("div",{className:"ga-col ga-prets"},el("div",{className:"ga-titre"},"Badges de prêt"),el("div",{className:"ga-sec"},el(VueBadgesPret,{key:site||"L",showToast,addLog,site}))),
     voitColis&&el("div",{ref:refColis,className:"ga-col ga-colis",style:{scrollMarginTop:70}},el("div",{className:"ga-titre"},"Colis"),el(GaLignes,{cle:"colis"},el(VueColis,{key:site||"L",showToast,addLog,badges,site}))));
 }
 
@@ -10632,7 +10632,7 @@ function VueGestionAccueil({onglet,setView,canAccess,showToast,addLog,badges,sit
   useEffect(()=>{if(onglet==="colis"&&voitPret&&refColis.current)setTimeout(()=>{try{refColis.current.scrollIntoView({behavior:"smooth",block:"start"});}catch(e){}},150);},[onglet]);
   const css=["5","10","20"].map(n=>'.ga-sec[data-max="'+n+'"] tbody>tr:nth-child(n+'+(+n+1)+'),.ga-sec[data-max="'+n+'"] .ios-group>.bp-swipe:nth-child(n+'+(+n+1)+'){display:none}').join("");
   return el("div",{className:"ga-wrap"+(voitPret&&voitColis?" ga-deux":"")},el("style",null,css),
-    voitPret&&el("div",{className:"ga-col ga-prets"},el("div",{className:"ga-titre"},"Badges de prêt"),el(GaLignes,{cle:"prets"},el(VueBadgesPret,{key:site||"L",showToast,addLog,site}))),
+    voitPret&&el("div",{className:"ga-col ga-prets"},el("div",{className:"ga-titre"},"Badges de prêt"),el("div",{className:"ga-sec"},el(VueBadgesPret,{key:site||"L",showToast,addLog,site}))),
     voitColis&&el("div",{ref:refColis,className:"ga-col ga-colis",style:{scrollMarginTop:70}},el("div",{className:"ga-titre"},"Colis"),el(GaLignes,{cle:"colis"},el(VueColis,{key:site||"L",showToast,addLog,badges,site}))));
 }
 
