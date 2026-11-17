@@ -3506,14 +3506,16 @@ function lireInvitation(brut,dateImposee){
   // ── Date ──
   const MOIS={janvier:1,"février":2,fevrier:2,mars:3,avril:4,mai:5,juin:6,juillet:7,"août":8,aout:8,septembre:9,octobre:10,novembre:11,"décembre":12,decembre:12,january:1,february:2,march:3,april:4,may:5,june:6,july:7,august:8,september:9,october:10,november:11,december:12};
   const p2=n=>String(n).padStart(2,"0");const an=new Date().getFullYear();
+  // Date sans année (« 12 janvier », « 12/01 ») : l'année en cours, ou la suivante si la date est déjà passée depuis plus de 2 mois
+  const anPour=(mo,j)=>{const d=new Date(an,mo-1,j);return (Date.now()-d.getTime())>60*864e5?an+1:an;};
   const dates=[];
   if(/^\d{8}/.test(dtIcs))dates.push({d:dtIcs.slice(0,4)+"-"+dtIcs.slice(4,6)+"-"+dtIcs.slice(6,8),poids:3});
   const txt=sujet+"\n"+corps;
   const poids=i=>{const av=txt.slice(Math.max(0,i-60),i).toLowerCase();return /arriv|début|debut|prise de poste|démarr|demarr|commence|départ|depart|sortie|quand|when|heure|date|d[ée]but/.test(av)?2:1;};
   let m;const re1=/(\d{1,2})\s*(?:er)?\s+(janvier|février|fevrier|mars|avril|mai|juin|juillet|août|aout|septembre|octobre|novembre|décembre|decembre|january|february|march|april|may|june|july|august|september|october|november|december)\.?\s*(\d{4})?/gi;
-  while((m=re1.exec(txt)))dates.push({d:(m[3]||an)+"-"+p2(MOIS[m[2].toLowerCase()])+"-"+p2(m[1]),poids:poids(m.index)+.5});
+  while((m=re1.exec(txt)))dates.push({d:(m[3]||anPour(MOIS[m[2].toLowerCase()],+m[1]))+"-"+p2(MOIS[m[2].toLowerCase()])+"-"+p2(m[1]),poids:poids(m.index)+.5});
   const re2=/\b(\d{1,2})[\/.\-](\d{1,2})(?:[\/.\-](\d{2,4}))?\b/g;
-  while((m=re2.exec(txt))){const j=+m[1],mo=+m[2];if(j<1||j>31||mo<1||mo>12)continue;let y=m[3]?(m[3].length===2?"20"+m[3]:m[3]):an;dates.push({d:y+"-"+p2(mo)+"-"+p2(j),poids:poids(m.index)});}
+  while((m=re2.exec(txt))){const j=+m[1],mo=+m[2];if(j<1||j>31||mo<1||mo>12)continue;let y=m[3]?(m[3].length===2?"20"+m[3]:m[3]):anPour(mo,j);dates.push({d:y+"-"+p2(mo)+"-"+p2(j),poids:poids(m.index)});}
   const re3=/\b(\d{4})-(\d{2})-(\d{2})\b/g;while((m=re3.exec(txt)))dates.push({d:m[0],poids:poids(m.index)});
   if(dateImposee)res.dateEvt=dateImposee;else if(dates.length){dates.sort((a,b)=>b.poids-a.poids);res.dateEvt=dates[0].d;}
   // ── Nom et prénom ──
@@ -3633,6 +3635,15 @@ function VueArriveesDeparts({badges,setBadges,fssData,settings,canAccess,setView
     const k=d+cle(b.prenom,b.nom);lignes[t][k]={d,prenom:b.prenom,nom:b.nom,manager:b.manager,collab:b,fss:null};});});
   (fssData||[]).forEach(f=>{const d=jour(f.dateEvt);if(!d)return;const t=f.situation==="Départ"?"dep":"arr";const k=d+cle(f.prenom,f.nom);
     const l=lignes[t][k]||(lignes[t][k]={d,prenom:f.prenom,nom:f.nom,manager:f.manager,collab:null,fss:null});l.fss=f;if(!l.manager)l.manager=f.manager;});
+  // Même personne, une date dans le tableau et une autre dans Field Support : une seule ligne, avec choix de la bonne date
+  ["arr","dep"].forEach(t=>{const parNom={};Object.entries(lignes[t]).forEach(([k,l])=>{const n=cle(l.prenom,l.nom);(parNom[n]=parNom[n]||[]).push(k);});
+    Object.values(parNom).forEach(ks=>{if(ks.length<2)return;const L=ks.map(k=>lignes[t][k]);const c=L.find(l=>l.collab&&!l.fss),f=L.find(l=>l.fss&&!l.collab);if(!c||!f)return;
+      ks.forEach(k=>delete lignes[t][k]);const d=c.d<f.d?c.d:f.d;lignes[t][d+cle(c.prenom,c.nom)]={...c,d,fss:f.fss,conflit:{tableau:c.d,fss:f.d}};});});
+  const frAn=d=>d.split("-").reverse().join("/");
+  const garderDate=async(t,l,d)=>{const c=l.collab,f=l.fss;
+    if(c){const u={...c,[t==="dep"?"date_sortie_prevue":"date_entree"]:d};setBadges(x=>x.map(b=>b.id===c.id?u:b));if(sb){const r=await sbEcrireCollab(u,false);if(r.error){showToast("⚠️ Pas sauvegardé — "+messageErreurBase(r.error),"err");return;}}}
+    if(f){window._setFssData&&window._setFssData(x=>(x||[]).map(g=>g.id===f.id?{...g,dateEvt:d}:g));if(sb&&typeof f.id==="number"){const{error}=await sb.from("lp24_fss").update({dateEvt:d}).eq("id",f.id);if(error){showToast("⚠️ Pas sauvegardé — "+messageErreurBase(error),"err");return;}}}
+    addLog&&addLog("Date harmonisée",String(l.prenom||"")+" "+String(l.nom||"")+" : "+frAn(d));showToast("✅ Date du "+frAn(d)+" gardée partout");};
   const fr=d=>new Date(d+"T12:00:00").toLocaleDateString("fr-FR",{weekday:"short",day:"2-digit",month:"2-digit"});
   const cap=x=>String(x||"").toLowerCase().replace(/(^|[\s-])(\S)/g,(m,a,c)=>a+c.toUpperCase());
   const ligne=(t,l)=>{const f=l.fss,c=l.collab;
@@ -3643,7 +3654,10 @@ function VueArriveesDeparts({badges,setBadges,fssData,settings,canAccess,setView
         el("button",{type:"button",className:"ad-p "+(c?"ok":"non"),title:c?"Ouvrir les collaborateurs":"Pas encore dans le tableau",onClick:()=>{if(c&&canAccess("collaborateurs"))setView("collaborateurs");}},c?"Tableau ✓":"Pas dans le tableau"),
         el("button",{type:"button",className:"ad-p "+(f?(f.cloture||f.statut==="Terminée"?"ok":"att"):"non"),onClick:()=>{if(f&&canAccess("field_support"))setView("field_support");}},
           f?"Field Support : "+(f.cloture?"Terminée":f.statut==="A traiter"?"À traiter":f.statut||"—"):"Pas de fiche Field Support"),
-        c&&c.sans_mail_auto?el("span",{className:"ad-p muet",title:"Aucun mail automatique : envoi depuis la fiche"},"Mails à la main"):null));};
+        c&&c.sans_mail_auto?el("span",{className:"ad-p muet",title:"Aucun mail automatique : envoi depuis la fiche"},"Mails à la main"):null),
+      l.conflit&&el("div",{className:"ad-conflit"},el("span",null,"⚠️ Deux dates différentes — laquelle est la bonne ?"),
+        el("button",{type:"button",onClick:()=>garderDate(t,l,l.conflit.tableau)},frAn(l.conflit.tableau)+" (tableau)"),
+        el("button",{type:"button",onClick:()=>garderDate(t,l,l.conflit.fss)},frAn(l.conflit.fss)+" (Field Support)")));};
   const colonne=(t,titre)=>{const toutes=Object.values(lignes[t]).sort((a,b)=>a.d<b.d?-1:1);
     const avenir=toutes.filter(l=>l.d>=auj),passees=toutes.filter(l=>l.d<auj&&l.d>=il30).reverse();
     return el("div",{className:"ad-col"},
@@ -3683,7 +3697,7 @@ function VueArriveesDeparts({badges,setBadges,fssData,settings,canAccess,setView
     el("div",{className:"ad-cols"},colonne("arr","Arrivées"),colonne("dep","Départs")));
 }
 (function(){try{var st=document.createElement("style");st.textContent=".ad-h{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-bottom:14px}.ad-h p{margin:0;font-size:13px;color:var(--text2,#64748B)}.ad-cols{display:grid;grid-template-columns:1fr 1fr;gap:16px;align-items:start}@media(max-width:900px){.ad-cols{grid-template-columns:1fr}}.ad-col{background:var(--surface,#fff);border:1px solid var(--border,#E2E8F0);border-radius:var(--radius-lg,14px);overflow:hidden}.ad-t{display:flex;align-items:center;gap:8px;padding:12px 14px;font-weight:700;font-size:14px;border-bottom:1px solid var(--border,#E2E8F0)}.ad-t span{margin-left:auto;font-weight:500;font-size:12px;color:var(--text3,#94A3B8)}.ad-pt{width:9px;height:9px;border-radius:50%;display:inline-block}.ad-pt.arr{background:#16A34A}.ad-pt.dep{background:#DC2626}"
-+".ad-l{display:grid;grid-template-columns:86px minmax(0,1fr);gap:4px 12px;padding:10px 14px;border-bottom:1px solid var(--border,#F1F5F9)}.ad-l.passe{opacity:.6}.ad-l.auj .ad-d{color:#2563EB}.ad-d{font-size:12px;font-weight:700;color:var(--text2,#475569);text-transform:capitalize;padding-top:1px}.ad-n{display:flex;flex-direction:column;min-width:0}.ad-n b{font-size:13px}.ad-n span{font-size:11px;color:var(--text3,#94A3B8)}.ad-e{grid-column:2;display:flex;gap:6px;flex-wrap:wrap}.ad-p{border:0;border-radius:999px;padding:3px 9px;font-family:inherit;font-size:11px;font-weight:600;cursor:pointer}.ad-p.ok{background:#ECFDF5;color:#166534}.ad-p.att{background:#FFF7ED;color:#9A3412}.ad-p.non{background:var(--surface2,#F1F5F9);color:var(--text3,#64748B);cursor:default}.ad-p.muet{background:#EFF6FF;color:#1E40AF;cursor:default}.ad-vide{padding:18px 14px;font-size:13px;color:var(--text3,#94A3B8)}.ad-plus{display:block;width:100%;text-align:left;border:0;background:var(--surface2,#F8FAFC);padding:9px 14px;font-family:inherit;font-size:12px;font-weight:600;color:var(--text2,#475569);cursor:pointer}"
++".ad-l{display:grid;grid-template-columns:86px minmax(0,1fr);gap:4px 12px;padding:10px 14px;border-bottom:1px solid var(--border,#F1F5F9)}.ad-l.passe{opacity:.6}.ad-l.auj .ad-d{color:#2563EB}.ad-d{font-size:12px;font-weight:700;color:var(--text2,#475569);text-transform:capitalize;padding-top:1px}.ad-n{display:flex;flex-direction:column;min-width:0}.ad-n b{font-size:13px}.ad-n span{font-size:11px;color:var(--text3,#94A3B8)}.ad-e{grid-column:2;display:flex;gap:6px;flex-wrap:wrap}.ad-p{border:0;border-radius:999px;padding:3px 9px;font-family:inherit;font-size:11px;font-weight:600;cursor:pointer}.ad-p.ok{background:#ECFDF5;color:#166534}.ad-p.att{background:#FFF7ED;color:#9A3412}.ad-p.non{background:var(--surface2,#F1F5F9);color:var(--text3,#64748B);cursor:default}.ad-p.muet{background:#EFF6FF;color:#1E40AF;cursor:default}.ad-conflit{grid-column:1/-1;display:flex;flex-wrap:wrap;align-items:center;gap:6px;margin-top:4px;padding:7px 10px;border-radius:8px;background:#FFF7ED;font-size:12px;color:#9A3412;font-weight:600}.ad-conflit button{border:1px solid #FDBA74;background:#fff;color:#9A3412;border-radius:999px;padding:3px 10px;font-family:inherit;font-size:12px;font-weight:700;cursor:pointer}.ad-conflit button:hover{background:#FFEDD5}.ad-vide{padding:18px 14px;font-size:13px;color:var(--text3,#94A3B8)}.ad-plus{display:block;width:100%;text-align:left;border:0;background:var(--surface2,#F8FAFC);padding:9px 14px;font-family:inherit;font-size:12px;font-weight:600;color:var(--text2,#475569);cursor:pointer}"
 +".ad-prep{background:var(--surface,#fff);border:1.5px solid #2563EB;border-radius:var(--radius-lg,14px);padding:14px 16px;margin-bottom:16px}.ad-g{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;margin:10px 0}@media(max-width:700px){.ad-g{grid-template-columns:1fr 1fr}}.ad-f{display:flex;flex-direction:column;gap:3px}.ad-f span{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.4px;color:var(--text3,#94A3B8)}.ad-f input,.ad-f select{padding:7px 9px;border:1px solid var(--border2,#CBD5E1);border-radius:8px;font-family:inherit;font-size:13px;background:var(--surface,#fff);color:inherit;min-width:0}.ad-c{display:flex;align-items:center;gap:8px;font-size:13px;margin-top:6px}.ad-b{display:flex;justify-content:flex-end;gap:8px;margin-top:12px}"
 +".acc-normal>.mvt-icon-row{display:none!important}.acc-mvt-seul>:not(.mvt-icon-row){display:none!important}.acc-mvt-seul>.mvt-icon-row{margin-bottom:16px!important}.cm-mails{margin-bottom:12px;padding:10px 12px;background:var(--surface2);border:1px solid var(--border);border-radius:10px}.cm-mails .cm-t{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;font-size:12px;color:var(--text2)}.cm-mails .cm-b{display:flex;gap:6px;flex-wrap:wrap;margin-top:8px}.cm-mails .cm-b button{font-size:12px}";document.head.appendChild(st);}catch(e){}})();
 // ── FssStatusBadge ──
@@ -9239,14 +9253,16 @@ function lireInvitation(brut,dateImposee){
   // ── Date ──
   const MOIS={janvier:1,"février":2,fevrier:2,mars:3,avril:4,mai:5,juin:6,juillet:7,"août":8,aout:8,septembre:9,octobre:10,novembre:11,"décembre":12,decembre:12,january:1,february:2,march:3,april:4,may:5,june:6,july:7,august:8,september:9,october:10,november:11,december:12};
   const p2=n=>String(n).padStart(2,"0");const an=new Date().getFullYear();
+  // Date sans année (« 12 janvier », « 12/01 ») : l'année en cours, ou la suivante si la date est déjà passée depuis plus de 2 mois
+  const anPour=(mo,j)=>{const d=new Date(an,mo-1,j);return (Date.now()-d.getTime())>60*864e5?an+1:an;};
   const dates=[];
   if(/^\d{8}/.test(dtIcs))dates.push({d:dtIcs.slice(0,4)+"-"+dtIcs.slice(4,6)+"-"+dtIcs.slice(6,8),poids:3});
   const txt=sujet+"\n"+corps;
   const poids=i=>{const av=txt.slice(Math.max(0,i-60),i).toLowerCase();return /arriv|début|debut|prise de poste|démarr|demarr|commence|départ|depart|sortie|quand|when|heure|date|d[ée]but/.test(av)?2:1;};
   let m;const re1=/(\d{1,2})\s*(?:er)?\s+(janvier|février|fevrier|mars|avril|mai|juin|juillet|août|aout|septembre|octobre|novembre|décembre|decembre|january|february|march|april|may|june|july|august|september|october|november|december)\.?\s*(\d{4})?/gi;
-  while((m=re1.exec(txt)))dates.push({d:(m[3]||an)+"-"+p2(MOIS[m[2].toLowerCase()])+"-"+p2(m[1]),poids:poids(m.index)+.5});
+  while((m=re1.exec(txt)))dates.push({d:(m[3]||anPour(MOIS[m[2].toLowerCase()],+m[1]))+"-"+p2(MOIS[m[2].toLowerCase()])+"-"+p2(m[1]),poids:poids(m.index)+.5});
   const re2=/\b(\d{1,2})[\/.\-](\d{1,2})(?:[\/.\-](\d{2,4}))?\b/g;
-  while((m=re2.exec(txt))){const j=+m[1],mo=+m[2];if(j<1||j>31||mo<1||mo>12)continue;let y=m[3]?(m[3].length===2?"20"+m[3]:m[3]):an;dates.push({d:y+"-"+p2(mo)+"-"+p2(j),poids:poids(m.index)});}
+  while((m=re2.exec(txt))){const j=+m[1],mo=+m[2];if(j<1||j>31||mo<1||mo>12)continue;let y=m[3]?(m[3].length===2?"20"+m[3]:m[3]):anPour(mo,j);dates.push({d:y+"-"+p2(mo)+"-"+p2(j),poids:poids(m.index)});}
   const re3=/\b(\d{4})-(\d{2})-(\d{2})\b/g;while((m=re3.exec(txt)))dates.push({d:m[0],poids:poids(m.index)});
   if(dateImposee)res.dateEvt=dateImposee;else if(dates.length){dates.sort((a,b)=>b.poids-a.poids);res.dateEvt=dates[0].d;}
   // ── Nom et prénom ──
@@ -9366,6 +9382,15 @@ function VueArriveesDeparts({badges,setBadges,fssData,settings,canAccess,setView
     const k=d+cle(b.prenom,b.nom);lignes[t][k]={d,prenom:b.prenom,nom:b.nom,manager:b.manager,collab:b,fss:null};});});
   (fssData||[]).forEach(f=>{const d=jour(f.dateEvt);if(!d)return;const t=f.situation==="Départ"?"dep":"arr";const k=d+cle(f.prenom,f.nom);
     const l=lignes[t][k]||(lignes[t][k]={d,prenom:f.prenom,nom:f.nom,manager:f.manager,collab:null,fss:null});l.fss=f;if(!l.manager)l.manager=f.manager;});
+  // Même personne, une date dans le tableau et une autre dans Field Support : une seule ligne, avec choix de la bonne date
+  ["arr","dep"].forEach(t=>{const parNom={};Object.entries(lignes[t]).forEach(([k,l])=>{const n=cle(l.prenom,l.nom);(parNom[n]=parNom[n]||[]).push(k);});
+    Object.values(parNom).forEach(ks=>{if(ks.length<2)return;const L=ks.map(k=>lignes[t][k]);const c=L.find(l=>l.collab&&!l.fss),f=L.find(l=>l.fss&&!l.collab);if(!c||!f)return;
+      ks.forEach(k=>delete lignes[t][k]);const d=c.d<f.d?c.d:f.d;lignes[t][d+cle(c.prenom,c.nom)]={...c,d,fss:f.fss,conflit:{tableau:c.d,fss:f.d}};});});
+  const frAn=d=>d.split("-").reverse().join("/");
+  const garderDate=async(t,l,d)=>{const c=l.collab,f=l.fss;
+    if(c){const u={...c,[t==="dep"?"date_sortie_prevue":"date_entree"]:d};setBadges(x=>x.map(b=>b.id===c.id?u:b));if(sb){const r=await sbEcrireCollab(u,false);if(r.error){showToast("⚠️ Pas sauvegardé — "+messageErreurBase(r.error),"err");return;}}}
+    if(f){window._setFssData&&window._setFssData(x=>(x||[]).map(g=>g.id===f.id?{...g,dateEvt:d}:g));if(sb&&typeof f.id==="number"){const{error}=await sb.from("lp24_fss").update({dateEvt:d}).eq("id",f.id);if(error){showToast("⚠️ Pas sauvegardé — "+messageErreurBase(error),"err");return;}}}
+    addLog&&addLog("Date harmonisée",String(l.prenom||"")+" "+String(l.nom||"")+" : "+frAn(d));showToast("✅ Date du "+frAn(d)+" gardée partout");};
   const fr=d=>new Date(d+"T12:00:00").toLocaleDateString("fr-FR",{weekday:"short",day:"2-digit",month:"2-digit"});
   const cap=x=>String(x||"").toLowerCase().replace(/(^|[\s-])(\S)/g,(m,a,c)=>a+c.toUpperCase());
   const ligne=(t,l)=>{const f=l.fss,c=l.collab;
@@ -9376,7 +9401,10 @@ function VueArriveesDeparts({badges,setBadges,fssData,settings,canAccess,setView
         el("button",{type:"button",className:"ad-p "+(c?"ok":"non"),title:c?"Ouvrir les collaborateurs":"Pas encore dans le tableau",onClick:()=>{if(c&&canAccess("collaborateurs"))setView("collaborateurs");}},c?"Tableau ✓":"Pas dans le tableau"),
         el("button",{type:"button",className:"ad-p "+(f?(f.cloture||f.statut==="Terminée"?"ok":"att"):"non"),onClick:()=>{if(f&&canAccess("field_support"))setView("field_support");}},
           f?"Field Support : "+(f.cloture?"Terminée":f.statut==="A traiter"?"À traiter":f.statut||"—"):"Pas de fiche Field Support"),
-        c&&c.sans_mail_auto?el("span",{className:"ad-p muet",title:"Aucun mail automatique : envoi depuis la fiche"},"Mails à la main"):null));};
+        c&&c.sans_mail_auto?el("span",{className:"ad-p muet",title:"Aucun mail automatique : envoi depuis la fiche"},"Mails à la main"):null),
+      l.conflit&&el("div",{className:"ad-conflit"},el("span",null,"⚠️ Deux dates différentes — laquelle est la bonne ?"),
+        el("button",{type:"button",onClick:()=>garderDate(t,l,l.conflit.tableau)},frAn(l.conflit.tableau)+" (tableau)"),
+        el("button",{type:"button",onClick:()=>garderDate(t,l,l.conflit.fss)},frAn(l.conflit.fss)+" (Field Support)")));};
   const colonne=(t,titre)=>{const toutes=Object.values(lignes[t]).sort((a,b)=>a.d<b.d?-1:1);
     const avenir=toutes.filter(l=>l.d>=auj),passees=toutes.filter(l=>l.d<auj&&l.d>=il30).reverse();
     return el("div",{className:"ad-col"},
@@ -9416,7 +9444,7 @@ function VueArriveesDeparts({badges,setBadges,fssData,settings,canAccess,setView
     el("div",{className:"ad-cols"},colonne("arr","Arrivées"),colonne("dep","Départs")));
 }
 (function(){try{var st=document.createElement("style");st.textContent=".ad-h{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-bottom:14px}.ad-h p{margin:0;font-size:13px;color:var(--text2,#64748B)}.ad-cols{display:grid;grid-template-columns:1fr 1fr;gap:16px;align-items:start}@media(max-width:900px){.ad-cols{grid-template-columns:1fr}}.ad-col{background:var(--surface,#fff);border:1px solid var(--border,#E2E8F0);border-radius:var(--radius-lg,14px);overflow:hidden}.ad-t{display:flex;align-items:center;gap:8px;padding:12px 14px;font-weight:700;font-size:14px;border-bottom:1px solid var(--border,#E2E8F0)}.ad-t span{margin-left:auto;font-weight:500;font-size:12px;color:var(--text3,#94A3B8)}.ad-pt{width:9px;height:9px;border-radius:50%;display:inline-block}.ad-pt.arr{background:#16A34A}.ad-pt.dep{background:#DC2626}"
-+".ad-l{display:grid;grid-template-columns:86px minmax(0,1fr);gap:4px 12px;padding:10px 14px;border-bottom:1px solid var(--border,#F1F5F9)}.ad-l.passe{opacity:.6}.ad-l.auj .ad-d{color:#2563EB}.ad-d{font-size:12px;font-weight:700;color:var(--text2,#475569);text-transform:capitalize;padding-top:1px}.ad-n{display:flex;flex-direction:column;min-width:0}.ad-n b{font-size:13px}.ad-n span{font-size:11px;color:var(--text3,#94A3B8)}.ad-e{grid-column:2;display:flex;gap:6px;flex-wrap:wrap}.ad-p{border:0;border-radius:999px;padding:3px 9px;font-family:inherit;font-size:11px;font-weight:600;cursor:pointer}.ad-p.ok{background:#ECFDF5;color:#166534}.ad-p.att{background:#FFF7ED;color:#9A3412}.ad-p.non{background:var(--surface2,#F1F5F9);color:var(--text3,#64748B);cursor:default}.ad-p.muet{background:#EFF6FF;color:#1E40AF;cursor:default}.ad-vide{padding:18px 14px;font-size:13px;color:var(--text3,#94A3B8)}.ad-plus{display:block;width:100%;text-align:left;border:0;background:var(--surface2,#F8FAFC);padding:9px 14px;font-family:inherit;font-size:12px;font-weight:600;color:var(--text2,#475569);cursor:pointer}"
++".ad-l{display:grid;grid-template-columns:86px minmax(0,1fr);gap:4px 12px;padding:10px 14px;border-bottom:1px solid var(--border,#F1F5F9)}.ad-l.passe{opacity:.6}.ad-l.auj .ad-d{color:#2563EB}.ad-d{font-size:12px;font-weight:700;color:var(--text2,#475569);text-transform:capitalize;padding-top:1px}.ad-n{display:flex;flex-direction:column;min-width:0}.ad-n b{font-size:13px}.ad-n span{font-size:11px;color:var(--text3,#94A3B8)}.ad-e{grid-column:2;display:flex;gap:6px;flex-wrap:wrap}.ad-p{border:0;border-radius:999px;padding:3px 9px;font-family:inherit;font-size:11px;font-weight:600;cursor:pointer}.ad-p.ok{background:#ECFDF5;color:#166534}.ad-p.att{background:#FFF7ED;color:#9A3412}.ad-p.non{background:var(--surface2,#F1F5F9);color:var(--text3,#64748B);cursor:default}.ad-p.muet{background:#EFF6FF;color:#1E40AF;cursor:default}.ad-conflit{grid-column:1/-1;display:flex;flex-wrap:wrap;align-items:center;gap:6px;margin-top:4px;padding:7px 10px;border-radius:8px;background:#FFF7ED;font-size:12px;color:#9A3412;font-weight:600}.ad-conflit button{border:1px solid #FDBA74;background:#fff;color:#9A3412;border-radius:999px;padding:3px 10px;font-family:inherit;font-size:12px;font-weight:700;cursor:pointer}.ad-conflit button:hover{background:#FFEDD5}.ad-vide{padding:18px 14px;font-size:13px;color:var(--text3,#94A3B8)}.ad-plus{display:block;width:100%;text-align:left;border:0;background:var(--surface2,#F8FAFC);padding:9px 14px;font-family:inherit;font-size:12px;font-weight:600;color:var(--text2,#475569);cursor:pointer}"
 +".ad-prep{background:var(--surface,#fff);border:1.5px solid #2563EB;border-radius:var(--radius-lg,14px);padding:14px 16px;margin-bottom:16px}.ad-g{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;margin:10px 0}@media(max-width:700px){.ad-g{grid-template-columns:1fr 1fr}}.ad-f{display:flex;flex-direction:column;gap:3px}.ad-f span{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.4px;color:var(--text3,#94A3B8)}.ad-f input,.ad-f select{padding:7px 9px;border:1px solid var(--border2,#CBD5E1);border-radius:8px;font-family:inherit;font-size:13px;background:var(--surface,#fff);color:inherit;min-width:0}.ad-c{display:flex;align-items:center;gap:8px;font-size:13px;margin-top:6px}.ad-b{display:flex;justify-content:flex-end;gap:8px;margin-top:12px}"
 +".acc-normal>.mvt-icon-row{display:none!important}.acc-mvt-seul>:not(.mvt-icon-row){display:none!important}.acc-mvt-seul>.mvt-icon-row{margin-bottom:16px!important}.cm-mails{margin-bottom:12px;padding:10px 12px;background:var(--surface2);border:1px solid var(--border);border-radius:10px}.cm-mails .cm-t{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;font-size:12px;color:var(--text2)}.cm-mails .cm-b{display:flex;gap:6px;flex-wrap:wrap;margin-top:8px}.cm-mails .cm-b button{font-size:12px}";document.head.appendChild(st);}catch(e){}})();
 // ── FssStatusBadge ──
