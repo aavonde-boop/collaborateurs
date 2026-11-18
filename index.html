@@ -3663,7 +3663,7 @@ async function sbEcrireCollab(row,insert){
   return res;
 }
 // ── Onglet Arrivées / Départs ──
-function VueArriveesDeparts({badges,setBadges,fssData,settings,canAccess,setView,showToast,addLog}){
+function VueArriveesDeparts({badges,setBadges,fssData,settings,canAccess,setView,showToast,addLog,coherence}){
   const el=React.createElement;
   const[voirInvit,setVoirInvit]=React.useState(false);const[prep,setPrep]=React.useState(null);const[voirPasse,setVoirPasse]=React.useState(false);
   const auj=isoLocal(new Date());const il30=isoLocal(new Date(Date.now()-30*864e5));
@@ -3680,6 +3680,34 @@ function VueArriveesDeparts({badges,setBadges,fssData,settings,canAccess,setView
       const ecart=Math.abs(new Date(c.d)-new Date(f.d))/864e5;if(!(c.d.slice(5)===f.d.slice(5)&&ecart<400)&&ecart>90)return;
       ks.forEach(k=>delete lignes[t][k]);const d=c.d<f.d?c.d:f.d;lignes[t][d+cle(c.prenom,c.nom)]={...c,d,fss:f.fss,conflit:{tableau:c.d,fss:f.d}};});});
   const frAn=d=>d.split("-").reverse().join("/");
+  // Doublons : plusieurs lignes au même nom de famille, même prénom ou dates proches (moins d'un mois)
+  const cleNom=n=>String(n||"").toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g,"").replace(/[^a-z]/g,"");
+  ["arr","dep"].forEach(t=>{const g={};Object.values(lignes[t]).forEach(l=>{(g[cleNom(l.nom)]=g[cleNom(l.nom)]||[]).push(l);});
+    Object.values(g).forEach(L=>{if(L.length<2)return;L.forEach(l=>{const autres=L.filter(x=>{if(x===l)return false;const j=Math.abs(new Date(x.d)-new Date(l.d))/864e5;return cle(x.prenom,"")===cle(l.prenom,"")?j<=180:j<=31;});if(autres.length)l.doublon=[l,...autres];});});});
+  const[fus,setFus]=React.useState(null);
+  const completude=b=>["matricule","serie","email","casier"].filter(k=>{const v=String(b[k]||"").trim();return v&&v!=="0"&&v.toUpperCase()!=="NC";}).length;
+  const remplieF=f=>["matPC","ritm","matRecu","idMat","dateRecep","matDonne","commentaires"].filter(k=>String(f[k]||"").trim()).length+(f.statut&&f.statut!=="A traiter"?2:0);
+  const fusionner=async({t,rows,prenom,date,manager})=>{setFus(null);
+    const collabs=[...new Map(rows.map(r=>r.collab||collabDe(r)).filter(Boolean).map(b=>[b.id,b])).values()].sort((a,b)=>completude(b)-completude(a));
+    const nom=String(rows[0].nom||"").toUpperCase();
+    if(collabs.length>1&&collabs.slice(1).some(b=>completude(b)>0)){showToast("⚠️ Plusieurs fiches collaborateur remplies pour "+nom+" : supprime la mauvaise dans Collaborateurs","err");return;}
+    const champDate=t==="dep"?"date_sortie_prevue":"date_entree";
+    if(collabs.length){const garde={...collabs[0],prenom,nom,[champDate]:date,...(manager?{manager}:{})};setBadges(x=>x.filter(b=>!collabs.slice(1).some(c=>c.id===b.id)).map(b=>b.id===garde.id?garde:b));
+      if(sb){const r=await sbEcrireCollab(garde,false);if(r.error){showToast("⚠️ Pas sauvegardé — "+messageErreurBase(r.error),"err");return;}
+        for(const c of collabs.slice(1)){const{error}=await sb.from("lp24_badges").delete().eq("id",c.id);if(error){showToast("⚠️ Doublon non supprimé — "+messageErreurBase(error),"err");return;}}}}
+    const sit=t==="dep"?"Départ":"Arrivée";const prenoms=new Set(rows.map(r=>cle(r.prenom,"")));
+    const toutes=(window._fssData||[]).filter(f=>cleNom(f.nom)===cleNom(nom)&&prenoms.has(cle(f.prenom,"")));
+    const memes=toutes.filter(f=>f.situation===sit&&!f.cloture).sort((a,b)=>remplieF(b)-remplieF(a));const sup=new Set(memes.slice(1).map(f=>f.id));
+    const maj=f=>({...f,prenom,nom,...(memes[0]&&f.id===memes[0].id?{dateEvt:date,...(manager?{manager}:{})}:{})});
+    window._setFssData&&window._setFssData(x=>(x||[]).filter(f=>!sup.has(f.id)).map(f=>toutes.some(g=>g.id===f.id)?maj(f):f));
+    if(sb){for(const id of sup){if(typeof id==="number"){const{error}=await sb.from("lp24_fss").delete().eq("id",id);if(error){showToast("⚠️ Doublon non supprimé — "+messageErreurBase(error),"err");return;}}}
+      for(const f of toutes){if(sup.has(f.id)||typeof f.id!=="number")continue;const m=maj(f);const{error}=await sb.from("lp24_fss").update({prenom:m.prenom,nom:m.nom,dateEvt:m.dateEvt,manager:m.manager}).eq("id",f.id);if(error){showToast("⚠️ Pas sauvegardé — "+messageErreurBase(error),"err");return;}}}
+    addLog&&addLog("Fiches fusionnées",prenom+" "+nom+" — "+frAn(date));
+    showToast("✅ "+prenom+" "+nom+" : une seule fiche, le "+frAn(date)+(collabs.length>1||sup.size?" (doublon supprimé)":""));};
+  const garderManager=async(ref,f,m)=>{
+    if(ref&&String(ref.manager||"")!==m){const u={...ref,manager:m};setBadges(x=>x.map(b=>b.id===u.id?u:b));if(sb){const r=await sbEcrireCollab(u,false);if(r.error){showToast("⚠️ Pas sauvegardé — "+messageErreurBase(r.error),"err");return;}}}
+    if(f&&String(f.manager||"")!==m){window._setFssData&&window._setFssData(x=>(x||[]).map(g=>g.id===f.id?{...g,manager:m}:g));if(sb&&typeof f.id==="number"){const{error}=await sb.from("lp24_fss").update({manager:m}).eq("id",f.id);if(error){showToast("⚠️ Pas sauvegardé — "+messageErreurBase(error),"err");return;}}}
+    showToast("✅ Manager « "+m+" » gardé des deux côtés");};
   const garderDate=async(t,l,d)=>{const c=l.collab,f=l.fss;
     if(c){const u={...c,[t==="dep"?"date_sortie_prevue":"date_entree"]:d};setBadges(x=>x.map(b=>b.id===c.id?u:b));if(sb){const r=await sbEcrireCollab(u,false);if(r.error){showToast("⚠️ Pas sauvegardé — "+messageErreurBase(r.error),"err");return;}}}
     if(f){window._setFssData&&window._setFssData(x=>(x||[]).map(g=>g.id===f.id?{...g,dateEvt:d}:g));if(sb&&typeof f.id==="number"){const{error}=await sb.from("lp24_fss").update({dateEvt:d}).eq("id",f.id);if(error){showToast("⚠️ Pas sauvegardé — "+messageErreurBase(error),"err");return;}}}
@@ -3687,8 +3715,9 @@ function VueArriveesDeparts({badges,setBadges,fssData,settings,canAccess,setView
   const fr=d=>new Date(d+"T12:00:00").toLocaleDateString("fr-FR",{weekday:"short",day:"2-digit",month:"2-digit"});
   const cap=x=>String(x||"").toLowerCase().replace(/(^|[\s-])(\S)/g,(m,a,c)=>a+c.toUpperCase());
   const collabDe=l=>(badges||[]).find(b=>b.statut!=="Archivé"&&cle(b.prenom,b.nom)===cle(l.prenom,l.nom));
-  const ligne=(t,l)=>{const f=l.fss,c=l.collab;const existant=!c&&f?collabDe(l):null;const ref=c||existant;
-    const mgT=String(ref&&ref.manager||"").trim(),mgF=String(f&&f.manager||"").trim();const mgDiff=ref&&f&&mgT&&mgF&&mgT!=="NC"&&norm(mgT)!==norm(mgF);
+  const infoMg=l=>{const f=l.fss,c=l.collab;const existant=!c&&f?collabDe(l):null;const ref=c||existant;
+    const mgT=String(ref&&ref.manager||"").trim(),mgF=String(f&&f.manager||"").trim();return{existant,ref,mgT,mgF,mgDiff:!!(ref&&f&&mgT&&mgF&&mgT!=="NC"&&norm(mgT)!==norm(mgF))};};
+  const ligne=(t,l)=>{const f=l.fss,c=l.collab;const{existant,ref,mgT,mgF,mgDiff}=infoMg(l);
     return el("div",{key:t+l.d+l.nom+l.prenom,className:"ad-l"+(l.d<auj?" passe":"")+(l.d===auj?" auj":"")},
       el("div",{className:"ad-d"},fr(l.d)),
       el("div",{className:"ad-n"},el("b",null,cap(l.prenom)+" "+String(l.nom||"").toUpperCase()),l.manager&&l.manager!=="NC"?el("span",null,"Manager : "+l.manager):null),
@@ -3698,7 +3727,11 @@ function VueArriveesDeparts({badges,setBadges,fssData,settings,canAccess,setView
         el("button",{type:"button",className:"ad-p "+(f?(f.cloture||f.statut==="Terminée"?"ok":"att"):"non"),onClick:()=>{if(f&&canAccess("field_support"))setView("field_support");}},
           f?"Field Support : "+(f.cloture?"Terminée":f.statut==="A traiter"?"À traiter":f.statut||"—"):"Pas de fiche Field Support"),
         c&&c.sans_mail_auto?el("span",{className:"ad-p muet",title:"Aucun mail automatique : envoi depuis la fiche"},"Mails à la main"):null),
-      mgDiff&&el("div",{className:"ad-conflit"},el("span",null,"⚠️ Manager différent : "+mgT+" (tableau) · "+mgF+" (Field Support)")),
+      l.doublon&&el("div",{className:"ad-conflit"},el("span",null,"⚠️ "+l.doublon.length+" lignes pour "+String(l.nom||"").toUpperCase()+" — sans doute la même personne"),
+        el("button",{type:"button",onClick:()=>setFus({t,rows:l.doublon,prenom:l.doublon[0].prenom,date:l.doublon[0].d,manager:""})},"Fusionner…")),
+      mgDiff&&el("div",{className:"ad-conflit"},el("span",null,"⚠️ Manager différent — lequel est le bon ?"),
+        el("button",{type:"button",onClick:()=>garderManager(ref,f,mgT)},mgT+" (tableau)"),
+        el("button",{type:"button",onClick:()=>garderManager(ref,f,mgF)},mgF+" (Field Support)")),
       l.conflit&&el("div",{className:"ad-conflit"},el("span",null,"⚠️ Deux dates différentes — laquelle est la bonne ?"),
         el("button",{type:"button",onClick:()=>garderDate(t,l,l.conflit.tableau)},frAn(l.conflit.tableau)+" (tableau)"),
         el("button",{type:"button",onClick:()=>garderDate(t,l,l.conflit.fss)},frAn(l.conflit.fss)+" (Field Support)")));};
@@ -3728,6 +3761,24 @@ function VueArriveesDeparts({badges,setBadges,fssData,settings,canAccess,setView
     showToast("✅ "+(dep?"Départ":"Arrivée")+" de "+p.prenom+" "+p.nom+" enregistré"+(dep?"":"e"));setPrep(null);};
   const champ=(k,l,type)=>el("label",{className:"ad-f"},el("span",null,l),k==="situation"?el("select",{value:prep[k],onChange:e=>setPrep({...prep,[k]:e.target.value})},el("option",null,"Arrivée"),el("option",null,"Départ"))
     :el("input",{type:type||"text",value:prep[k]||"",onChange:e=>setPrep({...prep,[k]:e.target.value})}));
+  const modaleFus=()=>{const vals=k=>[...new Map(fus.rows.map(r=>k==="d"?r.d:k==="m"?String((r.collab&&r.collab.manager)||(r.fss&&r.fss.manager)||r.manager||"").trim():r.prenom).filter(v=>v&&v!=="NC").map(v=>[k==="p"?cle(v,""):v,v])).values()];
+      const choix=(k,lib,fmt)=>{const v=vals(k);if(v.length<2)return null;return el("div",{style:{margin:"8px 0"}},el("div",{className:"ad-f"},el("span",null,lib)),
+        el("div",{style:{display:"flex",flexWrap:"wrap",gap:6,marginTop:4}},v.map(x=>el("button",{key:x,type:"button",className:"btn "+(fus[k==="p"?"prenom":k==="d"?"date":"manager"]===x?"btn-primary":"btn-outline"),style:{fontSize:12},onClick:()=>setFus({...fus,[k==="p"?"prenom":k==="d"?"date":"manager"]:x})},fmt?fmt(x):x))));};
+      return el("div",{className:"inv-fond",onClick:e=>{if(e.target===e.currentTarget)setFus(null);}},el("div",{className:"inv-boite",style:{width:"min(520px,100%)"}},
+        el("div",{className:"inv-t"},el("b",null,"Fusionner — "+String(fus.rows[0].nom||"").toUpperCase()),el("button",{type:"button",className:"inv-x",onClick:()=>setFus(null)},"×")),
+        el("p",{className:"inv-aide"},"Choisis les bonnes informations. Il restera une seule fiche collaborateur et une seule fiche Field Support (la plus complète est gardée, le doublon est supprimé)."),
+        choix("p","Prénom"),choix("d","Date",frAn),choix("m","Manager"),
+        el("div",{className:"inv-b"},el("button",{type:"button",className:"btn btn-outline",onClick:()=>setFus(null)},"Ce sont des personnes différentes"),
+          el("button",{type:"button",className:"btn btn-primary",onClick:()=>fusionner(fus)},"Fusionner"))));};
+  const listeCoh=t=>{const vus=new Set();return Object.values(lignes[t]).filter(l=>l.d>=il30).sort((a,b)=>a.d<b.d?-1:1).filter(l=>{
+      if(l.doublon){if(l.doublon.some(x=>vus.has(x)))return false;l.doublon.forEach(x=>vus.add(x));return true;}return !!(l.conflit||infoMg(l).mgDiff);});};
+  if(coherence){const A=listeCoh("arr"),D=listeCoh("dep");const n=A.length+D.length;
+    const bloc=(t,titre,L)=>L.length?el("div",{className:"ad-col",style:{marginBottom:16}},el("div",{className:"ad-t"},el("i",{className:"ad-pt "+t}),titre,el("span",null,L.length+" à corriger")),L.map(l=>ligne(t,l))):null;
+    return el("div",{className:"ad"},
+      el("div",{className:"ad-h"},el("p",null,"Différences entre le tableau des collaborateurs et Field Support (arrivées et départs à venir et des 30 derniers jours). Choisis la bonne information : elle est enregistrée des deux côtés.")),
+      fus&&modaleFus(),
+      n?el("div",{className:"ad-cols"},el("div",null,bloc("arr","Arrivées",A)),el("div",null,bloc("dep","Départs",D)))
+       :el("div",{className:"ad-col"},el("div",{className:"ad-vide",style:{padding:"28px 14px"}},"✅ Aucune incohérence : le tableau et Field Support disent la même chose.")));}
   return el("div",{className:"ad"},
     el("div",{className:"ad-h"},el("p",null,"Arrivées et départs prévus, d'après le tableau des collaborateurs et les fiches Field Support."),
       el("button",{type:"button",className:"btn btn-primary",onClick:()=>setVoirInvit(true)},"📅 Ajouter depuis Outlook")),
@@ -3738,6 +3789,7 @@ function VueArriveesDeparts({badges,setBadges,fssData,settings,canAccess,setView
       canAccess("field_support")&&el("label",{className:"ad-c"},el("input",{type:"checkbox",checked:!!prep.fss,onChange:e=>setPrep({...prep,fss:e.target.checked})}),"Créer aussi la fiche Field Support (le service IT reçoit un mail tout de suite)"),
       el("div",{className:"ad-b"},el("button",{type:"button",className:"btn btn-outline",onClick:()=>setPrep(null)},"Annuler"),el("button",{type:"button",className:"btn btn-primary",onClick:valider},"Enregistrer"))),
     voirInvit&&el(ImportInvitation,{onClose:()=>setVoirInvit(false),onLire:r=>{setVoirInvit(false);setPrep({...r,tableau:true,fss:false});}}),
+    fus&&modaleFus(),
     el("div",{className:"ad-cols"},colonne("arr","Arrivées"),colonne("dep","Départs")));
 }
 (function(){try{var st=document.createElement("style");st.textContent=".ad-h{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-bottom:14px}.ad-h p{margin:0;font-size:13px;color:var(--text2,#64748B)}.ad-cols{display:grid;grid-template-columns:1fr 1fr;gap:16px;align-items:start}@media(max-width:900px){.ad-cols{grid-template-columns:1fr}}.ad-col{background:var(--surface,#fff);border:1px solid var(--border,#E2E8F0);border-radius:var(--radius-lg,14px);overflow:hidden}.ad-t{display:flex;align-items:center;gap:8px;padding:12px 14px;font-weight:700;font-size:14px;border-bottom:1px solid var(--border,#E2E8F0)}.ad-t span{margin-left:auto;font-weight:500;font-size:12px;color:var(--text3,#94A3B8)}.ad-pt{width:9px;height:9px;border-radius:50%;display:inline-block}.ad-pt.arr{background:#16A34A}.ad-pt.dep{background:#DC2626}"
@@ -4890,6 +4942,7 @@ const ICONES_NAV={
   arrivees:'<path d="M4 12h11"/><path d="M11 7l5 5-5 5"/><path d="M15 4h4a1 1 0 0 1 1 1v14a1 1 0 0 1-1 1h-4"/>',
   historique_colis:'<path d="M4 8l8-4 8 4v8l-8 4-8-4z"/><path d="M4 8l8 4 8-4M12 12v8"/>',
   calendrier:'<rect x="3.5" y="5" width="17" height="15.5" rx="2"/><path d="M3.5 9.5h17M8 3v4M16 3v4"/>',
+  coherence:'<path d="M9 11l3 3 8-8"/><path d="M20 12v7a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h9"/>',
   notifications:'<path d="M6 16V11a6 6 0 0 1 12 0v5l1.5 2h-15z"/><path d="M10 20a2 2 0 0 0 4 0"/>',
   aide:'<circle cx="12" cy="12" r="9"/><path d="M9.5 9.5a2.5 2.5 0 1 1 3.5 2.3c-.6.3-1 .8-1 1.5V14"/><circle cx="12" cy="17.2" r=".6" fill="currentColor"/>',
   settings:'<circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/>',
@@ -4913,7 +4966,7 @@ function Courbe({vals,col,w=104,h=34}){if(!vals||vals.length<2)return null;const
   const pts=vals.map((v,i)=>[i*w/(vals.length-1),h-2-(v-mn)/((mx-mn)||1)*(h-6)]);const d="M"+pts.map(p=>p[0].toFixed(1)+","+p[1].toFixed(1)).join(" L");
   return React.createElement("svg",{className:"courbe",width:w,height:h,viewBox:"0 0 "+w+" "+h},React.createElement("path",{d:d+" L"+w+","+h+" L0,"+h+" Z",fill:col,opacity:.12}),React.createElement("path",{d,fill:"none",stroke:col,strokeWidth:2,strokeLinecap:"round",strokeLinejoin:"round"}));}
 // ── Menu caché (☰) ──
-const MENU_SECTIONS=[["",["accueil","calendrier"]],["Personnes",["arrivees","collaborateurs","field_support"]],["Accueil physique",["gestion_accueil","gestion_accueil_hex","historique_pret","historique_colis"]],["",["casiers"]],["Outils",["impression","rapport"]]];
+const MENU_SECTIONS=[["",["accueil","calendrier"]],["Personnes",["arrivees","collaborateurs","field_support"]],["Accueil physique",["gestion_accueil","gestion_accueil_hex","historique_pret","historique_colis"]],["",["casiers"]],["Outils",["impression","rapport","coherence"]]];
 const MENU_ICONES={"Personnes":"collaborateurs","Accueil physique":"gestion_accueil","Outils":"impression"};
 function personneConnectee(session){
   const ROLES={admin:"Administrateur",user:"Utilisateur",it:"Service IT",badge:"Gestion des badges"};
@@ -6210,6 +6263,7 @@ useEffect(()=>{
     {id:"historique_pret",label:"Historique des prêts",icon:"🕐"},
     {id:"historique_colis",label:"Historique des colis",icon:"📦"},
     {id:"calendrier",label:"Calendrier",icon:"📅"},
+    {id:"coherence",label:"Cohérence",icon:"🧩"},
   ];
   const archivesCount=badges.filter(b=>b.statut==="Archivé").length;
   const histoCount=histo.length;
@@ -6217,6 +6271,7 @@ useEffect(()=>{
   const canAccess=useCallback(viewId=>{
     if(viewId==="aide"||viewId==="calendrier")return true;
     if(viewId==="arrivees")return canAccess("collaborateurs")||canAccess("field_support");
+    if(viewId==="coherence")return canAccess("collaborateurs")&&canAccess("field_support");
     if(viewId==="gestion_accueil")return canAccess("badges_pret")||canAccess("colis");
     // Rôle badge : accès exclusif à badges_pret
     if(viewId==="historique_colis")return canAccess("colis");
@@ -6271,6 +6326,7 @@ useEffect(()=>{
       case "historique_pret": return React.createElement(VueHistoriquePret,{site:window._siteSession});
       case "historique_colis": return React.createElement(VueHistoriqueColis,{site:window._siteSession});
       case "calendrier": return React.createElement(VueCalendrier,{fssData,badges,canAccess,setView});
+      case "coherence": return React.createElement(VueArriveesDeparts,{badges,setBadges,fssData,settings,canAccess,setView,showToast,addLog,coherence:true});
       case "arrivees": return React.createElement("div",null,!isIT&&React.createElement(VueAccueil,{...props,notifExtra,fssData,setFssData,isIT,histo,openHistorique:()=>{},openDonnees:()=>{},pendingOpen:null,setPendingOpen:()=>{},seulMouvements:true}),React.createElement(VueArriveesDeparts,{badges,setBadges,fssData,settings,canAccess,setView,showToast,addLog}));
       case "gestion_accueil_hex": return React.createElement(VueGestionAccueil,{key:"hex",onglet:"gestion_accueil",setView,canAccess,showToast,addLog,badges,site:"Hexagone"});
       case "gestion_accueil": case "badges_pret": case "colis": return React.createElement(VueGestionAccueil,{key:"lev",onglet:view,setView,canAccess,showToast,addLog,badges,site:(session&&session.role!=="admin"&&session.site)||"Levallois"});
@@ -9480,7 +9536,7 @@ async function sbEcrireCollab(row,insert){
   return res;
 }
 // ── Onglet Arrivées / Départs ──
-function VueArriveesDeparts({badges,setBadges,fssData,settings,canAccess,setView,showToast,addLog}){
+function VueArriveesDeparts({badges,setBadges,fssData,settings,canAccess,setView,showToast,addLog,coherence}){
   const el=React.createElement;
   const[voirInvit,setVoirInvit]=React.useState(false);const[prep,setPrep]=React.useState(null);const[voirPasse,setVoirPasse]=React.useState(false);
   const auj=isoLocal(new Date());const il30=isoLocal(new Date(Date.now()-30*864e5));
@@ -9497,6 +9553,34 @@ function VueArriveesDeparts({badges,setBadges,fssData,settings,canAccess,setView
       const ecart=Math.abs(new Date(c.d)-new Date(f.d))/864e5;if(!(c.d.slice(5)===f.d.slice(5)&&ecart<400)&&ecart>90)return;
       ks.forEach(k=>delete lignes[t][k]);const d=c.d<f.d?c.d:f.d;lignes[t][d+cle(c.prenom,c.nom)]={...c,d,fss:f.fss,conflit:{tableau:c.d,fss:f.d}};});});
   const frAn=d=>d.split("-").reverse().join("/");
+  // Doublons : plusieurs lignes au même nom de famille, même prénom ou dates proches (moins d'un mois)
+  const cleNom=n=>String(n||"").toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g,"").replace(/[^a-z]/g,"");
+  ["arr","dep"].forEach(t=>{const g={};Object.values(lignes[t]).forEach(l=>{(g[cleNom(l.nom)]=g[cleNom(l.nom)]||[]).push(l);});
+    Object.values(g).forEach(L=>{if(L.length<2)return;L.forEach(l=>{const autres=L.filter(x=>{if(x===l)return false;const j=Math.abs(new Date(x.d)-new Date(l.d))/864e5;return cle(x.prenom,"")===cle(l.prenom,"")?j<=180:j<=31;});if(autres.length)l.doublon=[l,...autres];});});});
+  const[fus,setFus]=React.useState(null);
+  const completude=b=>["matricule","serie","email","casier"].filter(k=>{const v=String(b[k]||"").trim();return v&&v!=="0"&&v.toUpperCase()!=="NC";}).length;
+  const remplieF=f=>["matPC","ritm","matRecu","idMat","dateRecep","matDonne","commentaires"].filter(k=>String(f[k]||"").trim()).length+(f.statut&&f.statut!=="A traiter"?2:0);
+  const fusionner=async({t,rows,prenom,date,manager})=>{setFus(null);
+    const collabs=[...new Map(rows.map(r=>r.collab||collabDe(r)).filter(Boolean).map(b=>[b.id,b])).values()].sort((a,b)=>completude(b)-completude(a));
+    const nom=String(rows[0].nom||"").toUpperCase();
+    if(collabs.length>1&&collabs.slice(1).some(b=>completude(b)>0)){showToast("⚠️ Plusieurs fiches collaborateur remplies pour "+nom+" : supprime la mauvaise dans Collaborateurs","err");return;}
+    const champDate=t==="dep"?"date_sortie_prevue":"date_entree";
+    if(collabs.length){const garde={...collabs[0],prenom,nom,[champDate]:date,...(manager?{manager}:{})};setBadges(x=>x.filter(b=>!collabs.slice(1).some(c=>c.id===b.id)).map(b=>b.id===garde.id?garde:b));
+      if(sb){const r=await sbEcrireCollab(garde,false);if(r.error){showToast("⚠️ Pas sauvegardé — "+messageErreurBase(r.error),"err");return;}
+        for(const c of collabs.slice(1)){const{error}=await sb.from("lp24_badges").delete().eq("id",c.id);if(error){showToast("⚠️ Doublon non supprimé — "+messageErreurBase(error),"err");return;}}}}
+    const sit=t==="dep"?"Départ":"Arrivée";const prenoms=new Set(rows.map(r=>cle(r.prenom,"")));
+    const toutes=(window._fssData||[]).filter(f=>cleNom(f.nom)===cleNom(nom)&&prenoms.has(cle(f.prenom,"")));
+    const memes=toutes.filter(f=>f.situation===sit&&!f.cloture).sort((a,b)=>remplieF(b)-remplieF(a));const sup=new Set(memes.slice(1).map(f=>f.id));
+    const maj=f=>({...f,prenom,nom,...(memes[0]&&f.id===memes[0].id?{dateEvt:date,...(manager?{manager}:{})}:{})});
+    window._setFssData&&window._setFssData(x=>(x||[]).filter(f=>!sup.has(f.id)).map(f=>toutes.some(g=>g.id===f.id)?maj(f):f));
+    if(sb){for(const id of sup){if(typeof id==="number"){const{error}=await sb.from("lp24_fss").delete().eq("id",id);if(error){showToast("⚠️ Doublon non supprimé — "+messageErreurBase(error),"err");return;}}}
+      for(const f of toutes){if(sup.has(f.id)||typeof f.id!=="number")continue;const m=maj(f);const{error}=await sb.from("lp24_fss").update({prenom:m.prenom,nom:m.nom,dateEvt:m.dateEvt,manager:m.manager}).eq("id",f.id);if(error){showToast("⚠️ Pas sauvegardé — "+messageErreurBase(error),"err");return;}}}
+    addLog&&addLog("Fiches fusionnées",prenom+" "+nom+" — "+frAn(date));
+    showToast("✅ "+prenom+" "+nom+" : une seule fiche, le "+frAn(date)+(collabs.length>1||sup.size?" (doublon supprimé)":""));};
+  const garderManager=async(ref,f,m)=>{
+    if(ref&&String(ref.manager||"")!==m){const u={...ref,manager:m};setBadges(x=>x.map(b=>b.id===u.id?u:b));if(sb){const r=await sbEcrireCollab(u,false);if(r.error){showToast("⚠️ Pas sauvegardé — "+messageErreurBase(r.error),"err");return;}}}
+    if(f&&String(f.manager||"")!==m){window._setFssData&&window._setFssData(x=>(x||[]).map(g=>g.id===f.id?{...g,manager:m}:g));if(sb&&typeof f.id==="number"){const{error}=await sb.from("lp24_fss").update({manager:m}).eq("id",f.id);if(error){showToast("⚠️ Pas sauvegardé — "+messageErreurBase(error),"err");return;}}}
+    showToast("✅ Manager « "+m+" » gardé des deux côtés");};
   const garderDate=async(t,l,d)=>{const c=l.collab,f=l.fss;
     if(c){const u={...c,[t==="dep"?"date_sortie_prevue":"date_entree"]:d};setBadges(x=>x.map(b=>b.id===c.id?u:b));if(sb){const r=await sbEcrireCollab(u,false);if(r.error){showToast("⚠️ Pas sauvegardé — "+messageErreurBase(r.error),"err");return;}}}
     if(f){window._setFssData&&window._setFssData(x=>(x||[]).map(g=>g.id===f.id?{...g,dateEvt:d}:g));if(sb&&typeof f.id==="number"){const{error}=await sb.from("lp24_fss").update({dateEvt:d}).eq("id",f.id);if(error){showToast("⚠️ Pas sauvegardé — "+messageErreurBase(error),"err");return;}}}
@@ -9504,8 +9588,9 @@ function VueArriveesDeparts({badges,setBadges,fssData,settings,canAccess,setView
   const fr=d=>new Date(d+"T12:00:00").toLocaleDateString("fr-FR",{weekday:"short",day:"2-digit",month:"2-digit"});
   const cap=x=>String(x||"").toLowerCase().replace(/(^|[\s-])(\S)/g,(m,a,c)=>a+c.toUpperCase());
   const collabDe=l=>(badges||[]).find(b=>b.statut!=="Archivé"&&cle(b.prenom,b.nom)===cle(l.prenom,l.nom));
-  const ligne=(t,l)=>{const f=l.fss,c=l.collab;const existant=!c&&f?collabDe(l):null;const ref=c||existant;
-    const mgT=String(ref&&ref.manager||"").trim(),mgF=String(f&&f.manager||"").trim();const mgDiff=ref&&f&&mgT&&mgF&&mgT!=="NC"&&norm(mgT)!==norm(mgF);
+  const infoMg=l=>{const f=l.fss,c=l.collab;const existant=!c&&f?collabDe(l):null;const ref=c||existant;
+    const mgT=String(ref&&ref.manager||"").trim(),mgF=String(f&&f.manager||"").trim();return{existant,ref,mgT,mgF,mgDiff:!!(ref&&f&&mgT&&mgF&&mgT!=="NC"&&norm(mgT)!==norm(mgF))};};
+  const ligne=(t,l)=>{const f=l.fss,c=l.collab;const{existant,ref,mgT,mgF,mgDiff}=infoMg(l);
     return el("div",{key:t+l.d+l.nom+l.prenom,className:"ad-l"+(l.d<auj?" passe":"")+(l.d===auj?" auj":"")},
       el("div",{className:"ad-d"},fr(l.d)),
       el("div",{className:"ad-n"},el("b",null,cap(l.prenom)+" "+String(l.nom||"").toUpperCase()),l.manager&&l.manager!=="NC"?el("span",null,"Manager : "+l.manager):null),
@@ -9515,7 +9600,11 @@ function VueArriveesDeparts({badges,setBadges,fssData,settings,canAccess,setView
         el("button",{type:"button",className:"ad-p "+(f?(f.cloture||f.statut==="Terminée"?"ok":"att"):"non"),onClick:()=>{if(f&&canAccess("field_support"))setView("field_support");}},
           f?"Field Support : "+(f.cloture?"Terminée":f.statut==="A traiter"?"À traiter":f.statut||"—"):"Pas de fiche Field Support"),
         c&&c.sans_mail_auto?el("span",{className:"ad-p muet",title:"Aucun mail automatique : envoi depuis la fiche"},"Mails à la main"):null),
-      mgDiff&&el("div",{className:"ad-conflit"},el("span",null,"⚠️ Manager différent : "+mgT+" (tableau) · "+mgF+" (Field Support)")),
+      l.doublon&&el("div",{className:"ad-conflit"},el("span",null,"⚠️ "+l.doublon.length+" lignes pour "+String(l.nom||"").toUpperCase()+" — sans doute la même personne"),
+        el("button",{type:"button",onClick:()=>setFus({t,rows:l.doublon,prenom:l.doublon[0].prenom,date:l.doublon[0].d,manager:""})},"Fusionner…")),
+      mgDiff&&el("div",{className:"ad-conflit"},el("span",null,"⚠️ Manager différent — lequel est le bon ?"),
+        el("button",{type:"button",onClick:()=>garderManager(ref,f,mgT)},mgT+" (tableau)"),
+        el("button",{type:"button",onClick:()=>garderManager(ref,f,mgF)},mgF+" (Field Support)")),
       l.conflit&&el("div",{className:"ad-conflit"},el("span",null,"⚠️ Deux dates différentes — laquelle est la bonne ?"),
         el("button",{type:"button",onClick:()=>garderDate(t,l,l.conflit.tableau)},frAn(l.conflit.tableau)+" (tableau)"),
         el("button",{type:"button",onClick:()=>garderDate(t,l,l.conflit.fss)},frAn(l.conflit.fss)+" (Field Support)")));};
@@ -9545,6 +9634,24 @@ function VueArriveesDeparts({badges,setBadges,fssData,settings,canAccess,setView
     showToast("✅ "+(dep?"Départ":"Arrivée")+" de "+p.prenom+" "+p.nom+" enregistré"+(dep?"":"e"));setPrep(null);};
   const champ=(k,l,type)=>el("label",{className:"ad-f"},el("span",null,l),k==="situation"?el("select",{value:prep[k],onChange:e=>setPrep({...prep,[k]:e.target.value})},el("option",null,"Arrivée"),el("option",null,"Départ"))
     :el("input",{type:type||"text",value:prep[k]||"",onChange:e=>setPrep({...prep,[k]:e.target.value})}));
+  const modaleFus=()=>{const vals=k=>[...new Map(fus.rows.map(r=>k==="d"?r.d:k==="m"?String((r.collab&&r.collab.manager)||(r.fss&&r.fss.manager)||r.manager||"").trim():r.prenom).filter(v=>v&&v!=="NC").map(v=>[k==="p"?cle(v,""):v,v])).values()];
+      const choix=(k,lib,fmt)=>{const v=vals(k);if(v.length<2)return null;return el("div",{style:{margin:"8px 0"}},el("div",{className:"ad-f"},el("span",null,lib)),
+        el("div",{style:{display:"flex",flexWrap:"wrap",gap:6,marginTop:4}},v.map(x=>el("button",{key:x,type:"button",className:"btn "+(fus[k==="p"?"prenom":k==="d"?"date":"manager"]===x?"btn-primary":"btn-outline"),style:{fontSize:12},onClick:()=>setFus({...fus,[k==="p"?"prenom":k==="d"?"date":"manager"]:x})},fmt?fmt(x):x))));};
+      return el("div",{className:"inv-fond",onClick:e=>{if(e.target===e.currentTarget)setFus(null);}},el("div",{className:"inv-boite",style:{width:"min(520px,100%)"}},
+        el("div",{className:"inv-t"},el("b",null,"Fusionner — "+String(fus.rows[0].nom||"").toUpperCase()),el("button",{type:"button",className:"inv-x",onClick:()=>setFus(null)},"×")),
+        el("p",{className:"inv-aide"},"Choisis les bonnes informations. Il restera une seule fiche collaborateur et une seule fiche Field Support (la plus complète est gardée, le doublon est supprimé)."),
+        choix("p","Prénom"),choix("d","Date",frAn),choix("m","Manager"),
+        el("div",{className:"inv-b"},el("button",{type:"button",className:"btn btn-outline",onClick:()=>setFus(null)},"Ce sont des personnes différentes"),
+          el("button",{type:"button",className:"btn btn-primary",onClick:()=>fusionner(fus)},"Fusionner"))));};
+  const listeCoh=t=>{const vus=new Set();return Object.values(lignes[t]).filter(l=>l.d>=il30).sort((a,b)=>a.d<b.d?-1:1).filter(l=>{
+      if(l.doublon){if(l.doublon.some(x=>vus.has(x)))return false;l.doublon.forEach(x=>vus.add(x));return true;}return !!(l.conflit||infoMg(l).mgDiff);});};
+  if(coherence){const A=listeCoh("arr"),D=listeCoh("dep");const n=A.length+D.length;
+    const bloc=(t,titre,L)=>L.length?el("div",{className:"ad-col",style:{marginBottom:16}},el("div",{className:"ad-t"},el("i",{className:"ad-pt "+t}),titre,el("span",null,L.length+" à corriger")),L.map(l=>ligne(t,l))):null;
+    return el("div",{className:"ad"},
+      el("div",{className:"ad-h"},el("p",null,"Différences entre le tableau des collaborateurs et Field Support (arrivées et départs à venir et des 30 derniers jours). Choisis la bonne information : elle est enregistrée des deux côtés.")),
+      fus&&modaleFus(),
+      n?el("div",{className:"ad-cols"},el("div",null,bloc("arr","Arrivées",A)),el("div",null,bloc("dep","Départs",D)))
+       :el("div",{className:"ad-col"},el("div",{className:"ad-vide",style:{padding:"28px 14px"}},"✅ Aucune incohérence : le tableau et Field Support disent la même chose.")));}
   return el("div",{className:"ad"},
     el("div",{className:"ad-h"},el("p",null,"Arrivées et départs prévus, d'après le tableau des collaborateurs et les fiches Field Support."),
       el("button",{type:"button",className:"btn btn-primary",onClick:()=>setVoirInvit(true)},"📅 Ajouter depuis Outlook")),
@@ -9555,6 +9662,7 @@ function VueArriveesDeparts({badges,setBadges,fssData,settings,canAccess,setView
       canAccess("field_support")&&el("label",{className:"ad-c"},el("input",{type:"checkbox",checked:!!prep.fss,onChange:e=>setPrep({...prep,fss:e.target.checked})}),"Créer aussi la fiche Field Support (le service IT reçoit un mail tout de suite)"),
       el("div",{className:"ad-b"},el("button",{type:"button",className:"btn btn-outline",onClick:()=>setPrep(null)},"Annuler"),el("button",{type:"button",className:"btn btn-primary",onClick:valider},"Enregistrer"))),
     voirInvit&&el(ImportInvitation,{onClose:()=>setVoirInvit(false),onLire:r=>{setVoirInvit(false);setPrep({...r,tableau:true,fss:false});}}),
+    fus&&modaleFus(),
     el("div",{className:"ad-cols"},colonne("arr","Arrivées"),colonne("dep","Départs")));
 }
 (function(){try{var st=document.createElement("style");st.textContent=".ad-h{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-bottom:14px}.ad-h p{margin:0;font-size:13px;color:var(--text2,#64748B)}.ad-cols{display:grid;grid-template-columns:1fr 1fr;gap:16px;align-items:start}@media(max-width:900px){.ad-cols{grid-template-columns:1fr}}.ad-col{background:var(--surface,#fff);border:1px solid var(--border,#E2E8F0);border-radius:var(--radius-lg,14px);overflow:hidden}.ad-t{display:flex;align-items:center;gap:8px;padding:12px 14px;font-weight:700;font-size:14px;border-bottom:1px solid var(--border,#E2E8F0)}.ad-t span{margin-left:auto;font-weight:500;font-size:12px;color:var(--text3,#94A3B8)}.ad-pt{width:9px;height:9px;border-radius:50%;display:inline-block}.ad-pt.arr{background:#16A34A}.ad-pt.dep{background:#DC2626}"
@@ -10748,6 +10856,7 @@ const ICONES_NAV={
   arrivees:'<path d="M4 12h11"/><path d="M11 7l5 5-5 5"/><path d="M15 4h4a1 1 0 0 1 1 1v14a1 1 0 0 1-1 1h-4"/>',
   historique_colis:'<path d="M4 8l8-4 8 4v8l-8 4-8-4z"/><path d="M4 8l8 4 8-4M12 12v8"/>',
   calendrier:'<rect x="3.5" y="5" width="17" height="15.5" rx="2"/><path d="M3.5 9.5h17M8 3v4M16 3v4"/>',
+  coherence:'<path d="M9 11l3 3 8-8"/><path d="M20 12v7a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h9"/>',
   notifications:'<path d="M6 16V11a6 6 0 0 1 12 0v5l1.5 2h-15z"/><path d="M10 20a2 2 0 0 0 4 0"/>',
   aide:'<circle cx="12" cy="12" r="9"/><path d="M9.5 9.5a2.5 2.5 0 1 1 3.5 2.3c-.6.3-1 .8-1 1.5V14"/><circle cx="12" cy="17.2" r=".6" fill="currentColor"/>',
   settings:'<circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/>',
@@ -10771,7 +10880,7 @@ function Courbe({vals,col,w=104,h=34}){if(!vals||vals.length<2)return null;const
   const pts=vals.map((v,i)=>[i*w/(vals.length-1),h-2-(v-mn)/((mx-mn)||1)*(h-6)]);const d="M"+pts.map(p=>p[0].toFixed(1)+","+p[1].toFixed(1)).join(" L");
   return React.createElement("svg",{className:"courbe",width:w,height:h,viewBox:"0 0 "+w+" "+h},React.createElement("path",{d:d+" L"+w+","+h+" L0,"+h+" Z",fill:col,opacity:.12}),React.createElement("path",{d,fill:"none",stroke:col,strokeWidth:2,strokeLinecap:"round",strokeLinejoin:"round"}));}
 // ── Menu caché (☰) ──
-const MENU_SECTIONS=[["",["accueil","calendrier"]],["Personnes",["arrivees","collaborateurs","field_support"]],["Accueil physique",["gestion_accueil","gestion_accueil_hex","historique_pret","historique_colis"]],["",["casiers"]],["Outils",["impression","rapport"]]];
+const MENU_SECTIONS=[["",["accueil","calendrier"]],["Personnes",["arrivees","collaborateurs","field_support"]],["Accueil physique",["gestion_accueil","gestion_accueil_hex","historique_pret","historique_colis"]],["",["casiers"]],["Outils",["impression","rapport","coherence"]]];
 const MENU_ICONES={"Personnes":"collaborateurs","Accueil physique":"gestion_accueil","Outils":"impression"};
 function MenuLateral({visibleNav,navActif,setView,onClose,session,notifs,ouvrirReglages,peutReglages,logout}){
   const el=React.createElement;
@@ -12110,6 +12219,7 @@ useEffect(()=>{
     {id:"historique_pret",label:"Historique des prêts",icon:"🕐"},
     {id:"historique_colis",label:"Historique des colis",icon:"📦"},
     {id:"calendrier",label:"Calendrier",icon:"📅"},
+    {id:"coherence",label:"Cohérence",icon:"🧩"},
   ];
   const archivesCount=badges.filter(b=>b.statut==="Archivé").length;
   const histoCount=histo.length;
@@ -12117,6 +12227,7 @@ useEffect(()=>{
   const canAccess=useCallback(viewId=>{
     if(viewId==="aide"||viewId==="calendrier")return true;
     if(viewId==="arrivees")return canAccess("collaborateurs")||canAccess("field_support");
+    if(viewId==="coherence")return canAccess("collaborateurs")&&canAccess("field_support");
     if(viewId==="gestion_accueil")return canAccess("badges_pret")||canAccess("colis");
     // Rôle badge : accès exclusif à badges_pret
     if(viewId==="historique_colis")return canAccess("colis");
@@ -12172,6 +12283,7 @@ useEffect(()=>{
       case "historique_pret": return React.createElement(VueHistoriquePret,{site:window._siteSession});
       case "historique_colis": return React.createElement(VueHistoriqueColis,{site:window._siteSession});
       case "calendrier": return React.createElement(VueCalendrier,{fssData,badges,canAccess,setView});
+      case "coherence": return React.createElement(VueArriveesDeparts,{badges,setBadges,fssData,settings,canAccess,setView,showToast,addLog,coherence:true});
       case "arrivees": return React.createElement("div",null,!isIT&&React.createElement(VueAccueil,{...props,notifExtra,fssData,setFssData,isIT,histo,openHistorique:()=>{},openDonnees:()=>{},pendingOpen:null,setPendingOpen:()=>{},seulMouvements:true}),React.createElement(VueArriveesDeparts,{badges,setBadges,fssData,settings,canAccess,setView,showToast,addLog}));
       case "gestion_accueil_hex": return React.createElement(VueGestionAccueil,{key:"hex",onglet:"gestion_accueil",setView,canAccess,showToast,addLog,badges,site:"Hexagone"});
       case "gestion_accueil": case "badges_pret": case "colis": return React.createElement(VueGestionAccueil,{key:"lev",onglet:view,setView,canAccess,showToast,addLog,badges,site:(session&&session.role!=="admin"&&session.site)||"Levallois"});
