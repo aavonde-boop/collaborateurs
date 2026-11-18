@@ -822,7 +822,7 @@ body.dark .desktop-nav{background:rgba(20,27,46,.85)!important}
 .ml-sec{font-size:10.5px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:#64748B;padding:14px 10px 6px}
 .ml-it{display:flex;align-items:center;gap:11px;padding:9px 10px;border-radius:9px;font-weight:600;font-size:13.5px;color:#CBD5E1;background:none;border:none;cursor:pointer;text-align:left;font-family:inherit;width:100%}
 .ml-it:hover{background:rgba(255,255,255,.06);color:#fff}.ml-it.on{background:rgba(255,255,255,.12);color:#fff}
-.ml-n{margin-left:auto;background:rgba(255,255,255,.14);color:#E2E8F0;font-size:11px;border-radius:999px;padding:1px 8px}
+.ml-n{margin-left:auto;background:rgba(255,255,255,.14);color:#E2E8F0;font-size:11px;border-radius:999px;padding:1px 8px}.ml-n.alerte{background:#F59E0B;color:#1F2937;font-weight:700;min-width:20px;text-align:center}
 .ml-me{display:flex;align-items:center;gap:10px;padding:14px 8px 4px;margin-top:8px;border-top:1px solid rgba(255,255,255,.08)}.ml-bas{border-top:1px solid rgba(255,255,255,.08);padding-top:8px;margin-top:8px;display:flex;flex-direction:column;gap:2px}.ml-me .avatar{background:#2563EB!important;color:#fff}.ml-out{margin-left:auto;background:none;border:none;color:#94A3B8;cursor:pointer;padding:6px;border-radius:8px;display:flex}.ml-out:hover{background:rgba(255,255,255,.08);color:#fff}
 .ml-me b{color:#fff;font-size:13px;display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.ml-me span{font-size:11.5px;color:#94A3B8}
 .avatar{display:inline-grid;place-items:center;border-radius:50%;color:#fff;font-weight:800;flex-shrink:0;letter-spacing:.01em;line-height:1}
@@ -3663,9 +3663,8 @@ async function sbEcrireCollab(row,insert){
   return res;
 }
 // ── Onglet Arrivées / Départs ──
-function VueArriveesDeparts({badges,setBadges,fssData,settings,canAccess,setView,showToast,addLog,coherence}){
-  const el=React.createElement;
-  const[voirInvit,setVoirInvit]=React.useState(false);const[prep,setPrep]=React.useState(null);const[voirPasse,setVoirPasse]=React.useState(false);
+function adAnalyse(badges,fssData,ignores){
+  const ign=new Set(ignores||[]);
   const auj=isoLocal(new Date());const il30=isoLocal(new Date(Date.now()-30*864e5));
   const jour=x=>{const t=String(x||"").trim();let m=t.match(/^(\d{4})-(\d{2})-(\d{2})/);if(m)return m[0];m=t.match(/^(\d{1,2})[\/.-](\d{1,2})[\/.-](\d{4})/);return m?m[3]+"-"+m[2].padStart(2,"0")+"-"+m[1].padStart(2,"0"):"";};
   const cle=(p,n)=>(String(p||"")+" "+String(n||"")).toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g,"").replace(/[^a-z]/g,"");
@@ -3679,18 +3678,40 @@ function VueArriveesDeparts({badges,setBadges,fssData,settings,canAccess,setView
     Object.values(parNom).forEach(ks=>{if(ks.length<2)return;const L=ks.map(k=>lignes[t][k]);const c=L.find(l=>l.collab&&!l.fss),f=L.find(l=>l.fss&&!l.collab);if(!c||!f)return;
       const ecart=Math.abs(new Date(c.d)-new Date(f.d))/864e5;if(!(c.d.slice(5)===f.d.slice(5)&&ecart<400)&&ecart>90)return;
       ks.forEach(k=>delete lignes[t][k]);const d=c.d<f.d?c.d:f.d;lignes[t][d+cle(c.prenom,c.nom)]={...c,d,fss:f.fss,conflit:{tableau:c.d,fss:f.d}};});});
+  const cleNom=n=>String(n||"").toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g,"").replace(/[^a-z]/g,"");
+  const cleGroupe=(t,rows)=>t+"|"+cleNom(rows[0].nom)+"|"+rows.map(r=>r.d+cle(r.prenom,"")).sort().join(",");
+  ["arr","dep"].forEach(t=>{const g={};Object.values(lignes[t]).forEach(l=>{(g[cleNom(l.nom)]=g[cleNom(l.nom)]||[]).push(l);});
+    Object.values(g).forEach(L=>{if(L.length<2)return;L.forEach(l=>{const autres=L.filter(x=>{if(x===l)return false;const j=Math.abs(new Date(x.d)-new Date(l.d))/864e5;return cle(x.prenom,"")===cle(l.prenom,"")?j<=180:j<=31;});if(autres.length){const grp=[l,...autres];if(!ign.has(cleGroupe(t,grp)))l.doublon=grp;}});});});
+  const collabDe=l=>(badges||[]).find(b=>b.statut!=="Archivé"&&cle(b.prenom,b.nom)===cle(l.prenom,l.nom));
+  const infoMg=l=>{const f=l.fss,c=l.collab;const existant=!c&&f?collabDe(l):null;const ref=c||existant;
+    const mgT=String(ref&&ref.manager||"").trim(),mgF=String(f&&f.manager||"").trim();return{existant,ref,mgT,mgF,mgDiff:!!(ref&&f&&mgT&&mgF&&mgT!=="NC"&&norm(mgT)!==norm(mgF))};};
+  const listeCoh=t=>{const vus=new Set();return Object.values(lignes[t]).filter(l=>l.d>=il30).sort((a,b)=>a.d<b.d?-1:1).filter(l=>{
+      if(l.doublon){if(l.doublon.some(x=>vus.has(x)))return false;l.doublon.forEach(x=>vus.add(x));return true;}return !!(l.conflit||infoMg(l).mgDiff);});};
+  return{jour,cle,cleNom,lignes,collabDe,infoMg,listeCoh,cleGroupe};
+}
+function compterIncoherences(badges,fssData,ignores){try{const a=adAnalyse(badges,fssData,ignores);return a.listeCoh("arr").length+a.listeCoh("dep").length;}catch(e){return 0;}}
+function VueArriveesDeparts({badges,setBadges,fssData,settings,setSettings,canAccess,setView,showToast,addLog,coherence}){
+  const el=React.createElement;
+  const[voirInvit,setVoirInvit]=React.useState(false);const[prep,setPrep]=React.useState(null);const[voirPasse,setVoirPasse]=React.useState(false);
+  const auj=isoLocal(new Date());const il30=isoLocal(new Date(Date.now()-30*864e5));
+  const{jour,cle,cleNom,lignes,collabDe,infoMg,listeCoh,cleGroupe}=adAnalyse(badges,fssData,settings&&settings.coh_ignores);
+  const collabsDe=rows=>[...new Map(rows.map(r=>r.collab||collabDe(r)).filter(Boolean).map(b=>[b.id,b])).values()].sort((a,b)=>completude(b)-completude(a));
+  const pasDoublon=f=>{const k=cleGroupe(f.t,f.rows);setFus(null);if(!setSettings){showToast("⚠️ Seul un administrateur peut l'enregistrer","err");return;}
+    setSettings(x=>({...x,coh_ignores:[...new Set([...((x&&x.coh_ignores)||[]),k])]}));showToast("✅ Noté : ce sont deux personnes différentes, l'alerte ne reviendra plus");};
   const frAn=d=>d.split("-").reverse().join("/");
   // Doublons : plusieurs lignes au même nom de famille, même prénom ou dates proches (moins d'un mois)
-  const cleNom=n=>String(n||"").toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g,"").replace(/[^a-z]/g,"");
-  ["arr","dep"].forEach(t=>{const g={};Object.values(lignes[t]).forEach(l=>{(g[cleNom(l.nom)]=g[cleNom(l.nom)]||[]).push(l);});
-    Object.values(g).forEach(L=>{if(L.length<2)return;L.forEach(l=>{const autres=L.filter(x=>{if(x===l)return false;const j=Math.abs(new Date(x.d)-new Date(l.d))/864e5;return cle(x.prenom,"")===cle(l.prenom,"")?j<=180:j<=31;});if(autres.length)l.doublon=[l,...autres];});});});
   const[fus,setFus]=React.useState(null);
   const completude=b=>["matricule","serie","email","casier"].filter(k=>{const v=String(b[k]||"").trim();return v&&v!=="0"&&v.toUpperCase()!=="NC";}).length;
   const remplieF=f=>["matPC","ritm","matRecu","idMat","dateRecep","matDonne","commentaires"].filter(k=>String(f[k]||"").trim()).length+(f.statut&&f.statut!=="A traiter"?2:0);
-  const fusionner=async({t,rows,prenom,date,manager})=>{setFus(null);
-    const collabs=[...new Map(rows.map(r=>r.collab||collabDe(r)).filter(Boolean).map(b=>[b.id,b])).values()].sort((a,b)=>completude(b)-completude(a));
+  const resumeFiche=b=>[String(b.prenom||"")+" "+String(b.nom||"").toUpperCase(),b.matricule&&"matricule "+b.matricule,b.serie&&"badge "+b.serie,b.email,b.date_entree&&"arrivée "+String(b.date_entree).slice(0,10).split("-").reverse().join("/"),(b.date_sortie_prevue||b.date_sortie)&&"départ "+String(b.date_sortie_prevue||b.date_sortie).slice(0,10).split("-").reverse().join("/")].filter(Boolean).join(" · ");
+  const fusionner=async({t,rows,prenom,date,manager,garde:gid})=>{
+    let collabs=collabsDe(rows);
     const nom=String(rows[0].nom||"").toUpperCase();
-    if(collabs.length>1&&collabs.slice(1).some(b=>completude(b)>0)){showToast("⚠️ Plusieurs fiches collaborateur remplies pour "+nom+" : supprime la mauvaise dans Collaborateurs","err");return;}
+    if(collabs.length>1&&collabs.slice(1).some(b=>completude(b)>0)){
+      if(gid==null){showToast("⚠️ Choisis la fiche collaborateur à garder","err");return;}
+      collabs=[...collabs.filter(b=>b.id===gid),...collabs.filter(b=>b.id!==gid)];
+      if(!confirm("La fiche collaborateur suivante sera supprimée :\n\n"+collabs.slice(1).map(resumeFiche).join("\n")+"\n\nContinuer ?"))return;}
+    setFus(null);
     const champDate=t==="dep"?"date_sortie_prevue":"date_entree";
     if(collabs.length){const garde={...collabs[0],prenom,nom,[champDate]:date,...(manager?{manager}:{})};setBadges(x=>x.filter(b=>!collabs.slice(1).some(c=>c.id===b.id)).map(b=>b.id===garde.id?garde:b));
       if(sb){const r=await sbEcrireCollab(garde,false);if(r.error){showToast("⚠️ Pas sauvegardé — "+messageErreurBase(r.error),"err");return;}
@@ -3714,9 +3735,6 @@ function VueArriveesDeparts({badges,setBadges,fssData,settings,canAccess,setView
     addLog&&addLog("Date harmonisée",String(l.prenom||"")+" "+String(l.nom||"")+" : "+frAn(d));showToast("✅ Date du "+frAn(d)+" gardée partout");};
   const fr=d=>new Date(d+"T12:00:00").toLocaleDateString("fr-FR",{weekday:"short",day:"2-digit",month:"2-digit"});
   const cap=x=>String(x||"").toLowerCase().replace(/(^|[\s-])(\S)/g,(m,a,c)=>a+c.toUpperCase());
-  const collabDe=l=>(badges||[]).find(b=>b.statut!=="Archivé"&&cle(b.prenom,b.nom)===cle(l.prenom,l.nom));
-  const infoMg=l=>{const f=l.fss,c=l.collab;const existant=!c&&f?collabDe(l):null;const ref=c||existant;
-    const mgT=String(ref&&ref.manager||"").trim(),mgF=String(f&&f.manager||"").trim();return{existant,ref,mgT,mgF,mgDiff:!!(ref&&f&&mgT&&mgF&&mgT!=="NC"&&norm(mgT)!==norm(mgF))};};
   const ligne=(t,l)=>{const f=l.fss,c=l.collab;const{existant,ref,mgT,mgF,mgDiff}=infoMg(l);
     return el("div",{key:t+l.d+l.nom+l.prenom,className:"ad-l"+(l.d<auj?" passe":"")+(l.d===auj?" auj":"")},
       el("div",{className:"ad-d"},fr(l.d)),
@@ -3767,11 +3785,12 @@ function VueArriveesDeparts({badges,setBadges,fssData,settings,canAccess,setView
       return el("div",{className:"inv-fond",onClick:e=>{if(e.target===e.currentTarget)setFus(null);}},el("div",{className:"inv-boite",style:{width:"min(520px,100%)"}},
         el("div",{className:"inv-t"},el("b",null,"Fusionner — "+String(fus.rows[0].nom||"").toUpperCase()),el("button",{type:"button",className:"inv-x",onClick:()=>setFus(null)},"×")),
         el("p",{className:"inv-aide"},"Choisis les bonnes informations. Il restera une seule fiche collaborateur et une seule fiche Field Support (la plus complète est gardée, le doublon est supprimé)."),
+        (()=>{const cs=collabsDe(fus.rows);if(!(cs.length>1&&cs.slice(1).some(b=>completude(b)>0)))return null;
+          return el("div",{style:{margin:"8px 0"}},el("div",{className:"ad-f"},el("span",null,"Fiche collaborateur à garder (l'autre sera supprimée)")),
+            cs.map(b=>el("button",{key:b.id,type:"button",className:"btn "+(fus.garde===b.id?"btn-primary":"btn-outline"),style:{display:"block",width:"100%",textAlign:"left",fontSize:12,marginTop:6,whiteSpace:"normal",lineHeight:1.4},onClick:()=>setFus({...fus,garde:b.id})},resumeFiche(b))));})(),
         choix("p","Prénom"),choix("d","Date",frAn),choix("m","Manager"),
-        el("div",{className:"inv-b"},el("button",{type:"button",className:"btn btn-outline",onClick:()=>setFus(null)},"Ce sont des personnes différentes"),
+        el("div",{className:"inv-b"},el("button",{type:"button",className:"btn btn-outline",onClick:()=>pasDoublon(fus)},"Ce sont des personnes différentes"),
           el("button",{type:"button",className:"btn btn-primary",onClick:()=>fusionner(fus)},"Fusionner"))));};
-  const listeCoh=t=>{const vus=new Set();return Object.values(lignes[t]).filter(l=>l.d>=il30).sort((a,b)=>a.d<b.d?-1:1).filter(l=>{
-      if(l.doublon){if(l.doublon.some(x=>vus.has(x)))return false;l.doublon.forEach(x=>vus.add(x));return true;}return !!(l.conflit||infoMg(l).mgDiff);});};
   if(coherence){const A=listeCoh("arr"),D=listeCoh("dep");const n=A.length+D.length;
     const bloc=(t,titre,L)=>L.length?el("div",{className:"ad-col",style:{marginBottom:16}},el("div",{className:"ad-t"},el("i",{className:"ad-pt "+t}),titre,el("span",null,L.length+" à corriger")),L.map(l=>ligne(t,l))):null;
     return el("div",{className:"ad"},
@@ -3795,6 +3814,7 @@ function VueArriveesDeparts({badges,setBadges,fssData,settings,canAccess,setView
 (function(){try{var st=document.createElement("style");st.textContent=".ad-h{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-bottom:14px}.ad-h p{margin:0;font-size:13px;color:var(--text2,#64748B)}.ad-cols{display:grid;grid-template-columns:1fr 1fr;gap:16px;align-items:start}@media(max-width:900px){.ad-cols{grid-template-columns:1fr}}.ad-col{background:var(--surface,#fff);border:1px solid var(--border,#E2E8F0);border-radius:var(--radius-lg,14px);overflow:hidden}.ad-t{display:flex;align-items:center;gap:8px;padding:12px 14px;font-weight:700;font-size:14px;border-bottom:1px solid var(--border,#E2E8F0)}.ad-t span{margin-left:auto;font-weight:500;font-size:12px;color:var(--text3,#94A3B8)}.ad-pt{width:9px;height:9px;border-radius:50%;display:inline-block}.ad-pt.arr{background:#16A34A}.ad-pt.dep{background:#DC2626}"
 +".ad-l{display:grid;grid-template-columns:86px minmax(0,1fr);gap:4px 12px;padding:10px 14px;border-bottom:1px solid var(--border,#F1F5F9)}.ad-l.passe{opacity:.6}.ad-l.auj .ad-d{color:#2563EB}.ad-d{font-size:12px;font-weight:700;color:var(--text2,#475569);text-transform:capitalize;padding-top:1px}.ad-n{display:flex;flex-direction:column;min-width:0}.ad-n b{font-size:13px}.ad-n span{font-size:11px;color:var(--text3,#94A3B8)}.ad-e{grid-column:2;display:flex;gap:6px;flex-wrap:wrap}.ad-p{border:0;border-radius:999px;padding:3px 9px;font-family:inherit;font-size:11px;font-weight:600;cursor:pointer}.ad-p.ok{background:#ECFDF5;color:#166534}.ad-p.att{background:#FFF7ED;color:#9A3412}.ad-p.non{background:var(--surface2,#F1F5F9);color:var(--text3,#64748B);cursor:default}.ad-p.deja{background:#EFF6FF;color:#1E40AF}.ad-p.muet{background:#EFF6FF;color:#1E40AF;cursor:default}.ad-conflit{grid-column:1/-1;display:flex;flex-wrap:wrap;align-items:center;gap:6px;margin-top:4px;padding:7px 10px;border-radius:8px;background:#FFF7ED;font-size:12px;color:#9A3412;font-weight:600}.ad-conflit button{border:1px solid #FDBA74;background:#fff;color:#9A3412;border-radius:999px;padding:3px 10px;font-family:inherit;font-size:12px;font-weight:700;cursor:pointer}.ad-conflit button:hover{background:#FFEDD5}.ad-vide{padding:18px 14px;font-size:13px;color:var(--text3,#94A3B8)}.ad-plus{display:block;width:100%;text-align:left;border:0;background:var(--surface2,#F8FAFC);padding:9px 14px;font-family:inherit;font-size:12px;font-weight:600;color:var(--text2,#475569);cursor:pointer}"
 +".ad-prep{background:var(--surface,#fff);border:1.5px solid #2563EB;border-radius:var(--radius-lg,14px);padding:14px 16px;margin-bottom:16px}.ad-g{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;margin:10px 0}@media(max-width:700px){.ad-g{grid-template-columns:1fr 1fr}}.ad-f{display:flex;flex-direction:column;gap:3px}.ad-f span{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.4px;color:var(--text3,#94A3B8)}.ad-f input,.ad-f select{padding:7px 9px;border:1px solid var(--border2,#CBD5E1);border-radius:8px;font-family:inherit;font-size:13px;background:var(--surface,#fff);color:inherit;min-width:0}.ad-c{display:flex;align-items:center;gap:8px;font-size:13px;margin-top:6px}.ad-b{display:flex;justify-content:flex-end;gap:8px;margin-top:12px}"
++".ios-cpt{margin-left:auto;background:#F59E0B;color:#1F2937;font-weight:700;font-size:13px;border-radius:999px;padding:1px 9px;min-width:22px;text-align:center}.ios-cpt+.chev{margin-left:8px!important}"
 +".ios-sheet-btn.grp .chev{margin-left:auto;font-size:22px;opacity:.45;transition:transform .18s}.ios-sheet-btn.grp.ouvert .chev{transform:rotate(90deg)}.ios-sheet-btn.sub{padding-left:42px!important;font-size:16px!important;background:rgba(0,0,0,.025)}.ml-gh .ml-chev{margin-left:auto;font-size:17px;line-height:1;transition:transform .18s;opacity:.6}.ml-grp.ouvert>.ml-gh .ml-chev{transform:rotate(90deg)}.ml-grp.actif:not(.ouvert)>.ml-gh{color:#fff}.ml-sub{margin:2px 0 6px 14px;padding-left:10px;border-left:1px solid rgba(255,255,255,.12)}.ml-sub .ml-it{padding-top:7px;padding-bottom:7px;font-size:13.5px}.ml-sub .ml-it svg{width:16px;height:16px;opacity:.8}.acc-normal>.mvt-icon-row{display:none!important}.acc-mvt-seul>:not(.mvt-icon-row){display:none!important}.acc-mvt-seul>.mvt-icon-row{margin-bottom:16px!important}.cm-mails{margin-bottom:12px;padding:10px 12px;background:var(--surface2);border:1px solid var(--border);border-radius:10px}.cm-mails .cm-t{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;font-size:12px;color:var(--text2)}.cm-mails .cm-b{display:flex;gap:6px;flex-wrap:wrap;margin-top:8px}.cm-mails .cm-b button{font-size:12px}";document.head.appendChild(st);}catch(e){}})();
 // ── FssStatusBadge ──
 const FssStatusBadge=({status})=>{
@@ -4981,7 +5001,8 @@ function personneConnectee(session){
   const loc=em.split("@")[0].split(/[._-]/).filter(Boolean);
   return{prenom:propre(loc[0]||""),nom:(loc.slice(1).join(" ")||"").toUpperCase(),role};
 }
-function MenuLateral({visibleNav,navActif,setView,onClose,session,notifs,ouvrirReglages,peutReglages,logout}){
+function MenuLateral({visibleNav,navActif,setView,onClose,session,notifs,ouvrirReglages,peutReglages,logout,comptes}){
+  const cpt=id=>(comptes&&comptes[id])||0;
   const el=React.createElement;
   useEffect(()=>{const k=e=>{if(e.key==="Escape")onClose();};window.addEventListener("keydown",k);return()=>window.removeEventListener("keydown",k);},[]);
   const ids=(visibleNav||[]).map(n=>n.id).filter(id=>id!=="notifications"&&id!=="settings");const pris=new Set();
@@ -4989,7 +5010,7 @@ function MenuLateral({visibleNav,navActif,setView,onClose,session,notifs,ouvrirR
   const autres=ids.filter(id=>!pris.has(id));if(autres.length)sections.push(["Autres",autres]);
   const lab=id=>{const n=(visibleNav||[]).find(x=>x.id===id);return n?n.label:id;};
   const item=(id,label,onClick,actif,compte)=>el("button",{key:id,type:"button",className:"ml-it"+(actif?" on":""),onClick},
-    el(IconeNav,{id,size:18}),el("span",null,label),compte?el("span",{className:"ml-n"},compte):null);
+    el(IconeNav,{id,size:18}),el("span",null,label),compte?el("span",{className:"ml-n alerte",title:compte+" à corriger"},compte):null);
   const aller=id=>{setView(id);onClose();};
   const[ouvert,setOuvert]=useState(null);
   const qui=String((session&&(session.label||session.email))||"").trim();
@@ -4997,13 +5018,13 @@ function MenuLateral({visibleNav,navActif,setView,onClose,session,notifs,ouvrirR
     el("aside",{className:"ml"},
       el("div",{className:"ml-brand"},el("span",{className:"ml-logo"},"🛎️"),el("span",null,"Gestion du site"),el("button",{type:"button",className:"ml-x",onClick:onClose,title:"Fermer"},"✕")),
       sections.map(([t,l],i)=>{
-        if(!t||l.length<2)return el(React.Fragment,{key:i},l.map(id=>item(id,lab(id),()=>aller(id),navActif(id))));
+        if(!t||l.length<2)return el(React.Fragment,{key:i},l.map(id=>item(id,lab(id),()=>aller(id),navActif(id),cpt(id))));
         const actif=l.some(id=>navActif(id)),ouvre=ouvert===t||(ouvert==null&&actif);
         const court=id=>{const x=lab(id);return t==="Accueil physique"?x.replace(/^Gestion accueil /,"Accueil "):x;};
         return el("div",{key:i,className:"ml-grp"+(ouvre?" ouvert":"")+(actif?" actif":"")},
           el("button",{type:"button",className:"ml-it ml-gh","aria-expanded":ouvre,onClick:()=>setOuvert(ouvre?"":t)},
-            el(IconeNav,{id:MENU_ICONES[t]||"accueil",size:18}),el("span",null,t),el("span",{className:"ml-chev"},"›")),
-          ouvre&&el("div",{className:"ml-sub"},l.map(id=>item(id,court(id),()=>aller(id),navActif(id)))));}),
+            el(IconeNav,{id:MENU_ICONES[t]||"accueil",size:18}),el("span",null,t),l.reduce((n,id)=>n+cpt(id),0)?el("span",{className:"ml-n alerte"},l.reduce((n,id)=>n+cpt(id),0)):null,el("span",{className:"ml-chev",style:l.reduce((n,id)=>n+cpt(id),0)?{marginLeft:6}:null},"›")),
+          ouvre&&el("div",{className:"ml-sub"},l.map(id=>item(id,court(id),()=>aller(id),navActif(id),cpt(id)))));}),
       el("div",{style:{flex:1}}),
       el("div",{className:"ml-bas"},
         item("aide","Aide",()=>aller("aide"),false),
@@ -6268,6 +6289,7 @@ useEffect(()=>{
   const archivesCount=badges.filter(b=>b.statut==="Archivé").length;
   const histoCount=histo.length;
   const fssOpenCount=fssData.filter(f=>!f.cloture&&f.statut!=="Terminée"&&!fssPlusTard(f)).length;
+  const nbCoh=useMemo(()=>compterIncoherences(badges,fssData,settings&&settings.coh_ignores),[badges,fssData,settings&&settings.coh_ignores]);
   const canAccess=useCallback(viewId=>{
     if(viewId==="aide"||viewId==="calendrier")return true;
     if(viewId==="arrivees")return canAccess("collaborateurs")||canAccess("field_support");
@@ -6326,8 +6348,8 @@ useEffect(()=>{
       case "historique_pret": return React.createElement(VueHistoriquePret,{site:window._siteSession});
       case "historique_colis": return React.createElement(VueHistoriqueColis,{site:window._siteSession});
       case "calendrier": return React.createElement(VueCalendrier,{fssData,badges,canAccess,setView});
-      case "coherence": return React.createElement(VueArriveesDeparts,{badges,setBadges,fssData,settings,canAccess,setView,showToast,addLog,coherence:true});
-      case "arrivees": return React.createElement("div",null,!isIT&&React.createElement(VueAccueil,{...props,notifExtra,fssData,setFssData,isIT,histo,openHistorique:()=>{},openDonnees:()=>{},pendingOpen:null,setPendingOpen:()=>{},seulMouvements:true}),React.createElement(VueArriveesDeparts,{badges,setBadges,fssData,settings,canAccess,setView,showToast,addLog}));
+      case "coherence": return React.createElement(VueArriveesDeparts,{badges,setBadges,fssData,settings,setSettings:session&&session.role==="admin"?setSettings:null,canAccess,setView,showToast,addLog,coherence:true});
+      case "arrivees": return React.createElement("div",null,!isIT&&React.createElement(VueAccueil,{...props,notifExtra,fssData,setFssData,isIT,histo,openHistorique:()=>{},openDonnees:()=>{},pendingOpen:null,setPendingOpen:()=>{},seulMouvements:true}),React.createElement(VueArriveesDeparts,{badges,setBadges,fssData,settings,setSettings:session&&session.role==="admin"?setSettings:null,canAccess,setView,showToast,addLog}));
       case "gestion_accueil_hex": return React.createElement(VueGestionAccueil,{key:"hex",onglet:"gestion_accueil",setView,canAccess,showToast,addLog,badges,site:"Hexagone"});
       case "gestion_accueil": case "badges_pret": case "colis": return React.createElement(VueGestionAccueil,{key:"lev",onglet:view,setView,canAccess,showToast,addLog,badges,site:(session&&session.role!=="admin"&&session.site)||"Levallois"});
       case "aide": return React.createElement(VueAide,{canAccess,peutReglages:!isIT&&!isBadgeOnly});
@@ -6383,7 +6405,7 @@ useEffect(()=>{
     loading&&React.createElement("div",{style:{position:"fixed",inset:0,background:"rgba(30,40,60,.45)",zIndex:9998,display:"flex",alignItems:"center",justifyContent:"center"}},React.createElement("div",{style:{background:"var(--surface)",border:"1px solid var(--border)",borderRadius:14,padding:"24px 36px",fontSize:15,fontWeight:700,color:"var(--text)"}},"⏳ Chargement en cours...")),
     toast&&React.createElement("div",{className:"toast-anim",style:{position:"fixed",top:20,left:"50%",transform:"translateX(-50%)",zIndex:9999,background:toast.type==="err"?"#7F1D1D":"#14532D",border:"1px solid "+(toast.type==="err"?"rgba(220,38,38,.3)":"rgba(22,163,74,.3)"),color:"#fff",padding:"12px 24px",borderRadius:12,fontSize:13,fontWeight:700,boxShadow:"0 4px 24px rgba(0,0,0,.12)",whiteSpace:"nowrap",pointerEvents:"none"}},toast.msg),
     showSettings&&!isIT&&React.createElement(SettingsModal,{settings,setSettings,showToast,setShowSettings,racineRef,hrRef,hcmRef,importJsonRef,exportExcel,exportJSON,importJSON,badges,setBadges,casiers,wdCache,histo,addLog,canHistorique:canAccess("historique"),canArchives:canAccess("archives"),canHistoriquePret:canAccess("historique_pret"),initialTab:settingsInitialTab}),
-    (menuOuvert||(mlLarge&&unlocked))&&React.createElement(MenuLateral,{visibleNav,navActif,setView,onClose:()=>setMenuOuvert(false),session,notifs:canAccess("notifications")?notifs.length:null,ouvrirReglages:()=>setShowSettings(true),peutReglages:!isIT&&!isBadgeOnly,logout}),
+    (menuOuvert||(mlLarge&&unlocked))&&React.createElement(MenuLateral,{visibleNav,navActif,setView,onClose:()=>setMenuOuvert(false),session,notifs:canAccess("notifications")?notifs.length:null,ouvrirReglages:()=>setShowSettings(true),peutReglages:!isIT&&!isBadgeOnly,logout,comptes:{coherence:canAccess("coherence")?nbCoh:0}}),
     React.createElement("nav",{className:"desktop-nav no-print",style:{background:"var(--surface)",borderBottom:"1px solid var(--border)",padding:"0 12px",display:"flex",alignItems:"center",gap:2,height:48,position:"sticky",top:0,zIndex:500,boxShadow:"0 1px 0 var(--border)",overflow:"hidden"}},
       React.createElement("div",{style:{display:"flex",alignItems:"center",flexShrink:0}},
         React.createElement("button",{type:"button",className:"burger",title:"Menu",onClick:()=>setMenuOuvert(true)},React.createElement("svg",{width:20,height:20,viewBox:"0 0 24 24",fill:"none",stroke:"currentColor",strokeWidth:2,strokeLinecap:"round"},React.createElement("path",{d:"M4 7h16M4 12h16M4 17h16"}))),
@@ -6671,14 +6693,14 @@ function IosSheet({title,items,onClose}){
   // Une entrée avec « groupe » est un sous-menu : un toucher l'ouvre ou le referme (un seul ouvert à la fois)
   const[ouvert,setOuvert]=React.useState(null);
   const btn=(it,k,sub)=>React.createElement("button",{key:k,type:"button",className:"ios-sheet-btn"+(it.danger?" danger":"")+(sub?" sub":""),onClick:()=>{onClose();it.onClick&&it.onClick();}},
-    it.icon&&React.createElement(IosIcon,{id:it.icon,size:sub?19:22}),React.createElement("span",null,it.label));
+    it.icon&&React.createElement(IosIcon,{id:it.icon,size:sub?19:22}),React.createElement("span",null,it.label),it.compte?React.createElement("span",{className:"ios-cpt"},it.compte):null);
   return React.createElement("div",{className:"ios-sheet-overlay",onClick:onClose},
     React.createElement("div",{className:"ios-sheet",onClick:e=>e.stopPropagation()},
       React.createElement("div",{className:"ios-sheet-group"},
         title&&React.createElement("div",{className:"ios-sheet-title"},title),
         items.filter(Boolean).map((it,i)=>it.groupe?React.createElement(React.Fragment,{key:i},
             React.createElement("button",{type:"button",className:"ios-sheet-btn grp"+(ouvert===i?" ouvert":""),"aria-expanded":ouvert===i,onClick:()=>setOuvert(o=>o===i?null:i)},
-              it.icon&&React.createElement(IosIcon,{id:it.icon,size:22}),React.createElement("span",null,it.label),React.createElement("span",{className:"chev"},"›")),
+              it.icon&&React.createElement(IosIcon,{id:it.icon,size:22}),React.createElement("span",null,it.label),it.groupe.reduce((n,g)=>n+((g&&g.compte)||0),0)?React.createElement("span",{className:"ios-cpt"},it.groupe.reduce((n,g)=>n+((g&&g.compte)||0),0)):null,React.createElement("span",{className:"chev"},"›")),
             ouvert===i&&it.groupe.filter(Boolean).map((g,j)=>btn(g,i+"-"+j,true)))
           :btn(it,i,false))),
       React.createElement("button",{type:"button",className:"ios-sheet-cancel",onClick:onClose},"Annuler")));
@@ -9536,9 +9558,8 @@ async function sbEcrireCollab(row,insert){
   return res;
 }
 // ── Onglet Arrivées / Départs ──
-function VueArriveesDeparts({badges,setBadges,fssData,settings,canAccess,setView,showToast,addLog,coherence}){
-  const el=React.createElement;
-  const[voirInvit,setVoirInvit]=React.useState(false);const[prep,setPrep]=React.useState(null);const[voirPasse,setVoirPasse]=React.useState(false);
+function adAnalyse(badges,fssData,ignores){
+  const ign=new Set(ignores||[]);
   const auj=isoLocal(new Date());const il30=isoLocal(new Date(Date.now()-30*864e5));
   const jour=x=>{const t=String(x||"").trim();let m=t.match(/^(\d{4})-(\d{2})-(\d{2})/);if(m)return m[0];m=t.match(/^(\d{1,2})[\/.-](\d{1,2})[\/.-](\d{4})/);return m?m[3]+"-"+m[2].padStart(2,"0")+"-"+m[1].padStart(2,"0"):"";};
   const cle=(p,n)=>(String(p||"")+" "+String(n||"")).toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g,"").replace(/[^a-z]/g,"");
@@ -9552,18 +9573,40 @@ function VueArriveesDeparts({badges,setBadges,fssData,settings,canAccess,setView
     Object.values(parNom).forEach(ks=>{if(ks.length<2)return;const L=ks.map(k=>lignes[t][k]);const c=L.find(l=>l.collab&&!l.fss),f=L.find(l=>l.fss&&!l.collab);if(!c||!f)return;
       const ecart=Math.abs(new Date(c.d)-new Date(f.d))/864e5;if(!(c.d.slice(5)===f.d.slice(5)&&ecart<400)&&ecart>90)return;
       ks.forEach(k=>delete lignes[t][k]);const d=c.d<f.d?c.d:f.d;lignes[t][d+cle(c.prenom,c.nom)]={...c,d,fss:f.fss,conflit:{tableau:c.d,fss:f.d}};});});
+  const cleNom=n=>String(n||"").toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g,"").replace(/[^a-z]/g,"");
+  const cleGroupe=(t,rows)=>t+"|"+cleNom(rows[0].nom)+"|"+rows.map(r=>r.d+cle(r.prenom,"")).sort().join(",");
+  ["arr","dep"].forEach(t=>{const g={};Object.values(lignes[t]).forEach(l=>{(g[cleNom(l.nom)]=g[cleNom(l.nom)]||[]).push(l);});
+    Object.values(g).forEach(L=>{if(L.length<2)return;L.forEach(l=>{const autres=L.filter(x=>{if(x===l)return false;const j=Math.abs(new Date(x.d)-new Date(l.d))/864e5;return cle(x.prenom,"")===cle(l.prenom,"")?j<=180:j<=31;});if(autres.length){const grp=[l,...autres];if(!ign.has(cleGroupe(t,grp)))l.doublon=grp;}});});});
+  const collabDe=l=>(badges||[]).find(b=>b.statut!=="Archivé"&&cle(b.prenom,b.nom)===cle(l.prenom,l.nom));
+  const infoMg=l=>{const f=l.fss,c=l.collab;const existant=!c&&f?collabDe(l):null;const ref=c||existant;
+    const mgT=String(ref&&ref.manager||"").trim(),mgF=String(f&&f.manager||"").trim();return{existant,ref,mgT,mgF,mgDiff:!!(ref&&f&&mgT&&mgF&&mgT!=="NC"&&norm(mgT)!==norm(mgF))};};
+  const listeCoh=t=>{const vus=new Set();return Object.values(lignes[t]).filter(l=>l.d>=il30).sort((a,b)=>a.d<b.d?-1:1).filter(l=>{
+      if(l.doublon){if(l.doublon.some(x=>vus.has(x)))return false;l.doublon.forEach(x=>vus.add(x));return true;}return !!(l.conflit||infoMg(l).mgDiff);});};
+  return{jour,cle,cleNom,lignes,collabDe,infoMg,listeCoh,cleGroupe};
+}
+function compterIncoherences(badges,fssData,ignores){try{const a=adAnalyse(badges,fssData,ignores);return a.listeCoh("arr").length+a.listeCoh("dep").length;}catch(e){return 0;}}
+function VueArriveesDeparts({badges,setBadges,fssData,settings,setSettings,canAccess,setView,showToast,addLog,coherence}){
+  const el=React.createElement;
+  const[voirInvit,setVoirInvit]=React.useState(false);const[prep,setPrep]=React.useState(null);const[voirPasse,setVoirPasse]=React.useState(false);
+  const auj=isoLocal(new Date());const il30=isoLocal(new Date(Date.now()-30*864e5));
+  const{jour,cle,cleNom,lignes,collabDe,infoMg,listeCoh,cleGroupe}=adAnalyse(badges,fssData,settings&&settings.coh_ignores);
+  const collabsDe=rows=>[...new Map(rows.map(r=>r.collab||collabDe(r)).filter(Boolean).map(b=>[b.id,b])).values()].sort((a,b)=>completude(b)-completude(a));
+  const pasDoublon=f=>{const k=cleGroupe(f.t,f.rows);setFus(null);if(!setSettings){showToast("⚠️ Seul un administrateur peut l'enregistrer","err");return;}
+    setSettings(x=>({...x,coh_ignores:[...new Set([...((x&&x.coh_ignores)||[]),k])]}));showToast("✅ Noté : ce sont deux personnes différentes, l'alerte ne reviendra plus");};
   const frAn=d=>d.split("-").reverse().join("/");
   // Doublons : plusieurs lignes au même nom de famille, même prénom ou dates proches (moins d'un mois)
-  const cleNom=n=>String(n||"").toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g,"").replace(/[^a-z]/g,"");
-  ["arr","dep"].forEach(t=>{const g={};Object.values(lignes[t]).forEach(l=>{(g[cleNom(l.nom)]=g[cleNom(l.nom)]||[]).push(l);});
-    Object.values(g).forEach(L=>{if(L.length<2)return;L.forEach(l=>{const autres=L.filter(x=>{if(x===l)return false;const j=Math.abs(new Date(x.d)-new Date(l.d))/864e5;return cle(x.prenom,"")===cle(l.prenom,"")?j<=180:j<=31;});if(autres.length)l.doublon=[l,...autres];});});});
   const[fus,setFus]=React.useState(null);
   const completude=b=>["matricule","serie","email","casier"].filter(k=>{const v=String(b[k]||"").trim();return v&&v!=="0"&&v.toUpperCase()!=="NC";}).length;
   const remplieF=f=>["matPC","ritm","matRecu","idMat","dateRecep","matDonne","commentaires"].filter(k=>String(f[k]||"").trim()).length+(f.statut&&f.statut!=="A traiter"?2:0);
-  const fusionner=async({t,rows,prenom,date,manager})=>{setFus(null);
-    const collabs=[...new Map(rows.map(r=>r.collab||collabDe(r)).filter(Boolean).map(b=>[b.id,b])).values()].sort((a,b)=>completude(b)-completude(a));
+  const resumeFiche=b=>[String(b.prenom||"")+" "+String(b.nom||"").toUpperCase(),b.matricule&&"matricule "+b.matricule,b.serie&&"badge "+b.serie,b.email,b.date_entree&&"arrivée "+String(b.date_entree).slice(0,10).split("-").reverse().join("/"),(b.date_sortie_prevue||b.date_sortie)&&"départ "+String(b.date_sortie_prevue||b.date_sortie).slice(0,10).split("-").reverse().join("/")].filter(Boolean).join(" · ");
+  const fusionner=async({t,rows,prenom,date,manager,garde:gid})=>{
+    let collabs=collabsDe(rows);
     const nom=String(rows[0].nom||"").toUpperCase();
-    if(collabs.length>1&&collabs.slice(1).some(b=>completude(b)>0)){showToast("⚠️ Plusieurs fiches collaborateur remplies pour "+nom+" : supprime la mauvaise dans Collaborateurs","err");return;}
+    if(collabs.length>1&&collabs.slice(1).some(b=>completude(b)>0)){
+      if(gid==null){showToast("⚠️ Choisis la fiche collaborateur à garder","err");return;}
+      collabs=[...collabs.filter(b=>b.id===gid),...collabs.filter(b=>b.id!==gid)];
+      if(!confirm("La fiche collaborateur suivante sera supprimée :\n\n"+collabs.slice(1).map(resumeFiche).join("\n")+"\n\nContinuer ?"))return;}
+    setFus(null);
     const champDate=t==="dep"?"date_sortie_prevue":"date_entree";
     if(collabs.length){const garde={...collabs[0],prenom,nom,[champDate]:date,...(manager?{manager}:{})};setBadges(x=>x.filter(b=>!collabs.slice(1).some(c=>c.id===b.id)).map(b=>b.id===garde.id?garde:b));
       if(sb){const r=await sbEcrireCollab(garde,false);if(r.error){showToast("⚠️ Pas sauvegardé — "+messageErreurBase(r.error),"err");return;}
@@ -9587,9 +9630,6 @@ function VueArriveesDeparts({badges,setBadges,fssData,settings,canAccess,setView
     addLog&&addLog("Date harmonisée",String(l.prenom||"")+" "+String(l.nom||"")+" : "+frAn(d));showToast("✅ Date du "+frAn(d)+" gardée partout");};
   const fr=d=>new Date(d+"T12:00:00").toLocaleDateString("fr-FR",{weekday:"short",day:"2-digit",month:"2-digit"});
   const cap=x=>String(x||"").toLowerCase().replace(/(^|[\s-])(\S)/g,(m,a,c)=>a+c.toUpperCase());
-  const collabDe=l=>(badges||[]).find(b=>b.statut!=="Archivé"&&cle(b.prenom,b.nom)===cle(l.prenom,l.nom));
-  const infoMg=l=>{const f=l.fss,c=l.collab;const existant=!c&&f?collabDe(l):null;const ref=c||existant;
-    const mgT=String(ref&&ref.manager||"").trim(),mgF=String(f&&f.manager||"").trim();return{existant,ref,mgT,mgF,mgDiff:!!(ref&&f&&mgT&&mgF&&mgT!=="NC"&&norm(mgT)!==norm(mgF))};};
   const ligne=(t,l)=>{const f=l.fss,c=l.collab;const{existant,ref,mgT,mgF,mgDiff}=infoMg(l);
     return el("div",{key:t+l.d+l.nom+l.prenom,className:"ad-l"+(l.d<auj?" passe":"")+(l.d===auj?" auj":"")},
       el("div",{className:"ad-d"},fr(l.d)),
@@ -9640,11 +9680,12 @@ function VueArriveesDeparts({badges,setBadges,fssData,settings,canAccess,setView
       return el("div",{className:"inv-fond",onClick:e=>{if(e.target===e.currentTarget)setFus(null);}},el("div",{className:"inv-boite",style:{width:"min(520px,100%)"}},
         el("div",{className:"inv-t"},el("b",null,"Fusionner — "+String(fus.rows[0].nom||"").toUpperCase()),el("button",{type:"button",className:"inv-x",onClick:()=>setFus(null)},"×")),
         el("p",{className:"inv-aide"},"Choisis les bonnes informations. Il restera une seule fiche collaborateur et une seule fiche Field Support (la plus complète est gardée, le doublon est supprimé)."),
+        (()=>{const cs=collabsDe(fus.rows);if(!(cs.length>1&&cs.slice(1).some(b=>completude(b)>0)))return null;
+          return el("div",{style:{margin:"8px 0"}},el("div",{className:"ad-f"},el("span",null,"Fiche collaborateur à garder (l'autre sera supprimée)")),
+            cs.map(b=>el("button",{key:b.id,type:"button",className:"btn "+(fus.garde===b.id?"btn-primary":"btn-outline"),style:{display:"block",width:"100%",textAlign:"left",fontSize:12,marginTop:6,whiteSpace:"normal",lineHeight:1.4},onClick:()=>setFus({...fus,garde:b.id})},resumeFiche(b))));})(),
         choix("p","Prénom"),choix("d","Date",frAn),choix("m","Manager"),
-        el("div",{className:"inv-b"},el("button",{type:"button",className:"btn btn-outline",onClick:()=>setFus(null)},"Ce sont des personnes différentes"),
+        el("div",{className:"inv-b"},el("button",{type:"button",className:"btn btn-outline",onClick:()=>pasDoublon(fus)},"Ce sont des personnes différentes"),
           el("button",{type:"button",className:"btn btn-primary",onClick:()=>fusionner(fus)},"Fusionner"))));};
-  const listeCoh=t=>{const vus=new Set();return Object.values(lignes[t]).filter(l=>l.d>=il30).sort((a,b)=>a.d<b.d?-1:1).filter(l=>{
-      if(l.doublon){if(l.doublon.some(x=>vus.has(x)))return false;l.doublon.forEach(x=>vus.add(x));return true;}return !!(l.conflit||infoMg(l).mgDiff);});};
   if(coherence){const A=listeCoh("arr"),D=listeCoh("dep");const n=A.length+D.length;
     const bloc=(t,titre,L)=>L.length?el("div",{className:"ad-col",style:{marginBottom:16}},el("div",{className:"ad-t"},el("i",{className:"ad-pt "+t}),titre,el("span",null,L.length+" à corriger")),L.map(l=>ligne(t,l))):null;
     return el("div",{className:"ad"},
@@ -9668,6 +9709,7 @@ function VueArriveesDeparts({badges,setBadges,fssData,settings,canAccess,setView
 (function(){try{var st=document.createElement("style");st.textContent=".ad-h{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-bottom:14px}.ad-h p{margin:0;font-size:13px;color:var(--text2,#64748B)}.ad-cols{display:grid;grid-template-columns:1fr 1fr;gap:16px;align-items:start}@media(max-width:900px){.ad-cols{grid-template-columns:1fr}}.ad-col{background:var(--surface,#fff);border:1px solid var(--border,#E2E8F0);border-radius:var(--radius-lg,14px);overflow:hidden}.ad-t{display:flex;align-items:center;gap:8px;padding:12px 14px;font-weight:700;font-size:14px;border-bottom:1px solid var(--border,#E2E8F0)}.ad-t span{margin-left:auto;font-weight:500;font-size:12px;color:var(--text3,#94A3B8)}.ad-pt{width:9px;height:9px;border-radius:50%;display:inline-block}.ad-pt.arr{background:#16A34A}.ad-pt.dep{background:#DC2626}"
 +".ad-l{display:grid;grid-template-columns:86px minmax(0,1fr);gap:4px 12px;padding:10px 14px;border-bottom:1px solid var(--border,#F1F5F9)}.ad-l.passe{opacity:.6}.ad-l.auj .ad-d{color:#2563EB}.ad-d{font-size:12px;font-weight:700;color:var(--text2,#475569);text-transform:capitalize;padding-top:1px}.ad-n{display:flex;flex-direction:column;min-width:0}.ad-n b{font-size:13px}.ad-n span{font-size:11px;color:var(--text3,#94A3B8)}.ad-e{grid-column:2;display:flex;gap:6px;flex-wrap:wrap}.ad-p{border:0;border-radius:999px;padding:3px 9px;font-family:inherit;font-size:11px;font-weight:600;cursor:pointer}.ad-p.ok{background:#ECFDF5;color:#166534}.ad-p.att{background:#FFF7ED;color:#9A3412}.ad-p.non{background:var(--surface2,#F1F5F9);color:var(--text3,#64748B);cursor:default}.ad-p.deja{background:#EFF6FF;color:#1E40AF}.ad-p.muet{background:#EFF6FF;color:#1E40AF;cursor:default}.ad-conflit{grid-column:1/-1;display:flex;flex-wrap:wrap;align-items:center;gap:6px;margin-top:4px;padding:7px 10px;border-radius:8px;background:#FFF7ED;font-size:12px;color:#9A3412;font-weight:600}.ad-conflit button{border:1px solid #FDBA74;background:#fff;color:#9A3412;border-radius:999px;padding:3px 10px;font-family:inherit;font-size:12px;font-weight:700;cursor:pointer}.ad-conflit button:hover{background:#FFEDD5}.ad-vide{padding:18px 14px;font-size:13px;color:var(--text3,#94A3B8)}.ad-plus{display:block;width:100%;text-align:left;border:0;background:var(--surface2,#F8FAFC);padding:9px 14px;font-family:inherit;font-size:12px;font-weight:600;color:var(--text2,#475569);cursor:pointer}"
 +".ad-prep{background:var(--surface,#fff);border:1.5px solid #2563EB;border-radius:var(--radius-lg,14px);padding:14px 16px;margin-bottom:16px}.ad-g{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;margin:10px 0}@media(max-width:700px){.ad-g{grid-template-columns:1fr 1fr}}.ad-f{display:flex;flex-direction:column;gap:3px}.ad-f span{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.4px;color:var(--text3,#94A3B8)}.ad-f input,.ad-f select{padding:7px 9px;border:1px solid var(--border2,#CBD5E1);border-radius:8px;font-family:inherit;font-size:13px;background:var(--surface,#fff);color:inherit;min-width:0}.ad-c{display:flex;align-items:center;gap:8px;font-size:13px;margin-top:6px}.ad-b{display:flex;justify-content:flex-end;gap:8px;margin-top:12px}"
++".ios-cpt{margin-left:auto;background:#F59E0B;color:#1F2937;font-weight:700;font-size:13px;border-radius:999px;padding:1px 9px;min-width:22px;text-align:center}.ios-cpt+.chev{margin-left:8px!important}"
 +".ios-sheet-btn.grp .chev{margin-left:auto;font-size:22px;opacity:.45;transition:transform .18s}.ios-sheet-btn.grp.ouvert .chev{transform:rotate(90deg)}.ios-sheet-btn.sub{padding-left:42px!important;font-size:16px!important;background:rgba(0,0,0,.025)}.ml-gh .ml-chev{margin-left:auto;font-size:17px;line-height:1;transition:transform .18s;opacity:.6}.ml-grp.ouvert>.ml-gh .ml-chev{transform:rotate(90deg)}.ml-grp.actif:not(.ouvert)>.ml-gh{color:#fff}.ml-sub{margin:2px 0 6px 14px;padding-left:10px;border-left:1px solid rgba(255,255,255,.12)}.ml-sub .ml-it{padding-top:7px;padding-bottom:7px;font-size:13.5px}.ml-sub .ml-it svg{width:16px;height:16px;opacity:.8}.acc-normal>.mvt-icon-row{display:none!important}.acc-mvt-seul>:not(.mvt-icon-row){display:none!important}.acc-mvt-seul>.mvt-icon-row{margin-bottom:16px!important}.cm-mails{margin-bottom:12px;padding:10px 12px;background:var(--surface2);border:1px solid var(--border);border-radius:10px}.cm-mails .cm-t{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;font-size:12px;color:var(--text2)}.cm-mails .cm-b{display:flex;gap:6px;flex-wrap:wrap;margin-top:8px}.cm-mails .cm-b button{font-size:12px}";document.head.appendChild(st);}catch(e){}})();
 // ── FssStatusBadge ──
 const FssStatusBadge=({status})=>{
@@ -10882,7 +10924,8 @@ function Courbe({vals,col,w=104,h=34}){if(!vals||vals.length<2)return null;const
 // ── Menu caché (☰) ──
 const MENU_SECTIONS=[["",["accueil","calendrier"]],["Personnes",["arrivees","collaborateurs","field_support"]],["Accueil physique",["gestion_accueil","gestion_accueil_hex","historique_pret","historique_colis"]],["",["casiers"]],["Outils",["impression","rapport","coherence"]]];
 const MENU_ICONES={"Personnes":"collaborateurs","Accueil physique":"gestion_accueil","Outils":"impression"};
-function MenuLateral({visibleNav,navActif,setView,onClose,session,notifs,ouvrirReglages,peutReglages,logout}){
+function MenuLateral({visibleNav,navActif,setView,onClose,session,notifs,ouvrirReglages,peutReglages,logout,comptes}){
+  const cpt=id=>(comptes&&comptes[id])||0;
   const el=React.createElement;
   useEffect(()=>{const k=e=>{if(e.key==="Escape")onClose();};window.addEventListener("keydown",k);return()=>window.removeEventListener("keydown",k);},[]);
   const ids=(visibleNav||[]).map(n=>n.id);const pris=new Set();
@@ -10890,7 +10933,7 @@ function MenuLateral({visibleNav,navActif,setView,onClose,session,notifs,ouvrirR
   const autres=ids.filter(id=>!pris.has(id));if(autres.length)sections.push(["Autres",autres]);
   const lab=id=>{const n=(visibleNav||[]).find(x=>x.id===id);return n?n.label:id;};
   const item=(id,label,onClick,actif,compte)=>el("button",{key:id,type:"button",className:"ml-it"+(actif?" on":""),onClick},
-    el(IconeNav,{id,size:18}),el("span",null,label),compte?el("span",{className:"ml-n"},compte):null);
+    el(IconeNav,{id,size:18}),el("span",null,label),compte?el("span",{className:"ml-n alerte",title:compte+" à corriger"},compte):null);
   const aller=id=>{setView(id);onClose();};
   const[ouvert,setOuvert]=useState(null);
   const qui=String((session&&(session.label||session.email))||"").trim();
@@ -12224,6 +12267,7 @@ useEffect(()=>{
   const archivesCount=badges.filter(b=>b.statut==="Archivé").length;
   const histoCount=histo.length;
   const fssOpenCount=fssData.filter(f=>!f.cloture&&f.statut!=="Terminée"&&!fssPlusTard(f)).length;
+  const nbCoh=useMemo(()=>compterIncoherences(badges,fssData,settings&&settings.coh_ignores),[badges,fssData,settings&&settings.coh_ignores]);
   const canAccess=useCallback(viewId=>{
     if(viewId==="aide"||viewId==="calendrier")return true;
     if(viewId==="arrivees")return canAccess("collaborateurs")||canAccess("field_support");
@@ -12283,8 +12327,8 @@ useEffect(()=>{
       case "historique_pret": return React.createElement(VueHistoriquePret,{site:window._siteSession});
       case "historique_colis": return React.createElement(VueHistoriqueColis,{site:window._siteSession});
       case "calendrier": return React.createElement(VueCalendrier,{fssData,badges,canAccess,setView});
-      case "coherence": return React.createElement(VueArriveesDeparts,{badges,setBadges,fssData,settings,canAccess,setView,showToast,addLog,coherence:true});
-      case "arrivees": return React.createElement("div",null,!isIT&&React.createElement(VueAccueil,{...props,notifExtra,fssData,setFssData,isIT,histo,openHistorique:()=>{},openDonnees:()=>{},pendingOpen:null,setPendingOpen:()=>{},seulMouvements:true}),React.createElement(VueArriveesDeparts,{badges,setBadges,fssData,settings,canAccess,setView,showToast,addLog}));
+      case "coherence": return React.createElement(VueArriveesDeparts,{badges,setBadges,fssData,settings,setSettings:session&&session.role==="admin"?setSettings:null,canAccess,setView,showToast,addLog,coherence:true});
+      case "arrivees": return React.createElement("div",null,!isIT&&React.createElement(VueAccueil,{...props,notifExtra,fssData,setFssData,isIT,histo,openHistorique:()=>{},openDonnees:()=>{},pendingOpen:null,setPendingOpen:()=>{},seulMouvements:true}),React.createElement(VueArriveesDeparts,{badges,setBadges,fssData,settings,setSettings:session&&session.role==="admin"?setSettings:null,canAccess,setView,showToast,addLog}));
       case "gestion_accueil_hex": return React.createElement(VueGestionAccueil,{key:"hex",onglet:"gestion_accueil",setView,canAccess,showToast,addLog,badges,site:"Hexagone"});
       case "gestion_accueil": case "badges_pret": case "colis": return React.createElement(VueGestionAccueil,{key:"lev",onglet:view,setView,canAccess,showToast,addLog,badges,site:(session&&session.role!=="admin"&&session.site)||"Levallois"});
       case "aide": return React.createElement(VueAide,{canAccess,peutReglages:!isIT&&!isBadgeOnly});
@@ -12364,7 +12408,7 @@ useEffect(()=>{
       )
     ),
     showMore&&React.createElement(IosSheet,{title:session&&session.label?("Connecté : "+session.label):null,onClose:()=>setShowMore(false),items:[
-      ...(()=>{const L=moreTabs.filter(n=>n.id!=="impression"),pris=new Set(),out=[];const it=n=>({label:n.label,icon:n.id,onClick:()=>setView(n.id)});
+      ...(()=>{const L=moreTabs.filter(n=>n.id!=="impression"),pris=new Set(),out=[];const it=n=>({label:n.label,icon:n.id,onClick:()=>setView(n.id),compte:n.id==="coherence"&&canAccess("coherence")?nbCoh:0});
         MENU_SECTIONS.forEach(([t,ids])=>{const l=ids.map(id=>L.find(n=>n.id===id)).filter(Boolean);l.forEach(n=>pris.add(n.id));if(!l.length)return;
           if(t&&l.length>1)out.push({label:t,icon:MENU_ICONES[t]||l[0].id,groupe:l.map(n=>({...it(n),label:t==="Accueil physique"?String(n.label).replace(/^Gestion accueil /,"Accueil "):n.label}))});else l.forEach(n=>out.push(it(n)));});
         L.filter(n=>!pris.has(n.id)).forEach(n=>out.push(it(n)));return out;})(),
