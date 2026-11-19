@@ -4932,7 +4932,7 @@ function GaLignes({cle,children}){
       el("span",{style:{fontWeight:600,color:"var(--text2)"}},vus+" ligne(s) sur "+nb),el("span",null,"· Afficher :"),
       ["5","10","20","tout"].map(v=>el("button",{key:v,type:"button",onClick:()=>choisir(v),style:{border:"1px solid "+(max===v?"#2563EB":"var(--border)"),background:max===v?"#EFF6FF":"var(--surface)",color:max===v?"#1D4ED8":"var(--text2)",borderRadius:7,padding:"3px 10px",fontSize:12,fontWeight:700,cursor:"pointer"}},v==="tout"?"Tout":v))));
 }
-(function(){try{var st=document.createElement("style");st.id="pc-ga";st.textContent=".ga-titre{font-size:13px;font-weight:800;letter-spacing:.04em;text-transform:uppercase;color:var(--text2);margin:0 2px 10px}.ga-colis{margin-top:30px}.ga-wrap .hero+.bp-kpis3{grid-template-columns:1fr 1fr!important;gap:0!important}.ga-wrap .hero+.bp-kpis3>.kpi-std:nth-child(1){display:none!important}.ga-wrap .hero+.m-grid-2{grid-template-columns:1fr 1fr 12px 1fr 1fr!important;gap:0!important}.ga-wrap .hero+.m-grid-2>.kpi-std:nth-child(3){grid-column:4}.ga-wrap .hero+.m-grid-2>.kpi-std:nth-child(4){grid-column:5}.ga-wrap .hero+.bp-kpis3>.kpi-std,.ga-wrap .hero+.m-grid-2>.kpi-std{border:1px solid var(--border)!important;box-shadow:none!important;}.ga-wrap .hero+.bp-kpis3>.kpi-std:nth-child(2),.ga-wrap .hero+.m-grid-2>.kpi-std:nth-child(odd){border-radius:14px 0 0 14px!important;border-right:none!important}.ga-wrap .hero+.bp-kpis3>.kpi-std:nth-child(3),.ga-wrap .hero+.m-grid-2>.kpi-std:nth-child(even){border-radius:0 14px 14px 0!important;border-left:1px solid var(--border)!important;position:relative}@media (min-width:1200px){.ga-deux{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:22px;align-items:start}.ga-deux .ga-colis{margin-top:0}.ga-deux .ga-prets th:nth-child(2),.ga-deux .ga-prets td:nth-child(2),.ga-deux .ga-prets th:nth-child(5),.ga-deux .ga-prets td:nth-child(5),.ga-deux .ga-prets th:nth-child(6),.ga-deux .ga-prets td:nth-child(6),.ga-deux .ga-prets th:nth-child(8),.ga-deux .ga-prets td:nth-child(8){display:none}.ga-deux .ga-colis th:nth-child(4),.ga-deux .ga-colis td:nth-child(4),.ga-deux .ga-colis th:nth-child(6),.ga-deux .ga-colis td:nth-child(6),.ga-deux .ga-colis th:nth-child(7),.ga-deux .ga-colis td:nth-child(7){display:none}.ga-deux td:last-child>div,.ga-deux td:last-child{flex-wrap:wrap}.ga-deux td{white-space:normal}}.hero-top h1,.hero-top .greet,.hero-top>div:first-child>p{display:none!important}.hero-top:not(:has(.hero-actions)):not(:has(button)):not(:has(input)){display:none!important}.hero:not(:has(button)):not(:has(input)):not(:has(.hero-actions)){display:none!important}@media (min-width:1100px){body.ml-pin #root{padding-left:272px}body.ml-pin .ml-fond{inset:0 auto 0 0;width:272px;background:none;animation:none;z-index:900}body.ml-pin .ml{animation:none;box-shadow:none}body.ml-pin .ml-x,body.ml-pin button.burger{display:none!important}}";document.head.appendChild(st);}catch(e){}})();
+(function(){try{var st=document.createElement("style");st.id="pc-ga";st.textContent=".ga-titre{font-size:13px;font-weight:800;letter-spacing:.04em;text-transform:uppercase;color:var(--text2);margin:0 2px 10px}.ga-colis{margin-top:30px}.ga-wrap .hero+.bp-kpis3{grid-template-columns:repeat(3,1fr)!important;gap:0!important}.ga-wrap .hero+.bp-kpis3>.kpi-std:nth-child(3){border-radius:0!important;border-right:none!important}.ga-wrap .hero+.bp-kpis3>.kpi-std:nth-child(4){border-radius:0 14px 14px 0!important;border-left:1px solid var(--border)!important}.ga-wrap .hero+.bp-kpis3>.kpi-std:nth-child(1){display:none!important}.ga-wrap .hero+.m-grid-2{grid-template-columns:1fr 1fr 12px 1fr 1fr!important;gap:0!important}.ga-wrap .hero+.m-grid-2>.kpi-std:nth-child(3){grid-column:4}.ga-wrap .hero+.m-grid-2>.kpi-std:nth-child(4){grid-column:5}.ga-wrap .hero+.bp-kpis3>.kpi-std,.ga-wrap .hero+.m-grid-2>.kpi-std{border:1px solid var(--border)!important;box-shadow:none!important;}.ga-wrap .hero+.bp-kpis3>.kpi-std:nth-child(2),.ga-wrap .hero+.m-grid-2>.kpi-std:nth-child(odd){border-radius:14px 0 0 14px!important;border-right:none!important}.ga-wrap .hero+.bp-kpis3>.kpi-std:nth-child(3),.ga-wrap .hero+.m-grid-2>.kpi-std:nth-child(even){border-radius:0 14px 14px 0!important;border-left:1px solid var(--border)!important;position:relative}@media (min-width:1200px){.ga-deux{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:22px;align-items:start}.ga-deux .ga-colis{margin-top:0}.ga-deux .ga-prets th:nth-child(2),.ga-deux .ga-prets td:nth-child(2),.ga-deux .ga-prets th:nth-child(5),.ga-deux .ga-prets td:nth-child(5),.ga-deux .ga-prets th:nth-child(6),.ga-deux .ga-prets td:nth-child(6),.ga-deux .ga-prets th:nth-child(8),.ga-deux .ga-prets td:nth-child(8){display:none}.ga-deux .ga-colis th:nth-child(4),.ga-deux .ga-colis td:nth-child(4),.ga-deux .ga-colis th:nth-child(6),.ga-deux .ga-colis td:nth-child(6),.ga-deux .ga-colis th:nth-child(7),.ga-deux .ga-colis td:nth-child(7){display:none}.ga-deux td:last-child>div,.ga-deux td:last-child{flex-wrap:wrap}.ga-deux td{white-space:normal}}.hero-top h1,.hero-top .greet,.hero-top>div:first-child>p{display:none!important}.hero-top:not(:has(.hero-actions)):not(:has(button)):not(:has(input)){display:none!important}.hero:not(:has(button)):not(:has(input)):not(:has(.hero-actions)){display:none!important}@media (min-width:1100px){body.ml-pin #root{padding-left:272px}body.ml-pin .ml-fond{inset:0 auto 0 0;width:272px;background:none;animation:none;z-index:900}body.ml-pin .ml{animation:none;box-shadow:none}body.ml-pin .ml-x,body.ml-pin button.burger{display:none!important}}";document.head.appendChild(st);}catch(e){}})();
 function VueGestionAccueil({onglet,setView,canAccess,showToast,addLog,badges,site}){
   const el=React.createElement;
   const voitPret=!canAccess||canAccess("badges_pret"),voitColis=!canAccess||canAccess("colis");
@@ -5290,6 +5290,7 @@ function VueBadgesPret({showToast,addLog,site}){
     disponible:{label:"Disponible",color:"#16A34A",bg:"rgba(22,163,74,.12)",border:"rgba(22,163,74,.3)"},
     prete:{label:"Prêtée",color:"#D97706",bg:"rgba(217,119,6,.12)",border:"rgba(217,119,6,.3)"},
     empruntee:{label:"Prêtée",color:"#D97706",bg:"rgba(217,119,6,.12)",border:"rgba(217,119,6,.3)"},
+    hs:{label:"HS",color:"#64748B",bg:"rgba(100,116,139,.14)",border:"rgba(100,116,139,.35)"},
   };
 
   const fmtDate=d=>d?new Date(d).toLocaleDateString("fr-FR"):"—";
@@ -5329,6 +5330,7 @@ function VueBadgesPret({showToast,addLog,site}){
     disponibles:badges.filter(b=>b.statut==="disponible").length,
     pretees:badges.filter(b=>b.statut==="prete"||b.statut==="empruntee").length,
     empruntees:badges.filter(b=>b.statut==="empruntee").length,
+    hs:badges.filter(b=>b.statut==="hs").length,
   }),[badges]);
 
   const filtered=useMemo(()=>{
@@ -5360,6 +5362,20 @@ function VueBadgesPret({showToast,addLog,site}){
     setSelected(null);
   };
 
+  // Hors service : le badge ne peut plus être prêté tant qu'il n'est pas remis en service
+  const basculerHS=badge=>{
+    const remettre=badge.statut==="hs";
+    if(!remettre&&(badge.statut==="prete"||badge.statut==="empruntee")&&!confirm(badge.code+" est prêté à "+(badge.emprunteur||"quelqu'un")+".\nLe marquer hors service quand même ?"))return;
+    if(remettre&&!confirm("Remettre "+badge.code+" en service ?"))return;
+    const updated=badges.map(b=>b.id!==badge.id?b:{...b,statut:remettre?"disponible":"hs",emprunteur:"",email_emprunteur:"",date_emprunt:"",date_retour_prevu:""});
+    setBadges(updated);save(updated);
+    if(addLog)addLog("Badge prêt",badge.code+(remettre?" — remis en service":" — hors service"));
+    showToast(remettre?"✅ "+badge.code+" remis en service":"🚫 "+badge.code+" hors service");
+    setSelected(null);
+  };
+  const btnHS=badge=>el("button",{type:"button",title:badge.statut==="hs"?"Remettre en service":"Marquer hors service",onClick:e=>{e.stopPropagation();basculerHS(badge);},
+    style:{background:badge.statut==="hs"?"var(--accentBg)":"var(--surface3)",border:"1px solid "+(badge.statut==="hs"?"rgba(59,130,246,.3)":"var(--border)"),color:badge.statut==="hs"?"var(--accent2)":"var(--text2)",
+      borderRadius:6,padding:"4px 10px",fontSize:11,fontWeight:600,cursor:"pointer",whiteSpace:"nowrap"}},badge.statut==="hs"?"Remettre":"HS");
   const updateField=(badgeId,field,val)=>{
     const updated=badges.map(b=>b.id===badgeId?{...b,[field]:val}:b);
     setBadges(updated);
@@ -5379,10 +5395,11 @@ function VueBadgesPret({showToast,addLog,site}){
   }},S[statut]?.label||statut);
 
   // KPI cards
-  const kpis=el("div",{className:"bp-kpis3",style:{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:12,marginBottom:24}},
+  const kpis=el("div",{className:"bp-kpis3",style:{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:12,marginBottom:24}},
     [{label:"Total",val:stats.total,color:"#3B82F6",id:""},...[
       {label:"Disponibles",val:stats.disponibles,color:"#16A34A",id:"disponible"},
       {label:"Prêtées",val:stats.pretees,color:"#D97706",id:"prete"},
+      {label:"HS",val:stats.hs,color:"#64748B",id:"hs"},
     ]].map(k=>el("div",{className:"kpi-std",key:k.label,onClick:k.id?()=>setFiltreStatut(filtreStatut===k.id?"":k.id):undefined,
       style:{background:"var(--surface)",border:"1px solid "+(filtreStatut===k.id?k.color:"var(--border)"),
         borderTop:"3px solid "+k.color,borderRadius:"var(--radius-lg)",padding:"16px 20px",
@@ -5445,7 +5462,7 @@ function VueBadgesPret({showToast,addLog,site}){
             ),
             el("td",{style:{padding:"10px 14px"}},
               el("div",{style:{display:"flex",gap:6}},
-                badge.statut==="disponible"
+                badge.statut==="hs"?null:badge.statut==="disponible"
                   ?el("button",{onClick:()=>setSelected(badge),
                       style:{background:"var(--accentBg)",border:"1px solid rgba(59,130,246,.3)",color:"var(--accent2)",
                         borderRadius:6,padding:"4px 10px",fontSize:11,fontWeight:600,cursor:"pointer",whiteSpace:"nowrap"}},
@@ -5458,7 +5475,8 @@ function VueBadgesPret({showToast,addLog,site}){
                   el("button",{onClick:()=>doAction(badge.id,"disponible","",""),
                       style:{background:"rgba(22,163,74,.12)",border:"1px solid rgba(22,163,74,.3)",color:"#16A34A",
                         borderRadius:6,padding:"4px 10px",fontSize:11,fontWeight:600,cursor:"pointer",whiteSpace:"nowrap"}},
-                      "✅ Retour")
+                      "✅ Retour"),
+                btnHS(badge)
               )
             )
           ))
@@ -5476,12 +5494,12 @@ function VueBadgesPret({showToast,addLog,site}){
     else doAction(selected.id,"prete",selected.emprunteur,selected.date_retour_prevu,selected.email_emprunteur||"");
   };
   const bpFermer=()=>{if(bpModifie){if(confirm("Enregistrer les changements (date de retour, emprunteur…) ?"))return bpEnregistrer();}setSelected(null);};
-  const modal=selected&&el("div",{
+  const modal=selected&&ReactDOM.createPortal(el("div",{
     style:{position:"fixed",inset:0,background:"rgba(0,0,0,.45)",zIndex:1000,display:"flex",
       alignItems:"center",justifyContent:"center",padding:16,backdropFilter:"blur(4px)"},
     onClick:e=>{if(e.target===e.currentTarget)bpFermer();}},
     el("div",{style:{background:"var(--surface)",border:"1px solid var(--border)",borderRadius:"var(--radius-lg)",
-      padding:28,width:"100%",maxWidth:440,boxShadow:"0 24px 60px rgba(0,0,0,.2)"}},
+      padding:28,width:"100%",maxWidth:440,maxHeight:"calc(100vh - 32px)",overflowY:"auto",boxShadow:"0 24px 60px rgba(0,0,0,.2)"}},
       el("div",{style:{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:20}},
         el("div",null,
           el("div",{style:{fontSize:11,fontWeight:600,color:"var(--text3)",textTransform:"uppercase",letterSpacing:".5px",marginBottom:4}},"Badge de prêt"),
@@ -5532,7 +5550,7 @@ function VueBadgesPret({showToast,addLog,site}){
           className:"btn btn-success",style:{width:"100%",justifyContent:"center",fontWeight:700}},
           "✅ Rendre disponible")
     )
-  );
+  ),document.body);
 
   return el("div",null,
     React.createElement(PageHero,{icone:"🪪",titre:"Badges de prêt",sousTitre:stats.disponibles+" disponible(s) · "+(stats.pretees+stats.empruntees)+" sorti(s)"}),
@@ -10868,7 +10886,7 @@ function GaLignes({cle,children}){
       el("span",{style:{fontWeight:600,color:"var(--text2)"}},vus+" ligne(s) sur "+nb),el("span",null,"· Afficher :"),
       ["5","10","20","tout"].map(v=>el("button",{key:v,type:"button",onClick:()=>choisir(v),style:{border:"1px solid "+(max===v?"#2563EB":"var(--border)"),background:max===v?"#EFF6FF":"var(--surface)",color:max===v?"#1D4ED8":"var(--text2)",borderRadius:7,padding:"3px 10px",fontSize:12,fontWeight:700,cursor:"pointer"}},v==="tout"?"Tout":v))));
 }
-(function(){try{var st=document.createElement("style");st.id="pc-ga";st.textContent=".ga-titre{font-size:13px;font-weight:800;letter-spacing:.04em;text-transform:uppercase;color:var(--text2);margin:0 2px 10px}.ga-colis{margin-top:30px}.ga-wrap .hero+.bp-kpis3{grid-template-columns:1fr 1fr!important;gap:0!important}.ga-wrap .hero+.bp-kpis3>.kpi-std:nth-child(1){display:none!important}.ga-wrap .hero+.m-grid-2{grid-template-columns:1fr 1fr 12px 1fr 1fr!important;gap:0!important}.ga-wrap .hero+.m-grid-2>.kpi-std:nth-child(3){grid-column:4}.ga-wrap .hero+.m-grid-2>.kpi-std:nth-child(4){grid-column:5}.ga-wrap .hero+.bp-kpis3>.kpi-std,.ga-wrap .hero+.m-grid-2>.kpi-std{border:1px solid var(--border)!important;box-shadow:none!important;}.ga-wrap .hero+.bp-kpis3>.kpi-std:nth-child(2),.ga-wrap .hero+.m-grid-2>.kpi-std:nth-child(odd){border-radius:14px 0 0 14px!important;border-right:none!important}.ga-wrap .hero+.bp-kpis3>.kpi-std:nth-child(3),.ga-wrap .hero+.m-grid-2>.kpi-std:nth-child(even){border-radius:0 14px 14px 0!important;border-left:1px solid var(--border)!important;position:relative}@media (min-width:1200px){.ga-deux{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:22px;align-items:start}.ga-deux .ga-colis{margin-top:0}.ga-deux .ga-prets th:nth-child(2),.ga-deux .ga-prets td:nth-child(2),.ga-deux .ga-prets th:nth-child(5),.ga-deux .ga-prets td:nth-child(5),.ga-deux .ga-prets th:nth-child(6),.ga-deux .ga-prets td:nth-child(6),.ga-deux .ga-prets th:nth-child(8),.ga-deux .ga-prets td:nth-child(8){display:none}.ga-deux .ga-colis th:nth-child(4),.ga-deux .ga-colis td:nth-child(4),.ga-deux .ga-colis th:nth-child(6),.ga-deux .ga-colis td:nth-child(6),.ga-deux .ga-colis th:nth-child(7),.ga-deux .ga-colis td:nth-child(7){display:none}.ga-deux td:last-child>div,.ga-deux td:last-child{flex-wrap:wrap}.ga-deux td{white-space:normal}}.ga-titre{display:none}";document.head.appendChild(st);}catch(e){}})();
+(function(){try{var st=document.createElement("style");st.id="pc-ga";st.textContent=".ga-titre{font-size:13px;font-weight:800;letter-spacing:.04em;text-transform:uppercase;color:var(--text2);margin:0 2px 10px}.ga-colis{margin-top:30px}.ga-wrap .hero+.bp-kpis3{grid-template-columns:repeat(3,1fr)!important;gap:0!important}.ga-wrap .hero+.bp-kpis3>.kpi-std:nth-child(3){border-radius:0!important;border-right:none!important}.ga-wrap .hero+.bp-kpis3>.kpi-std:nth-child(4){border-radius:0 14px 14px 0!important;border-left:1px solid var(--border)!important}.ga-wrap .hero+.bp-kpis3>.kpi-std:nth-child(1){display:none!important}.ga-wrap .hero+.m-grid-2{grid-template-columns:1fr 1fr 12px 1fr 1fr!important;gap:0!important}.ga-wrap .hero+.m-grid-2>.kpi-std:nth-child(3){grid-column:4}.ga-wrap .hero+.m-grid-2>.kpi-std:nth-child(4){grid-column:5}.ga-wrap .hero+.bp-kpis3>.kpi-std,.ga-wrap .hero+.m-grid-2>.kpi-std{border:1px solid var(--border)!important;box-shadow:none!important;}.ga-wrap .hero+.bp-kpis3>.kpi-std:nth-child(2),.ga-wrap .hero+.m-grid-2>.kpi-std:nth-child(odd){border-radius:14px 0 0 14px!important;border-right:none!important}.ga-wrap .hero+.bp-kpis3>.kpi-std:nth-child(3),.ga-wrap .hero+.m-grid-2>.kpi-std:nth-child(even){border-radius:0 14px 14px 0!important;border-left:1px solid var(--border)!important;position:relative}@media (min-width:1200px){.ga-deux{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:22px;align-items:start}.ga-deux .ga-colis{margin-top:0}.ga-deux .ga-prets th:nth-child(2),.ga-deux .ga-prets td:nth-child(2),.ga-deux .ga-prets th:nth-child(5),.ga-deux .ga-prets td:nth-child(5),.ga-deux .ga-prets th:nth-child(6),.ga-deux .ga-prets td:nth-child(6),.ga-deux .ga-prets th:nth-child(8),.ga-deux .ga-prets td:nth-child(8){display:none}.ga-deux .ga-colis th:nth-child(4),.ga-deux .ga-colis td:nth-child(4),.ga-deux .ga-colis th:nth-child(6),.ga-deux .ga-colis td:nth-child(6),.ga-deux .ga-colis th:nth-child(7),.ga-deux .ga-colis td:nth-child(7){display:none}.ga-deux td:last-child>div,.ga-deux td:last-child{flex-wrap:wrap}.ga-deux td{white-space:normal}}.ga-titre{display:none}";document.head.appendChild(st);}catch(e){}})();
 function VueGestionAccueil({onglet,setView,canAccess,showToast,addLog,badges,site}){
   const el=React.createElement;
   const voitPret=!canAccess||canAccess("badges_pret"),voitColis=!canAccess||canAccess("colis");
@@ -11261,6 +11279,7 @@ function VueBadgesPret({showToast,addLog,site}){
     disponible:{label:"Disponible",color:"#16A34A",bg:"rgba(22,163,74,.12)",border:"rgba(22,163,74,.3)"},
     prete:{label:"Prêtée",color:"#D97706",bg:"rgba(217,119,6,.12)",border:"rgba(217,119,6,.3)"},
     empruntee:{label:"Prêtée",color:"#D97706",bg:"rgba(217,119,6,.12)",border:"rgba(217,119,6,.3)"},
+    hs:{label:"HS",color:"#64748B",bg:"rgba(100,116,139,.14)",border:"rgba(100,116,139,.35)"},
   };
 
   const fmtDate=d=>d?new Date(d).toLocaleDateString("fr-FR"):"—";
@@ -11302,6 +11321,7 @@ function VueBadgesPret({showToast,addLog,site}){
     disponibles:badges.filter(b=>b.statut==="disponible").length,
     pretees:badges.filter(b=>b.statut==="prete"||b.statut==="empruntee").length,
     empruntees:badges.filter(b=>b.statut==="empruntee").length,
+    hs:badges.filter(b=>b.statut==="hs").length,
   }),[badges]);
 
   const filtered=useMemo(()=>{
@@ -11333,6 +11353,20 @@ function VueBadgesPret({showToast,addLog,site}){
     setSelected(null);
   };
 
+  // Hors service : le badge ne peut plus être prêté tant qu'il n'est pas remis en service
+  const basculerHS=badge=>{
+    const remettre=badge.statut==="hs";
+    if(!remettre&&(badge.statut==="prete"||badge.statut==="empruntee")&&!confirm(badge.code+" est prêté à "+(badge.emprunteur||"quelqu'un")+".\nLe marquer hors service quand même ?"))return;
+    if(remettre&&!confirm("Remettre "+badge.code+" en service ?"))return;
+    const updated=badges.map(b=>b.id!==badge.id?b:{...b,statut:remettre?"disponible":"hs",emprunteur:"",email_emprunteur:"",date_emprunt:"",date_retour_prevu:""});
+    setBadges(updated);save(updated);
+    if(addLog)addLog("Badge prêt",badge.code+(remettre?" — remis en service":" — hors service"));
+    showToast(remettre?"✅ "+badge.code+" remis en service":"🚫 "+badge.code+" hors service");
+    setSelected(null);
+  };
+  const btnHS=badge=>el("button",{type:"button",title:badge.statut==="hs"?"Remettre en service":"Marquer hors service",onClick:e=>{e.stopPropagation();basculerHS(badge);},
+    style:{background:badge.statut==="hs"?"var(--accentBg)":"var(--surface3)",border:"1px solid "+(badge.statut==="hs"?"rgba(59,130,246,.3)":"var(--border)"),color:badge.statut==="hs"?"var(--accent2)":"var(--text2)",
+      borderRadius:6,padding:"4px 10px",fontSize:11,fontWeight:600,cursor:"pointer",whiteSpace:"nowrap"}},badge.statut==="hs"?"Remettre":"HS");
   const updateField=(badgeId,field,val)=>{
     const updated=badges.map(b=>b.id===badgeId?{...b,[field]:val}:b);
     setBadges(updated);
@@ -11352,10 +11386,11 @@ function VueBadgesPret({showToast,addLog,site}){
   }},S[statut]?.label||statut);
 
   // KPI cards
-  const kpis=el("div",{className:"bp-kpis3",style:{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:12,marginBottom:24}},
+  const kpis=el("div",{className:"bp-kpis3",style:{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:12,marginBottom:24}},
     [{label:"Total",val:stats.total,color:"#3B82F6",id:""},...[
       {label:"Disponibles",val:stats.disponibles,color:"#16A34A",id:"disponible"},
       {label:"Prêtées",val:stats.pretees,color:"#D97706",id:"prete"},
+      {label:"HS",val:stats.hs,color:"#64748B",id:"hs"},
     ]].map(k=>el("div",{key:k.label,onClick:k.id?()=>setFiltreStatut(filtreStatut===k.id?"":k.id):undefined,
       style:{background:"var(--surface)",border:"1px solid var(--border)",borderTop:"2px solid "+k.color,boxShadow:filtreStatut===k.id?"inset 0 0 0 2px "+k.color:"none",borderRadius:"var(--radius-lg)",padding:"16px 20px",
         cursor:k.id?"pointer":"default",transition:"all .15s",textAlign:"center",
@@ -11417,7 +11452,7 @@ function VueBadgesPret({showToast,addLog,site}){
             ),
             el("td",{style:{padding:"10px 14px"}},
               el("div",{style:{display:"flex",gap:6}},
-                badge.statut==="disponible"
+                badge.statut==="hs"?null:badge.statut==="disponible"
                   ?el("button",{onClick:()=>setSelected(badge),
                       style:{background:"var(--accentBg)",border:"1px solid rgba(59,130,246,.3)",color:"var(--accent2)",
                         borderRadius:6,padding:"4px 10px",fontSize:11,fontWeight:600,cursor:"pointer",whiteSpace:"nowrap"}},
@@ -11430,7 +11465,8 @@ function VueBadgesPret({showToast,addLog,site}){
                   el("button",{onClick:()=>doAction(badge.id,"disponible","",""),
                       style:{background:"rgba(22,163,74,.12)",border:"1px solid rgba(22,163,74,.3)",color:"#16A34A",
                         borderRadius:6,padding:"4px 10px",fontSize:11,fontWeight:600,cursor:"pointer",whiteSpace:"nowrap"}},
-                      "✅ Retour")
+                      "✅ Retour"),
+                btnHS(badge)
               )
             )
           ))
@@ -11510,15 +11546,16 @@ function VueBadgesPret({showToast,addLog,site}){
   const bpList=el("div",{className:"ios-group"},
     filtered.length===0?el("div",{className:"il-row",style:{cursor:"default",color:"var(--text3)"}},"Aucun badge trouvé")
     :filtered.map(badge=>{const late=badge.date_retour_prevu&&badge.date_retour_prevu<todayISO();const c=bpCol[badge.statut]||["#8E8E93","rgba(142,142,147,.15)"];const lent=badge.statut==="prete"||badge.statut==="empruntee";
-      return el(IosSwipeRow,{key:badge.id,className:"bp-swipe",onTap:()=>setSelected(badge),
-          actions:lent?[{label:"Rendu",color:"#34C759",onClick:()=>doAction(badge.id,"disponible","","")}]:[]},
+      return el(IosSwipeRow,{key:badge.id,className:"bp-swipe",onTap:()=>badge.statut==="hs"?basculerHS(badge):setSelected(badge),
+          actions:[...(lent?[{label:"Rendu",color:"#34C759",onClick:()=>doAction(badge.id,"disponible","","")}]:[]),{label:badge.statut==="hs"?"En service":"HS",color:"#8E8E93",onClick:()=>basculerHS(badge)}]},
         el("div",{className:"il-row"},
         el("div",{className:"il-ico",style:{background:c[1],color:c[0]}},el(IosIcon,{id:"badges_pret",size:22,filled:true})),
         el("div",{className:"t"},
           el("div",{className:"t1"},el("b",null,badge.code),"  ",el("span",{style:{color:"var(--text3)"}},badge.nom)),
-          el("div",{className:"t2"},lent?[badge.emprunteur||"—"," · retour ",el("span",{key:"r",style:late?{color:"var(--red)",fontWeight:600}:null},fmtDate(badge.date_retour_prevu)),badge.commentaire?" · "+badge.commentaire:""]:(badge.commentaire||"Disponible")),lent&&badge.email_emprunteur&&el("div",{className:"t2",style:{color:"var(--accent)",whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}},badge.email_emprunteur)),
+          el("div",{className:"t2"},lent?[badge.emprunteur||"—"," · retour ",el("span",{key:"r",style:late?{color:"var(--red)",fontWeight:600}:null},fmtDate(badge.date_retour_prevu)),badge.commentaire?" · "+badge.commentaire:""]:(badge.commentaire||(badge.statut==="hs"?"Hors service":"Disponible"))),lent&&badge.email_emprunteur&&el("div",{className:"t2",style:{color:"var(--accent)",whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}},badge.email_emprunteur)),
         el(Pill,{statut:badge.statut}),
         lent&&el("button",{type:"button",className:"il-btn",style:{background:"rgba(52,199,89,.15)",color:"#248A3D"},onClick:e=>{e.stopPropagation();doAction(badge.id,"disponible","","");}},"Retour"),
+        el("button",{type:"button",className:"il-btn",style:{background:badge.statut==="hs"?"rgba(0,122,255,.12)":"rgba(142,142,147,.15)",color:badge.statut==="hs"?"#007AFF":"#636366"},onClick:e=>{e.stopPropagation();basculerHS(badge);}},badge.statut==="hs"?"Remettre":"HS"),
         el("span",{className:"ios-chev"},"›")));
     }));
   return el("div",null,
