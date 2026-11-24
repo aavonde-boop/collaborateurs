@@ -2,7 +2,7 @@
 <html lang="fr">
 <head>
   <meta charset="UTF-8"/>
-<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' 'wasm-unsafe-eval' blob: https://unpkg.com https://cdn.jsdelivr.net; worker-src 'self' blob: https://cdn.jsdelivr.net https://unpkg.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' data: https://fonts.gstatic.com; img-src 'self' data: blob: https://jymobewqenhcjtzniytb.supabase.co https://aavonde-boop.github.io; connect-src 'self' data: blob: https://jymobewqenhcjtzniytb.supabase.co wss://jymobewqenhcjtzniytb.supabase.co https://cdn.jsdelivr.net https://unpkg.com https://tessdata.projectnaptha.com; media-src 'self' blob: data:; object-src 'none'; base-uri 'self'; form-action 'self'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' 'wasm-unsafe-eval' blob: https://unpkg.com https://cdn.jsdelivr.net; worker-src 'self' blob: https://cdn.jsdelivr.net https://unpkg.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' data: https://fonts.gstatic.com; img-src 'self' data: blob: https://jymobewqenhcjtzniytb.supabase.co https://aavonde-boop.github.io https://upload.wikimedia.org; connect-src 'self' data: blob: https://jymobewqenhcjtzniytb.supabase.co wss://jymobewqenhcjtzniytb.supabase.co https://cdn.jsdelivr.net https://unpkg.com https://tessdata.projectnaptha.com https://fr.wikipedia.org; media-src 'self' blob: data:; object-src 'none'; base-uri 'self'; form-action 'self'">
 <meta name="referrer" content="strict-origin-when-cross-origin">
 <script>if(window.top!==window.self){try{window.top.location.replace(window.location.href);}catch(e){document.documentElement.style.display="none";}}</script>
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover"/>
@@ -3469,7 +3469,9 @@ const PK_PLAN={
 };
 const PK_COUL={"Blanche":"#f1f5f9","Grise":"#8b95a1","Noire":"#1f2937","Bleue":"#2c5f85","Rouge":"#c0392b","Verte":"#2f7d4f","Beige":"#d6c7a1","Marron":"#7c4a2d","Jaune":"#e0b52b","Orange":"#e07b2b","Violette":"#6d4c9f"};
 const pkFonce=h=>{const n=parseInt(h.slice(1),16);const f=x=>Math.max(0,Math.round(x*.7));return "#"+[f(n>>16),f((n>>8)&255),f(n&255)].map(x=>x.toString(16).padStart(2,"0")).join("");};
+const PK_MARQUES=["Abarth","Aiways","Aixam","Alfa Romeo","Alpine","Aston Martin","Audi","Bentley","BMW","BYD","Cadillac","Chevrolet","Chrysler","Citroën","Cupra","Dacia","Dodge","DS","Ferrari","Fiat","Fisker","Ford","Genesis","Honda","Hongqi","Hyundai","Ineos","Infiniti","Isuzu","Iveco","Jaecoo","Jaguar","Jeep","Kia","KGM (SsangYong)","Lada","Lamborghini","Lancia","Land Rover","Leapmotor","Lexus","Ligier","Lotus","Lucid","Lynk & Co","Maserati","Mazda","McLaren","Mercedes-Benz","MG","Microcar","Mini","Mitsubishi","Nio","Nissan","Omoda","Opel","Peugeot","Polestar","Porsche","Range Rover","Renault","Rolls-Royce","Seat","Seres","Skoda","Smart","Subaru","Suzuki","Tesla","Toyota","VinFast","Volkswagen","Volvo","Xpeng","Zeekr","Aprilia","BMW Motorrad","Ducati","Harley-Davidson","Honda Moto","Kawasaki","KTM","Kymco","Niu","Piaggio","Royal Enfield","Silence","Suzuki Moto","Triumph","Vespa","Yamaha"];
 const pkVoit=p=>[p.marque,p.modele].filter(Boolean).join(" ")+(p.couleur?" "+p.couleur.toLowerCase():"");
+const PK_SIL="M18 98 Q16 80 36 74 L100 66 Q124 38 162 36 L214 37 Q240 39 262 66 L296 72 Q310 76 308 98 Q306 104 296 104 L270 104 A24 24 0 0 0 222 104 L112 104 A24 24 0 0 0 64 104 L28 104 Q18 104 18 98 Z";
 const pkKey=n=>String(n||"").toLowerCase().replace(/\s+/g,"");
 const pkNat=(a,b)=>String(a||"").localeCompare(String(b||""),"fr",{numeric:true});
 const pkId=()=>Date.now().toString(36)+Math.random().toString(36).slice(2,6);
@@ -3487,7 +3489,15 @@ function VueParking({showToast,addLog,badges,session}){
   const[q,setQ]=React.useState("");const[niv,setNiv]=React.useState("");const[f,setF]=React.useState("all");
   const[edit,setEdit]=React.useState(null);const[form,setForm]=React.useState(null);
   const[vEdit,setVEdit]=React.useState(null);const[vForm,setVForm]=React.useState(null);
-  const[outils,setOutils]=React.useState(false);const[grand,setGrand]=React.useState(false);const[vue3d,setVue3d]=React.useState(true);const[tout,setTout]=React.useState(false);
+  const[outils,setOutils]=React.useState(false);const[grand,setGrand]=React.useState(false);const[vue3d,setVue3d]=React.useState(true);const[zoom,setZoom]=React.useState(null);const[photos,setPhotos]=React.useState({});
+  // Photo du modèle (Wikipédia, gratuit, sans clé) : seuls la marque et le modèle sont envoyés, jamais la plaque ni le nom
+  const zp=data&&zoom?(data.places||[]).find(x=>x.id===zoom):null;const cleMod=zp&&zp.tit&&zp.marque&&zp.modele?(zp.marque+" "+zp.modele).trim():"";
+  React.useEffect(()=>{if(!cleMod||photos[cleMod]!==undefined)return;setPhotos(o=>({...o,[cleMod]:null}));
+    (async()=>{try{const r=await fetch("https://fr.wikipedia.org/w/api.php?action=query&format=json&origin=*&generator=search&gsrlimit=6&prop=pageimages&piprop=thumbnail&pithumbsize=640&gsrsearch="+encodeURIComponent(cleMod));
+      const j=await r.json();const pages=Object.values((j.query||{}).pages||{}).filter(x=>x.thumbnail).sort((a,b)=>a.index-b.index);
+      const mots=cleMod.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g,"").split(/\s+/);const n=t=>String(t).toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g,"");
+      const pg=pages.find(x=>mots.every(m=>n(x.title).includes(m)))||pages.find(x=>n(x.title).includes(mots[mots.length-1]));
+      setPhotos(o=>({...o,[cleMod]:pg?{src:pg.thumbnail.source,titre:pg.title}:false}));}catch(e){setPhotos(o=>({...o,[cleMod]:false}));}})();},[cleMod]);const[tout,setTout]=React.useState(false);
   const[gen,setGen]=React.useState({niv:"",pad:"0",de:"1",a:""});const[colle,setColle]=React.useState("");const[reprise,setReprise]=React.useState("");
   const tSave=React.useRef(null);
   React.useEffect(()=>{if(!sb){setData({places:[],vehicules:[]});return;}(async()=>{try{
@@ -3566,7 +3576,7 @@ function VueParking({showToast,addLog,badges,session}){
       el("div",{style:{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:10}},champ("Marque",inp(form.marque,v=>set("marque",v),"Peugeot",{list:"pk-marques"})),champ("Modèle",inp(form.modele,v=>set("modele",v),"308")),
         champ("Couleur",el("div",{style:{display:"flex",alignItems:"center",gap:6}},el("i",{style:{flexShrink:0,width:20,height:20,borderRadius:6,border:"1px solid var(--border2)",background:PK_COUL[form.couleur]||"repeating-linear-gradient(45deg,#e5e7eb 0 4px,#fff 4px 8px)"}}),
           el("select",{className:"inp",value:form.couleur,onChange:e=>set("couleur",e.target.value),style:{width:"100%"}},el("option",{value:""},"—"),Object.keys(PK_COUL).map(c=>el("option",{key:c,value:c},c)))))),
-      el("datalist",{id:"pk-marques"},["Peugeot","Renault","Citroën","DS","Dacia","Toyota","Volkswagen","Audi","BMW","Mercedes","Tesla","Skoda","Seat","Cupra","Fiat","Ford","Hyundai","Kia","Nissan","Opel","Volvo","MG","Mini","Jeep","Porsche","Lexus","Mazda","Suzuki","BYD"].map(x=>el("option",{key:x,value:x}))),
+      el("datalist",{id:"pk-marques"},PK_MARQUES.map(x=>el("option",{key:x,value:x}))),
       deux(champ("Direction / service",inp(form.dir,v=>set("dir",v),"",{list:"pk-dirs"})),champ("Remarque",inp(form.note,v=>set("note",v)))),
       el("datalist",{id:"pk-dirs"},dirs.map(x=>el("option",{key:x,value:x}))),
       el("div",{style:{display:"flex",gap:8,flexWrap:"wrap",marginTop:4}},el("button",{type:"button",className:"btn btn-primary",onClick:sauverPlace},"Enregistrer"),
@@ -3639,6 +3649,40 @@ function VueParking({showToast,addLog,badges,session}){
     el("div",{style:{borderTop:"1px solid var(--border)",paddingTop:14}},blocReprise)));
 
   // ── Plan ──
+  // ── Gros plan sur la place survolée ──
+  const grosPlan=p=>{const boite={flex:"0 1 320px",minWidth:260,borderRadius:12,border:"1px solid var(--border)",background:"linear-gradient(180deg,var(--surface2),var(--surface))",padding:18,display:"flex",flexDirection:"column",gap:12};
+    if(!p)return el("div",{style:{...boite,alignItems:"center",justifyContent:"center",textAlign:"center",color:"var(--text3)",fontSize:13}},
+      el("svg",{viewBox:"0 0 320 150",style:{width:"80%",opacity:.35}},el("ellipse",{cx:165,cy:128,rx:135,ry:9,fill:"#94a3b8"}),el("path",{d:PK_SIL,fill:"none",stroke:"#64748b",strokeWidth:3,strokeDasharray:"8 7"})),
+      "Survole une place sur le plan pour voir la voiture en gros plan.");
+    const cc=PK_COUL[p.couleur]||"#2c5f85",clair=["Blanche","Beige","Jaune"].includes(p.couleur),t=PK_TYPES[p.type]||PK_TYPES.std;const voit=p.tit&&!p.ko;
+    const ligne=(l,v)=>v?el("div",{style:{display:"flex",justifyContent:"space-between",gap:10,fontSize:13,padding:"6px 0",borderTop:"1px solid var(--border)"}},el("span",{style:{color:"var(--text3)"}},l),el("b",{style:{textAlign:"right"}},v)):null;
+    return el("div",{style:boite},
+      el("div",{style:{display:"flex",alignItems:"center",gap:6,flexWrap:"wrap"}},el("div",{style:{fontSize:15,fontWeight:800,marginRight:"auto"}},"Place "+lib(p)),
+        p.type&&p.type!=="std"?pill(t[0]+(p.panne?" · en panne":""),t[1],t[2]):null,p.ko?pill("Hors service","#b91c1c","#fee2e2"):null),
+      (()=>{const ph=voit&&p.marque&&p.modele?photos[(p.marque+" "+p.modele).trim()]:null;if(!ph)return null;
+        return el("div",null,el("div",{style:{background:"#fff",borderRadius:10,border:"1px solid var(--border)",overflow:"hidden",display:"flex",alignItems:"center",justifyContent:"center",height:170}},
+          el("img",{src:ph.src,alt:ph.titre,referrerPolicy:"no-referrer",style:{maxWidth:"100%",maxHeight:"100%",objectFit:"contain"}})),
+          el("div",{style:{fontSize:10.5,color:"var(--text3)",marginTop:4,textAlign:"center"}},"Photo d'illustration du modèle · Wikipédia"+(p.couleur?" · couleur réelle : "+p.couleur.toLowerCase():"")));})()||
+      el("svg",{viewBox:"0 0 320 150",style:{width:"100%",display:"block"}},
+        el("defs",null,el("linearGradient",{id:"gp-carr",x1:0,y1:0,x2:0,y2:1},el("stop",{offset:0,stopColor:cc}),el("stop",{offset:1,stopColor:pkFonce(cc)})),
+          el("linearGradient",{id:"gp-vitre",x1:0,y1:0,x2:0,y2:1},el("stop",{offset:0,stopColor:"#dbeafe"}),el("stop",{offset:1,stopColor:"#64748b"}))),
+        el("ellipse",{cx:165,cy:128,rx:140,ry:10,fill:"#0f172a",opacity:.18}),
+        voit?el("g",null,
+          el("path",{d:PK_SIL,fill:"url(#gp-carr)",stroke:clair?"#94a3b8":pkFonce(cc),strokeWidth:2}),
+          el("path",{d:"M112 66 Q130 44 162 42 L186 42 L186 66 Z",fill:"url(#gp-vitre)"}),el("path",{d:"M194 42 L214 43 Q234 47 252 66 L194 66 Z",fill:"url(#gp-vitre)"}),
+          el("path",{d:"M40 84 L300 84",stroke:"#fff",strokeOpacity:.35,strokeWidth:2}),
+          el("rect",{x:290,y:80,width:13,height:7,rx:3,fill:"#fde68a"}),el("rect",{x:19,y:82,width:10,height:6,rx:3,fill:"#ef4444"}),
+          [88,246].map(x=>el("g",{key:x},el("circle",{cx:x,cy:106,r:21,fill:"#111827"}),el("circle",{cx:x,cy:106,r:11,fill:"#9ca3af"}),el("circle",{cx:x,cy:106,r:4,fill:"#374151"}))))
+        :el("g",null,el("rect",{x:40,y:36,width:250,height:84,rx:8,fill:p.ko?"#fee2e2":"#dcfce7",stroke:p.ko?"#b91c1c":"#16a34a",strokeWidth:3,strokeDasharray:"10 8"}),
+          el("text",{x:165,y:86,textAnchor:"middle",fontSize:22,fontWeight:800,fill:p.ko?"#991b1b":"#166534",fontFamily:"Inter,system-ui,sans-serif"},p.ko?"Hors service":"Place libre"))),
+      voit?el("div",{style:{textAlign:"center"}},el("div",{style:{fontSize:20,fontWeight:800,lineHeight:1.15}},[p.marque,p.modele].filter(Boolean).join(" ")||"Voiture"),
+        el("div",{style:{fontSize:12.5,color:"var(--text3)",marginTop:2}},p.couleur?"Couleur : "+p.couleur.toLowerCase():"Marque, modèle et couleur à renseigner sur la fiche")):null,
+      p.plaque?el("div",{style:{alignSelf:"center",display:"flex",alignItems:"stretch",border:"2px solid #111827",borderRadius:6,overflow:"hidden",background:"#fff",fontFamily:"ui-monospace,monospace"}},
+        el("span",{style:{background:"#1d4ed8",color:"#fff",fontSize:10,fontWeight:800,padding:"4px 5px",display:"flex",alignItems:"flex-end"}},"F"),
+        el("span",{style:{fontSize:20,fontWeight:800,letterSpacing:1.5,padding:"3px 12px",color:"#111827"}},p.plaque),
+        el("span",{style:{background:"#1d4ed8",width:14}})):null,
+      el("div",null,ligne("Titulaire",p.tit||"—"),ligne("Direction / service",p.dir),ligne("Remarque",p.note)),
+      el("button",{type:"button",className:"btn btn-primary",style:{marginTop:"auto"},onClick:()=>ouvrir(p.id)},p.tit||p.ko?"Ouvrir la fiche":"Attribuer la place"));};
   const plan=()=>{const ns=Object.keys(PK_PLAN);const nv=PK_PLAN[niv]?niv:ns[0];const PL=PK_PLAN[nv];
     const pl=P.filter(p=>String(p.niv||"")===nv);const byKey={};pl.forEach(p=>byKey[pkKey(p.num)]=p);
     const hit=p=>qn&&p&&[p.num,p.tit,p.plaque,p.dir,p.marque,p.modele,(jum(p)||{}).num].join(" ").toLowerCase().replace(/[\s-]/g,"").includes(qn);
@@ -3652,13 +3696,14 @@ function VueParking({showToast,addLog,badges,session}){
         ns.map(n=>el("button",{key:n,type:"button",className:"btn "+(n===nv?"btn-primary":"btn-outline"),style:{fontSize:12,padding:"6px 12px"},onClick:()=>setNiv(n)},"Niveau "+n)),
         el("button",{type:"button",className:"btn btn-outline",style:{fontSize:12,padding:"6px 12px"},onClick:()=>setGrand(!grand)},grand?"Réduire":"Agrandir"),el("button",{type:"button",className:"btn btn-outline",style:{fontSize:12,padding:"6px 12px"},onClick:()=>setVue3d(!vue3d)},vue3d?"Plan d'origine":"Vue 3D"),
         el("span",{style:{display:"flex",gap:12,flexWrap:"wrap",marginLeft:"auto",fontSize:12,color:"var(--text2)"}},leg("#2c5f85",vue3d?"Attribuée (voiture)":"Attribuée"),leg("#16a34a","Libre"),leg("#b91c1c","Hors service"),leg("#15803d","Borne",true))),
+      el("div",{style:{display:"flex",gap:14,alignItems:"stretch",flexWrap:"wrap"}},el("div",{style:{flex:"1 1 520px",minWidth:0}},
       (()=>{const tip=p=>nv+" · n° "+p.num+(jum(p)?" + "+jum(p).num:"")+" · "+(p.ko?"hors service":p.tit?p.tit+(pkVoit(p)?" · "+pkVoit(p):"")+(p.plaque?" · "+p.plaque:""):"libre")+(p.type==="borne"?" · borne"+(p.panne?" en panne":""):"");
         const eclair=(p,w,h,r)=>p.type==="borne"&&el("g",{transform:"rotate("+(-r)+") translate("+(w/2-14)+" "+(-h/2+14)+")"},el("circle",{r:12,fill:p.panne?"#b91c1c":"#15803d",stroke:"#fff",strokeWidth:2}),el("path",{d:"M1.5 -7 L-4 1 L0 1 L-1.5 7 L4 -1 L0 -1 Z",fill:"#fff"}));
         if(!vue3d)return el("div",{style:{overflow:"auto",borderRadius:8,border:"1px solid var(--border)",background:"#fff",width:"fit-content",maxWidth:"100%",margin:"0 auto"}},
           el("svg",{viewBox:vb.join(" "),preserveAspectRatio:"xMidYMid meet",style:{display:"block",width:"auto",maxWidth:"100%",height:grand?"min(80vh,760px)":"420px"}},
             el("image",{href:PL.img,x:PL.ox,y:PL.oy,width:PL.w,height:PL.h,opacity:.9}),
             Object.entries(PL.pts).map(([k,[x,y,w,h,r]])=>{const p=byKey[k];if(!p)return null;const[c,o]=col(p);const H=hit(p);
-              return el("g",{key:k,onClick:()=>ouvrir(p.id),style:{cursor:"pointer"},transform:"translate("+x+" "+y+") rotate("+r+")",opacity:anyHit&&!H?.25:1},el("title",null,tip(p)),
+              return el("g",{key:k,onClick:()=>ouvrir(p.id),onMouseEnter:()=>setZoom(p.id),style:{cursor:"pointer"},transform:"translate("+x+" "+y+") rotate("+r+")",opacity:anyHit&&!H?.25:1},el("title",null,tip(p)),
                 el("rect",{x:-w/2,y:-h/2,width:w,height:h,rx:5,fill:c,fillOpacity:o,stroke:H?"#f59e0b":c,strokeWidth:H?7:2}),eclair(p,w,h,r));})));
         // Vue 3D : sol en béton, emplacements tracés, voitures en relief sur les places attribuées
         const CAR={att:["#2c5f85","#1e4461","#9cc3e0"],ko:["#b91c1c","#7f1d1d","#fecaca"]};
@@ -3673,7 +3718,7 @@ function VueParking({showToast,addLog,badges,session}){
             Object.entries(PL.pts).map(([k,[x,y,w,h,r]])=>{const p=byKey[k];if(!p)return null;const H=hit(p);
               const long=Math.max(w,h),larg=Math.min(w,h),horiz=w>=h;const cw=horiz?long*.78:larg*.7,ch=horiz?larg*.7:long*.78;
               const cc=PK_COUL[p.couleur];const pal=p.ko?CAR.ko:cc?[cc,pkFonce(cc),"#cfe3f3"]:CAR.att;const clair=cc&&["Blanche","Beige","Jaune"].includes(p.couleur);const voiture=p.tit&&!p.ko;
-              return el("g",{key:k,onClick:()=>ouvrir(p.id),style:{cursor:"pointer"},transform:"translate("+x+" "+y+") rotate("+r+")",opacity:anyHit&&!H?.3:1},el("title",null,tip(p)),
+              return el("g",{key:k,onClick:()=>ouvrir(p.id),onMouseEnter:()=>setZoom(p.id),style:{cursor:"pointer"},transform:"translate("+x+" "+y+") rotate("+r+")",opacity:anyHit&&!H?.3:1},el("title",null,tip(p)),
                 el("rect",{x:-w/2,y:-h/2,width:w,height:h,rx:3,fill:p.ko?"url(#pk-hach)":p.tit?"#d7dce2":"#dcfce7",stroke:H?"#f59e0b":"#fff",strokeWidth:H?8:3}),
                 !p.tit&&!p.ko&&el("rect",{x:-w/2+4,y:-h/2+4,width:w-8,height:h-8,rx:2,fill:"none",stroke:"#16a34a",strokeWidth:2,strokeDasharray:"6 5"}),
                 voiture&&el("g",{filter:"url(#pk-ombre)"},
@@ -3682,8 +3727,9 @@ function VueParking({showToast,addLog,badges,session}){
                   el("rect",{x:-cw/2+cw*(horiz?.3:.18),y:-ch/2+ch*(horiz?.2:.3),width:cw*(horiz?.1:.64),height:ch*(horiz?.6:.1),rx:3,fill:pal[2],opacity:.85})),
                 el("g",{transform:"rotate("+(-r)+")"},el("text",{textAnchor:"middle",dominantBaseline:"central",fontSize:Math.min(22,larg*.46),fontWeight:800,fontFamily:"Inter,system-ui,sans-serif",
                   fill:voiture?"#fff":p.ko?"#991b1b":"#166534",stroke:voiture?"#0f2537":"none",strokeWidth:voiture?3:0,paintOrder:"stroke"},p.num)),
-                eclair(p,w,h,r));})));})(),
-      el("div",{style:{fontSize:12,color:"var(--text3)",marginTop:8}},"Clique sur une place pour l'ouvrir. La recherche (nom, plaque, numéro) met la place en évidence."+(sans.length?" · Places de ce niveau absentes du plan : "+sans.map(p=>p.num).join(", "):"")));};
+                eclair(p,w,h,r));})));})()),
+      grosPlan(pl.find(p=>p.id===zoom)||(qn?pl.find(hit):null))),
+      el("div",{style:{fontSize:12,color:"var(--text3)",marginTop:8}},"Survole une place pour la voir en gros plan, clique pour ouvrir sa fiche. La recherche (nom, plaque, numéro) met la place en évidence."+(sans.length?" · Places de ce niveau absentes du plan : "+sans.map(p=>p.num).join(", "):"")));};
 
   // ── Liste des places ──
   const liste=()=>{let L=P.filter(p=>!niv||p.niv===niv).filter(p=>{const j=jum(p);return !j||ordre(p,j)<0;});
@@ -9686,7 +9732,9 @@ const PK_PLAN={
 };
 const PK_COUL={"Blanche":"#f1f5f9","Grise":"#8b95a1","Noire":"#1f2937","Bleue":"#2c5f85","Rouge":"#c0392b","Verte":"#2f7d4f","Beige":"#d6c7a1","Marron":"#7c4a2d","Jaune":"#e0b52b","Orange":"#e07b2b","Violette":"#6d4c9f"};
 const pkFonce=h=>{const n=parseInt(h.slice(1),16);const f=x=>Math.max(0,Math.round(x*.7));return "#"+[f(n>>16),f((n>>8)&255),f(n&255)].map(x=>x.toString(16).padStart(2,"0")).join("");};
+const PK_MARQUES=["Abarth","Aiways","Aixam","Alfa Romeo","Alpine","Aston Martin","Audi","Bentley","BMW","BYD","Cadillac","Chevrolet","Chrysler","Citroën","Cupra","Dacia","Dodge","DS","Ferrari","Fiat","Fisker","Ford","Genesis","Honda","Hongqi","Hyundai","Ineos","Infiniti","Isuzu","Iveco","Jaecoo","Jaguar","Jeep","Kia","KGM (SsangYong)","Lada","Lamborghini","Lancia","Land Rover","Leapmotor","Lexus","Ligier","Lotus","Lucid","Lynk & Co","Maserati","Mazda","McLaren","Mercedes-Benz","MG","Microcar","Mini","Mitsubishi","Nio","Nissan","Omoda","Opel","Peugeot","Polestar","Porsche","Range Rover","Renault","Rolls-Royce","Seat","Seres","Skoda","Smart","Subaru","Suzuki","Tesla","Toyota","VinFast","Volkswagen","Volvo","Xpeng","Zeekr","Aprilia","BMW Motorrad","Ducati","Harley-Davidson","Honda Moto","Kawasaki","KTM","Kymco","Niu","Piaggio","Royal Enfield","Silence","Suzuki Moto","Triumph","Vespa","Yamaha"];
 const pkVoit=p=>[p.marque,p.modele].filter(Boolean).join(" ")+(p.couleur?" "+p.couleur.toLowerCase():"");
+const PK_SIL="M18 98 Q16 80 36 74 L100 66 Q124 38 162 36 L214 37 Q240 39 262 66 L296 72 Q310 76 308 98 Q306 104 296 104 L270 104 A24 24 0 0 0 222 104 L112 104 A24 24 0 0 0 64 104 L28 104 Q18 104 18 98 Z";
 const pkKey=n=>String(n||"").toLowerCase().replace(/\s+/g,"");
 const pkNat=(a,b)=>String(a||"").localeCompare(String(b||""),"fr",{numeric:true});
 const pkId=()=>Date.now().toString(36)+Math.random().toString(36).slice(2,6);
@@ -9704,7 +9752,15 @@ function VueParking({showToast,addLog,badges,session}){
   const[q,setQ]=React.useState("");const[niv,setNiv]=React.useState("");const[f,setF]=React.useState("all");
   const[edit,setEdit]=React.useState(null);const[form,setForm]=React.useState(null);
   const[vEdit,setVEdit]=React.useState(null);const[vForm,setVForm]=React.useState(null);
-  const[outils,setOutils]=React.useState(false);const[grand,setGrand]=React.useState(false);const[vue3d,setVue3d]=React.useState(true);const[tout,setTout]=React.useState(false);
+  const[outils,setOutils]=React.useState(false);const[grand,setGrand]=React.useState(false);const[vue3d,setVue3d]=React.useState(true);const[zoom,setZoom]=React.useState(null);const[photos,setPhotos]=React.useState({});
+  // Photo du modèle (Wikipédia, gratuit, sans clé) : seuls la marque et le modèle sont envoyés, jamais la plaque ni le nom
+  const zp=data&&zoom?(data.places||[]).find(x=>x.id===zoom):null;const cleMod=zp&&zp.tit&&zp.marque&&zp.modele?(zp.marque+" "+zp.modele).trim():"";
+  React.useEffect(()=>{if(!cleMod||photos[cleMod]!==undefined)return;setPhotos(o=>({...o,[cleMod]:null}));
+    (async()=>{try{const r=await fetch("https://fr.wikipedia.org/w/api.php?action=query&format=json&origin=*&generator=search&gsrlimit=6&prop=pageimages&piprop=thumbnail&pithumbsize=640&gsrsearch="+encodeURIComponent(cleMod));
+      const j=await r.json();const pages=Object.values((j.query||{}).pages||{}).filter(x=>x.thumbnail).sort((a,b)=>a.index-b.index);
+      const mots=cleMod.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g,"").split(/\s+/);const n=t=>String(t).toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g,"");
+      const pg=pages.find(x=>mots.every(m=>n(x.title).includes(m)))||pages.find(x=>n(x.title).includes(mots[mots.length-1]));
+      setPhotos(o=>({...o,[cleMod]:pg?{src:pg.thumbnail.source,titre:pg.title}:false}));}catch(e){setPhotos(o=>({...o,[cleMod]:false}));}})();},[cleMod]);const[tout,setTout]=React.useState(false);
   const[gen,setGen]=React.useState({niv:"",pad:"0",de:"1",a:""});const[colle,setColle]=React.useState("");const[reprise,setReprise]=React.useState("");
   const tSave=React.useRef(null);
   React.useEffect(()=>{if(!sb){setData({places:[],vehicules:[]});return;}(async()=>{try{
@@ -9783,7 +9839,7 @@ function VueParking({showToast,addLog,badges,session}){
       el("div",{style:{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:10}},champ("Marque",inp(form.marque,v=>set("marque",v),"Peugeot",{list:"pk-marques"})),champ("Modèle",inp(form.modele,v=>set("modele",v),"308")),
         champ("Couleur",el("div",{style:{display:"flex",alignItems:"center",gap:6}},el("i",{style:{flexShrink:0,width:20,height:20,borderRadius:6,border:"1px solid var(--border2)",background:PK_COUL[form.couleur]||"repeating-linear-gradient(45deg,#e5e7eb 0 4px,#fff 4px 8px)"}}),
           el("select",{className:"inp",value:form.couleur,onChange:e=>set("couleur",e.target.value),style:{width:"100%"}},el("option",{value:""},"—"),Object.keys(PK_COUL).map(c=>el("option",{key:c,value:c},c)))))),
-      el("datalist",{id:"pk-marques"},["Peugeot","Renault","Citroën","DS","Dacia","Toyota","Volkswagen","Audi","BMW","Mercedes","Tesla","Skoda","Seat","Cupra","Fiat","Ford","Hyundai","Kia","Nissan","Opel","Volvo","MG","Mini","Jeep","Porsche","Lexus","Mazda","Suzuki","BYD"].map(x=>el("option",{key:x,value:x}))),
+      el("datalist",{id:"pk-marques"},PK_MARQUES.map(x=>el("option",{key:x,value:x}))),
       deux(champ("Direction / service",inp(form.dir,v=>set("dir",v),"",{list:"pk-dirs"})),champ("Remarque",inp(form.note,v=>set("note",v)))),
       el("datalist",{id:"pk-dirs"},dirs.map(x=>el("option",{key:x,value:x}))),
       el("div",{style:{display:"flex",gap:8,flexWrap:"wrap",marginTop:4}},el("button",{type:"button",className:"btn btn-primary",onClick:sauverPlace},"Enregistrer"),
@@ -9856,6 +9912,40 @@ function VueParking({showToast,addLog,badges,session}){
     el("div",{style:{borderTop:"1px solid var(--border)",paddingTop:14}},blocReprise)));
 
   // ── Plan ──
+  // ── Gros plan sur la place survolée ──
+  const grosPlan=p=>{const boite={flex:"0 1 320px",minWidth:260,borderRadius:12,border:"1px solid var(--border)",background:"linear-gradient(180deg,var(--surface2),var(--surface))",padding:18,display:"flex",flexDirection:"column",gap:12};
+    if(!p)return el("div",{style:{...boite,alignItems:"center",justifyContent:"center",textAlign:"center",color:"var(--text3)",fontSize:13}},
+      el("svg",{viewBox:"0 0 320 150",style:{width:"80%",opacity:.35}},el("ellipse",{cx:165,cy:128,rx:135,ry:9,fill:"#94a3b8"}),el("path",{d:PK_SIL,fill:"none",stroke:"#64748b",strokeWidth:3,strokeDasharray:"8 7"})),
+      "Survole une place sur le plan pour voir la voiture en gros plan.");
+    const cc=PK_COUL[p.couleur]||"#2c5f85",clair=["Blanche","Beige","Jaune"].includes(p.couleur),t=PK_TYPES[p.type]||PK_TYPES.std;const voit=p.tit&&!p.ko;
+    const ligne=(l,v)=>v?el("div",{style:{display:"flex",justifyContent:"space-between",gap:10,fontSize:13,padding:"6px 0",borderTop:"1px solid var(--border)"}},el("span",{style:{color:"var(--text3)"}},l),el("b",{style:{textAlign:"right"}},v)):null;
+    return el("div",{style:boite},
+      el("div",{style:{display:"flex",alignItems:"center",gap:6,flexWrap:"wrap"}},el("div",{style:{fontSize:15,fontWeight:800,marginRight:"auto"}},"Place "+lib(p)),
+        p.type&&p.type!=="std"?pill(t[0]+(p.panne?" · en panne":""),t[1],t[2]):null,p.ko?pill("Hors service","#b91c1c","#fee2e2"):null),
+      (()=>{const ph=voit&&p.marque&&p.modele?photos[(p.marque+" "+p.modele).trim()]:null;if(!ph)return null;
+        return el("div",null,el("div",{style:{background:"#fff",borderRadius:10,border:"1px solid var(--border)",overflow:"hidden",display:"flex",alignItems:"center",justifyContent:"center",height:170}},
+          el("img",{src:ph.src,alt:ph.titre,referrerPolicy:"no-referrer",style:{maxWidth:"100%",maxHeight:"100%",objectFit:"contain"}})),
+          el("div",{style:{fontSize:10.5,color:"var(--text3)",marginTop:4,textAlign:"center"}},"Photo d'illustration du modèle · Wikipédia"+(p.couleur?" · couleur réelle : "+p.couleur.toLowerCase():"")));})()||
+      el("svg",{viewBox:"0 0 320 150",style:{width:"100%",display:"block"}},
+        el("defs",null,el("linearGradient",{id:"gp-carr",x1:0,y1:0,x2:0,y2:1},el("stop",{offset:0,stopColor:cc}),el("stop",{offset:1,stopColor:pkFonce(cc)})),
+          el("linearGradient",{id:"gp-vitre",x1:0,y1:0,x2:0,y2:1},el("stop",{offset:0,stopColor:"#dbeafe"}),el("stop",{offset:1,stopColor:"#64748b"}))),
+        el("ellipse",{cx:165,cy:128,rx:140,ry:10,fill:"#0f172a",opacity:.18}),
+        voit?el("g",null,
+          el("path",{d:PK_SIL,fill:"url(#gp-carr)",stroke:clair?"#94a3b8":pkFonce(cc),strokeWidth:2}),
+          el("path",{d:"M112 66 Q130 44 162 42 L186 42 L186 66 Z",fill:"url(#gp-vitre)"}),el("path",{d:"M194 42 L214 43 Q234 47 252 66 L194 66 Z",fill:"url(#gp-vitre)"}),
+          el("path",{d:"M40 84 L300 84",stroke:"#fff",strokeOpacity:.35,strokeWidth:2}),
+          el("rect",{x:290,y:80,width:13,height:7,rx:3,fill:"#fde68a"}),el("rect",{x:19,y:82,width:10,height:6,rx:3,fill:"#ef4444"}),
+          [88,246].map(x=>el("g",{key:x},el("circle",{cx:x,cy:106,r:21,fill:"#111827"}),el("circle",{cx:x,cy:106,r:11,fill:"#9ca3af"}),el("circle",{cx:x,cy:106,r:4,fill:"#374151"}))))
+        :el("g",null,el("rect",{x:40,y:36,width:250,height:84,rx:8,fill:p.ko?"#fee2e2":"#dcfce7",stroke:p.ko?"#b91c1c":"#16a34a",strokeWidth:3,strokeDasharray:"10 8"}),
+          el("text",{x:165,y:86,textAnchor:"middle",fontSize:22,fontWeight:800,fill:p.ko?"#991b1b":"#166534",fontFamily:"Inter,system-ui,sans-serif"},p.ko?"Hors service":"Place libre"))),
+      voit?el("div",{style:{textAlign:"center"}},el("div",{style:{fontSize:20,fontWeight:800,lineHeight:1.15}},[p.marque,p.modele].filter(Boolean).join(" ")||"Voiture"),
+        el("div",{style:{fontSize:12.5,color:"var(--text3)",marginTop:2}},p.couleur?"Couleur : "+p.couleur.toLowerCase():"Marque, modèle et couleur à renseigner sur la fiche")):null,
+      p.plaque?el("div",{style:{alignSelf:"center",display:"flex",alignItems:"stretch",border:"2px solid #111827",borderRadius:6,overflow:"hidden",background:"#fff",fontFamily:"ui-monospace,monospace"}},
+        el("span",{style:{background:"#1d4ed8",color:"#fff",fontSize:10,fontWeight:800,padding:"4px 5px",display:"flex",alignItems:"flex-end"}},"F"),
+        el("span",{style:{fontSize:20,fontWeight:800,letterSpacing:1.5,padding:"3px 12px",color:"#111827"}},p.plaque),
+        el("span",{style:{background:"#1d4ed8",width:14}})):null,
+      el("div",null,ligne("Titulaire",p.tit||"—"),ligne("Direction / service",p.dir),ligne("Remarque",p.note)),
+      el("button",{type:"button",className:"btn btn-primary",style:{marginTop:"auto"},onClick:()=>ouvrir(p.id)},p.tit||p.ko?"Ouvrir la fiche":"Attribuer la place"));};
   const plan=()=>{const ns=Object.keys(PK_PLAN);const nv=PK_PLAN[niv]?niv:ns[0];const PL=PK_PLAN[nv];
     const pl=P.filter(p=>String(p.niv||"")===nv);const byKey={};pl.forEach(p=>byKey[pkKey(p.num)]=p);
     const hit=p=>qn&&p&&[p.num,p.tit,p.plaque,p.dir,p.marque,p.modele,(jum(p)||{}).num].join(" ").toLowerCase().replace(/[\s-]/g,"").includes(qn);
@@ -9869,13 +9959,14 @@ function VueParking({showToast,addLog,badges,session}){
         ns.map(n=>el("button",{key:n,type:"button",className:"btn "+(n===nv?"btn-primary":"btn-outline"),style:{fontSize:12,padding:"6px 12px"},onClick:()=>setNiv(n)},"Niveau "+n)),
         el("button",{type:"button",className:"btn btn-outline",style:{fontSize:12,padding:"6px 12px"},onClick:()=>setGrand(!grand)},grand?"Réduire":"Agrandir"),el("button",{type:"button",className:"btn btn-outline",style:{fontSize:12,padding:"6px 12px"},onClick:()=>setVue3d(!vue3d)},vue3d?"Plan d'origine":"Vue 3D"),
         el("span",{style:{display:"flex",gap:12,flexWrap:"wrap",marginLeft:"auto",fontSize:12,color:"var(--text2)"}},leg("#2c5f85",vue3d?"Attribuée (voiture)":"Attribuée"),leg("#16a34a","Libre"),leg("#b91c1c","Hors service"),leg("#15803d","Borne",true))),
+      el("div",{style:{display:"flex",gap:14,alignItems:"stretch",flexWrap:"wrap"}},el("div",{style:{flex:"1 1 520px",minWidth:0}},
       (()=>{const tip=p=>nv+" · n° "+p.num+(jum(p)?" + "+jum(p).num:"")+" · "+(p.ko?"hors service":p.tit?p.tit+(pkVoit(p)?" · "+pkVoit(p):"")+(p.plaque?" · "+p.plaque:""):"libre")+(p.type==="borne"?" · borne"+(p.panne?" en panne":""):"");
         const eclair=(p,w,h,r)=>p.type==="borne"&&el("g",{transform:"rotate("+(-r)+") translate("+(w/2-14)+" "+(-h/2+14)+")"},el("circle",{r:12,fill:p.panne?"#b91c1c":"#15803d",stroke:"#fff",strokeWidth:2}),el("path",{d:"M1.5 -7 L-4 1 L0 1 L-1.5 7 L4 -1 L0 -1 Z",fill:"#fff"}));
         if(!vue3d)return el("div",{style:{overflow:"auto",borderRadius:8,border:"1px solid var(--border)",background:"#fff",width:"fit-content",maxWidth:"100%",margin:"0 auto"}},
           el("svg",{viewBox:vb.join(" "),preserveAspectRatio:"xMidYMid meet",style:{display:"block",width:"auto",maxWidth:"100%",height:grand?"min(80vh,760px)":"420px"}},
             el("image",{href:PL.img,x:PL.ox,y:PL.oy,width:PL.w,height:PL.h,opacity:.9}),
             Object.entries(PL.pts).map(([k,[x,y,w,h,r]])=>{const p=byKey[k];if(!p)return null;const[c,o]=col(p);const H=hit(p);
-              return el("g",{key:k,onClick:()=>ouvrir(p.id),style:{cursor:"pointer"},transform:"translate("+x+" "+y+") rotate("+r+")",opacity:anyHit&&!H?.25:1},el("title",null,tip(p)),
+              return el("g",{key:k,onClick:()=>ouvrir(p.id),onMouseEnter:()=>setZoom(p.id),style:{cursor:"pointer"},transform:"translate("+x+" "+y+") rotate("+r+")",opacity:anyHit&&!H?.25:1},el("title",null,tip(p)),
                 el("rect",{x:-w/2,y:-h/2,width:w,height:h,rx:5,fill:c,fillOpacity:o,stroke:H?"#f59e0b":c,strokeWidth:H?7:2}),eclair(p,w,h,r));})));
         // Vue 3D : sol en béton, emplacements tracés, voitures en relief sur les places attribuées
         const CAR={att:["#2c5f85","#1e4461","#9cc3e0"],ko:["#b91c1c","#7f1d1d","#fecaca"]};
@@ -9890,7 +9981,7 @@ function VueParking({showToast,addLog,badges,session}){
             Object.entries(PL.pts).map(([k,[x,y,w,h,r]])=>{const p=byKey[k];if(!p)return null;const H=hit(p);
               const long=Math.max(w,h),larg=Math.min(w,h),horiz=w>=h;const cw=horiz?long*.78:larg*.7,ch=horiz?larg*.7:long*.78;
               const cc=PK_COUL[p.couleur];const pal=p.ko?CAR.ko:cc?[cc,pkFonce(cc),"#cfe3f3"]:CAR.att;const clair=cc&&["Blanche","Beige","Jaune"].includes(p.couleur);const voiture=p.tit&&!p.ko;
-              return el("g",{key:k,onClick:()=>ouvrir(p.id),style:{cursor:"pointer"},transform:"translate("+x+" "+y+") rotate("+r+")",opacity:anyHit&&!H?.3:1},el("title",null,tip(p)),
+              return el("g",{key:k,onClick:()=>ouvrir(p.id),onMouseEnter:()=>setZoom(p.id),style:{cursor:"pointer"},transform:"translate("+x+" "+y+") rotate("+r+")",opacity:anyHit&&!H?.3:1},el("title",null,tip(p)),
                 el("rect",{x:-w/2,y:-h/2,width:w,height:h,rx:3,fill:p.ko?"url(#pk-hach)":p.tit?"#d7dce2":"#dcfce7",stroke:H?"#f59e0b":"#fff",strokeWidth:H?8:3}),
                 !p.tit&&!p.ko&&el("rect",{x:-w/2+4,y:-h/2+4,width:w-8,height:h-8,rx:2,fill:"none",stroke:"#16a34a",strokeWidth:2,strokeDasharray:"6 5"}),
                 voiture&&el("g",{filter:"url(#pk-ombre)"},
@@ -9899,8 +9990,9 @@ function VueParking({showToast,addLog,badges,session}){
                   el("rect",{x:-cw/2+cw*(horiz?.3:.18),y:-ch/2+ch*(horiz?.2:.3),width:cw*(horiz?.1:.64),height:ch*(horiz?.6:.1),rx:3,fill:pal[2],opacity:.85})),
                 el("g",{transform:"rotate("+(-r)+")"},el("text",{textAnchor:"middle",dominantBaseline:"central",fontSize:Math.min(22,larg*.46),fontWeight:800,fontFamily:"Inter,system-ui,sans-serif",
                   fill:voiture?"#fff":p.ko?"#991b1b":"#166534",stroke:voiture?"#0f2537":"none",strokeWidth:voiture?3:0,paintOrder:"stroke"},p.num)),
-                eclair(p,w,h,r));})));})(),
-      el("div",{style:{fontSize:12,color:"var(--text3)",marginTop:8}},"Clique sur une place pour l'ouvrir. La recherche (nom, plaque, numéro) met la place en évidence."+(sans.length?" · Places de ce niveau absentes du plan : "+sans.map(p=>p.num).join(", "):"")));};
+                eclair(p,w,h,r));})));})()),
+      grosPlan(pl.find(p=>p.id===zoom)||(qn?pl.find(hit):null))),
+      el("div",{style:{fontSize:12,color:"var(--text3)",marginTop:8}},"Survole une place pour la voir en gros plan, clique pour ouvrir sa fiche. La recherche (nom, plaque, numéro) met la place en évidence."+(sans.length?" · Places de ce niveau absentes du plan : "+sans.map(p=>p.num).join(", "):"")));};
 
   // ── Liste des places ──
   const liste=()=>{let L=P.filter(p=>!niv||p.niv===niv).filter(p=>{const j=jum(p);return !j||ordre(p,j)<0;});
@@ -13151,7 +13243,7 @@ catch(e){document.getElementById("root").innerHTML='<div style="padding:40px;fon
   }
   // ── Nouvelle version en ligne : bandeau cliquable pour actualiser ──
   (function(){
-    var VERSION_PAGE='v117';var affiche=false,dernier=0;
+    var VERSION_PAGE='v118';var affiche=false,dernier=0;
     function montrer(){if(affiche)return;affiche=true;
       var b=document.createElement('button');b.type='button';b.id='maj-dispo';
       b.innerHTML='<span style="font-size:16px">🔄</span><span>Nouvelle version de l\'appli</span><b style="background:#fff;color:#1D4ED8;border-radius:999px;padding:4px 12px">Actualiser</b>';
