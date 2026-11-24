@@ -3605,7 +3605,11 @@ function VueParking({showToast,addLog,badges,session}){
       if(tit&&p.tit!==tit)pkH(p,"Attribuée à "+tit+" (import)");if(tit)p.tit=tit;if(plaque)p.plaque=plaque;if(borne)p.type="borne";if(ko)p.ko=true;});
     if(!nb){showToast("⚠️ Rien de reconnu : colle les colonnes Niveau et N° de place","err");return;}
     enregistrer(n);setOutils(false);setColle("");showToast("✅ Import : "+cr+" créée(s), "+mj+" mise(s) à jour");};
-  const reprendre=()=>{let d;try{d=JSON.parse(reprise.trim().replace(/^"|"$/g,"").replace(/""/g,'"'));}catch(e){showToast("⚠️ Texte non reconnu : colle la valeur copiée dans Supabase","err");return;}
+  const lireReprise=t=>{t=String(t||"").trim();const essais=[t,t.replace(/^[^\[{"]*/,""),t.replace(/^"|"$/g,"").replace(/""/g,'"')];
+    for(const x of essais){try{let d=JSON.parse(x);for(let i=0;i<4;i++){if(typeof d==="string")d=JSON.parse(d);else if(Array.isArray(d)&&d.length&&!d[0].num)d=d[0];else if(d&&!d.places&&(d.valeur!=null||Object.keys(d).length===1))d=d.valeur!=null?d.valeur:Object.values(d)[0];else break;}
+      if(d&&Array.isArray(d.places))return d;}catch(e){}}
+    const i=t.indexOf("{"),j=t.lastIndexOf("}");if(i>=0&&j>i){try{const d=JSON.parse(t.slice(i,j+1));if(d&&Array.isArray(d.places))return d;}catch(e){}}return null;};
+  const reprendre=()=>{const d=lireReprise(reprise);if(!d){showToast("⚠️ Texte non reconnu : colle la valeur copiée dans Supabase","err");return;}
     if(!d||!Array.isArray(d.places)){showToast("⚠️ Pas de places dans ce texte","err");return;}
     if(P.length&&!confirm("Remplacer les "+P.length+" places et "+V.length+" véhicules actuels par ceux de Gestion des services ?"))return;
     enregistrer({...d,places:d.places,vehicules:d.vehicules||[]});setReprise("");log("Reprise depuis Gestion des services : "+d.places.length+" places, "+(d.vehicules||[]).length+" véhicules");
@@ -9788,7 +9792,11 @@ function VueParking({showToast,addLog,badges,session}){
       if(tit&&p.tit!==tit)pkH(p,"Attribuée à "+tit+" (import)");if(tit)p.tit=tit;if(plaque)p.plaque=plaque;if(borne)p.type="borne";if(ko)p.ko=true;});
     if(!nb){showToast("⚠️ Rien de reconnu : colle les colonnes Niveau et N° de place","err");return;}
     enregistrer(n);setOutils(false);setColle("");showToast("✅ Import : "+cr+" créée(s), "+mj+" mise(s) à jour");};
-  const reprendre=()=>{let d;try{d=JSON.parse(reprise.trim().replace(/^"|"$/g,"").replace(/""/g,'"'));}catch(e){showToast("⚠️ Texte non reconnu : colle la valeur copiée dans Supabase","err");return;}
+  const lireReprise=t=>{t=String(t||"").trim();const essais=[t,t.replace(/^[^\[{"]*/,""),t.replace(/^"|"$/g,"").replace(/""/g,'"')];
+    for(const x of essais){try{let d=JSON.parse(x);for(let i=0;i<4;i++){if(typeof d==="string")d=JSON.parse(d);else if(Array.isArray(d)&&d.length&&!d[0].num)d=d[0];else if(d&&!d.places&&(d.valeur!=null||Object.keys(d).length===1))d=d.valeur!=null?d.valeur:Object.values(d)[0];else break;}
+      if(d&&Array.isArray(d.places))return d;}catch(e){}}
+    const i=t.indexOf("{"),j=t.lastIndexOf("}");if(i>=0&&j>i){try{const d=JSON.parse(t.slice(i,j+1));if(d&&Array.isArray(d.places))return d;}catch(e){}}return null;};
+  const reprendre=()=>{const d=lireReprise(reprise);if(!d){showToast("⚠️ Texte non reconnu : colle la valeur copiée dans Supabase","err");return;}
     if(!d||!Array.isArray(d.places)){showToast("⚠️ Pas de places dans ce texte","err");return;}
     if(P.length&&!confirm("Remplacer les "+P.length+" places et "+V.length+" véhicules actuels par ceux de Gestion des services ?"))return;
     enregistrer({...d,places:d.places,vehicules:d.vehicules||[]});setReprise("");log("Reprise depuis Gestion des services : "+d.places.length+" places, "+(d.vehicules||[]).length+" véhicules");
@@ -13083,7 +13091,7 @@ catch(e){document.getElementById("root").innerHTML='<div style="padding:40px;fon
   }
   // ── Nouvelle version en ligne : bandeau cliquable pour actualiser ──
   (function(){
-    var VERSION_PAGE='v114';var affiche=false,dernier=0;
+    var VERSION_PAGE='v115';var affiche=false,dernier=0;
     function montrer(){if(affiche)return;affiche=true;
       var b=document.createElement('button');b.type='button';b.id='maj-dispo';
       b.innerHTML='<span style="font-size:16px">🔄</span><span>Nouvelle version de l\'appli</span><b style="background:#fff;color:#1D4ED8;border-radius:999px;padding:4px 12px">Actualiser</b>';
