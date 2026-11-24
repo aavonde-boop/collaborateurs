@@ -3467,6 +3467,9 @@ const PK_PLAN={
   "199":[960,652,104,48,0],"200":[960,700,104,48,0],"201":[960,749,104,48,0],"202":[960,801,104,48,0],"203":[960,852,104,48,0],"204":[960,901,104,48,0],"205":[962,960,104,48,0],"206":[963,1008,104,48,0],
   "265":[680,1198,50,104,0],"266":[735,1198,50,104,0],"267":[783,1196,50,104,0],"272":[563,1393,108,50,0],"273":[564,1447,108,50,0]}}
 };
+const PK_COUL={"Blanche":"#f1f5f9","Grise":"#8b95a1","Noire":"#1f2937","Bleue":"#2c5f85","Rouge":"#c0392b","Verte":"#2f7d4f","Beige":"#d6c7a1","Marron":"#7c4a2d","Jaune":"#e0b52b","Orange":"#e07b2b","Violette":"#6d4c9f"};
+const pkFonce=h=>{const n=parseInt(h.slice(1),16);const f=x=>Math.max(0,Math.round(x*.7));return "#"+[f(n>>16),f((n>>8)&255),f(n&255)].map(x=>x.toString(16).padStart(2,"0")).join("");};
+const pkVoit=p=>[p.marque,p.modele].filter(Boolean).join(" ")+(p.couleur?" "+p.couleur.toLowerCase():"");
 const pkKey=n=>String(n||"").toLowerCase().replace(/\s+/g,"");
 const pkNat=(a,b)=>String(a||"").localeCompare(String(b||""),"fr",{numeric:true});
 const pkId=()=>Date.now().toString(36)+Math.random().toString(36).slice(2,6);
@@ -3530,12 +3533,12 @@ function VueParking({showToast,addLog,badges,session}){
 
   // ── Fiche d'une place ──
   const ouvrir=id=>{const p=id==="new"?{niv:niv||"",num:"",type:"std"}:P.find(x=>x.id===id);if(!p)return;setEdit(id);setOutils(false);
-    setForm({niv:p.niv||"",num:p.num||"",type:p.type||"std",panne:!!p.panne,lie:(jum(p)||{}).num||"",ko:!!p.ko,tit:p.tit||"",plaque:p.plaque||"",dir:p.dir||"",note:p.note||""});};
+    setForm({niv:p.niv||"",num:p.num||"",type:p.type||"std",panne:!!p.panne,lie:(jum(p)||{}).num||"",ko:!!p.ko,tit:p.tit||"",plaque:p.plaque||"",dir:p.dir||"",note:p.note||"",marque:p.marque||"",modele:p.modele||"",couleur:p.couleur||""});};
   const sauverPlace=()=>{const num=form.num.trim();if(!num){showToast("⚠️ Indique le numéro de la place","err");return;}
     const n=JSON.parse(JSON.stringify(data));const L=n.places;const isNew=edit==="new";const p=isNew?{id:pkId()}:L.find(x=>x.id===edit);if(!p)return;
     const nv=form.niv.trim();if(L.some(x=>x!==p&&String(x.num)===num&&String(x.niv||"")===nv)){showToast("⚠️ La place "+(nv?nv+" · ":"")+"n° "+num+" existe déjà","err");return;}
     const tit=form.tit.trim();if((p.tit||"")!==tit)pkH(p,tit?"Attribuée à "+tit+(p.tit?" (avant : "+p.tit+")":""):"Libérée (avant : "+p.tit+")");
-    Object.assign(p,{niv:nv,num,tit,plaque:form.plaque.trim().toUpperCase(),dir:form.dir.trim(),note:form.note.trim(),type:form.type});
+    Object.assign(p,{niv:nv,num,tit,plaque:form.plaque.trim().toUpperCase(),dir:form.dir.trim(),note:form.note.trim(),type:form.type,marque:form.marque.trim(),modele:form.modele.trim(),couleur:form.couleur});
     if(!!p.ko!==form.ko)pkH(p,form.ko?"Mise hors service":"Remise en service");p.ko=form.ko;
     const ancien=p.lie?L.find(x=>x.id===p.lie):null;const lieNum=form.lie.trim();
     if(lieNum){const j=L.find(x=>x!==p&&String(x.niv||"")===nv&&String(x.num).toLowerCase()===lieNum.toLowerCase());
@@ -3543,12 +3546,12 @@ function VueParking({showToast,addLog,badges,session}){
       if(j.lie&&j.lie!==p.id){const k=L.find(x=>x.id===j.lie);if(k)delete k.lie;}
       if(ancien&&ancien!==j)delete ancien.lie;
       if(p.lie!==j.id){pkH(p,"Jumelée avec la place "+j.num);pkH(j,"Jumelée avec la place "+num);}
-      p.lie=j.id;j.lie=p.id;if((j.tit||"")!==tit)pkH(j,tit?"Attribuée à "+tit+" (2 places)":"Libérée");Object.assign(j,{tit,plaque:p.plaque,dir:p.dir});
+      p.lie=j.id;j.lie=p.id;if((j.tit||"")!==tit)pkH(j,tit?"Attribuée à "+tit+" (2 places)":"Libérée");Object.assign(j,{tit,plaque:p.plaque,dir:p.dir,marque:p.marque,modele:p.modele,couleur:p.couleur});
     }else if(ancien){delete ancien.lie;delete p.lie;pkH(p,"Plus jumelée avec la place "+ancien.num);}
     if(p.type==="borne"){if(!!p.panne!==form.panne)pkH(p,form.panne?"Borne signalée en panne":"Borne remise en service");p.panne=form.panne;}else delete p.panne;
     if(isNew){pkH(p,"Place créée");L.push(p);}
     enregistrer(n);setEdit(null);log("Place "+(nv?nv+" · ":"")+num+(tit?" → "+tit:""));showToast("✅ Place enregistrée");};
-  const liberer=()=>{maj(n=>{const p=n.places.find(x=>x.id===edit);const j=p&&p.lie?n.places.find(x=>x.id===p.lie):null;[p,j].filter(Boolean).forEach(x=>{pkH(x,"Libérée (avant : "+x.tit+")");x.tit="";x.plaque="";x.dir="";});});
+  const liberer=()=>{maj(n=>{const p=n.places.find(x=>x.id===edit);const j=p&&p.lie?n.places.find(x=>x.id===p.lie):null;[p,j].filter(Boolean).forEach(x=>{pkH(x,"Libérée (avant : "+x.tit+")");x.tit="";x.plaque="";x.dir="";x.marque="";x.modele="";x.couleur="";});});
     setEdit(null);showToast("✅ Place libérée");};
   const supprimer=()=>{const p=P.find(x=>x.id===edit);if(!p||!confirm("Supprimer la place "+lib(p)+" ?"))return;
     maj(n=>{const j=p.lie?n.places.find(x=>x.id===p.lie):null;if(j)delete j.lie;n.places=n.places.filter(x=>x.id!==p.id);});setEdit(null);log("Place supprimée : "+lib(p));};
@@ -3560,6 +3563,10 @@ function VueParking({showToast,addLog,badges,session}){
       deux(champ("Jumelée avec la place n° (gros véhicule)",inp(form.lie,v=>set("lie",v),"Ex : 14")),champ("État",el("label",{style:{display:"flex",alignItems:"center",gap:8,height:38,fontSize:13}},el("input",{type:"checkbox",checked:form.ko,onChange:e=>set("ko",e.target.checked)}),"Place hors service"))),
       deux(champ("Titulaire",inp(form.tit,v=>set("tit",v),"Laisser vide si libre",{list:"pk-noms"})),champ("Plaque",inp(form.plaque,v=>set("plaque",v.toUpperCase()),"AB-123-CD"))),
       el("datalist",{id:"pk-noms"},noms.map(x=>el("option",{key:x,value:x}))),
+      el("div",{style:{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:10}},champ("Marque",inp(form.marque,v=>set("marque",v),"Peugeot",{list:"pk-marques"})),champ("Modèle",inp(form.modele,v=>set("modele",v),"308")),
+        champ("Couleur",el("div",{style:{display:"flex",alignItems:"center",gap:6}},el("i",{style:{flexShrink:0,width:20,height:20,borderRadius:6,border:"1px solid var(--border2)",background:PK_COUL[form.couleur]||"repeating-linear-gradient(45deg,#e5e7eb 0 4px,#fff 4px 8px)"}}),
+          el("select",{className:"inp",value:form.couleur,onChange:e=>set("couleur",e.target.value),style:{width:"100%"}},el("option",{value:""},"—"),Object.keys(PK_COUL).map(c=>el("option",{key:c,value:c},c)))))),
+      el("datalist",{id:"pk-marques"},["Peugeot","Renault","Citroën","DS","Dacia","Toyota","Volkswagen","Audi","BMW","Mercedes","Tesla","Skoda","Seat","Cupra","Fiat","Ford","Hyundai","Kia","Nissan","Opel","Volvo","MG","Mini","Jeep","Porsche","Lexus","Mazda","Suzuki","BYD"].map(x=>el("option",{key:x,value:x}))),
       deux(champ("Direction / service",inp(form.dir,v=>set("dir",v),"",{list:"pk-dirs"})),champ("Remarque",inp(form.note,v=>set("note",v)))),
       el("datalist",{id:"pk-dirs"},dirs.map(x=>el("option",{key:x,value:x}))),
       el("div",{style:{display:"flex",gap:8,flexWrap:"wrap",marginTop:4}},el("button",{type:"button",className:"btn btn-primary",onClick:sauverPlace},"Enregistrer"),
@@ -3634,7 +3641,7 @@ function VueParking({showToast,addLog,badges,session}){
   // ── Plan ──
   const plan=()=>{const ns=Object.keys(PK_PLAN);const nv=PK_PLAN[niv]?niv:ns[0];const PL=PK_PLAN[nv];
     const pl=P.filter(p=>String(p.niv||"")===nv);const byKey={};pl.forEach(p=>byKey[pkKey(p.num)]=p);
-    const hit=p=>qn&&p&&[p.num,p.tit,p.plaque,p.dir,(jum(p)||{}).num].join(" ").toLowerCase().replace(/[\s-]/g,"").includes(qn);
+    const hit=p=>qn&&p&&[p.num,p.tit,p.plaque,p.dir,p.marque,p.modele,(jum(p)||{}).num].join(" ").toLowerCase().replace(/[\s-]/g,"").includes(qn);
     const anyHit=qn&&pl.some(hit);const col=p=>p.ko?["#b91c1c",.5]:p.tit?["#2c5f85",.42]:["#16a34a",.38];
     const xs=[],ys=[];Object.values(PL.pts).forEach(([x,y,w,h])=>{const d=Math.max(w,h)/2+30;xs.push(x-d,x+d);ys.push(y-d,y+d);});
     const vb=[Math.max(PL.ox,Math.min(...xs)),Math.max(PL.oy,Math.min(...ys))];vb.push(Math.min(PL.ox+PL.w,Math.max(...xs))-vb[0],Math.min(PL.oy+PL.h,Math.max(...ys))-vb[1]);
@@ -3645,7 +3652,7 @@ function VueParking({showToast,addLog,badges,session}){
         ns.map(n=>el("button",{key:n,type:"button",className:"btn "+(n===nv?"btn-primary":"btn-outline"),style:{fontSize:12,padding:"6px 12px"},onClick:()=>setNiv(n)},"Niveau "+n)),
         el("button",{type:"button",className:"btn btn-outline",style:{fontSize:12,padding:"6px 12px"},onClick:()=>setGrand(!grand)},grand?"Réduire":"Agrandir"),el("button",{type:"button",className:"btn btn-outline",style:{fontSize:12,padding:"6px 12px"},onClick:()=>setVue3d(!vue3d)},vue3d?"Plan d'origine":"Vue 3D"),
         el("span",{style:{display:"flex",gap:12,flexWrap:"wrap",marginLeft:"auto",fontSize:12,color:"var(--text2)"}},leg("#2c5f85",vue3d?"Attribuée (voiture)":"Attribuée"),leg("#16a34a","Libre"),leg("#b91c1c","Hors service"),leg("#15803d","Borne",true))),
-      (()=>{const tip=p=>nv+" · n° "+p.num+(jum(p)?" + "+jum(p).num:"")+" · "+(p.ko?"hors service":p.tit?p.tit+(p.plaque?" · "+p.plaque:""):"libre")+(p.type==="borne"?" · borne"+(p.panne?" en panne":""):"");
+      (()=>{const tip=p=>nv+" · n° "+p.num+(jum(p)?" + "+jum(p).num:"")+" · "+(p.ko?"hors service":p.tit?p.tit+(pkVoit(p)?" · "+pkVoit(p):"")+(p.plaque?" · "+p.plaque:""):"libre")+(p.type==="borne"?" · borne"+(p.panne?" en panne":""):"");
         const eclair=(p,w,h,r)=>p.type==="borne"&&el("g",{transform:"rotate("+(-r)+") translate("+(w/2-14)+" "+(-h/2+14)+")"},el("circle",{r:12,fill:p.panne?"#b91c1c":"#15803d",stroke:"#fff",strokeWidth:2}),el("path",{d:"M1.5 -7 L-4 1 L0 1 L-1.5 7 L4 -1 L0 -1 Z",fill:"#fff"}));
         if(!vue3d)return el("div",{style:{overflow:"auto",borderRadius:8,border:"1px solid var(--border)",background:"#fff",width:"fit-content",maxWidth:"100%",margin:"0 auto"}},
           el("svg",{viewBox:vb.join(" "),preserveAspectRatio:"xMidYMid meet",style:{display:"block",width:"auto",maxWidth:"100%",height:grand?"min(80vh,760px)":"420px"}},
@@ -3665,12 +3672,12 @@ function VueParking({showToast,addLog,badges,session}){
             el("image",{href:PL.img,x:PL.ox,y:PL.oy,width:PL.w,height:PL.h,opacity:.16,clipPath:"url(#pk-clip)",style:{mixBlendMode:"multiply"}}),
             Object.entries(PL.pts).map(([k,[x,y,w,h,r]])=>{const p=byKey[k];if(!p)return null;const H=hit(p);
               const long=Math.max(w,h),larg=Math.min(w,h),horiz=w>=h;const cw=horiz?long*.78:larg*.7,ch=horiz?larg*.7:long*.78;
-              const pal=p.ko?CAR.ko:CAR.att;const voiture=p.tit&&!p.ko;
+              const cc=PK_COUL[p.couleur];const pal=p.ko?CAR.ko:cc?[cc,pkFonce(cc),"#cfe3f3"]:CAR.att;const clair=cc&&["Blanche","Beige","Jaune"].includes(p.couleur);const voiture=p.tit&&!p.ko;
               return el("g",{key:k,onClick:()=>ouvrir(p.id),style:{cursor:"pointer"},transform:"translate("+x+" "+y+") rotate("+r+")",opacity:anyHit&&!H?.3:1},el("title",null,tip(p)),
                 el("rect",{x:-w/2,y:-h/2,width:w,height:h,rx:3,fill:p.ko?"url(#pk-hach)":p.tit?"#d7dce2":"#dcfce7",stroke:H?"#f59e0b":"#fff",strokeWidth:H?8:3}),
                 !p.tit&&!p.ko&&el("rect",{x:-w/2+4,y:-h/2+4,width:w-8,height:h-8,rx:2,fill:"none",stroke:"#16a34a",strokeWidth:2,strokeDasharray:"6 5"}),
                 voiture&&el("g",{filter:"url(#pk-ombre)"},
-                  el("rect",{x:-cw/2,y:-ch/2,width:cw,height:ch,rx:Math.min(cw,ch)*.32,fill:pal[0]}),
+                  el("rect",{x:-cw/2,y:-ch/2,width:cw,height:ch,rx:Math.min(cw,ch)*.32,fill:pal[0],stroke:clair?"#94a3b8":"none",strokeWidth:2}),
                   el("rect",{x:-cw/2+cw*(horiz?.24:.12),y:-ch/2+ch*(horiz?.14:.24),width:cw*(horiz?.46:.76),height:ch*(horiz?.72:.46),rx:Math.min(cw,ch)*.2,fill:pal[1]}),
                   el("rect",{x:-cw/2+cw*(horiz?.3:.18),y:-ch/2+ch*(horiz?.2:.3),width:cw*(horiz?.1:.64),height:ch*(horiz?.6:.1),rx:3,fill:pal[2],opacity:.85})),
                 el("g",{transform:"rotate("+(-r)+")"},el("text",{textAnchor:"middle",dominantBaseline:"central",fontSize:Math.min(22,larg*.46),fontWeight:800,fontFamily:"Inter,system-ui,sans-serif",
@@ -3681,7 +3688,7 @@ function VueParking({showToast,addLog,badges,session}){
   // ── Liste des places ──
   const liste=()=>{let L=P.filter(p=>!niv||p.niv===niv).filter(p=>{const j=jum(p);return !j||ordre(p,j)<0;});
     if(f==="libres")L=L.filter(p=>!p.tit&&!p.ko);else if(f==="ko")L=L.filter(p=>p.ko);else if(f==="bornes")L=L.filter(p=>p.type==="borne");else if(f==="pmr")L=L.filter(p=>p.type==="pmr");
-    if(qn)L=L.filter(p=>[p.num,p.niv,p.tit,p.plaque,p.dir,p.note].join(" ").toLowerCase().replace(/[\s-]/g,"").includes(qn));L=[...L].sort(ordre);
+    if(qn)L=L.filter(p=>[p.num,p.niv,p.tit,p.plaque,p.dir,p.note,p.marque,p.modele].join(" ").toLowerCase().replace(/[\s-]/g,"").includes(qn));L=[...L].sort(ordre);
     const ko=P.filter(p=>p.ko).length;
     const chips=[["all","Toutes",P.length],["libres","Libres",P.filter(p=>!p.tit&&!p.ko).length],["bornes","Bornes",P.filter(p=>p.type==="borne").length],["pmr","PMR",P.filter(p=>p.type==="pmr").length],...(ko?[["ko","Hors service",ko]]:[])];
     const th={textAlign:"left",padding:"9px 14px",fontSize:10.5,fontWeight:700,textTransform:"uppercase",letterSpacing:".4px",color:"var(--text2)"};
@@ -3693,7 +3700,7 @@ function VueParking({showToast,addLog,badges,session}){
         el("thead",null,el("tr",{style:{background:"var(--surface2)"}},["Place","Titulaire","Plaque","Direction / service",""].map((h,i)=>el("th",{key:i,style:th},h)))),
         el("tbody",null,L.slice(0,tout?99999:200).map(p=>{const t=PK_TYPES[p.type]||PK_TYPES.std;return el("tr",{key:p.id,onClick:()=>ouvrir(p.id),style:{borderTop:"1px solid var(--border)",cursor:"pointer"}},
           el("td",{style:{padding:"9px 14px"}},el("b",null,p.num+(jum(p)?" + "+jum(p).num:"")),p.niv?el("div",{style:{fontSize:11.5,color:"var(--text3)"}},"Niveau "+p.niv):null),
-          el("td",{style:{padding:"9px 14px"}},p.tit?p.tit:p.ko?"—":el("span",{style:{color:"#15803d",fontWeight:600}},"Libre")),
+          el("td",{style:{padding:"9px 14px"}},p.tit?el(React.Fragment,null,p.tit,pkVoit(p)?el("div",{style:{fontSize:11.5,color:"var(--text3)",display:"flex",alignItems:"center",gap:5}},PK_COUL[p.couleur]?el("i",{style:{width:9,height:9,borderRadius:3,background:PK_COUL[p.couleur],border:"1px solid var(--border2)"}}):null,pkVoit(p)):null):p.ko?"—":el("span",{style:{color:"#15803d",fontWeight:600}},"Libre")),
           el("td",{style:{padding:"9px 14px",fontFamily:"ui-monospace,monospace"}},p.plaque||""),
           el("td",{style:{padding:"9px 14px",color:"var(--text2)"}},p.dir||""),
           el("td",{style:{padding:"9px 14px",textAlign:"right"}},p.type&&p.type!=="std"?pill(t[0]+(p.panne?" · en panne":""),t[1],t[2]):null,jum(p)?pill("2 places","#7c2d12","#ffedd5"):null,p.ko?pill("Hors service","#b91c1c","#fee2e2"):null));}))),
@@ -9677,6 +9684,9 @@ const PK_PLAN={
   "199":[960,652,104,48,0],"200":[960,700,104,48,0],"201":[960,749,104,48,0],"202":[960,801,104,48,0],"203":[960,852,104,48,0],"204":[960,901,104,48,0],"205":[962,960,104,48,0],"206":[963,1008,104,48,0],
   "265":[680,1198,50,104,0],"266":[735,1198,50,104,0],"267":[783,1196,50,104,0],"272":[563,1393,108,50,0],"273":[564,1447,108,50,0]}}
 };
+const PK_COUL={"Blanche":"#f1f5f9","Grise":"#8b95a1","Noire":"#1f2937","Bleue":"#2c5f85","Rouge":"#c0392b","Verte":"#2f7d4f","Beige":"#d6c7a1","Marron":"#7c4a2d","Jaune":"#e0b52b","Orange":"#e07b2b","Violette":"#6d4c9f"};
+const pkFonce=h=>{const n=parseInt(h.slice(1),16);const f=x=>Math.max(0,Math.round(x*.7));return "#"+[f(n>>16),f((n>>8)&255),f(n&255)].map(x=>x.toString(16).padStart(2,"0")).join("");};
+const pkVoit=p=>[p.marque,p.modele].filter(Boolean).join(" ")+(p.couleur?" "+p.couleur.toLowerCase():"");
 const pkKey=n=>String(n||"").toLowerCase().replace(/\s+/g,"");
 const pkNat=(a,b)=>String(a||"").localeCompare(String(b||""),"fr",{numeric:true});
 const pkId=()=>Date.now().toString(36)+Math.random().toString(36).slice(2,6);
@@ -9740,12 +9750,12 @@ function VueParking({showToast,addLog,badges,session}){
 
   // ── Fiche d'une place ──
   const ouvrir=id=>{const p=id==="new"?{niv:niv||"",num:"",type:"std"}:P.find(x=>x.id===id);if(!p)return;setEdit(id);setOutils(false);
-    setForm({niv:p.niv||"",num:p.num||"",type:p.type||"std",panne:!!p.panne,lie:(jum(p)||{}).num||"",ko:!!p.ko,tit:p.tit||"",plaque:p.plaque||"",dir:p.dir||"",note:p.note||""});};
+    setForm({niv:p.niv||"",num:p.num||"",type:p.type||"std",panne:!!p.panne,lie:(jum(p)||{}).num||"",ko:!!p.ko,tit:p.tit||"",plaque:p.plaque||"",dir:p.dir||"",note:p.note||"",marque:p.marque||"",modele:p.modele||"",couleur:p.couleur||""});};
   const sauverPlace=()=>{const num=form.num.trim();if(!num){showToast("⚠️ Indique le numéro de la place","err");return;}
     const n=JSON.parse(JSON.stringify(data));const L=n.places;const isNew=edit==="new";const p=isNew?{id:pkId()}:L.find(x=>x.id===edit);if(!p)return;
     const nv=form.niv.trim();if(L.some(x=>x!==p&&String(x.num)===num&&String(x.niv||"")===nv)){showToast("⚠️ La place "+(nv?nv+" · ":"")+"n° "+num+" existe déjà","err");return;}
     const tit=form.tit.trim();if((p.tit||"")!==tit)pkH(p,tit?"Attribuée à "+tit+(p.tit?" (avant : "+p.tit+")":""):"Libérée (avant : "+p.tit+")");
-    Object.assign(p,{niv:nv,num,tit,plaque:form.plaque.trim().toUpperCase(),dir:form.dir.trim(),note:form.note.trim(),type:form.type});
+    Object.assign(p,{niv:nv,num,tit,plaque:form.plaque.trim().toUpperCase(),dir:form.dir.trim(),note:form.note.trim(),type:form.type,marque:form.marque.trim(),modele:form.modele.trim(),couleur:form.couleur});
     if(!!p.ko!==form.ko)pkH(p,form.ko?"Mise hors service":"Remise en service");p.ko=form.ko;
     const ancien=p.lie?L.find(x=>x.id===p.lie):null;const lieNum=form.lie.trim();
     if(lieNum){const j=L.find(x=>x!==p&&String(x.niv||"")===nv&&String(x.num).toLowerCase()===lieNum.toLowerCase());
@@ -9753,12 +9763,12 @@ function VueParking({showToast,addLog,badges,session}){
       if(j.lie&&j.lie!==p.id){const k=L.find(x=>x.id===j.lie);if(k)delete k.lie;}
       if(ancien&&ancien!==j)delete ancien.lie;
       if(p.lie!==j.id){pkH(p,"Jumelée avec la place "+j.num);pkH(j,"Jumelée avec la place "+num);}
-      p.lie=j.id;j.lie=p.id;if((j.tit||"")!==tit)pkH(j,tit?"Attribuée à "+tit+" (2 places)":"Libérée");Object.assign(j,{tit,plaque:p.plaque,dir:p.dir});
+      p.lie=j.id;j.lie=p.id;if((j.tit||"")!==tit)pkH(j,tit?"Attribuée à "+tit+" (2 places)":"Libérée");Object.assign(j,{tit,plaque:p.plaque,dir:p.dir,marque:p.marque,modele:p.modele,couleur:p.couleur});
     }else if(ancien){delete ancien.lie;delete p.lie;pkH(p,"Plus jumelée avec la place "+ancien.num);}
     if(p.type==="borne"){if(!!p.panne!==form.panne)pkH(p,form.panne?"Borne signalée en panne":"Borne remise en service");p.panne=form.panne;}else delete p.panne;
     if(isNew){pkH(p,"Place créée");L.push(p);}
     enregistrer(n);setEdit(null);log("Place "+(nv?nv+" · ":"")+num+(tit?" → "+tit:""));showToast("✅ Place enregistrée");};
-  const liberer=()=>{maj(n=>{const p=n.places.find(x=>x.id===edit);const j=p&&p.lie?n.places.find(x=>x.id===p.lie):null;[p,j].filter(Boolean).forEach(x=>{pkH(x,"Libérée (avant : "+x.tit+")");x.tit="";x.plaque="";x.dir="";});});
+  const liberer=()=>{maj(n=>{const p=n.places.find(x=>x.id===edit);const j=p&&p.lie?n.places.find(x=>x.id===p.lie):null;[p,j].filter(Boolean).forEach(x=>{pkH(x,"Libérée (avant : "+x.tit+")");x.tit="";x.plaque="";x.dir="";x.marque="";x.modele="";x.couleur="";});});
     setEdit(null);showToast("✅ Place libérée");};
   const supprimer=()=>{const p=P.find(x=>x.id===edit);if(!p||!confirm("Supprimer la place "+lib(p)+" ?"))return;
     maj(n=>{const j=p.lie?n.places.find(x=>x.id===p.lie):null;if(j)delete j.lie;n.places=n.places.filter(x=>x.id!==p.id);});setEdit(null);log("Place supprimée : "+lib(p));};
@@ -9770,6 +9780,10 @@ function VueParking({showToast,addLog,badges,session}){
       deux(champ("Jumelée avec la place n° (gros véhicule)",inp(form.lie,v=>set("lie",v),"Ex : 14")),champ("État",el("label",{style:{display:"flex",alignItems:"center",gap:8,height:38,fontSize:13}},el("input",{type:"checkbox",checked:form.ko,onChange:e=>set("ko",e.target.checked)}),"Place hors service"))),
       deux(champ("Titulaire",inp(form.tit,v=>set("tit",v),"Laisser vide si libre",{list:"pk-noms"})),champ("Plaque",inp(form.plaque,v=>set("plaque",v.toUpperCase()),"AB-123-CD"))),
       el("datalist",{id:"pk-noms"},noms.map(x=>el("option",{key:x,value:x}))),
+      el("div",{style:{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:10}},champ("Marque",inp(form.marque,v=>set("marque",v),"Peugeot",{list:"pk-marques"})),champ("Modèle",inp(form.modele,v=>set("modele",v),"308")),
+        champ("Couleur",el("div",{style:{display:"flex",alignItems:"center",gap:6}},el("i",{style:{flexShrink:0,width:20,height:20,borderRadius:6,border:"1px solid var(--border2)",background:PK_COUL[form.couleur]||"repeating-linear-gradient(45deg,#e5e7eb 0 4px,#fff 4px 8px)"}}),
+          el("select",{className:"inp",value:form.couleur,onChange:e=>set("couleur",e.target.value),style:{width:"100%"}},el("option",{value:""},"—"),Object.keys(PK_COUL).map(c=>el("option",{key:c,value:c},c)))))),
+      el("datalist",{id:"pk-marques"},["Peugeot","Renault","Citroën","DS","Dacia","Toyota","Volkswagen","Audi","BMW","Mercedes","Tesla","Skoda","Seat","Cupra","Fiat","Ford","Hyundai","Kia","Nissan","Opel","Volvo","MG","Mini","Jeep","Porsche","Lexus","Mazda","Suzuki","BYD"].map(x=>el("option",{key:x,value:x}))),
       deux(champ("Direction / service",inp(form.dir,v=>set("dir",v),"",{list:"pk-dirs"})),champ("Remarque",inp(form.note,v=>set("note",v)))),
       el("datalist",{id:"pk-dirs"},dirs.map(x=>el("option",{key:x,value:x}))),
       el("div",{style:{display:"flex",gap:8,flexWrap:"wrap",marginTop:4}},el("button",{type:"button",className:"btn btn-primary",onClick:sauverPlace},"Enregistrer"),
@@ -9844,7 +9858,7 @@ function VueParking({showToast,addLog,badges,session}){
   // ── Plan ──
   const plan=()=>{const ns=Object.keys(PK_PLAN);const nv=PK_PLAN[niv]?niv:ns[0];const PL=PK_PLAN[nv];
     const pl=P.filter(p=>String(p.niv||"")===nv);const byKey={};pl.forEach(p=>byKey[pkKey(p.num)]=p);
-    const hit=p=>qn&&p&&[p.num,p.tit,p.plaque,p.dir,(jum(p)||{}).num].join(" ").toLowerCase().replace(/[\s-]/g,"").includes(qn);
+    const hit=p=>qn&&p&&[p.num,p.tit,p.plaque,p.dir,p.marque,p.modele,(jum(p)||{}).num].join(" ").toLowerCase().replace(/[\s-]/g,"").includes(qn);
     const anyHit=qn&&pl.some(hit);const col=p=>p.ko?["#b91c1c",.5]:p.tit?["#2c5f85",.42]:["#16a34a",.38];
     const xs=[],ys=[];Object.values(PL.pts).forEach(([x,y,w,h])=>{const d=Math.max(w,h)/2+30;xs.push(x-d,x+d);ys.push(y-d,y+d);});
     const vb=[Math.max(PL.ox,Math.min(...xs)),Math.max(PL.oy,Math.min(...ys))];vb.push(Math.min(PL.ox+PL.w,Math.max(...xs))-vb[0],Math.min(PL.oy+PL.h,Math.max(...ys))-vb[1]);
@@ -9855,7 +9869,7 @@ function VueParking({showToast,addLog,badges,session}){
         ns.map(n=>el("button",{key:n,type:"button",className:"btn "+(n===nv?"btn-primary":"btn-outline"),style:{fontSize:12,padding:"6px 12px"},onClick:()=>setNiv(n)},"Niveau "+n)),
         el("button",{type:"button",className:"btn btn-outline",style:{fontSize:12,padding:"6px 12px"},onClick:()=>setGrand(!grand)},grand?"Réduire":"Agrandir"),el("button",{type:"button",className:"btn btn-outline",style:{fontSize:12,padding:"6px 12px"},onClick:()=>setVue3d(!vue3d)},vue3d?"Plan d'origine":"Vue 3D"),
         el("span",{style:{display:"flex",gap:12,flexWrap:"wrap",marginLeft:"auto",fontSize:12,color:"var(--text2)"}},leg("#2c5f85",vue3d?"Attribuée (voiture)":"Attribuée"),leg("#16a34a","Libre"),leg("#b91c1c","Hors service"),leg("#15803d","Borne",true))),
-      (()=>{const tip=p=>nv+" · n° "+p.num+(jum(p)?" + "+jum(p).num:"")+" · "+(p.ko?"hors service":p.tit?p.tit+(p.plaque?" · "+p.plaque:""):"libre")+(p.type==="borne"?" · borne"+(p.panne?" en panne":""):"");
+      (()=>{const tip=p=>nv+" · n° "+p.num+(jum(p)?" + "+jum(p).num:"")+" · "+(p.ko?"hors service":p.tit?p.tit+(pkVoit(p)?" · "+pkVoit(p):"")+(p.plaque?" · "+p.plaque:""):"libre")+(p.type==="borne"?" · borne"+(p.panne?" en panne":""):"");
         const eclair=(p,w,h,r)=>p.type==="borne"&&el("g",{transform:"rotate("+(-r)+") translate("+(w/2-14)+" "+(-h/2+14)+")"},el("circle",{r:12,fill:p.panne?"#b91c1c":"#15803d",stroke:"#fff",strokeWidth:2}),el("path",{d:"M1.5 -7 L-4 1 L0 1 L-1.5 7 L4 -1 L0 -1 Z",fill:"#fff"}));
         if(!vue3d)return el("div",{style:{overflow:"auto",borderRadius:8,border:"1px solid var(--border)",background:"#fff",width:"fit-content",maxWidth:"100%",margin:"0 auto"}},
           el("svg",{viewBox:vb.join(" "),preserveAspectRatio:"xMidYMid meet",style:{display:"block",width:"auto",maxWidth:"100%",height:grand?"min(80vh,760px)":"420px"}},
@@ -9875,12 +9889,12 @@ function VueParking({showToast,addLog,badges,session}){
             el("image",{href:PL.img,x:PL.ox,y:PL.oy,width:PL.w,height:PL.h,opacity:.16,clipPath:"url(#pk-clip)",style:{mixBlendMode:"multiply"}}),
             Object.entries(PL.pts).map(([k,[x,y,w,h,r]])=>{const p=byKey[k];if(!p)return null;const H=hit(p);
               const long=Math.max(w,h),larg=Math.min(w,h),horiz=w>=h;const cw=horiz?long*.78:larg*.7,ch=horiz?larg*.7:long*.78;
-              const pal=p.ko?CAR.ko:CAR.att;const voiture=p.tit&&!p.ko;
+              const cc=PK_COUL[p.couleur];const pal=p.ko?CAR.ko:cc?[cc,pkFonce(cc),"#cfe3f3"]:CAR.att;const clair=cc&&["Blanche","Beige","Jaune"].includes(p.couleur);const voiture=p.tit&&!p.ko;
               return el("g",{key:k,onClick:()=>ouvrir(p.id),style:{cursor:"pointer"},transform:"translate("+x+" "+y+") rotate("+r+")",opacity:anyHit&&!H?.3:1},el("title",null,tip(p)),
                 el("rect",{x:-w/2,y:-h/2,width:w,height:h,rx:3,fill:p.ko?"url(#pk-hach)":p.tit?"#d7dce2":"#dcfce7",stroke:H?"#f59e0b":"#fff",strokeWidth:H?8:3}),
                 !p.tit&&!p.ko&&el("rect",{x:-w/2+4,y:-h/2+4,width:w-8,height:h-8,rx:2,fill:"none",stroke:"#16a34a",strokeWidth:2,strokeDasharray:"6 5"}),
                 voiture&&el("g",{filter:"url(#pk-ombre)"},
-                  el("rect",{x:-cw/2,y:-ch/2,width:cw,height:ch,rx:Math.min(cw,ch)*.32,fill:pal[0]}),
+                  el("rect",{x:-cw/2,y:-ch/2,width:cw,height:ch,rx:Math.min(cw,ch)*.32,fill:pal[0],stroke:clair?"#94a3b8":"none",strokeWidth:2}),
                   el("rect",{x:-cw/2+cw*(horiz?.24:.12),y:-ch/2+ch*(horiz?.14:.24),width:cw*(horiz?.46:.76),height:ch*(horiz?.72:.46),rx:Math.min(cw,ch)*.2,fill:pal[1]}),
                   el("rect",{x:-cw/2+cw*(horiz?.3:.18),y:-ch/2+ch*(horiz?.2:.3),width:cw*(horiz?.1:.64),height:ch*(horiz?.6:.1),rx:3,fill:pal[2],opacity:.85})),
                 el("g",{transform:"rotate("+(-r)+")"},el("text",{textAnchor:"middle",dominantBaseline:"central",fontSize:Math.min(22,larg*.46),fontWeight:800,fontFamily:"Inter,system-ui,sans-serif",
@@ -9891,7 +9905,7 @@ function VueParking({showToast,addLog,badges,session}){
   // ── Liste des places ──
   const liste=()=>{let L=P.filter(p=>!niv||p.niv===niv).filter(p=>{const j=jum(p);return !j||ordre(p,j)<0;});
     if(f==="libres")L=L.filter(p=>!p.tit&&!p.ko);else if(f==="ko")L=L.filter(p=>p.ko);else if(f==="bornes")L=L.filter(p=>p.type==="borne");else if(f==="pmr")L=L.filter(p=>p.type==="pmr");
-    if(qn)L=L.filter(p=>[p.num,p.niv,p.tit,p.plaque,p.dir,p.note].join(" ").toLowerCase().replace(/[\s-]/g,"").includes(qn));L=[...L].sort(ordre);
+    if(qn)L=L.filter(p=>[p.num,p.niv,p.tit,p.plaque,p.dir,p.note,p.marque,p.modele].join(" ").toLowerCase().replace(/[\s-]/g,"").includes(qn));L=[...L].sort(ordre);
     const ko=P.filter(p=>p.ko).length;
     const chips=[["all","Toutes",P.length],["libres","Libres",P.filter(p=>!p.tit&&!p.ko).length],["bornes","Bornes",P.filter(p=>p.type==="borne").length],["pmr","PMR",P.filter(p=>p.type==="pmr").length],...(ko?[["ko","Hors service",ko]]:[])];
     const th={textAlign:"left",padding:"9px 14px",fontSize:10.5,fontWeight:700,textTransform:"uppercase",letterSpacing:".4px",color:"var(--text2)"};
@@ -9903,7 +9917,7 @@ function VueParking({showToast,addLog,badges,session}){
         el("thead",null,el("tr",{style:{background:"var(--surface2)"}},["Place","Titulaire","Plaque","Direction / service",""].map((h,i)=>el("th",{key:i,style:th},h)))),
         el("tbody",null,L.slice(0,tout?99999:200).map(p=>{const t=PK_TYPES[p.type]||PK_TYPES.std;return el("tr",{key:p.id,onClick:()=>ouvrir(p.id),style:{borderTop:"1px solid var(--border)",cursor:"pointer"}},
           el("td",{style:{padding:"9px 14px"}},el("b",null,p.num+(jum(p)?" + "+jum(p).num:"")),p.niv?el("div",{style:{fontSize:11.5,color:"var(--text3)"}},"Niveau "+p.niv):null),
-          el("td",{style:{padding:"9px 14px"}},p.tit?p.tit:p.ko?"—":el("span",{style:{color:"#15803d",fontWeight:600}},"Libre")),
+          el("td",{style:{padding:"9px 14px"}},p.tit?el(React.Fragment,null,p.tit,pkVoit(p)?el("div",{style:{fontSize:11.5,color:"var(--text3)",display:"flex",alignItems:"center",gap:5}},PK_COUL[p.couleur]?el("i",{style:{width:9,height:9,borderRadius:3,background:PK_COUL[p.couleur],border:"1px solid var(--border2)"}}):null,pkVoit(p)):null):p.ko?"—":el("span",{style:{color:"#15803d",fontWeight:600}},"Libre")),
           el("td",{style:{padding:"9px 14px",fontFamily:"ui-monospace,monospace"}},p.plaque||""),
           el("td",{style:{padding:"9px 14px",color:"var(--text2)"}},p.dir||""),
           el("td",{style:{padding:"9px 14px",textAlign:"right"}},p.type&&p.type!=="std"?pill(t[0]+(p.panne?" · en panne":""),t[1],t[2]):null,jum(p)?pill("2 places","#7c2d12","#ffedd5"):null,p.ko?pill("Hors service","#b91c1c","#fee2e2"):null));}))),
@@ -13137,7 +13151,7 @@ catch(e){document.getElementById("root").innerHTML='<div style="padding:40px;fon
   }
   // ── Nouvelle version en ligne : bandeau cliquable pour actualiser ──
   (function(){
-    var VERSION_PAGE='v116';var affiche=false,dernier=0;
+    var VERSION_PAGE='v117';var affiche=false,dernier=0;
     function montrer(){if(affiche)return;affiche=true;
       var b=document.createElement('button');b.type='button';b.id='maj-dispo';
       b.innerHTML='<span style="font-size:16px">🔄</span><span>Nouvelle version de l\'appli</span><b style="background:#fff;color:#1D4ED8;border-radius:999px;padding:4px 12px">Actualiser</b>';
