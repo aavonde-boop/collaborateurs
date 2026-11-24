@@ -3470,7 +3470,8 @@ const PK_PLAN={
 const PK_COUL={"Blanche":"#f1f5f9","Grise":"#8b95a1","Noire":"#1f2937","Bleue":"#2c5f85","Rouge":"#c0392b","Verte":"#2f7d4f","Beige":"#d6c7a1","Marron":"#7c4a2d","Jaune":"#e0b52b","Orange":"#e07b2b","Violette":"#6d4c9f"};
 const pkFonce=h=>{const n=parseInt(h.slice(1),16);const f=x=>Math.max(0,Math.round(x*.7));return "#"+[f(n>>16),f((n>>8)&255),f(n&255)].map(x=>x.toString(16).padStart(2,"0")).join("");};
 const PK_MARQUES=["Abarth","Aiways","Aixam","Alfa Romeo","Alpine","Aston Martin","Audi","Bentley","BMW","BYD","Cadillac","Chevrolet","Chrysler","Citroën","Cupra","Dacia","Dodge","DS","Ferrari","Fiat","Fisker","Ford","Genesis","Honda","Hongqi","Hyundai","Ineos","Infiniti","Isuzu","Iveco","Jaecoo","Jaguar","Jeep","Kia","KGM (SsangYong)","Lada","Lamborghini","Lancia","Land Rover","Leapmotor","Lexus","Ligier","Lotus","Lucid","Lynk & Co","Maserati","Mazda","McLaren","Mercedes-Benz","MG","Microcar","Mini","Mitsubishi","Nio","Nissan","Omoda","Opel","Peugeot","Polestar","Porsche","Range Rover","Renault","Rolls-Royce","Seat","Seres","Skoda","Smart","Subaru","Suzuki","Tesla","Toyota","VinFast","Volkswagen","Volvo","Xpeng","Zeekr","Aprilia","BMW Motorrad","Ducati","Harley-Davidson","Honda Moto","Kawasaki","KTM","Kymco","Niu","Piaggio","Royal Enfield","Silence","Suzuki Moto","Triumph","Vespa","Yamaha"];
-const pkVoit=p=>[p.marque,p.modele].filter(Boolean).join(" ")+(p.couleur?" "+p.couleur.toLowerCase():"");
+const pkMM=p=>{const a=String(p.marque||"").trim(),b=String(p.modele||"").trim();return !a?b:!b?a:b.toLowerCase().startsWith(a.toLowerCase())?b:a+" "+b;};
+const pkVoit=p=>pkMM(p)+(p.couleur?" "+p.couleur.toLowerCase():"");
 const PK_SIL="M18 98 Q16 80 36 74 L100 66 Q124 38 162 36 L214 37 Q240 39 262 66 L296 72 Q310 76 308 98 Q306 104 296 104 L270 104 A24 24 0 0 0 222 104 L112 104 A24 24 0 0 0 64 104 L28 104 Q18 104 18 98 Z";
 const pkKey=n=>String(n||"").toLowerCase().replace(/\s+/g,"");
 const pkNat=(a,b)=>String(a||"").localeCompare(String(b||""),"fr",{numeric:true});
@@ -3491,9 +3492,9 @@ function VueParking({showToast,addLog,badges,session}){
   const[vEdit,setVEdit]=React.useState(null);const[vForm,setVForm]=React.useState(null);
   const[outils,setOutils]=React.useState(false);const[grand,setGrand]=React.useState(false);const[vue3d,setVue3d]=React.useState(true);const[zoom,setZoom]=React.useState(null);const[photos,setPhotos]=React.useState({});
   // Photo du modèle (Wikipédia, gratuit, sans clé) : seuls la marque et le modèle sont envoyés, jamais la plaque ni le nom
-  const zp=data&&zoom?(data.places||[]).find(x=>x.id===zoom):null;const cleMod=zp&&zp.tit&&zp.marque&&zp.modele?(zp.marque+" "+zp.modele).trim():"";
+  const zp=data&&zoom?(data.places||[]).find(x=>x.id===zoom):null;const cleMod=zp&&zp.tit&&zp.marque&&zp.modele?pkMM(zp):"";
   React.useEffect(()=>{if(!cleMod||photos[cleMod]!==undefined)return;setPhotos(o=>({...o,[cleMod]:null}));
-    (async()=>{try{const r=await fetch("https://fr.wikipedia.org/w/api.php?action=query&format=json&origin=*&generator=search&gsrlimit=6&prop=pageimages&piprop=thumbnail&pithumbsize=640&gsrsearch="+encodeURIComponent(cleMod));
+    (async()=>{try{const r=await fetch("https://fr.wikipedia.org/w/api.php?action=query&format=json&origin=*&generator=search&gsrlimit=6&prop=pageimages&piprop=thumbnail&pithumbsize=500&gsrsearch="+encodeURIComponent(cleMod));
       const j=await r.json();const pages=Object.values((j.query||{}).pages||{}).filter(x=>x.thumbnail).sort((a,b)=>a.index-b.index);
       const mots=cleMod.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g,"").split(/\s+/);const n=t=>String(t).toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g,"");
       const pg=pages.find(x=>mots.every(m=>n(x.title).includes(m)))||pages.find(x=>n(x.title).includes(mots[mots.length-1]));
@@ -3659,9 +3660,9 @@ function VueParking({showToast,addLog,badges,session}){
     return el("div",{style:boite},
       el("div",{style:{display:"flex",alignItems:"center",gap:6,flexWrap:"wrap"}},el("div",{style:{fontSize:15,fontWeight:800,marginRight:"auto"}},"Place "+lib(p)),
         p.type&&p.type!=="std"?pill(t[0]+(p.panne?" · en panne":""),t[1],t[2]):null,p.ko?pill("Hors service","#b91c1c","#fee2e2"):null),
-      (()=>{const ph=voit&&p.marque&&p.modele?photos[(p.marque+" "+p.modele).trim()]:null;if(!ph)return null;
+      (()=>{const ph=voit&&p.marque&&p.modele?photos[pkMM(p)]:null;if(!ph)return null;
         return el("div",null,el("div",{style:{background:"#fff",borderRadius:10,border:"1px solid var(--border)",overflow:"hidden",display:"flex",alignItems:"center",justifyContent:"center",height:170}},
-          el("img",{src:ph.src,alt:ph.titre,referrerPolicy:"no-referrer",style:{maxWidth:"100%",maxHeight:"100%",objectFit:"contain"}})),
+          el("img",{src:ph.src,alt:ph.titre,onError:()=>setPhotos(o=>({...o,[pkMM(p)]:false})),style:{maxWidth:"100%",maxHeight:"100%",objectFit:"contain"}})),
           el("div",{style:{fontSize:10.5,color:"var(--text3)",marginTop:4,textAlign:"center"}},"Photo d'illustration du modèle · Wikipédia"+(p.couleur?" · couleur réelle : "+p.couleur.toLowerCase():"")));})()||
       el("svg",{viewBox:"0 0 320 150",style:{width:"100%",display:"block"}},
         el("defs",null,el("linearGradient",{id:"gp-carr",x1:0,y1:0,x2:0,y2:1},el("stop",{offset:0,stopColor:cc}),el("stop",{offset:1,stopColor:pkFonce(cc)})),
@@ -3675,7 +3676,7 @@ function VueParking({showToast,addLog,badges,session}){
           [88,246].map(x=>el("g",{key:x},el("circle",{cx:x,cy:106,r:21,fill:"#111827"}),el("circle",{cx:x,cy:106,r:11,fill:"#9ca3af"}),el("circle",{cx:x,cy:106,r:4,fill:"#374151"}))))
         :el("g",null,el("rect",{x:40,y:36,width:250,height:84,rx:8,fill:p.ko?"#fee2e2":"#dcfce7",stroke:p.ko?"#b91c1c":"#16a34a",strokeWidth:3,strokeDasharray:"10 8"}),
           el("text",{x:165,y:86,textAnchor:"middle",fontSize:22,fontWeight:800,fill:p.ko?"#991b1b":"#166534",fontFamily:"Inter,system-ui,sans-serif"},p.ko?"Hors service":"Place libre"))),
-      voit?el("div",{style:{textAlign:"center"}},el("div",{style:{fontSize:20,fontWeight:800,lineHeight:1.15}},[p.marque,p.modele].filter(Boolean).join(" ")||"Voiture"),
+      voit?el("div",{style:{textAlign:"center"}},el("div",{style:{fontSize:20,fontWeight:800,lineHeight:1.15}},pkMM(p)||"Voiture"),
         el("div",{style:{fontSize:12.5,color:"var(--text3)",marginTop:2}},p.couleur?"Couleur : "+p.couleur.toLowerCase():"Marque, modèle et couleur à renseigner sur la fiche")):null,
       p.plaque?el("div",{style:{alignSelf:"center",display:"flex",alignItems:"stretch",border:"2px solid #111827",borderRadius:6,overflow:"hidden",background:"#fff",fontFamily:"ui-monospace,monospace"}},
         el("span",{style:{background:"#1d4ed8",color:"#fff",fontSize:10,fontWeight:800,padding:"4px 5px",display:"flex",alignItems:"flex-end"}},"F"),
@@ -9733,7 +9734,8 @@ const PK_PLAN={
 const PK_COUL={"Blanche":"#f1f5f9","Grise":"#8b95a1","Noire":"#1f2937","Bleue":"#2c5f85","Rouge":"#c0392b","Verte":"#2f7d4f","Beige":"#d6c7a1","Marron":"#7c4a2d","Jaune":"#e0b52b","Orange":"#e07b2b","Violette":"#6d4c9f"};
 const pkFonce=h=>{const n=parseInt(h.slice(1),16);const f=x=>Math.max(0,Math.round(x*.7));return "#"+[f(n>>16),f((n>>8)&255),f(n&255)].map(x=>x.toString(16).padStart(2,"0")).join("");};
 const PK_MARQUES=["Abarth","Aiways","Aixam","Alfa Romeo","Alpine","Aston Martin","Audi","Bentley","BMW","BYD","Cadillac","Chevrolet","Chrysler","Citroën","Cupra","Dacia","Dodge","DS","Ferrari","Fiat","Fisker","Ford","Genesis","Honda","Hongqi","Hyundai","Ineos","Infiniti","Isuzu","Iveco","Jaecoo","Jaguar","Jeep","Kia","KGM (SsangYong)","Lada","Lamborghini","Lancia","Land Rover","Leapmotor","Lexus","Ligier","Lotus","Lucid","Lynk & Co","Maserati","Mazda","McLaren","Mercedes-Benz","MG","Microcar","Mini","Mitsubishi","Nio","Nissan","Omoda","Opel","Peugeot","Polestar","Porsche","Range Rover","Renault","Rolls-Royce","Seat","Seres","Skoda","Smart","Subaru","Suzuki","Tesla","Toyota","VinFast","Volkswagen","Volvo","Xpeng","Zeekr","Aprilia","BMW Motorrad","Ducati","Harley-Davidson","Honda Moto","Kawasaki","KTM","Kymco","Niu","Piaggio","Royal Enfield","Silence","Suzuki Moto","Triumph","Vespa","Yamaha"];
-const pkVoit=p=>[p.marque,p.modele].filter(Boolean).join(" ")+(p.couleur?" "+p.couleur.toLowerCase():"");
+const pkMM=p=>{const a=String(p.marque||"").trim(),b=String(p.modele||"").trim();return !a?b:!b?a:b.toLowerCase().startsWith(a.toLowerCase())?b:a+" "+b;};
+const pkVoit=p=>pkMM(p)+(p.couleur?" "+p.couleur.toLowerCase():"");
 const PK_SIL="M18 98 Q16 80 36 74 L100 66 Q124 38 162 36 L214 37 Q240 39 262 66 L296 72 Q310 76 308 98 Q306 104 296 104 L270 104 A24 24 0 0 0 222 104 L112 104 A24 24 0 0 0 64 104 L28 104 Q18 104 18 98 Z";
 const pkKey=n=>String(n||"").toLowerCase().replace(/\s+/g,"");
 const pkNat=(a,b)=>String(a||"").localeCompare(String(b||""),"fr",{numeric:true});
@@ -9754,9 +9756,9 @@ function VueParking({showToast,addLog,badges,session}){
   const[vEdit,setVEdit]=React.useState(null);const[vForm,setVForm]=React.useState(null);
   const[outils,setOutils]=React.useState(false);const[grand,setGrand]=React.useState(false);const[vue3d,setVue3d]=React.useState(true);const[zoom,setZoom]=React.useState(null);const[photos,setPhotos]=React.useState({});
   // Photo du modèle (Wikipédia, gratuit, sans clé) : seuls la marque et le modèle sont envoyés, jamais la plaque ni le nom
-  const zp=data&&zoom?(data.places||[]).find(x=>x.id===zoom):null;const cleMod=zp&&zp.tit&&zp.marque&&zp.modele?(zp.marque+" "+zp.modele).trim():"";
+  const zp=data&&zoom?(data.places||[]).find(x=>x.id===zoom):null;const cleMod=zp&&zp.tit&&zp.marque&&zp.modele?pkMM(zp):"";
   React.useEffect(()=>{if(!cleMod||photos[cleMod]!==undefined)return;setPhotos(o=>({...o,[cleMod]:null}));
-    (async()=>{try{const r=await fetch("https://fr.wikipedia.org/w/api.php?action=query&format=json&origin=*&generator=search&gsrlimit=6&prop=pageimages&piprop=thumbnail&pithumbsize=640&gsrsearch="+encodeURIComponent(cleMod));
+    (async()=>{try{const r=await fetch("https://fr.wikipedia.org/w/api.php?action=query&format=json&origin=*&generator=search&gsrlimit=6&prop=pageimages&piprop=thumbnail&pithumbsize=500&gsrsearch="+encodeURIComponent(cleMod));
       const j=await r.json();const pages=Object.values((j.query||{}).pages||{}).filter(x=>x.thumbnail).sort((a,b)=>a.index-b.index);
       const mots=cleMod.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g,"").split(/\s+/);const n=t=>String(t).toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g,"");
       const pg=pages.find(x=>mots.every(m=>n(x.title).includes(m)))||pages.find(x=>n(x.title).includes(mots[mots.length-1]));
@@ -9922,9 +9924,9 @@ function VueParking({showToast,addLog,badges,session}){
     return el("div",{style:boite},
       el("div",{style:{display:"flex",alignItems:"center",gap:6,flexWrap:"wrap"}},el("div",{style:{fontSize:15,fontWeight:800,marginRight:"auto"}},"Place "+lib(p)),
         p.type&&p.type!=="std"?pill(t[0]+(p.panne?" · en panne":""),t[1],t[2]):null,p.ko?pill("Hors service","#b91c1c","#fee2e2"):null),
-      (()=>{const ph=voit&&p.marque&&p.modele?photos[(p.marque+" "+p.modele).trim()]:null;if(!ph)return null;
+      (()=>{const ph=voit&&p.marque&&p.modele?photos[pkMM(p)]:null;if(!ph)return null;
         return el("div",null,el("div",{style:{background:"#fff",borderRadius:10,border:"1px solid var(--border)",overflow:"hidden",display:"flex",alignItems:"center",justifyContent:"center",height:170}},
-          el("img",{src:ph.src,alt:ph.titre,referrerPolicy:"no-referrer",style:{maxWidth:"100%",maxHeight:"100%",objectFit:"contain"}})),
+          el("img",{src:ph.src,alt:ph.titre,onError:()=>setPhotos(o=>({...o,[pkMM(p)]:false})),style:{maxWidth:"100%",maxHeight:"100%",objectFit:"contain"}})),
           el("div",{style:{fontSize:10.5,color:"var(--text3)",marginTop:4,textAlign:"center"}},"Photo d'illustration du modèle · Wikipédia"+(p.couleur?" · couleur réelle : "+p.couleur.toLowerCase():"")));})()||
       el("svg",{viewBox:"0 0 320 150",style:{width:"100%",display:"block"}},
         el("defs",null,el("linearGradient",{id:"gp-carr",x1:0,y1:0,x2:0,y2:1},el("stop",{offset:0,stopColor:cc}),el("stop",{offset:1,stopColor:pkFonce(cc)})),
@@ -9938,7 +9940,7 @@ function VueParking({showToast,addLog,badges,session}){
           [88,246].map(x=>el("g",{key:x},el("circle",{cx:x,cy:106,r:21,fill:"#111827"}),el("circle",{cx:x,cy:106,r:11,fill:"#9ca3af"}),el("circle",{cx:x,cy:106,r:4,fill:"#374151"}))))
         :el("g",null,el("rect",{x:40,y:36,width:250,height:84,rx:8,fill:p.ko?"#fee2e2":"#dcfce7",stroke:p.ko?"#b91c1c":"#16a34a",strokeWidth:3,strokeDasharray:"10 8"}),
           el("text",{x:165,y:86,textAnchor:"middle",fontSize:22,fontWeight:800,fill:p.ko?"#991b1b":"#166534",fontFamily:"Inter,system-ui,sans-serif"},p.ko?"Hors service":"Place libre"))),
-      voit?el("div",{style:{textAlign:"center"}},el("div",{style:{fontSize:20,fontWeight:800,lineHeight:1.15}},[p.marque,p.modele].filter(Boolean).join(" ")||"Voiture"),
+      voit?el("div",{style:{textAlign:"center"}},el("div",{style:{fontSize:20,fontWeight:800,lineHeight:1.15}},pkMM(p)||"Voiture"),
         el("div",{style:{fontSize:12.5,color:"var(--text3)",marginTop:2}},p.couleur?"Couleur : "+p.couleur.toLowerCase():"Marque, modèle et couleur à renseigner sur la fiche")):null,
       p.plaque?el("div",{style:{alignSelf:"center",display:"flex",alignItems:"stretch",border:"2px solid #111827",borderRadius:6,overflow:"hidden",background:"#fff",fontFamily:"ui-monospace,monospace"}},
         el("span",{style:{background:"#1d4ed8",color:"#fff",fontSize:10,fontWeight:800,padding:"4px 5px",display:"flex",alignItems:"flex-end"}},"F"),
@@ -13243,7 +13245,7 @@ catch(e){document.getElementById("root").innerHTML='<div style="padding:40px;fon
   }
   // ── Nouvelle version en ligne : bandeau cliquable pour actualiser ──
   (function(){
-    var VERSION_PAGE='v118';var affiche=false,dernier=0;
+    var VERSION_PAGE='v119';var affiche=false,dernier=0;
     function montrer(){if(affiche)return;affiche=true;
       var b=document.createElement('button');b.type='button';b.id='maj-dispo';
       b.innerHTML='<span style="font-size:16px">🔄</span><span>Nouvelle version de l\'appli</span><b style="background:#fff;color:#1D4ED8;border-radius:999px;padding:4px 12px">Actualiser</b>';
