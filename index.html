@@ -1211,7 +1211,7 @@ function sessionFromSettings(user,st){
   }
   const role=entry.role||"user";
   const perms=role==="admin"?DEFAULT_PERMS:role==="it"?IT_PERMS:role==="badge"?BADGE_PERMS:(entry.perms||DEFAULT_PERMS);
-  return{role,email:user.email,label:entry.label||user.email,perms,site:entry.site||"Levallois"};
+  return{role,email:user.email,label:entry.label||user.email,perms,site:entry.site||"Levallois",parking:role==="admin"||entry.parking===true};
 }
 const IT_PERMS={accueil:PERM_READ,collaborateurs:PERM_NONE,casiers:PERM_NONE,rapport:PERM_READ,impression:PERM_NONE,historique:PERM_NONE,archives:PERM_NONE,field_support:PERM_WRITE,colis:PERM_NONE};
 const norm=s=>String(s||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toUpperCase().trim();
@@ -3449,6 +3449,268 @@ function VueConnexions({users}){
   );
 }
 // ── Historique des colis : tous les événements (réception, prévenu, récupéré…) ──
+// ════════════════ PARKING & VÉHICULES (repris de Gestion des services) ════════════════
+const PK_TYPES={std:["Normale","#475569","#f1f5f9"],borne:["Borne électrique","#15803d","#dcfce7"],pmr:["PMR","#1d4ed8","#dbeafe"]};
+const VH_ECH=[["revision","Révision"],["ct","Contrôle technique"],["assurance","Assurance"],["finLoc","Fin de location"]];
+const PK_PLAN={
+ "-2":{img:"plans/niveau-2.jpg",ox:380,oy:400,w:1120,h:1300,pts:{
+  "282":[726,872,112,46,20],"158":[710,915,112,46,20],"157":[692,965,112,46,20],"156":[673,1012,112,46,20],"155":[657,1055,112,46,20],"154":[639,1104,112,46,20],"153":[622,1147,112,46,20],"152":[606,1190,112,46,20],"151":[588,1242,112,46,20],"150":[571,1286,112,46,20],"149":[510,1488,112,46,20],"148":[493,1530,112,46,20],
+  "185":[850,802,46,104,0],"186":[846,1071,46,104,0],"187":[820,1160,108,46,20],"186b":[802,1208,108,46,20],"188":[930,777,104,48,0],"189":[930,825,104,48,0],
+  "190":[925,973,104,48,0],"191":[925,1021,104,48,0],"192":[925,1075,104,48,0],"193":[925,1129,104,48,0],"194":[925,1181,104,48,0],"195":[926,1229,104,48,0],
+  "196":[1136,919,104,48,0],"197":[1136,976,104,48,0],"198":[1136,1020,104,44,0],"199":[1136,1081,104,48,0],"200":[1136,1126,104,44,0],"201":[1135,1233,104,48,0],
+  "202":[1243,768,104,48,0],"203":[1243,818,104,48,0],"205":[1241,919,104,48,0],"206":[1241,976,104,48,0],"207":[1241,1020,104,44,0],"208":[1241,1126,104,48,0],
+  "258":[849,1308,48,104,0],"259":[903,1308,48,104,0],"260":[951,1308,48,104,0],"261":[1113,1308,48,104,0],"262":[1162,1308,48,104,0]}},
+ "-3":{img:"plans/niveau-3.jpg",ox:140,oy:300,w:1320,h:1320,pts:{
+  "160":[552,757,112,46,20],"159":[536,802,112,46,20],"158":[518,851,112,46,20],"157":[502,897,112,46,20],"156":[485,944,112,46,20],"155":[466,995,112,46,20],"154":[450,1040,112,46,20],"153":[431,1091,112,46,20],"152":[414,1137,112,46,20],"151":[398,1183,112,46,20],
+  "179":[665,571,48,104,0],"180":[713,571,48,104,0],"181":[763,571,48,104,0],"188":[672,686,46,104,0],"191":[752,655,104,46,0],"192":[752,703,104,46,0],"190":[665,948,50,104,0],
+  "189":[633,1043,112,46,20],"189b":[614,1093,112,46,20],"193":[750,857,104,48,0],"194":[750,906,104,48,0],"195":[752,959,104,48,0],"196":[752,1013,104,48,0],"197":[754,1068,104,48,0],"198":[755,1115,104,48,0],
+  "199":[960,652,104,48,0],"200":[960,700,104,48,0],"201":[960,749,104,48,0],"202":[960,801,104,48,0],"203":[960,852,104,48,0],"204":[960,901,104,48,0],"205":[962,960,104,48,0],"206":[963,1008,104,48,0],
+  "265":[680,1198,50,104,0],"266":[735,1198,50,104,0],"267":[783,1196,50,104,0],"272":[563,1393,108,50,0],"273":[564,1447,108,50,0]}}
+};
+const pkKey=n=>String(n||"").toLowerCase().replace(/\s+/g,"");
+const pkNat=(a,b)=>String(a||"").localeCompare(String(b||""),"fr",{numeric:true});
+const pkId=()=>Date.now().toString(36)+Math.random().toString(36).slice(2,6);
+const pkH=(o,txt)=>{o.hist=[...(o.hist||[]),{t:new Date().toISOString(),txt}];};
+const vhJours=d=>{if(!d)return null;return Math.round((new Date(d+"T12:00")-new Date())/864e5);};
+const pkFr=d=>{try{return new Date(d).toLocaleDateString("fr-FR");}catch(e){return "";}};
+// Alertes (échéances véhicules à 30 jours, bornes en panne) — lues par les notifications
+function pkAlertesDe(data){const out=[];if(!data)return out;
+  (data.vehicules||[]).forEach(v=>VH_ECH.forEach(([k,l])=>{const j=vhJours(v[k]);if(j!==null&&j<=30)out.push({v,k,l,j});}));return out;}
+
+function VueParking({showToast,addLog,badges,session}){
+  const el=React.createElement;
+  const[data,setData]=React.useState(null);const[err,setErr]=React.useState("");
+  const[tab,setTab]=React.useState("places");const[vue,setVue]=React.useState("plan");
+  const[q,setQ]=React.useState("");const[niv,setNiv]=React.useState("");const[f,setF]=React.useState("all");
+  const[edit,setEdit]=React.useState(null);const[form,setForm]=React.useState(null);
+  const[vEdit,setVEdit]=React.useState(null);const[vForm,setVForm]=React.useState(null);
+  const[outils,setOutils]=React.useState(false);const[grand,setGrand]=React.useState(false);const[tout,setTout]=React.useState(false);
+  const[gen,setGen]=React.useState({niv:"",pad:"0",de:"1",a:""});const[colle,setColle]=React.useState("");const[reprise,setReprise]=React.useState("");
+  const tSave=React.useRef(null);
+  React.useEffect(()=>{if(!sb){setData({places:[],vehicules:[]});return;}(async()=>{try{
+    const r=await sb.from("lp24_parking").select("data").eq("id",1).maybeSingle();
+    if(r.error){setErr(/does not exist|relation|schema cache/i.test(r.error.message||"")?"script":"acces");return;}
+    if(!r.data){setErr("acces");return;}
+    const d=typeof r.data.data==="string"?JSON.parse(r.data.data):(r.data.data||{});
+    setData({...d,places:d.places||[],vehicules:d.vehicules||[]});window._pkData=d;
+  }catch(e){setErr("acces");}})();},[]);
+  const enregistrer=next=>{setData(next);window._pkData=next;clearTimeout(tSave.current);const snap=JSON.parse(JSON.stringify(next));
+    tSave.current=setTimeout(async()=>{if(!sb)return;try{const r=await sb.from("lp24_parking").update({data:snap,maj:new Date().toISOString()}).eq("id",1);
+      if(r.error)showToast("⚠️ Parking non enregistré : "+r.error.message,"err");}catch(e){showToast("⚠️ Parking non enregistré (réseau)","err");}},400);};
+  const maj=fn=>{const n=JSON.parse(JSON.stringify(data));fn(n);enregistrer(n);};
+  const log=t=>{if(addLog)addLog("Parking",t);};
+
+  if(err)return el("div",{style:{background:"var(--surface)",border:"1px solid var(--border)",borderRadius:"var(--radius-lg)",padding:28,fontSize:13.5,color:"var(--text2)",maxWidth:620}},
+    err==="script"?el(React.Fragment,null,el("b",null,"Parking pas encore activé."),el("div",{style:{marginTop:6}},"Lance le script 17 (page des scripts) dans Supabase → SQL Editor, puis actualise la page.")):
+    el(React.Fragment,null,el("b",null,"Accès refusé."),el("div",{style:{marginTop:6}},"Ton compte n'a pas l'accès « Parking & véhicules ». Demande à l'administrateur de cocher 🚗 Parking sur ton compte (Réglages → Comptes).")));
+  if(!data)return el("div",{style:{padding:40,color:"var(--text3)",fontSize:13}},"Chargement…");
+
+  const P=data.places,V=data.vehicules;
+  const jum=p=>p&&p.lie?P.find(x=>x.id===p.lie):null;
+  const lib=p=>(p.niv?p.niv+" · ":"")+"n° "+p.num+(jum(p)?" + "+jum(p).num:"");
+  const nivs=[...new Set(P.map(p=>p.niv||""))].filter(Boolean).sort(pkNat);
+  const ordre=(a,b)=>pkNat(a.niv,b.niv)||pkNat(a.num,b.num);
+  const qn=q.trim().toLowerCase().replace(/[\s-]/g,"");
+  const noms=[...new Set((badges||[]).filter(b=>b.statut!=="Archivé"&&b.nom).map(b=>(String(b.prenom||"").trim()+" "+String(b.nom||"").toUpperCase()).trim()))].sort();
+  const dirs=[...new Set(P.map(x=>x.dir).filter(Boolean))].sort();
+  const pill=(t,c,bg)=>el("span",{style:{display:"inline-block",fontSize:11,fontWeight:600,color:c,background:bg,borderRadius:999,padding:"2px 9px",marginLeft:4,whiteSpace:"nowrap"}},t);
+  const carte={background:"var(--surface)",border:"1px solid var(--border)",borderRadius:"var(--radius-lg)"};
+  const seg=(opts,val,set)=>el("div",{style:{display:"inline-flex",background:"var(--surface3)",borderRadius:9,padding:3,gap:2}},
+    opts.map(([k,l])=>el("button",{key:k,type:"button",onClick:()=>set(k),style:{border:"none",borderRadius:7,padding:"6px 14px",fontSize:12.5,fontWeight:600,cursor:"pointer",background:val===k?"var(--surface)":"transparent",color:val===k?"var(--text)":"var(--text2)",boxShadow:val===k?"0 1px 3px rgba(0,0,0,.1)":"none"}},l)));
+  const kpi=(l,v,s,c)=>el("div",{className:"kpi-card kpi-std",style:{borderTop:"2px solid "+(c||"var(--accent)")}},el("div",{style:{color:c||"var(--text)"}},v),el("div",{style:{fontSize:12,fontWeight:600,color:"var(--text2)",marginTop:6}},l),s?el("div",{style:{fontSize:11,color:"var(--text3)",marginTop:2}},s):null);
+  const fenetre=(titre,fermer,contenu)=>ReactDOM.createPortal(el("div",{onClick:fermer,style:{position:"fixed",inset:0,background:"rgba(0,0,0,.45)",zIndex:1000,display:"flex",alignItems:"center",justifyContent:"center",padding:16}},
+    el("div",{onClick:e=>e.stopPropagation(),style:{background:"var(--surface)",borderRadius:16,padding:24,width:"100%",maxWidth:560,maxHeight:"calc(100vh - 32px)",overflowY:"auto",boxShadow:"0 24px 60px rgba(0,0,0,.25)"}},
+      el("div",{style:{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:16}},el("div",{style:{fontSize:17,fontWeight:800}},titre),el("button",{type:"button",onClick:fermer,style:{border:"none",background:"none",fontSize:22,cursor:"pointer",color:"var(--text3)"}},"×")),
+      contenu)),document.body);
+  const champ=(l,c)=>el("div",null,el("label",{className:"lbl"},l),c);
+  const inp=(v,on,ph,ex)=>el("input",{className:"inp",value:v||"",onChange:e=>on(e.target.value),placeholder:ph||"",style:{width:"100%"},...(ex||{})});
+  const deux=(...c)=>el("div",{style:{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10}},...c);
+  const histo=h=>(h||[]).length?el("div",{style:{marginTop:14}},el("label",{className:"lbl"},"Historique"),
+    el("div",{style:{fontSize:12.5,color:"var(--text2)",display:"flex",flexDirection:"column",gap:3}},[...h].reverse().slice(0,15).map((x,i)=>el("div",{key:i},pkFr(x.t)+" · "+x.txt)))):null;
+
+  // ── Fiche d'une place ──
+  const ouvrir=id=>{const p=id==="new"?{niv:niv||"",num:"",type:"std"}:P.find(x=>x.id===id);if(!p)return;setEdit(id);setOutils(false);
+    setForm({niv:p.niv||"",num:p.num||"",type:p.type||"std",panne:!!p.panne,lie:(jum(p)||{}).num||"",ko:!!p.ko,tit:p.tit||"",plaque:p.plaque||"",dir:p.dir||"",note:p.note||""});};
+  const sauverPlace=()=>{const num=form.num.trim();if(!num){showToast("⚠️ Indique le numéro de la place","err");return;}
+    const n=JSON.parse(JSON.stringify(data));const L=n.places;const isNew=edit==="new";const p=isNew?{id:pkId()}:L.find(x=>x.id===edit);if(!p)return;
+    const nv=form.niv.trim();if(L.some(x=>x!==p&&String(x.num)===num&&String(x.niv||"")===nv)){showToast("⚠️ La place "+(nv?nv+" · ":"")+"n° "+num+" existe déjà","err");return;}
+    const tit=form.tit.trim();if((p.tit||"")!==tit)pkH(p,tit?"Attribuée à "+tit+(p.tit?" (avant : "+p.tit+")":""):"Libérée (avant : "+p.tit+")");
+    Object.assign(p,{niv:nv,num,tit,plaque:form.plaque.trim().toUpperCase(),dir:form.dir.trim(),note:form.note.trim(),type:form.type});
+    if(!!p.ko!==form.ko)pkH(p,form.ko?"Mise hors service":"Remise en service");p.ko=form.ko;
+    const ancien=p.lie?L.find(x=>x.id===p.lie):null;const lieNum=form.lie.trim();
+    if(lieNum){const j=L.find(x=>x!==p&&String(x.niv||"")===nv&&String(x.num).toLowerCase()===lieNum.toLowerCase());
+      if(!j){showToast("⚠️ La place "+(nv?nv+" · ":"")+"n° "+lieNum+" n'existe pas","err");return;}
+      if(j.lie&&j.lie!==p.id){const k=L.find(x=>x.id===j.lie);if(k)delete k.lie;}
+      if(ancien&&ancien!==j)delete ancien.lie;
+      if(p.lie!==j.id){pkH(p,"Jumelée avec la place "+j.num);pkH(j,"Jumelée avec la place "+num);}
+      p.lie=j.id;j.lie=p.id;if((j.tit||"")!==tit)pkH(j,tit?"Attribuée à "+tit+" (2 places)":"Libérée");Object.assign(j,{tit,plaque:p.plaque,dir:p.dir});
+    }else if(ancien){delete ancien.lie;delete p.lie;pkH(p,"Plus jumelée avec la place "+ancien.num);}
+    if(p.type==="borne"){if(!!p.panne!==form.panne)pkH(p,form.panne?"Borne signalée en panne":"Borne remise en service");p.panne=form.panne;}else delete p.panne;
+    if(isNew){pkH(p,"Place créée");L.push(p);}
+    enregistrer(n);setEdit(null);log("Place "+(nv?nv+" · ":"")+num+(tit?" → "+tit:""));showToast("✅ Place enregistrée");};
+  const liberer=()=>{maj(n=>{const p=n.places.find(x=>x.id===edit);const j=p&&p.lie?n.places.find(x=>x.id===p.lie):null;[p,j].filter(Boolean).forEach(x=>{pkH(x,"Libérée (avant : "+x.tit+")");x.tit="";x.plaque="";x.dir="";});});
+    setEdit(null);showToast("✅ Place libérée");};
+  const supprimer=()=>{const p=P.find(x=>x.id===edit);if(!p||!confirm("Supprimer la place "+lib(p)+" ?"))return;
+    maj(n=>{const j=p.lie?n.places.find(x=>x.id===p.lie):null;if(j)delete j.lie;n.places=n.places.filter(x=>x.id!==p.id);});setEdit(null);log("Place supprimée : "+lib(p));};
+  const fichePlace=edit&&form&&(()=>{const isNew=edit==="new";const p=isNew?null:P.find(x=>x.id===edit);const set=(k,v)=>setForm(x=>({...x,[k]:v}));
+    return fenetre(isNew?"Nouvelle place":"Place "+lib(p),()=>setEdit(null),el("div",{style:{display:"flex",flexDirection:"column",gap:12}},
+      deux(champ("Niveau",inp(form.niv,v=>set("niv",v),"-1")),champ("Numéro *",inp(form.num,v=>set("num",v),"045"))),
+      champ("Type",el("div",{style:{display:"flex",gap:6,flexWrap:"wrap",alignItems:"center"}},Object.entries(PK_TYPES).map(([k,[l]])=>el("button",{key:k,type:"button",className:"btn "+(form.type===k?"btn-primary":"btn-outline"),style:{fontSize:12,padding:"6px 12px"},onClick:()=>set("type",k)},l)),
+        form.type==="borne"&&el("label",{style:{display:"flex",alignItems:"center",gap:6,fontSize:13,marginLeft:8}},el("input",{type:"checkbox",checked:form.panne,onChange:e=>set("panne",e.target.checked)}),"Borne en panne"))),
+      deux(champ("Jumelée avec la place n° (gros véhicule)",inp(form.lie,v=>set("lie",v),"Ex : 14")),champ("État",el("label",{style:{display:"flex",alignItems:"center",gap:8,height:38,fontSize:13}},el("input",{type:"checkbox",checked:form.ko,onChange:e=>set("ko",e.target.checked)}),"Place hors service"))),
+      deux(champ("Titulaire",inp(form.tit,v=>set("tit",v),"Laisser vide si libre",{list:"pk-noms"})),champ("Plaque",inp(form.plaque,v=>set("plaque",v.toUpperCase()),"AB-123-CD"))),
+      el("datalist",{id:"pk-noms"},noms.map(x=>el("option",{key:x,value:x}))),
+      deux(champ("Direction / service",inp(form.dir,v=>set("dir",v),"",{list:"pk-dirs"})),champ("Remarque",inp(form.note,v=>set("note",v)))),
+      el("datalist",{id:"pk-dirs"},dirs.map(x=>el("option",{key:x,value:x}))),
+      el("div",{style:{display:"flex",gap:8,flexWrap:"wrap",marginTop:4}},el("button",{type:"button",className:"btn btn-primary",onClick:sauverPlace},"Enregistrer"),
+        !isNew&&p&&p.tit&&el("button",{type:"button",className:"btn btn-outline",onClick:liberer},"Libérer la place"),
+        !isNew&&el("button",{type:"button",className:"btn btn-outline",style:{marginLeft:"auto",color:"#B91C1C"},onClick:supprimer},"Supprimer")),
+      !isNew&&p&&histo(p.hist)));})();
+
+  // ── Fiche d'un véhicule ──
+  const ouvrirV=id=>{const v=id==="new"?{}:V.find(x=>x.id===id);if(!v)return;setVEdit(id);
+    setVForm({plaque:v.plaque||"",modele:v.modele||"",cond:v.cond||"",place:v.place||"",km:v.km||"",note:v.note||"",...Object.fromEntries(VH_ECH.map(([k])=>[k,v[k]||""]))});};
+  const sauverV=()=>{const plaque=vForm.plaque.trim().toUpperCase();if(!plaque){showToast("⚠️ Indique la plaque","err");return;}
+    const n=JSON.parse(JSON.stringify(data));const isNew=vEdit==="new";const v=isNew?{id:pkId()}:n.vehicules.find(x=>x.id===vEdit);if(!v)return;
+    const cond=vForm.cond.trim();if((v.cond||"")!==cond)pkH(v,cond?"Attribué à "+cond+(v.cond?" (avant : "+v.cond+")":""):"Plus de conducteur (avant : "+v.cond+")");
+    const km=String(vForm.km||"").trim();if(km&&String(v.km||"")!==km)pkH(v,"Kilométrage : "+Number(km).toLocaleString("fr-FR")+" km");
+    Object.assign(v,{plaque,modele:vForm.modele.trim(),cond,place:vForm.place.trim(),km,note:vForm.note.trim()});
+    VH_ECH.forEach(([k,l])=>{const d=vForm[k]||"";if((v[k]||"")!==d&&d)pkH(v,l+" : "+pkFr(d+"T12:00"));v[k]=d;});
+    if(isNew){pkH(v,"Véhicule ajouté");n.vehicules.push(v);}
+    enregistrer(n);setVEdit(null);log("Véhicule "+plaque+(cond?" → "+cond:""));showToast("✅ Véhicule enregistré");};
+  const supprimerV=()=>{const v=V.find(x=>x.id===vEdit);if(!v||!confirm("Supprimer le véhicule "+v.plaque+" ?"))return;maj(n=>{n.vehicules=n.vehicules.filter(x=>x.id!==v.id);});setVEdit(null);log("Véhicule supprimé : "+v.plaque);};
+  const ficheV=vEdit&&vForm&&(()=>{const isNew=vEdit==="new";const v=isNew?null:V.find(x=>x.id===vEdit);const set=(k,x)=>setVForm(o=>({...o,[k]:x}));
+    return fenetre(isNew?"Nouveau véhicule":v.plaque,()=>setVEdit(null),el("div",{style:{display:"flex",flexDirection:"column",gap:12}},
+      deux(champ("Plaque *",inp(vForm.plaque,x=>set("plaque",x.toUpperCase()),"AB-123-CD")),champ("Modèle",inp(vForm.modele,x=>set("modele",x)))),
+      deux(champ("Conducteur attribué",inp(vForm.cond,x=>set("cond",x),"",{list:"pk-noms"})),champ("Place de parking",inp(vForm.place,x=>set("place",x),"",{list:"pk-places"}))),
+      el("datalist",{id:"pk-noms"},noms.map(x=>el("option",{key:x,value:x}))),el("datalist",{id:"pk-places"},P.map(p=>el("option",{key:p.id,value:lib(p)}))),
+      deux(champ("Kilométrage",inp(vForm.km,x=>set("km",x.replace(/[^\d]/g,"")),"")),champ("Remarque",inp(vForm.note,x=>set("note",x)))),
+      el("div",{style:{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10}},VH_ECH.map(([k,l])=>el("div",{key:k},champ(l,inp(vForm[k],x=>set(k,x),"",{type:"date"}))))),
+      el("div",{style:{display:"flex",gap:8,marginTop:4}},el("button",{type:"button",className:"btn btn-primary",onClick:sauverV},"Enregistrer"),
+        !isNew&&el("button",{type:"button",className:"btn btn-outline",style:{marginLeft:"auto",color:"#B91C1C"},onClick:supprimerV},"Supprimer")),
+      !isNew&&v&&histo(v.hist)));})();
+
+  // ── Créer / importer ──
+  const creerNiveau=()=>{const de=parseInt(gen.de),aa=parseInt(gen.a),pad=+gen.pad||0,nv=gen.niv.trim();
+    if(!(de>=0)||!(aa>=de)||aa-de>999){showToast("⚠️ Indique une plage valide (ex. 1 à 120)","err");return;}
+    let c=0;maj(n=>{for(let i=de;i<=aa;i++){const num=String(i).padStart(pad,"0");if(n.places.some(x=>String(x.niv||"")===nv&&String(x.num)===num))continue;const p={id:pkId(),niv:nv,num,type:"std",tit:""};pkH(p,"Place créée");n.places.push(p);c++;}});
+    setOutils(false);setNiv(nv);showToast("✅ "+c+" place"+(c>1?"s":"")+" créée"+(c>1?"s":"")+(nv?" au niveau "+nv:""));};
+  const importer=()=>{const lignes=colle.split(/\r?\n/).map(l=>l.split(/\t|;/).map(x=>x.trim()));const PL=/^[A-Z]{2}[- ]?\d{3}[- ]?[A-Z]{2}$/i;let cr=0,mj=0,nb=0;
+    const n=JSON.parse(JSON.stringify(data));
+    lignes.forEach(c=>{const iN=c.findIndex(x=>/^-?\d{1,2}$/.test(x));if(iN<0||!c[iN+1])return;const nv=c[iN];let num=c[iN+1].replace(/\s+/g," ").trim();if(!/^\d/.test(num))return;
+      let ko=false;if(/\bKO\b/i.test(num)){ko=true;num=num.replace(/\s*KO\b/i,"").trim();}num=num.replace(/\s+([a-z])$/i,(m,l)=>" "+l.toUpperCase());
+      let tit="",plaque="",borne=false;c.slice(iN+2).forEach(x=>{if(!x||/^\?+$/.test(x)||/^place r[ée]serv[ée]e$/i.test(x))return;if(/borne/i.test(x)){borne=true;return;}if(/\bKO\b/i.test(x)&&x.length<4){ko=true;return;}if(PL.test(x)){plaque=x.toUpperCase().replace(/\s/g,"-");return;}if(!tit&&/[a-zà-ÿ]/i.test(x))tit=x;});
+      nb++;let p=n.places.find(x=>String(x.niv||"")===nv&&String(x.num).toLowerCase()===num.toLowerCase());
+      if(!p){p={id:pkId(),niv:nv,num,type:"std",tit:""};pkH(p,"Place créée (import)");n.places.push(p);cr++;}else mj++;
+      if(tit&&p.tit!==tit)pkH(p,"Attribuée à "+tit+" (import)");if(tit)p.tit=tit;if(plaque)p.plaque=plaque;if(borne)p.type="borne";if(ko)p.ko=true;});
+    if(!nb){showToast("⚠️ Rien de reconnu : colle les colonnes Niveau et N° de place","err");return;}
+    enregistrer(n);setOutils(false);setColle("");showToast("✅ Import : "+cr+" créée(s), "+mj+" mise(s) à jour");};
+  const reprendre=()=>{let d;try{d=JSON.parse(reprise.trim().replace(/^"|"$/g,"").replace(/""/g,'"'));}catch(e){showToast("⚠️ Texte non reconnu : colle la valeur copiée dans Supabase","err");return;}
+    if(!d||!Array.isArray(d.places)){showToast("⚠️ Pas de places dans ce texte","err");return;}
+    if(P.length&&!confirm("Remplacer les "+P.length+" places et "+V.length+" véhicules actuels par ceux de Gestion des services ?"))return;
+    enregistrer({...d,places:d.places,vehicules:d.vehicules||[]});setReprise("");log("Reprise depuis Gestion des services : "+d.places.length+" places, "+(d.vehicules||[]).length+" véhicules");
+    showToast("✅ Repris : "+d.places.length+" places et "+(d.vehicules||[]).length+" véhicules");};
+  const blocReprise=el("div",{style:{...carte,padding:18,marginBottom:14}},
+    el("div",{style:{fontWeight:800,fontSize:14}},"Reprendre les données de Gestion des services"),
+    el("div",{style:{fontSize:12.5,color:"var(--text2)",margin:"6px 0 10px",lineHeight:1.5}},"Dans le Supabase de Gestion des services → SQL Editor, lance : ",el("code",{style:{background:"var(--surface3)",padding:"1px 6px",borderRadius:4}},"select valeur from parametres where cle = 'parking';"),
+      " puis copie la case du résultat et colle-la ici."),
+    el("textarea",{className:"inp",value:reprise,onChange:e=>setReprise(e.target.value),placeholder:'{"places":[…],"vehicules":[…]}',style:{width:"100%",minHeight:90,fontFamily:"ui-monospace,monospace",fontSize:12}}),
+    el("button",{type:"button",className:"btn btn-primary",style:{marginTop:10},onClick:reprendre},"Reprendre"));
+  const blocOutils=outils&&fenetre("Créer / importer des places",()=>setOutils(false),el("div",{style:{display:"flex",flexDirection:"column",gap:18}},
+    el("div",null,el("div",{style:{fontWeight:700,fontSize:14}},"Créer un niveau entier"),el("div",{style:{fontSize:12.5,color:"var(--text3)",margin:"2px 0 8px"}},"Ex. : niveau -3, places 151 à 206."),
+      el("div",{style:{display:"grid",gridTemplateColumns:"1fr 1fr 1fr 1fr",gap:8}},champ("Niveau",inp(gen.niv,v=>setGen(g=>({...g,niv:v})),"-1")),
+        champ("Chiffres",el("select",{className:"inp",value:gen.pad,onChange:e=>setGen(g=>({...g,pad:e.target.value})),style:{width:"100%"}},el("option",{value:"0"},"1, 2…"),el("option",{value:"2"},"01, 02…"),el("option",{value:"3"},"001…"))),
+        champ("De",inp(gen.de,v=>setGen(g=>({...g,de:v})),"1",{type:"number"})),champ("À",inp(gen.a,v=>setGen(g=>({...g,a:v})),"120",{type:"number"}))),
+      el("button",{type:"button",className:"btn btn-primary",style:{marginTop:10},onClick:creerNiveau},"Créer les places")),
+    el("div",null,el("div",{style:{fontWeight:700,fontSize:14}},"Coller une liste (Excel)"),el("div",{style:{fontSize:12.5,color:"var(--text3)",margin:"2px 0 8px",lineHeight:1.5}},"Sélectionne les colonnes Niveau → plaque dans Excel, copie, colle ici. Noms, plaques, bornes et places « KO » sont reconnus. Les places existantes sont mises à jour."),
+      el("textarea",{className:"inp",value:colle,onChange:e=>setColle(e.target.value),placeholder:"-1\t045\tJean DUPONT\tAB-123-CD",style:{width:"100%",minHeight:110,fontFamily:"ui-monospace,monospace",fontSize:12}}),
+      el("button",{type:"button",className:"btn btn-primary",style:{marginTop:10},onClick:importer},"Importer")),
+    el("div",{style:{borderTop:"1px solid var(--border)",paddingTop:14}},blocReprise)));
+
+  // ── Plan ──
+  const plan=()=>{const ns=Object.keys(PK_PLAN);const nv=PK_PLAN[niv]?niv:ns[0];const PL=PK_PLAN[nv];
+    const pl=P.filter(p=>String(p.niv||"")===nv);const byKey={};pl.forEach(p=>byKey[pkKey(p.num)]=p);
+    const hit=p=>qn&&p&&[p.num,p.tit,p.plaque,p.dir,(jum(p)||{}).num].join(" ").toLowerCase().replace(/[\s-]/g,"").includes(qn);
+    const anyHit=qn&&pl.some(hit);const col=p=>p.ko?["#b91c1c",.5]:p.tit?["#2c5f85",.42]:["#16a34a",.38];
+    const xs=[],ys=[];Object.values(PL.pts).forEach(([x,y,w,h])=>{const d=Math.max(w,h)/2+30;xs.push(x-d,x+d);ys.push(y-d,y+d);});
+    const vb=[Math.max(PL.ox,Math.min(...xs)),Math.max(PL.oy,Math.min(...ys))];vb.push(Math.min(PL.ox+PL.w,Math.max(...xs))-vb[0],Math.min(PL.oy+PL.h,Math.max(...ys))-vb[1]);
+    const sans=pl.filter(p=>!PL.pts[pkKey(p.num)]);
+    const leg=(c,t,rond)=>el("span",{style:{display:"inline-flex",alignItems:"center",gap:5}},el("i",{style:{display:"inline-block",width:12,height:12,borderRadius:rond?"50%":3,background:rond?c:c+"66",border:rond?"none":"2px solid "+c}}),t);
+    return el("div",{style:{...carte,padding:12}},
+      el("div",{style:{display:"flex",alignItems:"center",gap:8,flexWrap:"wrap",marginBottom:10}},
+        ns.map(n=>el("button",{key:n,type:"button",className:"btn "+(n===nv?"btn-primary":"btn-outline"),style:{fontSize:12,padding:"6px 12px"},onClick:()=>setNiv(n)},"Niveau "+n)),
+        el("button",{type:"button",className:"btn btn-outline",style:{fontSize:12,padding:"6px 12px"},onClick:()=>setGrand(!grand)},grand?"Réduire":"Agrandir"),
+        el("span",{style:{display:"flex",gap:12,flexWrap:"wrap",marginLeft:"auto",fontSize:12,color:"var(--text2)"}},leg("#2c5f85","Attribuée"),leg("#16a34a","Libre"),leg("#b91c1c","Hors service"),leg("#15803d","Borne",true))),
+      el("div",{style:{overflow:"auto",borderRadius:8,border:"1px solid var(--border)",background:"#fff",width:"fit-content",maxWidth:"100%",margin:"0 auto"}},
+        el("svg",{viewBox:vb.join(" "),preserveAspectRatio:"xMidYMid meet",style:{display:"block",width:"auto",maxWidth:"100%",height:grand?"min(80vh,760px)":"420px"}},
+          el("image",{href:PL.img,x:PL.ox,y:PL.oy,width:PL.w,height:PL.h,opacity:.9}),
+          Object.entries(PL.pts).map(([k,[x,y,w,h,r]])=>{const p=byKey[k];if(!p)return null;const[c,o]=col(p);const H=hit(p);
+            const tip=nv+" · n° "+p.num+(jum(p)?" + "+jum(p).num:"")+" · "+(p.ko?"hors service":p.tit?p.tit+(p.plaque?" · "+p.plaque:""):"libre")+(p.type==="borne"?" · borne"+(p.panne?" en panne":""):"");
+            return el("g",{key:k,onClick:()=>ouvrir(p.id),style:{cursor:"pointer"},transform:"translate("+x+" "+y+") rotate("+r+")",opacity:anyHit&&!H?.25:1},el("title",null,tip),
+              el("rect",{x:-w/2,y:-h/2,width:w,height:h,rx:5,fill:c,fillOpacity:o,stroke:H?"#f59e0b":c,strokeWidth:H?7:2}),
+              p.type==="borne"&&el("g",{transform:"rotate("+(-r)+") translate("+(w/2-14)+" "+(-h/2+14)+")"},el("circle",{r:12,fill:p.panne?"#b91c1c":"#15803d"}),el("path",{d:"M1.5 -7 L-4 1 L0 1 L-1.5 7 L4 -1 L0 -1 Z",fill:"#fff"})));}))),
+      el("div",{style:{fontSize:12,color:"var(--text3)",marginTop:8}},"Clique sur une place pour l'ouvrir. La recherche (nom, plaque, numéro) met la place en évidence."+(sans.length?" · Places de ce niveau absentes du plan : "+sans.map(p=>p.num).join(", "):"")));};
+
+  // ── Liste des places ──
+  const liste=()=>{let L=P.filter(p=>!niv||p.niv===niv).filter(p=>{const j=jum(p);return !j||ordre(p,j)<0;});
+    if(f==="libres")L=L.filter(p=>!p.tit&&!p.ko);else if(f==="ko")L=L.filter(p=>p.ko);else if(f==="bornes")L=L.filter(p=>p.type==="borne");else if(f==="pmr")L=L.filter(p=>p.type==="pmr");
+    if(qn)L=L.filter(p=>[p.num,p.niv,p.tit,p.plaque,p.dir,p.note].join(" ").toLowerCase().replace(/[\s-]/g,"").includes(qn));L=[...L].sort(ordre);
+    const ko=P.filter(p=>p.ko).length;
+    const chips=[["all","Toutes",P.length],["libres","Libres",P.filter(p=>!p.tit&&!p.ko).length],["bornes","Bornes",P.filter(p=>p.type==="borne").length],["pmr","PMR",P.filter(p=>p.type==="pmr").length],...(ko?[["ko","Hors service",ko]]:[])];
+    const th={textAlign:"left",padding:"9px 14px",fontSize:10.5,fontWeight:700,textTransform:"uppercase",letterSpacing:".4px",color:"var(--text2)"};
+    return el(React.Fragment,null,
+      el("div",{style:{display:"flex",gap:6,flexWrap:"wrap",marginBottom:10}},chips.map(([k,l,n])=>el("button",{key:k,type:"button",className:"btn "+(f===k?"btn-primary":"btn-outline"),style:{fontSize:12,padding:"5px 12px"},onClick:()=>setF(k)},l+" · "+n))),
+      !P.length?el("div",{style:{...carte,padding:30,color:"var(--text3)",fontSize:13}},"Aucune place pour l'instant. « Créer / importer des places » pour commencer."):
+      !L.length?el("div",{style:{...carte,padding:30,color:"var(--text3)",fontSize:13}},"Aucune place ne correspond."):
+      el("div",{style:{...carte,overflow:"auto"}},el("table",{style:{width:"100%",borderCollapse:"collapse",fontSize:13}},
+        el("thead",null,el("tr",{style:{background:"var(--surface2)"}},["Place","Titulaire","Plaque","Direction / service",""].map((h,i)=>el("th",{key:i,style:th},h)))),
+        el("tbody",null,L.slice(0,tout?99999:200).map(p=>{const t=PK_TYPES[p.type]||PK_TYPES.std;return el("tr",{key:p.id,onClick:()=>ouvrir(p.id),style:{borderTop:"1px solid var(--border)",cursor:"pointer"}},
+          el("td",{style:{padding:"9px 14px"}},el("b",null,p.num+(jum(p)?" + "+jum(p).num:"")),p.niv?el("div",{style:{fontSize:11.5,color:"var(--text3)"}},"Niveau "+p.niv):null),
+          el("td",{style:{padding:"9px 14px"}},p.tit?p.tit:p.ko?"—":el("span",{style:{color:"#15803d",fontWeight:600}},"Libre")),
+          el("td",{style:{padding:"9px 14px",fontFamily:"ui-monospace,monospace"}},p.plaque||""),
+          el("td",{style:{padding:"9px 14px",color:"var(--text2)"}},p.dir||""),
+          el("td",{style:{padding:"9px 14px",textAlign:"right"}},p.type&&p.type!=="std"?pill(t[0]+(p.panne?" · en panne":""),t[1],t[2]):null,jum(p)?pill("2 places","#7c2d12","#ffedd5"):null,p.ko?pill("Hors service","#b91c1c","#fee2e2"):null));}))),
+        L.length>200&&!tout?el("button",{type:"button",className:"btn btn-outline",style:{margin:10},onClick:()=>setTout(true)},"Afficher les "+L.length+" places"):null));};
+
+  // ── Véhicules ──
+  const vehicules=()=>{const L=[...V].sort((a,b)=>pkNat(a.plaque,b.plaque));const A=pkAlertesDe(data);
+    const ech=v=>VH_ECH.map(([k,l])=>{const j=vhJours(v[k]);if(j===null)return null;const c=j<0?"#b91c1c":j<=30?"#b45309":"var(--text2)";
+      return el("div",{key:k,style:{fontSize:12,color:c,fontWeight:j<=30?600:400}},l+" : "+pkFr(v[k]+"T12:00")+(j<0?" (dépassée)":j<=30?" (dans "+j+" j)":""));}).filter(Boolean);
+    const th={textAlign:"left",padding:"9px 14px",fontSize:10.5,fontWeight:700,textTransform:"uppercase",letterSpacing:".4px",color:"var(--text2)"};
+    return el(React.Fragment,null,
+      el("div",{className:"kpi-grid",style:{gridTemplateColumns:"repeat(3,1fr)",marginBottom:14}},kpi("Véhicules",L.length,L.filter(v=>v.cond).length+" attribués"),
+        kpi("Échéances à 30 jours",A.filter(a=>a.j>=0).length,"révision, CT, assurance, location",A.some(a=>a.j>=0)?"#B45309":null),kpi("Dépassées",A.filter(a=>a.j<0).length,"à régulariser",A.some(a=>a.j<0)?"#B91C1C":null)),
+      L.length?el("div",{style:{...carte,overflow:"auto"}},el("table",{style:{width:"100%",borderCollapse:"collapse",fontSize:13}},
+        el("thead",null,el("tr",{style:{background:"var(--surface2)"}},["Véhicule","Conducteur","Place","Kilométrage","Échéances"].map(h=>el("th",{key:h,style:th},h)))),
+        el("tbody",null,L.map(v=>{const e=ech(v);return el("tr",{key:v.id,onClick:()=>ouvrirV(v.id),style:{borderTop:"1px solid var(--border)",cursor:"pointer",verticalAlign:"top"}},
+          el("td",{style:{padding:"9px 14px"}},el("b",{style:{fontFamily:"ui-monospace,monospace"}},v.plaque),el("div",{style:{fontSize:11.5,color:"var(--text3)"}},v.modele||"")),
+          el("td",{style:{padding:"9px 14px"}},v.cond||"—"),el("td",{style:{padding:"9px 14px"}},v.place||""),
+          el("td",{style:{padding:"9px 14px"}},v.km?Number(v.km).toLocaleString("fr-FR")+" km":""),
+          el("td",{style:{padding:"9px 14px"}},e.length?e:el("span",{style:{color:"var(--text3)"}},"—")));}))))
+      :el("div",{style:{...carte,padding:30,color:"var(--text3)",fontSize:13}},"Aucun véhicule. « Nouveau véhicule » pour commencer."));};
+
+  const att=P.filter(p=>p.tit).length,ko=P.filter(p=>p.ko).length,libres=P.filter(p=>!p.tit&&!p.ko).length,bornes=P.filter(p=>p.type==="borne"),panne=bornes.filter(p=>p.panne);
+  return el("div",null,
+    el("div",{style:{display:"flex",alignItems:"center",gap:10,flexWrap:"wrap",marginBottom:14}},
+      seg([["places","Places"],["vehicules","Véhicules"]],tab,k=>{setTab(k);setEdit(null);setVEdit(null);}),
+      el("div",{style:{marginLeft:"auto",display:"flex",gap:8}},tab==="places"?el(React.Fragment,null,
+          el("button",{type:"button",className:"btn btn-outline",onClick:()=>{setOutils(true);setEdit(null);}},"Créer / importer des places"),
+          el("button",{type:"button",className:"btn btn-primary",onClick:()=>ouvrir("new")},"+ Nouvelle place"))
+        :el("button",{type:"button",className:"btn btn-primary",onClick:()=>ouvrirV("new")},"+ Nouveau véhicule"))),
+    tab==="places"?el(React.Fragment,null,
+      !P.length&&blocReprise,
+      el("div",{className:"kpi-grid",style:{gridTemplateColumns:"repeat(4,1fr)",marginBottom:14}},
+        kpi("Places",P.length,nivs.length+" niveau"+(nivs.length>1?"x":"")),kpi("Attribuées",att,(P.length?Math.round(att/P.length*100):0)+" %"),
+        kpi("Libres",libres,"à attribuer"+(ko?" · "+ko+" hors service":""),"#15803D"),kpi("Bornes électriques",bornes.length,panne.length?panne.length+" en panne":"toutes en service",panne.length?"#B91C1C":null)),
+      el("div",{style:{display:"flex",gap:8,alignItems:"center",flexWrap:"wrap",marginBottom:12}},
+        el("input",{className:"inp",type:"search",value:q,onChange:e=>setQ(e.target.value),placeholder:"🔍 Nom, plaque ou numéro de place…",style:{maxWidth:320}}),
+        el("select",{className:"inp",value:niv,onChange:e=>setNiv(e.target.value),style:{width:"auto"}},el("option",{value:""},"Tous les niveaux"),nivs.map(n=>el("option",{key:n,value:n},"Niveau "+n))),
+        el("div",{style:{marginLeft:"auto"}},seg([["plan","Plan"],["liste","Liste"]],vue,setVue))),
+      vue==="plan"?plan():liste())
+    :vehicules(),
+    fichePlace,ficheV,blocOutils);
+}
+
 function VueHistoriqueColis({site}={}){
   const el=React.createElement;const[lignes,setLignes]=React.useState(null);const[colis,setColis]=React.useState({});const[q,setQ]=React.useState("");const[err,setErr]=React.useState(false);
   React.useEffect(()=>{if(!sb){setLignes([]);return;}(async()=>{try{
@@ -4963,6 +5225,7 @@ const ICONES_NAV={
   historique_colis:'<path d="M4 8l8-4 8 4v8l-8 4-8-4z"/><path d="M4 8l8 4 8-4M12 12v8"/>',
   calendrier:'<rect x="3.5" y="5" width="17" height="15.5" rx="2"/><path d="M3.5 9.5h17M8 3v4M16 3v4"/>',
   coherence:'<path d="M9 11l3 3 8-8"/><path d="M20 12v7a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h9"/>',
+  parking:'<path d="M5 17h14M6 17l1.5-5.5A2 2 0 0 1 9.4 10h5.2a2 2 0 0 1 1.9 1.5L18 17"/><rect x="4" y="15" width="16" height="5" rx="1.5"/><circle cx="8" cy="17.5" r=".8"/><circle cx="16" cy="17.5" r=".8"/>',
   notifications:'<path d="M6 16V11a6 6 0 0 1 12 0v5l1.5 2h-15z"/><path d="M10 20a2 2 0 0 0 4 0"/>',
   aide:'<circle cx="12" cy="12" r="9"/><path d="M9.5 9.5a2.5 2.5 0 1 1 3.5 2.3c-.6.3-1 .8-1 1.5V14"/><circle cx="12" cy="17.2" r=".6" fill="currentColor"/>',
   settings:'<circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/>',
@@ -4986,7 +5249,7 @@ function Courbe({vals,col,w=104,h=34}){if(!vals||vals.length<2)return null;const
   const pts=vals.map((v,i)=>[i*w/(vals.length-1),h-2-(v-mn)/((mx-mn)||1)*(h-6)]);const d="M"+pts.map(p=>p[0].toFixed(1)+","+p[1].toFixed(1)).join(" L");
   return React.createElement("svg",{className:"courbe",width:w,height:h,viewBox:"0 0 "+w+" "+h},React.createElement("path",{d:d+" L"+w+","+h+" L0,"+h+" Z",fill:col,opacity:.12}),React.createElement("path",{d,fill:"none",stroke:col,strokeWidth:2,strokeLinecap:"round",strokeLinejoin:"round"}));}
 // ── Menu caché (☰) ──
-const MENU_SECTIONS=[["",["accueil","calendrier"]],["Personnes",["arrivees","collaborateurs","field_support"]],["Accueil physique",["gestion_accueil","gestion_accueil_hex","historique_pret","historique_colis"]],["",["casiers"]],["Outils",["impression","rapport","coherence"]]];
+const MENU_SECTIONS=[["",["accueil","calendrier"]],["Personnes",["arrivees","collaborateurs","field_support"]],["Accueil physique",["gestion_accueil","gestion_accueil_hex","historique_pret","historique_colis"]],["",["casiers","parking"]],["Outils",["impression","rapport","coherence"]]];
 const MENU_ICONES={"Personnes":"collaborateurs","Accueil physique":"gestion_accueil","Outils":"impression"};
 function personneConnectee(session){
   const ROLES={admin:"Administrateur",user:"Utilisateur",it:"Service IT",badge:"Gestion des badges"};
@@ -5236,6 +5499,8 @@ function SettingsModal({settings,setSettings,showToast,setShowSettings,racineRef
                   Object.entries(ROLE_LABELS).map(([k,l])=>React.createElement("option",{key:k,value:k},l))),
                 React.createElement("select",{value:u.site||"Levallois",title:"Site de l'accueil",onChange:e=>{const v=e.target.value;setSettings(s=>({...s,users:(s.users||[]).map((x,j)=>j===i?{...x,site:v}:x)}));},style:{marginTop:4,marginLeft:6,padding:"3px 6px",borderRadius:5,border:"1px solid var(--border2)",fontSize:11,background:"var(--surface)",color:"var(--text)"}},
                   ["Levallois","Hexagone"].map(v=>React.createElement("option",{key:v,value:v},"Site : "+v))),
+                (u.role||"user")!=="admin"&&React.createElement("label",{title:"Accès à Parking & véhicules",style:{display:"inline-flex",alignItems:"center",gap:4,marginLeft:8,fontSize:11,color:"var(--text2)",cursor:"pointer",verticalAlign:"middle"}},
+                  React.createElement("input",{type:"checkbox",checked:u.parking===true,onChange:e=>{const v=e.target.checked;setSettings(s=>({...s,users:(s.users||[]).map((x,j)=>j===i?{...x,parking:v}:x)}));}}),"🚗 Parking"),
                 (u.role||"user")==="user"&&u.perms&&Object.entries(u.perms).filter(([,v])=>v===PERM_NONE).length>0&&React.createElement("div",{style:{fontSize:10,color:"var(--red)",marginTop:2}},"🔒 Bloqué : "+Object.entries(u.perms).filter(([,v])=>v===PERM_NONE).map(([k])=>k).join(", "))
               ),
               React.createElement("button",{onClick:()=>setSettings(s=>({...s,users:(s.users||[]).filter((_,j)=>j!==i)})),className:"btn btn-danger",style:{fontSize:11,padding:"4px 8px"}},"🗑️ Retirer")
@@ -6304,6 +6569,7 @@ useEffect(()=>{
     {id:"historique_colis",label:"Historique des colis",icon:"📦"},
     {id:"calendrier",label:"Calendrier",icon:"📅"},
     {id:"coherence",label:"Cohérence",icon:"🧩"},
+    {id:"parking",label:"Parking & véhicules",icon:"🚗"},
   ];
   const archivesCount=badges.filter(b=>b.statut==="Archivé").length;
   const histoCount=histo.length;
@@ -6311,6 +6577,7 @@ useEffect(()=>{
   const nbCoh=useMemo(()=>compterIncoherences(badges,fssData,settings&&settings.coh_ignores),[badges,fssData,settings&&settings.coh_ignores]);
   const canAccess=useCallback(viewId=>{
     if(viewId==="aide"||viewId==="calendrier")return true;
+    if(viewId==="parking")return !!(session&&!session.espace&&(session.role==="admin"||session.parking));
     if(viewId==="arrivees")return canAccess("collaborateurs")||canAccess("field_support");
     if(viewId==="coherence")return canAccess("collaborateurs")&&canAccess("field_support");
     if(viewId==="gestion_accueil")return canAccess("badges_pret")||canAccess("colis");
@@ -6367,6 +6634,7 @@ useEffect(()=>{
       case "historique_pret": return React.createElement(VueHistoriquePret,{site:window._siteSession});
       case "historique_colis": return React.createElement(VueHistoriqueColis,{site:window._siteSession});
       case "calendrier": return React.createElement(VueCalendrier,{fssData,badges,canAccess,setView});
+      case "parking": return React.createElement(VueParking,{showToast,addLog,badges,session});
       case "coherence": return React.createElement(VueArriveesDeparts,{badges,setBadges,fssData,settings,setSettings:session&&session.role==="admin"?setSettings:null,canAccess,setView,showToast,addLog,coherence:true});
       case "arrivees": return React.createElement(VueArriveesDeparts,{badges,setBadges,fssData,settings,setSettings:session&&session.role==="admin"?setSettings:null,canAccess,setView,showToast,addLog});
       case "gestion_accueil_hex": return React.createElement(VueGestionAccueil,{key:"hex",onglet:"gestion_accueil",setView,canAccess,showToast,addLog,badges,site:"Hexagone"});
@@ -7035,7 +7303,7 @@ function sessionFromSettings(user,st){
   }
   const role=entry.role||"user";
   const perms=role==="admin"?DEFAULT_PERMS:role==="it"?IT_PERMS:role==="badge"?BADGE_PERMS:(entry.perms||DEFAULT_PERMS);
-  return{role,email:user.email,label:entry.label||user.email,perms,site:entry.site||"Levallois"};
+  return{role,email:user.email,label:entry.label||user.email,perms,site:entry.site||"Levallois",parking:role==="admin"||entry.parking===true};
 }
 const IT_PERMS={accueil:PERM_READ,collaborateurs:PERM_NONE,casiers:PERM_NONE,rapport:PERM_READ,impression:PERM_NONE,historique:PERM_NONE,archives:PERM_NONE,field_support:PERM_WRITE,colis:PERM_NONE};
 const norm=s=>String(s||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toUpperCase().trim();
@@ -9364,6 +9632,268 @@ function VueConnexions({users}){
   );
 }
 // ── Historique des colis : tous les événements (réception, prévenu, récupéré…) ──
+// ════════════════ PARKING & VÉHICULES (repris de Gestion des services) ════════════════
+const PK_TYPES={std:["Normale","#475569","#f1f5f9"],borne:["Borne électrique","#15803d","#dcfce7"],pmr:["PMR","#1d4ed8","#dbeafe"]};
+const VH_ECH=[["revision","Révision"],["ct","Contrôle technique"],["assurance","Assurance"],["finLoc","Fin de location"]];
+const PK_PLAN={
+ "-2":{img:"plans/niveau-2.jpg",ox:380,oy:400,w:1120,h:1300,pts:{
+  "282":[726,872,112,46,20],"158":[710,915,112,46,20],"157":[692,965,112,46,20],"156":[673,1012,112,46,20],"155":[657,1055,112,46,20],"154":[639,1104,112,46,20],"153":[622,1147,112,46,20],"152":[606,1190,112,46,20],"151":[588,1242,112,46,20],"150":[571,1286,112,46,20],"149":[510,1488,112,46,20],"148":[493,1530,112,46,20],
+  "185":[850,802,46,104,0],"186":[846,1071,46,104,0],"187":[820,1160,108,46,20],"186b":[802,1208,108,46,20],"188":[930,777,104,48,0],"189":[930,825,104,48,0],
+  "190":[925,973,104,48,0],"191":[925,1021,104,48,0],"192":[925,1075,104,48,0],"193":[925,1129,104,48,0],"194":[925,1181,104,48,0],"195":[926,1229,104,48,0],
+  "196":[1136,919,104,48,0],"197":[1136,976,104,48,0],"198":[1136,1020,104,44,0],"199":[1136,1081,104,48,0],"200":[1136,1126,104,44,0],"201":[1135,1233,104,48,0],
+  "202":[1243,768,104,48,0],"203":[1243,818,104,48,0],"205":[1241,919,104,48,0],"206":[1241,976,104,48,0],"207":[1241,1020,104,44,0],"208":[1241,1126,104,48,0],
+  "258":[849,1308,48,104,0],"259":[903,1308,48,104,0],"260":[951,1308,48,104,0],"261":[1113,1308,48,104,0],"262":[1162,1308,48,104,0]}},
+ "-3":{img:"plans/niveau-3.jpg",ox:140,oy:300,w:1320,h:1320,pts:{
+  "160":[552,757,112,46,20],"159":[536,802,112,46,20],"158":[518,851,112,46,20],"157":[502,897,112,46,20],"156":[485,944,112,46,20],"155":[466,995,112,46,20],"154":[450,1040,112,46,20],"153":[431,1091,112,46,20],"152":[414,1137,112,46,20],"151":[398,1183,112,46,20],
+  "179":[665,571,48,104,0],"180":[713,571,48,104,0],"181":[763,571,48,104,0],"188":[672,686,46,104,0],"191":[752,655,104,46,0],"192":[752,703,104,46,0],"190":[665,948,50,104,0],
+  "189":[633,1043,112,46,20],"189b":[614,1093,112,46,20],"193":[750,857,104,48,0],"194":[750,906,104,48,0],"195":[752,959,104,48,0],"196":[752,1013,104,48,0],"197":[754,1068,104,48,0],"198":[755,1115,104,48,0],
+  "199":[960,652,104,48,0],"200":[960,700,104,48,0],"201":[960,749,104,48,0],"202":[960,801,104,48,0],"203":[960,852,104,48,0],"204":[960,901,104,48,0],"205":[962,960,104,48,0],"206":[963,1008,104,48,0],
+  "265":[680,1198,50,104,0],"266":[735,1198,50,104,0],"267":[783,1196,50,104,0],"272":[563,1393,108,50,0],"273":[564,1447,108,50,0]}}
+};
+const pkKey=n=>String(n||"").toLowerCase().replace(/\s+/g,"");
+const pkNat=(a,b)=>String(a||"").localeCompare(String(b||""),"fr",{numeric:true});
+const pkId=()=>Date.now().toString(36)+Math.random().toString(36).slice(2,6);
+const pkH=(o,txt)=>{o.hist=[...(o.hist||[]),{t:new Date().toISOString(),txt}];};
+const vhJours=d=>{if(!d)return null;return Math.round((new Date(d+"T12:00")-new Date())/864e5);};
+const pkFr=d=>{try{return new Date(d).toLocaleDateString("fr-FR");}catch(e){return "";}};
+// Alertes (échéances véhicules à 30 jours, bornes en panne) — lues par les notifications
+function pkAlertesDe(data){const out=[];if(!data)return out;
+  (data.vehicules||[]).forEach(v=>VH_ECH.forEach(([k,l])=>{const j=vhJours(v[k]);if(j!==null&&j<=30)out.push({v,k,l,j});}));return out;}
+
+function VueParking({showToast,addLog,badges,session}){
+  const el=React.createElement;
+  const[data,setData]=React.useState(null);const[err,setErr]=React.useState("");
+  const[tab,setTab]=React.useState("places");const[vue,setVue]=React.useState("plan");
+  const[q,setQ]=React.useState("");const[niv,setNiv]=React.useState("");const[f,setF]=React.useState("all");
+  const[edit,setEdit]=React.useState(null);const[form,setForm]=React.useState(null);
+  const[vEdit,setVEdit]=React.useState(null);const[vForm,setVForm]=React.useState(null);
+  const[outils,setOutils]=React.useState(false);const[grand,setGrand]=React.useState(false);const[tout,setTout]=React.useState(false);
+  const[gen,setGen]=React.useState({niv:"",pad:"0",de:"1",a:""});const[colle,setColle]=React.useState("");const[reprise,setReprise]=React.useState("");
+  const tSave=React.useRef(null);
+  React.useEffect(()=>{if(!sb){setData({places:[],vehicules:[]});return;}(async()=>{try{
+    const r=await sb.from("lp24_parking").select("data").eq("id",1).maybeSingle();
+    if(r.error){setErr(/does not exist|relation|schema cache/i.test(r.error.message||"")?"script":"acces");return;}
+    if(!r.data){setErr("acces");return;}
+    const d=typeof r.data.data==="string"?JSON.parse(r.data.data):(r.data.data||{});
+    setData({...d,places:d.places||[],vehicules:d.vehicules||[]});window._pkData=d;
+  }catch(e){setErr("acces");}})();},[]);
+  const enregistrer=next=>{setData(next);window._pkData=next;clearTimeout(tSave.current);const snap=JSON.parse(JSON.stringify(next));
+    tSave.current=setTimeout(async()=>{if(!sb)return;try{const r=await sb.from("lp24_parking").update({data:snap,maj:new Date().toISOString()}).eq("id",1);
+      if(r.error)showToast("⚠️ Parking non enregistré : "+r.error.message,"err");}catch(e){showToast("⚠️ Parking non enregistré (réseau)","err");}},400);};
+  const maj=fn=>{const n=JSON.parse(JSON.stringify(data));fn(n);enregistrer(n);};
+  const log=t=>{if(addLog)addLog("Parking",t);};
+
+  if(err)return el("div",{style:{background:"var(--surface)",border:"1px solid var(--border)",borderRadius:"var(--radius-lg)",padding:28,fontSize:13.5,color:"var(--text2)",maxWidth:620}},
+    err==="script"?el(React.Fragment,null,el("b",null,"Parking pas encore activé."),el("div",{style:{marginTop:6}},"Lance le script 17 (page des scripts) dans Supabase → SQL Editor, puis actualise la page.")):
+    el(React.Fragment,null,el("b",null,"Accès refusé."),el("div",{style:{marginTop:6}},"Ton compte n'a pas l'accès « Parking & véhicules ». Demande à l'administrateur de cocher 🚗 Parking sur ton compte (Réglages → Comptes).")));
+  if(!data)return el("div",{style:{padding:40,color:"var(--text3)",fontSize:13}},"Chargement…");
+
+  const P=data.places,V=data.vehicules;
+  const jum=p=>p&&p.lie?P.find(x=>x.id===p.lie):null;
+  const lib=p=>(p.niv?p.niv+" · ":"")+"n° "+p.num+(jum(p)?" + "+jum(p).num:"");
+  const nivs=[...new Set(P.map(p=>p.niv||""))].filter(Boolean).sort(pkNat);
+  const ordre=(a,b)=>pkNat(a.niv,b.niv)||pkNat(a.num,b.num);
+  const qn=q.trim().toLowerCase().replace(/[\s-]/g,"");
+  const noms=[...new Set((badges||[]).filter(b=>b.statut!=="Archivé"&&b.nom).map(b=>(String(b.prenom||"").trim()+" "+String(b.nom||"").toUpperCase()).trim()))].sort();
+  const dirs=[...new Set(P.map(x=>x.dir).filter(Boolean))].sort();
+  const pill=(t,c,bg)=>el("span",{style:{display:"inline-block",fontSize:11,fontWeight:600,color:c,background:bg,borderRadius:999,padding:"2px 9px",marginLeft:4,whiteSpace:"nowrap"}},t);
+  const carte={background:"var(--surface)",border:"1px solid var(--border)",borderRadius:"var(--radius-lg)"};
+  const seg=(opts,val,set)=>el("div",{style:{display:"inline-flex",background:"var(--surface3)",borderRadius:9,padding:3,gap:2}},
+    opts.map(([k,l])=>el("button",{key:k,type:"button",onClick:()=>set(k),style:{border:"none",borderRadius:7,padding:"6px 14px",fontSize:12.5,fontWeight:600,cursor:"pointer",background:val===k?"var(--surface)":"transparent",color:val===k?"var(--text)":"var(--text2)",boxShadow:val===k?"0 1px 3px rgba(0,0,0,.1)":"none"}},l)));
+  const kpi=(l,v,s,c)=>el("div",{className:"kpi-card kpi-std",style:{borderTop:"2px solid "+(c||"var(--accent)")}},el("div",{style:{color:c||"var(--text)"}},v),el("div",{style:{fontSize:12,fontWeight:600,color:"var(--text2)",marginTop:6}},l),s?el("div",{style:{fontSize:11,color:"var(--text3)",marginTop:2}},s):null);
+  const fenetre=(titre,fermer,contenu)=>ReactDOM.createPortal(el("div",{onClick:fermer,style:{position:"fixed",inset:0,background:"rgba(0,0,0,.45)",zIndex:1000,display:"flex",alignItems:"center",justifyContent:"center",padding:16}},
+    el("div",{onClick:e=>e.stopPropagation(),style:{background:"var(--surface)",borderRadius:16,padding:24,width:"100%",maxWidth:560,maxHeight:"calc(100vh - 32px)",overflowY:"auto",boxShadow:"0 24px 60px rgba(0,0,0,.25)"}},
+      el("div",{style:{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:16}},el("div",{style:{fontSize:17,fontWeight:800}},titre),el("button",{type:"button",onClick:fermer,style:{border:"none",background:"none",fontSize:22,cursor:"pointer",color:"var(--text3)"}},"×")),
+      contenu)),document.body);
+  const champ=(l,c)=>el("div",null,el("label",{className:"lbl"},l),c);
+  const inp=(v,on,ph,ex)=>el("input",{className:"inp",value:v||"",onChange:e=>on(e.target.value),placeholder:ph||"",style:{width:"100%"},...(ex||{})});
+  const deux=(...c)=>el("div",{style:{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10}},...c);
+  const histo=h=>(h||[]).length?el("div",{style:{marginTop:14}},el("label",{className:"lbl"},"Historique"),
+    el("div",{style:{fontSize:12.5,color:"var(--text2)",display:"flex",flexDirection:"column",gap:3}},[...h].reverse().slice(0,15).map((x,i)=>el("div",{key:i},pkFr(x.t)+" · "+x.txt)))):null;
+
+  // ── Fiche d'une place ──
+  const ouvrir=id=>{const p=id==="new"?{niv:niv||"",num:"",type:"std"}:P.find(x=>x.id===id);if(!p)return;setEdit(id);setOutils(false);
+    setForm({niv:p.niv||"",num:p.num||"",type:p.type||"std",panne:!!p.panne,lie:(jum(p)||{}).num||"",ko:!!p.ko,tit:p.tit||"",plaque:p.plaque||"",dir:p.dir||"",note:p.note||""});};
+  const sauverPlace=()=>{const num=form.num.trim();if(!num){showToast("⚠️ Indique le numéro de la place","err");return;}
+    const n=JSON.parse(JSON.stringify(data));const L=n.places;const isNew=edit==="new";const p=isNew?{id:pkId()}:L.find(x=>x.id===edit);if(!p)return;
+    const nv=form.niv.trim();if(L.some(x=>x!==p&&String(x.num)===num&&String(x.niv||"")===nv)){showToast("⚠️ La place "+(nv?nv+" · ":"")+"n° "+num+" existe déjà","err");return;}
+    const tit=form.tit.trim();if((p.tit||"")!==tit)pkH(p,tit?"Attribuée à "+tit+(p.tit?" (avant : "+p.tit+")":""):"Libérée (avant : "+p.tit+")");
+    Object.assign(p,{niv:nv,num,tit,plaque:form.plaque.trim().toUpperCase(),dir:form.dir.trim(),note:form.note.trim(),type:form.type});
+    if(!!p.ko!==form.ko)pkH(p,form.ko?"Mise hors service":"Remise en service");p.ko=form.ko;
+    const ancien=p.lie?L.find(x=>x.id===p.lie):null;const lieNum=form.lie.trim();
+    if(lieNum){const j=L.find(x=>x!==p&&String(x.niv||"")===nv&&String(x.num).toLowerCase()===lieNum.toLowerCase());
+      if(!j){showToast("⚠️ La place "+(nv?nv+" · ":"")+"n° "+lieNum+" n'existe pas","err");return;}
+      if(j.lie&&j.lie!==p.id){const k=L.find(x=>x.id===j.lie);if(k)delete k.lie;}
+      if(ancien&&ancien!==j)delete ancien.lie;
+      if(p.lie!==j.id){pkH(p,"Jumelée avec la place "+j.num);pkH(j,"Jumelée avec la place "+num);}
+      p.lie=j.id;j.lie=p.id;if((j.tit||"")!==tit)pkH(j,tit?"Attribuée à "+tit+" (2 places)":"Libérée");Object.assign(j,{tit,plaque:p.plaque,dir:p.dir});
+    }else if(ancien){delete ancien.lie;delete p.lie;pkH(p,"Plus jumelée avec la place "+ancien.num);}
+    if(p.type==="borne"){if(!!p.panne!==form.panne)pkH(p,form.panne?"Borne signalée en panne":"Borne remise en service");p.panne=form.panne;}else delete p.panne;
+    if(isNew){pkH(p,"Place créée");L.push(p);}
+    enregistrer(n);setEdit(null);log("Place "+(nv?nv+" · ":"")+num+(tit?" → "+tit:""));showToast("✅ Place enregistrée");};
+  const liberer=()=>{maj(n=>{const p=n.places.find(x=>x.id===edit);const j=p&&p.lie?n.places.find(x=>x.id===p.lie):null;[p,j].filter(Boolean).forEach(x=>{pkH(x,"Libérée (avant : "+x.tit+")");x.tit="";x.plaque="";x.dir="";});});
+    setEdit(null);showToast("✅ Place libérée");};
+  const supprimer=()=>{const p=P.find(x=>x.id===edit);if(!p||!confirm("Supprimer la place "+lib(p)+" ?"))return;
+    maj(n=>{const j=p.lie?n.places.find(x=>x.id===p.lie):null;if(j)delete j.lie;n.places=n.places.filter(x=>x.id!==p.id);});setEdit(null);log("Place supprimée : "+lib(p));};
+  const fichePlace=edit&&form&&(()=>{const isNew=edit==="new";const p=isNew?null:P.find(x=>x.id===edit);const set=(k,v)=>setForm(x=>({...x,[k]:v}));
+    return fenetre(isNew?"Nouvelle place":"Place "+lib(p),()=>setEdit(null),el("div",{style:{display:"flex",flexDirection:"column",gap:12}},
+      deux(champ("Niveau",inp(form.niv,v=>set("niv",v),"-1")),champ("Numéro *",inp(form.num,v=>set("num",v),"045"))),
+      champ("Type",el("div",{style:{display:"flex",gap:6,flexWrap:"wrap",alignItems:"center"}},Object.entries(PK_TYPES).map(([k,[l]])=>el("button",{key:k,type:"button",className:"btn "+(form.type===k?"btn-primary":"btn-outline"),style:{fontSize:12,padding:"6px 12px"},onClick:()=>set("type",k)},l)),
+        form.type==="borne"&&el("label",{style:{display:"flex",alignItems:"center",gap:6,fontSize:13,marginLeft:8}},el("input",{type:"checkbox",checked:form.panne,onChange:e=>set("panne",e.target.checked)}),"Borne en panne"))),
+      deux(champ("Jumelée avec la place n° (gros véhicule)",inp(form.lie,v=>set("lie",v),"Ex : 14")),champ("État",el("label",{style:{display:"flex",alignItems:"center",gap:8,height:38,fontSize:13}},el("input",{type:"checkbox",checked:form.ko,onChange:e=>set("ko",e.target.checked)}),"Place hors service"))),
+      deux(champ("Titulaire",inp(form.tit,v=>set("tit",v),"Laisser vide si libre",{list:"pk-noms"})),champ("Plaque",inp(form.plaque,v=>set("plaque",v.toUpperCase()),"AB-123-CD"))),
+      el("datalist",{id:"pk-noms"},noms.map(x=>el("option",{key:x,value:x}))),
+      deux(champ("Direction / service",inp(form.dir,v=>set("dir",v),"",{list:"pk-dirs"})),champ("Remarque",inp(form.note,v=>set("note",v)))),
+      el("datalist",{id:"pk-dirs"},dirs.map(x=>el("option",{key:x,value:x}))),
+      el("div",{style:{display:"flex",gap:8,flexWrap:"wrap",marginTop:4}},el("button",{type:"button",className:"btn btn-primary",onClick:sauverPlace},"Enregistrer"),
+        !isNew&&p&&p.tit&&el("button",{type:"button",className:"btn btn-outline",onClick:liberer},"Libérer la place"),
+        !isNew&&el("button",{type:"button",className:"btn btn-outline",style:{marginLeft:"auto",color:"#B91C1C"},onClick:supprimer},"Supprimer")),
+      !isNew&&p&&histo(p.hist)));})();
+
+  // ── Fiche d'un véhicule ──
+  const ouvrirV=id=>{const v=id==="new"?{}:V.find(x=>x.id===id);if(!v)return;setVEdit(id);
+    setVForm({plaque:v.plaque||"",modele:v.modele||"",cond:v.cond||"",place:v.place||"",km:v.km||"",note:v.note||"",...Object.fromEntries(VH_ECH.map(([k])=>[k,v[k]||""]))});};
+  const sauverV=()=>{const plaque=vForm.plaque.trim().toUpperCase();if(!plaque){showToast("⚠️ Indique la plaque","err");return;}
+    const n=JSON.parse(JSON.stringify(data));const isNew=vEdit==="new";const v=isNew?{id:pkId()}:n.vehicules.find(x=>x.id===vEdit);if(!v)return;
+    const cond=vForm.cond.trim();if((v.cond||"")!==cond)pkH(v,cond?"Attribué à "+cond+(v.cond?" (avant : "+v.cond+")":""):"Plus de conducteur (avant : "+v.cond+")");
+    const km=String(vForm.km||"").trim();if(km&&String(v.km||"")!==km)pkH(v,"Kilométrage : "+Number(km).toLocaleString("fr-FR")+" km");
+    Object.assign(v,{plaque,modele:vForm.modele.trim(),cond,place:vForm.place.trim(),km,note:vForm.note.trim()});
+    VH_ECH.forEach(([k,l])=>{const d=vForm[k]||"";if((v[k]||"")!==d&&d)pkH(v,l+" : "+pkFr(d+"T12:00"));v[k]=d;});
+    if(isNew){pkH(v,"Véhicule ajouté");n.vehicules.push(v);}
+    enregistrer(n);setVEdit(null);log("Véhicule "+plaque+(cond?" → "+cond:""));showToast("✅ Véhicule enregistré");};
+  const supprimerV=()=>{const v=V.find(x=>x.id===vEdit);if(!v||!confirm("Supprimer le véhicule "+v.plaque+" ?"))return;maj(n=>{n.vehicules=n.vehicules.filter(x=>x.id!==v.id);});setVEdit(null);log("Véhicule supprimé : "+v.plaque);};
+  const ficheV=vEdit&&vForm&&(()=>{const isNew=vEdit==="new";const v=isNew?null:V.find(x=>x.id===vEdit);const set=(k,x)=>setVForm(o=>({...o,[k]:x}));
+    return fenetre(isNew?"Nouveau véhicule":v.plaque,()=>setVEdit(null),el("div",{style:{display:"flex",flexDirection:"column",gap:12}},
+      deux(champ("Plaque *",inp(vForm.plaque,x=>set("plaque",x.toUpperCase()),"AB-123-CD")),champ("Modèle",inp(vForm.modele,x=>set("modele",x)))),
+      deux(champ("Conducteur attribué",inp(vForm.cond,x=>set("cond",x),"",{list:"pk-noms"})),champ("Place de parking",inp(vForm.place,x=>set("place",x),"",{list:"pk-places"}))),
+      el("datalist",{id:"pk-noms"},noms.map(x=>el("option",{key:x,value:x}))),el("datalist",{id:"pk-places"},P.map(p=>el("option",{key:p.id,value:lib(p)}))),
+      deux(champ("Kilométrage",inp(vForm.km,x=>set("km",x.replace(/[^\d]/g,"")),"")),champ("Remarque",inp(vForm.note,x=>set("note",x)))),
+      el("div",{style:{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10}},VH_ECH.map(([k,l])=>el("div",{key:k},champ(l,inp(vForm[k],x=>set(k,x),"",{type:"date"}))))),
+      el("div",{style:{display:"flex",gap:8,marginTop:4}},el("button",{type:"button",className:"btn btn-primary",onClick:sauverV},"Enregistrer"),
+        !isNew&&el("button",{type:"button",className:"btn btn-outline",style:{marginLeft:"auto",color:"#B91C1C"},onClick:supprimerV},"Supprimer")),
+      !isNew&&v&&histo(v.hist)));})();
+
+  // ── Créer / importer ──
+  const creerNiveau=()=>{const de=parseInt(gen.de),aa=parseInt(gen.a),pad=+gen.pad||0,nv=gen.niv.trim();
+    if(!(de>=0)||!(aa>=de)||aa-de>999){showToast("⚠️ Indique une plage valide (ex. 1 à 120)","err");return;}
+    let c=0;maj(n=>{for(let i=de;i<=aa;i++){const num=String(i).padStart(pad,"0");if(n.places.some(x=>String(x.niv||"")===nv&&String(x.num)===num))continue;const p={id:pkId(),niv:nv,num,type:"std",tit:""};pkH(p,"Place créée");n.places.push(p);c++;}});
+    setOutils(false);setNiv(nv);showToast("✅ "+c+" place"+(c>1?"s":"")+" créée"+(c>1?"s":"")+(nv?" au niveau "+nv:""));};
+  const importer=()=>{const lignes=colle.split(/\r?\n/).map(l=>l.split(/\t|;/).map(x=>x.trim()));const PL=/^[A-Z]{2}[- ]?\d{3}[- ]?[A-Z]{2}$/i;let cr=0,mj=0,nb=0;
+    const n=JSON.parse(JSON.stringify(data));
+    lignes.forEach(c=>{const iN=c.findIndex(x=>/^-?\d{1,2}$/.test(x));if(iN<0||!c[iN+1])return;const nv=c[iN];let num=c[iN+1].replace(/\s+/g," ").trim();if(!/^\d/.test(num))return;
+      let ko=false;if(/\bKO\b/i.test(num)){ko=true;num=num.replace(/\s*KO\b/i,"").trim();}num=num.replace(/\s+([a-z])$/i,(m,l)=>" "+l.toUpperCase());
+      let tit="",plaque="",borne=false;c.slice(iN+2).forEach(x=>{if(!x||/^\?+$/.test(x)||/^place r[ée]serv[ée]e$/i.test(x))return;if(/borne/i.test(x)){borne=true;return;}if(/\bKO\b/i.test(x)&&x.length<4){ko=true;return;}if(PL.test(x)){plaque=x.toUpperCase().replace(/\s/g,"-");return;}if(!tit&&/[a-zà-ÿ]/i.test(x))tit=x;});
+      nb++;let p=n.places.find(x=>String(x.niv||"")===nv&&String(x.num).toLowerCase()===num.toLowerCase());
+      if(!p){p={id:pkId(),niv:nv,num,type:"std",tit:""};pkH(p,"Place créée (import)");n.places.push(p);cr++;}else mj++;
+      if(tit&&p.tit!==tit)pkH(p,"Attribuée à "+tit+" (import)");if(tit)p.tit=tit;if(plaque)p.plaque=plaque;if(borne)p.type="borne";if(ko)p.ko=true;});
+    if(!nb){showToast("⚠️ Rien de reconnu : colle les colonnes Niveau et N° de place","err");return;}
+    enregistrer(n);setOutils(false);setColle("");showToast("✅ Import : "+cr+" créée(s), "+mj+" mise(s) à jour");};
+  const reprendre=()=>{let d;try{d=JSON.parse(reprise.trim().replace(/^"|"$/g,"").replace(/""/g,'"'));}catch(e){showToast("⚠️ Texte non reconnu : colle la valeur copiée dans Supabase","err");return;}
+    if(!d||!Array.isArray(d.places)){showToast("⚠️ Pas de places dans ce texte","err");return;}
+    if(P.length&&!confirm("Remplacer les "+P.length+" places et "+V.length+" véhicules actuels par ceux de Gestion des services ?"))return;
+    enregistrer({...d,places:d.places,vehicules:d.vehicules||[]});setReprise("");log("Reprise depuis Gestion des services : "+d.places.length+" places, "+(d.vehicules||[]).length+" véhicules");
+    showToast("✅ Repris : "+d.places.length+" places et "+(d.vehicules||[]).length+" véhicules");};
+  const blocReprise=el("div",{style:{...carte,padding:18,marginBottom:14}},
+    el("div",{style:{fontWeight:800,fontSize:14}},"Reprendre les données de Gestion des services"),
+    el("div",{style:{fontSize:12.5,color:"var(--text2)",margin:"6px 0 10px",lineHeight:1.5}},"Dans le Supabase de Gestion des services → SQL Editor, lance : ",el("code",{style:{background:"var(--surface3)",padding:"1px 6px",borderRadius:4}},"select valeur from parametres where cle = 'parking';"),
+      " puis copie la case du résultat et colle-la ici."),
+    el("textarea",{className:"inp",value:reprise,onChange:e=>setReprise(e.target.value),placeholder:'{"places":[…],"vehicules":[…]}',style:{width:"100%",minHeight:90,fontFamily:"ui-monospace,monospace",fontSize:12}}),
+    el("button",{type:"button",className:"btn btn-primary",style:{marginTop:10},onClick:reprendre},"Reprendre"));
+  const blocOutils=outils&&fenetre("Créer / importer des places",()=>setOutils(false),el("div",{style:{display:"flex",flexDirection:"column",gap:18}},
+    el("div",null,el("div",{style:{fontWeight:700,fontSize:14}},"Créer un niveau entier"),el("div",{style:{fontSize:12.5,color:"var(--text3)",margin:"2px 0 8px"}},"Ex. : niveau -3, places 151 à 206."),
+      el("div",{style:{display:"grid",gridTemplateColumns:"1fr 1fr 1fr 1fr",gap:8}},champ("Niveau",inp(gen.niv,v=>setGen(g=>({...g,niv:v})),"-1")),
+        champ("Chiffres",el("select",{className:"inp",value:gen.pad,onChange:e=>setGen(g=>({...g,pad:e.target.value})),style:{width:"100%"}},el("option",{value:"0"},"1, 2…"),el("option",{value:"2"},"01, 02…"),el("option",{value:"3"},"001…"))),
+        champ("De",inp(gen.de,v=>setGen(g=>({...g,de:v})),"1",{type:"number"})),champ("À",inp(gen.a,v=>setGen(g=>({...g,a:v})),"120",{type:"number"}))),
+      el("button",{type:"button",className:"btn btn-primary",style:{marginTop:10},onClick:creerNiveau},"Créer les places")),
+    el("div",null,el("div",{style:{fontWeight:700,fontSize:14}},"Coller une liste (Excel)"),el("div",{style:{fontSize:12.5,color:"var(--text3)",margin:"2px 0 8px",lineHeight:1.5}},"Sélectionne les colonnes Niveau → plaque dans Excel, copie, colle ici. Noms, plaques, bornes et places « KO » sont reconnus. Les places existantes sont mises à jour."),
+      el("textarea",{className:"inp",value:colle,onChange:e=>setColle(e.target.value),placeholder:"-1\t045\tJean DUPONT\tAB-123-CD",style:{width:"100%",minHeight:110,fontFamily:"ui-monospace,monospace",fontSize:12}}),
+      el("button",{type:"button",className:"btn btn-primary",style:{marginTop:10},onClick:importer},"Importer")),
+    el("div",{style:{borderTop:"1px solid var(--border)",paddingTop:14}},blocReprise)));
+
+  // ── Plan ──
+  const plan=()=>{const ns=Object.keys(PK_PLAN);const nv=PK_PLAN[niv]?niv:ns[0];const PL=PK_PLAN[nv];
+    const pl=P.filter(p=>String(p.niv||"")===nv);const byKey={};pl.forEach(p=>byKey[pkKey(p.num)]=p);
+    const hit=p=>qn&&p&&[p.num,p.tit,p.plaque,p.dir,(jum(p)||{}).num].join(" ").toLowerCase().replace(/[\s-]/g,"").includes(qn);
+    const anyHit=qn&&pl.some(hit);const col=p=>p.ko?["#b91c1c",.5]:p.tit?["#2c5f85",.42]:["#16a34a",.38];
+    const xs=[],ys=[];Object.values(PL.pts).forEach(([x,y,w,h])=>{const d=Math.max(w,h)/2+30;xs.push(x-d,x+d);ys.push(y-d,y+d);});
+    const vb=[Math.max(PL.ox,Math.min(...xs)),Math.max(PL.oy,Math.min(...ys))];vb.push(Math.min(PL.ox+PL.w,Math.max(...xs))-vb[0],Math.min(PL.oy+PL.h,Math.max(...ys))-vb[1]);
+    const sans=pl.filter(p=>!PL.pts[pkKey(p.num)]);
+    const leg=(c,t,rond)=>el("span",{style:{display:"inline-flex",alignItems:"center",gap:5}},el("i",{style:{display:"inline-block",width:12,height:12,borderRadius:rond?"50%":3,background:rond?c:c+"66",border:rond?"none":"2px solid "+c}}),t);
+    return el("div",{style:{...carte,padding:12}},
+      el("div",{style:{display:"flex",alignItems:"center",gap:8,flexWrap:"wrap",marginBottom:10}},
+        ns.map(n=>el("button",{key:n,type:"button",className:"btn "+(n===nv?"btn-primary":"btn-outline"),style:{fontSize:12,padding:"6px 12px"},onClick:()=>setNiv(n)},"Niveau "+n)),
+        el("button",{type:"button",className:"btn btn-outline",style:{fontSize:12,padding:"6px 12px"},onClick:()=>setGrand(!grand)},grand?"Réduire":"Agrandir"),
+        el("span",{style:{display:"flex",gap:12,flexWrap:"wrap",marginLeft:"auto",fontSize:12,color:"var(--text2)"}},leg("#2c5f85","Attribuée"),leg("#16a34a","Libre"),leg("#b91c1c","Hors service"),leg("#15803d","Borne",true))),
+      el("div",{style:{overflow:"auto",borderRadius:8,border:"1px solid var(--border)",background:"#fff",width:"fit-content",maxWidth:"100%",margin:"0 auto"}},
+        el("svg",{viewBox:vb.join(" "),preserveAspectRatio:"xMidYMid meet",style:{display:"block",width:"auto",maxWidth:"100%",height:grand?"min(80vh,760px)":"420px"}},
+          el("image",{href:PL.img,x:PL.ox,y:PL.oy,width:PL.w,height:PL.h,opacity:.9}),
+          Object.entries(PL.pts).map(([k,[x,y,w,h,r]])=>{const p=byKey[k];if(!p)return null;const[c,o]=col(p);const H=hit(p);
+            const tip=nv+" · n° "+p.num+(jum(p)?" + "+jum(p).num:"")+" · "+(p.ko?"hors service":p.tit?p.tit+(p.plaque?" · "+p.plaque:""):"libre")+(p.type==="borne"?" · borne"+(p.panne?" en panne":""):"");
+            return el("g",{key:k,onClick:()=>ouvrir(p.id),style:{cursor:"pointer"},transform:"translate("+x+" "+y+") rotate("+r+")",opacity:anyHit&&!H?.25:1},el("title",null,tip),
+              el("rect",{x:-w/2,y:-h/2,width:w,height:h,rx:5,fill:c,fillOpacity:o,stroke:H?"#f59e0b":c,strokeWidth:H?7:2}),
+              p.type==="borne"&&el("g",{transform:"rotate("+(-r)+") translate("+(w/2-14)+" "+(-h/2+14)+")"},el("circle",{r:12,fill:p.panne?"#b91c1c":"#15803d"}),el("path",{d:"M1.5 -7 L-4 1 L0 1 L-1.5 7 L4 -1 L0 -1 Z",fill:"#fff"})));}))),
+      el("div",{style:{fontSize:12,color:"var(--text3)",marginTop:8}},"Clique sur une place pour l'ouvrir. La recherche (nom, plaque, numéro) met la place en évidence."+(sans.length?" · Places de ce niveau absentes du plan : "+sans.map(p=>p.num).join(", "):"")));};
+
+  // ── Liste des places ──
+  const liste=()=>{let L=P.filter(p=>!niv||p.niv===niv).filter(p=>{const j=jum(p);return !j||ordre(p,j)<0;});
+    if(f==="libres")L=L.filter(p=>!p.tit&&!p.ko);else if(f==="ko")L=L.filter(p=>p.ko);else if(f==="bornes")L=L.filter(p=>p.type==="borne");else if(f==="pmr")L=L.filter(p=>p.type==="pmr");
+    if(qn)L=L.filter(p=>[p.num,p.niv,p.tit,p.plaque,p.dir,p.note].join(" ").toLowerCase().replace(/[\s-]/g,"").includes(qn));L=[...L].sort(ordre);
+    const ko=P.filter(p=>p.ko).length;
+    const chips=[["all","Toutes",P.length],["libres","Libres",P.filter(p=>!p.tit&&!p.ko).length],["bornes","Bornes",P.filter(p=>p.type==="borne").length],["pmr","PMR",P.filter(p=>p.type==="pmr").length],...(ko?[["ko","Hors service",ko]]:[])];
+    const th={textAlign:"left",padding:"9px 14px",fontSize:10.5,fontWeight:700,textTransform:"uppercase",letterSpacing:".4px",color:"var(--text2)"};
+    return el(React.Fragment,null,
+      el("div",{style:{display:"flex",gap:6,flexWrap:"wrap",marginBottom:10}},chips.map(([k,l,n])=>el("button",{key:k,type:"button",className:"btn "+(f===k?"btn-primary":"btn-outline"),style:{fontSize:12,padding:"5px 12px"},onClick:()=>setF(k)},l+" · "+n))),
+      !P.length?el("div",{style:{...carte,padding:30,color:"var(--text3)",fontSize:13}},"Aucune place pour l'instant. « Créer / importer des places » pour commencer."):
+      !L.length?el("div",{style:{...carte,padding:30,color:"var(--text3)",fontSize:13}},"Aucune place ne correspond."):
+      el("div",{style:{...carte,overflow:"auto"}},el("table",{style:{width:"100%",borderCollapse:"collapse",fontSize:13}},
+        el("thead",null,el("tr",{style:{background:"var(--surface2)"}},["Place","Titulaire","Plaque","Direction / service",""].map((h,i)=>el("th",{key:i,style:th},h)))),
+        el("tbody",null,L.slice(0,tout?99999:200).map(p=>{const t=PK_TYPES[p.type]||PK_TYPES.std;return el("tr",{key:p.id,onClick:()=>ouvrir(p.id),style:{borderTop:"1px solid var(--border)",cursor:"pointer"}},
+          el("td",{style:{padding:"9px 14px"}},el("b",null,p.num+(jum(p)?" + "+jum(p).num:"")),p.niv?el("div",{style:{fontSize:11.5,color:"var(--text3)"}},"Niveau "+p.niv):null),
+          el("td",{style:{padding:"9px 14px"}},p.tit?p.tit:p.ko?"—":el("span",{style:{color:"#15803d",fontWeight:600}},"Libre")),
+          el("td",{style:{padding:"9px 14px",fontFamily:"ui-monospace,monospace"}},p.plaque||""),
+          el("td",{style:{padding:"9px 14px",color:"var(--text2)"}},p.dir||""),
+          el("td",{style:{padding:"9px 14px",textAlign:"right"}},p.type&&p.type!=="std"?pill(t[0]+(p.panne?" · en panne":""),t[1],t[2]):null,jum(p)?pill("2 places","#7c2d12","#ffedd5"):null,p.ko?pill("Hors service","#b91c1c","#fee2e2"):null));}))),
+        L.length>200&&!tout?el("button",{type:"button",className:"btn btn-outline",style:{margin:10},onClick:()=>setTout(true)},"Afficher les "+L.length+" places"):null));};
+
+  // ── Véhicules ──
+  const vehicules=()=>{const L=[...V].sort((a,b)=>pkNat(a.plaque,b.plaque));const A=pkAlertesDe(data);
+    const ech=v=>VH_ECH.map(([k,l])=>{const j=vhJours(v[k]);if(j===null)return null;const c=j<0?"#b91c1c":j<=30?"#b45309":"var(--text2)";
+      return el("div",{key:k,style:{fontSize:12,color:c,fontWeight:j<=30?600:400}},l+" : "+pkFr(v[k]+"T12:00")+(j<0?" (dépassée)":j<=30?" (dans "+j+" j)":""));}).filter(Boolean);
+    const th={textAlign:"left",padding:"9px 14px",fontSize:10.5,fontWeight:700,textTransform:"uppercase",letterSpacing:".4px",color:"var(--text2)"};
+    return el(React.Fragment,null,
+      el("div",{className:"kpi-grid",style:{gridTemplateColumns:"repeat(3,1fr)",marginBottom:14}},kpi("Véhicules",L.length,L.filter(v=>v.cond).length+" attribués"),
+        kpi("Échéances à 30 jours",A.filter(a=>a.j>=0).length,"révision, CT, assurance, location",A.some(a=>a.j>=0)?"#B45309":null),kpi("Dépassées",A.filter(a=>a.j<0).length,"à régulariser",A.some(a=>a.j<0)?"#B91C1C":null)),
+      L.length?el("div",{style:{...carte,overflow:"auto"}},el("table",{style:{width:"100%",borderCollapse:"collapse",fontSize:13}},
+        el("thead",null,el("tr",{style:{background:"var(--surface2)"}},["Véhicule","Conducteur","Place","Kilométrage","Échéances"].map(h=>el("th",{key:h,style:th},h)))),
+        el("tbody",null,L.map(v=>{const e=ech(v);return el("tr",{key:v.id,onClick:()=>ouvrirV(v.id),style:{borderTop:"1px solid var(--border)",cursor:"pointer",verticalAlign:"top"}},
+          el("td",{style:{padding:"9px 14px"}},el("b",{style:{fontFamily:"ui-monospace,monospace"}},v.plaque),el("div",{style:{fontSize:11.5,color:"var(--text3)"}},v.modele||"")),
+          el("td",{style:{padding:"9px 14px"}},v.cond||"—"),el("td",{style:{padding:"9px 14px"}},v.place||""),
+          el("td",{style:{padding:"9px 14px"}},v.km?Number(v.km).toLocaleString("fr-FR")+" km":""),
+          el("td",{style:{padding:"9px 14px"}},e.length?e:el("span",{style:{color:"var(--text3)"}},"—")));}))))
+      :el("div",{style:{...carte,padding:30,color:"var(--text3)",fontSize:13}},"Aucun véhicule. « Nouveau véhicule » pour commencer."));};
+
+  const att=P.filter(p=>p.tit).length,ko=P.filter(p=>p.ko).length,libres=P.filter(p=>!p.tit&&!p.ko).length,bornes=P.filter(p=>p.type==="borne"),panne=bornes.filter(p=>p.panne);
+  return el("div",null,
+    el("div",{style:{display:"flex",alignItems:"center",gap:10,flexWrap:"wrap",marginBottom:14}},
+      seg([["places","Places"],["vehicules","Véhicules"]],tab,k=>{setTab(k);setEdit(null);setVEdit(null);}),
+      el("div",{style:{marginLeft:"auto",display:"flex",gap:8}},tab==="places"?el(React.Fragment,null,
+          el("button",{type:"button",className:"btn btn-outline",onClick:()=>{setOutils(true);setEdit(null);}},"Créer / importer des places"),
+          el("button",{type:"button",className:"btn btn-primary",onClick:()=>ouvrir("new")},"+ Nouvelle place"))
+        :el("button",{type:"button",className:"btn btn-primary",onClick:()=>ouvrirV("new")},"+ Nouveau véhicule"))),
+    tab==="places"?el(React.Fragment,null,
+      !P.length&&blocReprise,
+      el("div",{className:"kpi-grid",style:{gridTemplateColumns:"repeat(4,1fr)",marginBottom:14}},
+        kpi("Places",P.length,nivs.length+" niveau"+(nivs.length>1?"x":"")),kpi("Attribuées",att,(P.length?Math.round(att/P.length*100):0)+" %"),
+        kpi("Libres",libres,"à attribuer"+(ko?" · "+ko+" hors service":""),"#15803D"),kpi("Bornes électriques",bornes.length,panne.length?panne.length+" en panne":"toutes en service",panne.length?"#B91C1C":null)),
+      el("div",{style:{display:"flex",gap:8,alignItems:"center",flexWrap:"wrap",marginBottom:12}},
+        el("input",{className:"inp",type:"search",value:q,onChange:e=>setQ(e.target.value),placeholder:"🔍 Nom, plaque ou numéro de place…",style:{maxWidth:320}}),
+        el("select",{className:"inp",value:niv,onChange:e=>setNiv(e.target.value),style:{width:"auto"}},el("option",{value:""},"Tous les niveaux"),nivs.map(n=>el("option",{key:n,value:n},"Niveau "+n))),
+        el("div",{style:{marginLeft:"auto"}},seg([["plan","Plan"],["liste","Liste"]],vue,setVue))),
+      vue==="plan"?plan():liste())
+    :vehicules(),
+    fichePlace,ficheV,blocOutils);
+}
+
 function VueHistoriqueColis({site}={}){
   const el=React.createElement;const[lignes,setLignes]=React.useState(null);const[colis,setColis]=React.useState({});const[q,setQ]=React.useState("");const[err,setErr]=React.useState(false);
   React.useEffect(()=>{if(!sb){setLignes([]);return;}(async()=>{try{
@@ -10919,6 +11449,7 @@ const ICONES_NAV={
   historique_colis:'<path d="M4 8l8-4 8 4v8l-8 4-8-4z"/><path d="M4 8l8 4 8-4M12 12v8"/>',
   calendrier:'<rect x="3.5" y="5" width="17" height="15.5" rx="2"/><path d="M3.5 9.5h17M8 3v4M16 3v4"/>',
   coherence:'<path d="M9 11l3 3 8-8"/><path d="M20 12v7a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h9"/>',
+  parking:'<path d="M5 17h14M6 17l1.5-5.5A2 2 0 0 1 9.4 10h5.2a2 2 0 0 1 1.9 1.5L18 17"/><rect x="4" y="15" width="16" height="5" rx="1.5"/><circle cx="8" cy="17.5" r=".8"/><circle cx="16" cy="17.5" r=".8"/>',
   notifications:'<path d="M6 16V11a6 6 0 0 1 12 0v5l1.5 2h-15z"/><path d="M10 20a2 2 0 0 0 4 0"/>',
   aide:'<circle cx="12" cy="12" r="9"/><path d="M9.5 9.5a2.5 2.5 0 1 1 3.5 2.3c-.6.3-1 .8-1 1.5V14"/><circle cx="12" cy="17.2" r=".6" fill="currentColor"/>',
   settings:'<circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/>',
@@ -10942,7 +11473,7 @@ function Courbe({vals,col,w=104,h=34}){if(!vals||vals.length<2)return null;const
   const pts=vals.map((v,i)=>[i*w/(vals.length-1),h-2-(v-mn)/((mx-mn)||1)*(h-6)]);const d="M"+pts.map(p=>p[0].toFixed(1)+","+p[1].toFixed(1)).join(" L");
   return React.createElement("svg",{className:"courbe",width:w,height:h,viewBox:"0 0 "+w+" "+h},React.createElement("path",{d:d+" L"+w+","+h+" L0,"+h+" Z",fill:col,opacity:.12}),React.createElement("path",{d,fill:"none",stroke:col,strokeWidth:2,strokeLinecap:"round",strokeLinejoin:"round"}));}
 // ── Menu caché (☰) ──
-const MENU_SECTIONS=[["",["accueil","calendrier"]],["Personnes",["arrivees","collaborateurs","field_support"]],["Accueil physique",["gestion_accueil","gestion_accueil_hex","historique_pret","historique_colis"]],["",["casiers"]],["Outils",["impression","rapport","coherence"]]];
+const MENU_SECTIONS=[["",["accueil","calendrier"]],["Personnes",["arrivees","collaborateurs","field_support"]],["Accueil physique",["gestion_accueil","gestion_accueil_hex","historique_pret","historique_colis"]],["",["casiers","parking"]],["Outils",["impression","rapport","coherence"]]];
 const MENU_ICONES={"Personnes":"collaborateurs","Accueil physique":"gestion_accueil","Outils":"impression"};
 function MenuLateral({visibleNav,navActif,setView,onClose,session,notifs,ouvrirReglages,peutReglages,logout,comptes,mvt}){
   const cpt=id=>(comptes&&comptes[id])||0;
@@ -11226,6 +11757,8 @@ function SettingsModal({settings,setSettings,showToast,setShowSettings,racineRef
                   Object.entries(ROLE_LABELS).map(([k,l])=>React.createElement("option",{key:k,value:k},l))),
                 React.createElement("select",{value:u.site||"Levallois",title:"Site de l'accueil",onChange:e=>{const v=e.target.value;setSettings(s=>({...s,users:(s.users||[]).map((x,j)=>j===i?{...x,site:v}:x)}));},style:{marginTop:4,marginLeft:6,padding:"3px 6px",borderRadius:5,border:"1px solid var(--border2)",fontSize:11,background:"var(--surface)",color:"var(--text)"}},
                   ["Levallois","Hexagone"].map(v=>React.createElement("option",{key:v,value:v},"Site : "+v))),
+                (u.role||"user")!=="admin"&&React.createElement("label",{title:"Accès à Parking & véhicules",style:{display:"inline-flex",alignItems:"center",gap:4,marginLeft:8,fontSize:11,color:"var(--text2)",cursor:"pointer",verticalAlign:"middle"}},
+                  React.createElement("input",{type:"checkbox",checked:u.parking===true,onChange:e=>{const v=e.target.checked;setSettings(s=>({...s,users:(s.users||[]).map((x,j)=>j===i?{...x,parking:v}:x)}));}}),"🚗 Parking"),
                 (u.role||"user")==="user"&&u.perms&&Object.entries(u.perms).filter(([,v])=>v===PERM_NONE).length>0&&React.createElement("div",{style:{fontSize:10,color:"var(--red)",marginTop:2}},"🔒 Bloqué : "+Object.entries(u.perms).filter(([,v])=>v===PERM_NONE).map(([k])=>k).join(", "))
               ),
               React.createElement("button",{onClick:()=>setSettings(s=>({...s,users:(s.users||[]).filter((_,j)=>j!==i)})),className:"btn btn-danger",style:{fontSize:11,padding:"4px 8px"}},"🗑️ Retirer")
@@ -12302,6 +12835,7 @@ useEffect(()=>{
     {id:"historique_colis",label:"Historique des colis",icon:"📦"},
     {id:"calendrier",label:"Calendrier",icon:"📅"},
     {id:"coherence",label:"Cohérence",icon:"🧩"},
+    {id:"parking",label:"Parking & véhicules",icon:"🚗"},
   ];
   const archivesCount=badges.filter(b=>b.statut==="Archivé").length;
   const histoCount=histo.length;
@@ -12309,6 +12843,7 @@ useEffect(()=>{
   const nbCoh=useMemo(()=>compterIncoherences(badges,fssData,settings&&settings.coh_ignores),[badges,fssData,settings&&settings.coh_ignores]);
   const canAccess=useCallback(viewId=>{
     if(viewId==="aide"||viewId==="calendrier")return true;
+    if(viewId==="parking")return !!(session&&!session.espace&&(session.role==="admin"||session.parking));
     if(viewId==="arrivees")return canAccess("collaborateurs")||canAccess("field_support");
     if(viewId==="coherence")return canAccess("collaborateurs")&&canAccess("field_support");
     if(viewId==="gestion_accueil")return canAccess("badges_pret")||canAccess("colis");
@@ -12366,6 +12901,7 @@ useEffect(()=>{
       case "historique_pret": return React.createElement(VueHistoriquePret,{site:window._siteSession});
       case "historique_colis": return React.createElement(VueHistoriqueColis,{site:window._siteSession});
       case "calendrier": return React.createElement(VueCalendrier,{fssData,badges,canAccess,setView});
+      case "parking": return React.createElement(VueParking,{showToast,addLog,badges,session});
       case "coherence": return React.createElement(VueArriveesDeparts,{badges,setBadges,fssData,settings,setSettings:session&&session.role==="admin"?setSettings:null,canAccess,setView,showToast,addLog,coherence:true});
       case "arrivees": return React.createElement(VueArriveesDeparts,{badges,setBadges,fssData,settings,setSettings:session&&session.role==="admin"?setSettings:null,canAccess,setView,showToast,addLog});
       case "gestion_accueil_hex": return React.createElement(VueGestionAccueil,{key:"hex",onglet:"gestion_accueil",setView,canAccess,showToast,addLog,badges,site:"Hexagone"});
@@ -12547,7 +13083,7 @@ catch(e){document.getElementById("root").innerHTML='<div style="padding:40px;fon
   }
   // ── Nouvelle version en ligne : bandeau cliquable pour actualiser ──
   (function(){
-    var VERSION_PAGE='v113';var affiche=false,dernier=0;
+    var VERSION_PAGE='v114';var affiche=false,dernier=0;
     function montrer(){if(affiche)return;affiche=true;
       var b=document.createElement('button');b.type='button';b.id='maj-dispo';
       b.innerHTML='<span style="font-size:16px">🔄</span><span>Nouvelle version de l\'appli</span><b style="background:#fff;color:#1D4ED8;border-radius:999px;padding:4px 12px">Actualiser</b>';

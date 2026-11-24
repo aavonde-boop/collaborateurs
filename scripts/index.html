@@ -14,7 +14,46 @@ pre{margin:0;background:var(--code);color:var(--codetx);padding:16px;overflow:au
 .how{margin-top:16px;color:var(--t2);font-size:13.5px}
 </style></head><body><div class="w"><h1>Scripts sécurité — Gestion Collaborateurs</h1>
 <p class="intro">Supabase → SQL Editor : « Copier le script », coller, puis « Run ». Ordre conseillé : 0, puis le script voulu, puis 0 pour vérifier.</p>
-<div class="tabs"><button class="tab on" data-i="6">16 · Mails des badges de prêt</button><button class="tab" data-i="5">15 · Journal des connexions</button><button class="tab" data-i="4">14 · Accueil Hexagone</button><button class="tab" data-i="3">13 · Nouveau collaborateur sans mail</button><button class="tab" data-i="0">10 · Mentions légales et confidentialité</button><button class="tab" data-i="1">11 · Pièces jointes du mail de bienvenue</button><button class="tab" data-i="2">12 · Gras dans les mails</button></div><section class="sc on" id="s6"><div class="hd"><div><h2>16 · Mails des badges de prêt</h2><p>Badges d'Hexagone : horaires (7h–18h du lundi au vendredi) et téléphone (02.99.42.73.00) de l'accueil d'Hexagone. Le mail au moment du prêt part aussi aux adresses en copie des Réglages.</p><small>16-mails-pret-hexagone.sql · 105 lignes</small></div><button class="cp" data-i="6">Copier le script</button></div><pre id="c6">-- ════════════════════════════════════════════════════════════════════
+<div class="tabs"><button class="tab on" data-i="7">17 · Parking & véhicules</button><button class="tab" data-i="6">16 · Mails des badges de prêt</button><button class="tab" data-i="5">15 · Journal des connexions</button><button class="tab" data-i="4">14 · Accueil Hexagone</button><button class="tab" data-i="3">13 · Nouveau collaborateur sans mail</button><button class="tab" data-i="0">10 · Mentions légales et confidentialité</button><button class="tab" data-i="1">11 · Pièces jointes du mail de bienvenue</button><button class="tab" data-i="2">12 · Gras dans les mails</button></div><section class="sc on" id="s7"><div class="hd"><div><h2>17 · Parking & véhicules</h2><p>Crée le parking (places et véhicules) dans la base. Accès réservé à l'administrateur et aux comptes cochés « 🚗 Parking ». Ne touche à aucune autre donnée.</p><small>17-parking.sql · 39 lignes</small></div><button class="cp" data-i="7">Copier le script</button></div><pre id="c7">-- ════════════════════════════════════════════════════════════════════
+--  17 · Parking &amp; véhicules
+--  • crée la table du parking (places + véhicules) ;
+--  • accès réservé à l'administrateur et aux comptes cochés « 🚗 Parking »
+--    dans Réglages → Comptes.
+--  À lancer une fois dans Supabase → SQL Editor. Ne touche à aucune autre donnée.
+-- ════════════════════════════════════════════════════════════════════
+
+create table if not exists public.lp24_parking (
+  id    int primary key default 1 check (id = 1),
+  data  jsonb not null default '{"places":[],"vehicules":[]}'::jsonb,
+  maj   timestamptz not null default now()
+);
+insert into public.lp24_parking (id) values (1) on conflict (id) do nothing;
+
+-- Qui a le droit : administrateur, ou compte avec la case « Parking » cochée
+create or replace function public.lp24_acces_parking() returns boolean
+language plpgsql stable security definer set search_path = public as $f$
+declare em text;
+begin
+  if coalesce(current_setting('request.jwt.claims', true), '') = '' then return true; end if;  -- SQL Editor
+  em := public.lp24_email_appelant();
+  return exists (
+    select 1 from public.lp24_settings s,
+           jsonb_array_elements(coalesce(public.lp24_json(s.data)-&gt;'users', '[]'::jsonb)) e
+     where s.id = 1 and lower(trim(e-&gt;&gt;'email')) = em
+       and (e-&gt;&gt;'role' = 'admin' or e-&gt;&gt;'parking' = 'true'));
+end $f$;
+
+alter table public.lp24_parking enable row level security;
+revoke all on public.lp24_parking from anon;
+drop policy if exists "membres_appli" on public.lp24_parking;
+drop policy if exists "parking" on public.lp24_parking;
+create policy "parking" on public.lp24_parking for all to authenticated
+  using ((select public.lp24_acces_parking())) with check ((select public.lp24_acces_parking()));
+grant select, update on public.lp24_parking to authenticated;
+
+-- Vérification : doit afficher « Installé »
+select 'Installé' as resultat, jsonb_array_length(data-&gt;'places') as places from public.lp24_parking;
+</pre></section><section class="sc" id="s6"><div class="hd"><div><h2>16 · Mails des badges de prêt</h2><p>Badges d'Hexagone : horaires (7h–18h du lundi au vendredi) et téléphone (02.99.42.73.00) de l'accueil d'Hexagone. Le mail au moment du prêt part aussi aux adresses en copie des Réglages.</p><small>16-mails-pret-hexagone.sql · 105 lignes</small></div><button class="cp" data-i="6">Copier le script</button></div><pre id="c6">-- ════════════════════════════════════════════════════════════════════
 --  16 · Mails des badges de prêt : bon accueil + copie
 --  • badge d'Hexagone : horaires et téléphone de l'accueil d'Hexagone
 --    (badge de Levallois : rien ne change) ;
