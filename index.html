@@ -3490,7 +3490,7 @@ function VueParking({showToast,addLog,badges,session}){
   const[q,setQ]=React.useState("");const[niv,setNiv]=React.useState("");const[f,setF]=React.useState("all");
   const[edit,setEdit]=React.useState(null);const[form,setForm]=React.useState(null);
   const[vEdit,setVEdit]=React.useState(null);const[vForm,setVForm]=React.useState(null);
-  const[outils,setOutils]=React.useState(false);const[grand,setGrand]=React.useState(false);const[vue3d,setVue3d]=React.useState(true);const[zoom,setZoom]=React.useState(null);const[photos,setPhotos]=React.useState({});
+  const[outils,setOutils]=React.useState(false);const[grand,setGrand]=React.useState(false);const[vue3d,setVue3d]=React.useState(true);const[zoom,setZoom]=React.useState(null);const[photos,setPhotos]=React.useState({});const[pForm,setPForm]=React.useState(null);const[retour,setRetour]=React.useState(null);
   // Photo du modèle (Wikipédia, gratuit, sans clé) : seuls la marque et le modèle sont envoyés, jamais la plaque ni le nom
   const zp=data&&zoom?(data.places||[]).find(x=>x.id===zoom):null;const cleMod=zp&&zp.tit&&zp.marque&&zp.modele?pkMM(zp):"";
   React.useEffect(()=>{if(!cleMod||photos[cleMod]!==undefined)return;setPhotos(o=>({...o,[cleMod]:null}));
@@ -3587,18 +3587,19 @@ function VueParking({showToast,addLog,badges,session}){
 
   // ── Fiche d'un véhicule ──
   const ouvrirV=id=>{const v=id==="new"?{}:V.find(x=>x.id===id);if(!v)return;setVEdit(id);
-    setVForm({plaque:v.plaque||"",modele:v.modele||"",cond:v.cond||"",place:v.place||"",km:v.km||"",note:v.note||"",...Object.fromEntries(VH_ECH.map(([k])=>[k,v[k]||""]))});};
+    setVForm({cat:v.cat||"flotte",plaque:v.plaque||"",modele:v.modele||"",cond:v.cond||"",place:v.place||"",km:v.km||"",note:v.note||"",...Object.fromEntries(VH_ECH.map(([k])=>[k,v[k]||""]))});};
   const sauverV=()=>{const plaque=vForm.plaque.trim().toUpperCase();if(!plaque){showToast("⚠️ Indique la plaque","err");return;}
     const n=JSON.parse(JSON.stringify(data));const isNew=vEdit==="new";const v=isNew?{id:pkId()}:n.vehicules.find(x=>x.id===vEdit);if(!v)return;
     const cond=vForm.cond.trim();if((v.cond||"")!==cond)pkH(v,cond?"Attribué à "+cond+(v.cond?" (avant : "+v.cond+")":""):"Plus de conducteur (avant : "+v.cond+")");
     const km=String(vForm.km||"").trim();if(km&&String(v.km||"")!==km)pkH(v,"Kilométrage : "+Number(km).toLocaleString("fr-FR")+" km");
-    Object.assign(v,{plaque,modele:vForm.modele.trim(),cond,place:vForm.place.trim(),km,note:vForm.note.trim()});
+    Object.assign(v,{cat:vForm.cat,plaque,modele:vForm.modele.trim(),cond,place:vForm.place.trim(),km,note:vForm.note.trim()});
     VH_ECH.forEach(([k,l])=>{const d=vForm[k]||"";if((v[k]||"")!==d&&d)pkH(v,l+" : "+pkFr(d+"T12:00"));v[k]=d;});
     if(isNew){pkH(v,"Véhicule ajouté");n.vehicules.push(v);}
     enregistrer(n);setVEdit(null);log("Véhicule "+plaque+(cond?" → "+cond:""));showToast("✅ Véhicule enregistré");};
   const supprimerV=()=>{const v=V.find(x=>x.id===vEdit);if(!v||!confirm("Supprimer le véhicule "+v.plaque+" ?"))return;maj(n=>{n.vehicules=n.vehicules.filter(x=>x.id!==v.id);});setVEdit(null);log("Véhicule supprimé : "+v.plaque);};
   const ficheV=vEdit&&vForm&&(()=>{const isNew=vEdit==="new";const v=isNew?null:V.find(x=>x.id===vEdit);const set=(k,x)=>setVForm(o=>({...o,[k]:x}));
     return fenetre(isNew?"Nouveau véhicule":v.plaque,()=>setVEdit(null),el("div",{style:{display:"flex",flexDirection:"column",gap:12}},
+      champ("Type de véhicule",el("div",{style:{display:"flex",gap:6}},[["flotte","Flotte (attribué à un conducteur)"],["pool","Pool (prêté aux collaborateurs)"]].map(([k,l])=>el("button",{key:k,type:"button",className:"btn "+(vForm.cat===k?"btn-primary":"btn-outline"),style:{fontSize:12,padding:"6px 12px"},onClick:()=>set("cat",k)},l)))),
       deux(champ("Plaque *",inp(vForm.plaque,x=>set("plaque",x.toUpperCase()),"AB-123-CD")),champ("Modèle",inp(vForm.modele,x=>set("modele",x)))),
       deux(champ("Conducteur attribué",inp(vForm.cond,x=>set("cond",x),"",{list:"pk-noms"})),champ("Place de parking",inp(vForm.place,x=>set("place",x),"",{list:"pk-places"}))),
       el("datalist",{id:"pk-noms"},noms.map(x=>el("option",{key:x,value:x}))),el("datalist",{id:"pk-places"},P.map(p=>el("option",{key:p.id,value:lib(p)}))),
@@ -3759,24 +3760,109 @@ function VueParking({showToast,addLog,badges,session}){
       return el("div",{key:k,style:{fontSize:12,color:c,fontWeight:j<=30?600:400}},l+" : "+pkFr(v[k]+"T12:00")+(j<0?" (dépassée)":j<=30?" (dans "+j+" j)":""));}).filter(Boolean);
     const th={textAlign:"left",padding:"9px 14px",fontSize:10.5,fontWeight:700,textTransform:"uppercase",letterSpacing:".4px",color:"var(--text2)"};
     return el(React.Fragment,null,
-      el("div",{className:"kpi-grid",style:{gridTemplateColumns:"repeat(3,1fr)",marginBottom:14}},kpi("Véhicules",L.length,L.filter(v=>v.cond).length+" attribués"),
+      el("div",{className:"kpi-grid",style:{gridTemplateColumns:"repeat(3,1fr)",marginBottom:14}},kpi("Véhicules",L.length,L.filter(v=>v.cat!=="pool").length+" en flotte · "+L.filter(v=>v.cat==="pool").length+" en pool"),
         kpi("Échéances à 30 jours",A.filter(a=>a.j>=0).length,"révision, CT, assurance, location",A.some(a=>a.j>=0)?"#B45309":null),kpi("Dépassées",A.filter(a=>a.j<0).length,"à régulariser",A.some(a=>a.j<0)?"#B91C1C":null)),
       L.length?el("div",{style:{...carte,overflow:"auto"}},el("table",{style:{width:"100%",borderCollapse:"collapse",fontSize:13}},
-        el("thead",null,el("tr",{style:{background:"var(--surface2)"}},["Véhicule","Conducteur","Place","Kilométrage","Échéances"].map(h=>el("th",{key:h,style:th},h)))),
+        el("thead",null,el("tr",{style:{background:"var(--surface2)"}},["Véhicule","Conducteur / pool","Place","Kilométrage","Échéances"].map(h=>el("th",{key:h,style:th},h)))),
         el("tbody",null,L.map(v=>{const e=ech(v);return el("tr",{key:v.id,onClick:()=>ouvrirV(v.id),style:{borderTop:"1px solid var(--border)",cursor:"pointer",verticalAlign:"top"}},
           el("td",{style:{padding:"9px 14px"}},el("b",{style:{fontFamily:"ui-monospace,monospace"}},v.plaque),el("div",{style:{fontSize:11.5,color:"var(--text3)"}},v.modele||"")),
-          el("td",{style:{padding:"9px 14px"}},v.cond||"—"),el("td",{style:{padding:"9px 14px"}},v.place||""),
+          el("td",{style:{padding:"9px 14px"}},v.cat==="pool"?(()=>{const pr=pretEnCours(v);return el(React.Fragment,null,pill("Pool","#6d28d9","#ede9fe"),el("div",{style:{fontSize:12,marginTop:3,color:pr?"#b45309":"#15803d",fontWeight:600}},pr?"Prêté à "+pr.nom+" jusqu'au "+pkFr(pr.au+"T12:00"):"Disponible"));})():v.cond||"—"),el("td",{style:{padding:"9px 14px"}},v.place||""),
           el("td",{style:{padding:"9px 14px"}},v.km?Number(v.km).toLocaleString("fr-FR")+" km":""),
           el("td",{style:{padding:"9px 14px"}},e.length?e:el("span",{style:{color:"var(--text3)"}},"—")));}))))
       :el("div",{style:{...carte,padding:30,color:"var(--text3)",fontSize:13}},"Aucun véhicule. « Nouveau véhicule » pour commencer."));};
 
+  // ── Prêts de véhicules (pool) ──
+  const PR=data.prets||[];
+  const pretEnCours=v=>PR.find(x=>x.vid===v.id&&!x.rendu);
+  const ouvrirPret=vid=>{const auj=new Date().toISOString().slice(0,10);const h=new Date().toTimeString().slice(0,5);
+    setPForm({vid:vid||"",nom:"",matricule:"",adresse:"",du:auj,au:auj,heure:h,km:"",docs:{cg:true,assur:true,carbu:true,critair:true},sig:""});};
+  const choisirNom=nom=>{const b=(badges||[]).find(x=>(String(x.prenom||"").trim()+" "+String(x.nom||"").toUpperCase()).trim()===nom);
+    setPForm(f=>({...f,nom,matricule:b&&b.matricule?String(b.matricule):f.matricule}));};
+  const validerPret=()=>{const f=pForm;const v=V.find(x=>x.id===f.vid);
+    if(!v){showToast("⚠️ Choisis le véhicule","err");return;}if(!f.nom.trim()){showToast("⚠️ Indique le collaborateur","err");return;}
+    if(!f.adresse.trim()){showToast("⚠️ Indique l'adresse du collaborateur","err");return;}if(!f.du||!f.au||f.au<f.du){showToast("⚠️ Vérifie les dates du prêt","err");return;}
+    if(pretEnCours(v)){showToast("⚠️ "+v.plaque+" est déjà prêté","err");return;}if(!f.sig){showToast("⚠️ Il manque la signature du collaborateur","err");return;}
+    const pr={id:pkId(),vid:v.id,plaque:v.plaque,modele:pkMM(v)||v.modele||"",nom:f.nom.trim(),matricule:f.matricule.trim(),adresse:f.adresse.trim(),du:f.du,au:f.au,heure:f.heure,km:f.km,docs:f.docs,sig:f.sig,
+      cree:new Date().toISOString(),par:(session&&session.label)||""};
+    maj(n=>{n.prets=[...(n.prets||[]),pr];const w=n.vehicules.find(x=>x.id===v.id);if(w){pkH(w,"Prêté à "+pr.nom+" du "+pkFr(pr.du+"T12:00")+" au "+pkFr(pr.au+"T12:00"));if(f.km)w.km=f.km;}});
+    setPForm(null);log("Prêt véhicule "+v.plaque+" → "+pr.nom);showToast("✅ Prêt enregistré — attestation signée");};
+  const rendre=()=>{const pr=PR.find(x=>x.id===retour.id);if(!pr)return;
+    maj(n=>{const x=n.prets.find(y=>y.id===pr.id);x.rendu={le:retour.le,km:retour.km,note:retour.note.trim()};const w=n.vehicules.find(y=>y.id===pr.vid);if(w){pkH(w,"Rendu par "+pr.nom+(retour.km?" · "+Number(retour.km).toLocaleString("fr-FR")+" km":""));if(retour.km)w.km=retour.km;}});
+    setRetour(null);log("Retour véhicule "+pr.plaque+" ← "+pr.nom);showToast("✅ Retour enregistré");};
+  const DOCS=[["cg","La copie de carte grise du véhicule"],["assur","La carte d'assurance"],["carbu","La carte carburant"],["critair","La vignette Crit'Air"]];
+  const ENGAG=["A informer immédiatement la Société de tout retrait de mon permis de conduire, temporaire ou définitif, notamment en cas de transmission du dossier au Parquet (excès de vitesse notamment).",
+    "A gérer, en cas de panne du véhicule, la communication et le suivi du dossier auprès de l'assistance de notre assurance et du garage dans lequel le véhicule serait rapatrié jusqu'à la clôture du dossier.",
+    "A prendre en charge tous procès-verbaux qui seraient adressés à la Société, à la suite d'une infraction au Code de la Route : défaut de paiement de l'horodateur ; Forfait Post-Stationnement (FPS) : redevance due en cas d'absence ou d'insuffisance de paiement immédiat de la redevance du stationnement sur voirie ; stationnement interdit ; excès de vitesse.",
+    "A informer la Société dans les plus brefs délais de tout événement survenant à ce véhicule au maximum dans les 48 heures afin que celle-ci puisse prendre les dispositions nécessaires."];
+  const esc=t=>String(t==null?"":t).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+  const imprimerAttestation=pr=>{const w=window.open("","_blank");if(!w){showToast("⚠️ Autorise les fenêtres pour imprimer","err");return;}
+    const d=x=>x?pkFr(x+"T12:00"):"…/…/…";
+    w.document.write('<!doctype html><html lang="fr"><head><meta charset="utf-8"><title>Attestation prêt véhicule '+esc(pr.plaque)+' — '+esc(pr.nom)+'</title><style>'+
+      '@page{size:A4;margin:18mm 18mm}body{font:11pt/1.5 Calibri,Arial,sans-serif;color:#111;max-width:180mm;margin:0 auto}h1{text-align:center;font-size:15pt;margin:0 0 4px;letter-spacing:.5px}'+
+      '.soc{text-align:center;font-size:10pt;color:#444;margin-bottom:22px}.l{margin:6px 0}b.v{border-bottom:1px solid #999;padding:0 4px}ul{margin:4px 0 10px 18px;padding:0}li{margin:3px 0}'+
+      '.sig{display:flex;justify-content:space-between;align-items:flex-end;margin-top:26px}.sig img{height:90px;border-bottom:1px solid #999}.pied{margin-top:30px;font-size:9pt;color:#777}'+
+      '</style></head><body>'+
+      '<h1>ATTESTATION D\'ATTRIBUTION DE VÉHICULE DE PRÊT</h1><div class="soc">Alliance Automotive France et ses filiales</div>'+
+      '<div class="l">Matricule : <b class="v">'+esc(pr.matricule||"—")+'</b></div>'+
+      '<div class="l">Je soussigné(e), Mme/Mr : <b class="v">'+esc(pr.nom)+'</b></div>'+
+      '<div class="l">Demeurant : <b class="v">'+esc(pr.adresse)+'</b></div>'+
+      '<p>Atteste utiliser, en toute exclusivité, le véhicule de fonction immatriculé <b>'+esc(pr.plaque)+'</b>'+(pr.modele?' ('+esc(pr.modele)+')':'')+' qui m\'a été prêté dans le cadre de l\'exercice de mes fonctions et dans le cadre de la « Politique Véhicules » applicable au sein de la Société. Ce véhicule restera la propriété de la Société.</p>'+
+      '<p>J\'atteste également avoir reçu ce jour :</p><ul>'+DOCS.filter(([k])=>pr.docs&&pr.docs[k]).map(([,l])=>'<li>'+esc(l)+'</li>').join("")+'</ul>'+
+      (pr.km?'<p>Kilométrage au départ : <b>'+esc(Number(pr.km).toLocaleString("fr-FR"))+' km</b></p>':'')+
+      '<p>Je m\'engage :</p><ul>'+ENGAG.map(t=>'<li>'+esc(t)+'</li>').join("")+'</ul>'+
+      '<div class="sig"><div>Fait à Levallois-Perret<br>Du <b>'+d(pr.du)+'</b> au <b>'+d(pr.au)+'</b><br>À <b>'+esc(pr.heure||"…")+'</b></div><div style="text-align:center">Signature :<br><img src="'+pr.sig+'" alt="signature"></div></div>'+
+      (pr.rendu?'<p class="pied">Véhicule rendu le '+d(pr.rendu.le)+(pr.rendu.km?' · '+esc(Number(pr.rendu.km).toLocaleString("fr-FR"))+' km':'')+(pr.rendu.note?' · '+esc(pr.rendu.note):'')+'</p>':'')+
+      '<p class="pied">Signée électroniquement le '+esc(new Date(pr.cree).toLocaleString("fr-FR"))+(pr.par?' · enregistrée par '+esc(pr.par):'')+'</p>'+
+      '<script>setTimeout(function(){window.print()},400)<\/script></body></html>');w.document.close();};
+  const fichePret=pForm&&(()=>{const f=pForm;const set=(k,x)=>setPForm(o=>({...o,[k]:x}));const libres=V.filter(v=>v.cat==="pool"&&!pretEnCours(v));const v=V.find(x=>x.id===f.vid);
+    return fenetre("Prêt de véhicule",()=>setPForm(null),el("div",{style:{display:"flex",flexDirection:"column",gap:12}},
+      champ("Véhicule du pool *",el("select",{className:"inp",value:f.vid,onChange:e=>set("vid",e.target.value),style:{width:"100%"}},el("option",{value:""},libres.length?"— Choisir —":"Aucun véhicule du pool disponible"),
+        libres.map(x=>el("option",{key:x.id,value:x.id},x.plaque+(pkMM(x)?" · "+pkMM(x):""))))),
+      deux(champ("Collaborateur *",inp(f.nom,choisirNom,"Prénom NOM",{list:"pk-noms"})),champ("Matricule",inp(f.matricule,x=>set("matricule",x)))),
+      el("datalist",{id:"pk-noms"},noms.map(x=>el("option",{key:x,value:x}))),
+      champ("Demeurant (adresse) *",inp(f.adresse,x=>set("adresse",x),"N° rue, code postal, ville")),
+      el("div",{style:{display:"grid",gridTemplateColumns:"1fr 1fr 1fr 1fr",gap:10}},champ("Du",inp(f.du,x=>set("du",x),"",{type:"date"})),champ("Au",inp(f.au,x=>set("au",x),"",{type:"date"})),
+        champ("À (heure)",inp(f.heure,x=>set("heure",x),"",{type:"time"})),champ("Km au départ",inp(f.km||(v&&v.km)||"",x=>set("km",x.replace(/[^\d]/g,""))))),
+      champ("Remis ce jour",el("div",{style:{display:"grid",gridTemplateColumns:"1fr 1fr",gap:"4px 12px"}},DOCS.map(([k,l])=>el("label",{key:k,style:{display:"flex",gap:7,alignItems:"center",fontSize:13}},
+        el("input",{type:"checkbox",checked:!!f.docs[k],onChange:e=>set("docs",{...f.docs,[k]:e.target.checked})}),l)))),
+      el("details",{style:{fontSize:12.5,color:"var(--text2)",background:"var(--surface2)",borderRadius:8,padding:"8px 12px"}},el("summary",{style:{cursor:"pointer",fontWeight:700}},"Engagements du collaborateur (à lire avant de signer)"),
+        el("p",{style:{margin:"8px 0 4px"}},"J'atteste utiliser, en toute exclusivité, le véhicule"+(v?" immatriculé "+v.plaque:"")+" qui m'a été prêté dans le cadre de l'exercice de mes fonctions et de la « Politique Véhicules ». Ce véhicule restera la propriété de la Société. Je m'engage :"),
+        el("ul",{style:{margin:0,paddingLeft:18}},ENGAG.map((t,i)=>el("li",{key:i,style:{margin:"3px 0"}},t)))),
+      champ("✍️ Signature du collaborateur *",el(PadSignature,{onChange:sig=>set("sig",sig)})),
+      el("button",{type:"button",className:"btn btn-primary",onClick:validerPret},"Valider le prêt")));})();
+  const ficheRetour=retour&&(()=>{const pr=PR.find(x=>x.id===retour.id);if(!pr)return null;const set=(k,x)=>setRetour(o=>({...o,[k]:x}));
+    return fenetre("Retour de "+pr.plaque,()=>setRetour(null),el("div",{style:{display:"flex",flexDirection:"column",gap:12}},
+      el("div",{style:{fontSize:13,color:"var(--text2)"}},"Prêté à ",el("b",null,pr.nom)," du "+pkFr(pr.du+"T12:00")+" au "+pkFr(pr.au+"T12:00")+(pr.km?" · départ "+Number(pr.km).toLocaleString("fr-FR")+" km":"")),
+      deux(champ("Rendu le",inp(retour.le,x=>set("le",x),"",{type:"date"})),champ("Km au retour",inp(retour.km,x=>set("km",x.replace(/[^\d]/g,""))))),
+      champ("Remarque (état, carburant…)",inp(retour.note,x=>set("note",x))),
+      el("button",{type:"button",className:"btn btn-primary",onClick:rendre},"Enregistrer le retour")));})();
+  const pretsVue=()=>{const pool=V.filter(v=>v.cat==="pool");const enCours=PR.filter(x=>!x.rendu).sort((a,b)=>a.au<b.au?-1:1);const finis=PR.filter(x=>x.rendu).sort((a,b)=>a.cree<b.cree?1:-1);
+    const auj=new Date().toISOString().slice(0,10);const retard=enCours.filter(x=>x.au<auj);
+    const th={textAlign:"left",padding:"9px 14px",fontSize:10.5,fontWeight:700,textTransform:"uppercase",letterSpacing:".4px",color:"var(--text2)"};const td={padding:"9px 14px"};
+    const btnS={fontSize:12,padding:"5px 10px"};
+    const table=(L,fini)=>el("div",{style:{...carte,overflow:"auto"}},el("table",{style:{width:"100%",borderCollapse:"collapse",fontSize:13}},
+      el("thead",null,el("tr",{style:{background:"var(--surface2)"}},["Véhicule","Collaborateur","Période",fini?"Retour":"",""].map((h,i)=>el("th",{key:i,style:th},h)))),
+      el("tbody",null,L.map(x=>el("tr",{key:x.id,style:{borderTop:"1px solid var(--border)"}},
+        el("td",{style:td},el("b",{style:{fontFamily:"ui-monospace,monospace"}},x.plaque),el("div",{style:{fontSize:11.5,color:"var(--text3)"}},x.modele||"")),
+        el("td",{style:td},x.nom,x.matricule?el("div",{style:{fontSize:11.5,color:"var(--text3)"}},"Matricule "+x.matricule):null),
+        el("td",{style:td},pkFr(x.du+"T12:00")+" → "+pkFr(x.au+"T12:00"),!fini&&x.au<auj?el("div",null,pill("En retard","#b91c1c","#fee2e2")):null),
+        el("td",{style:td},fini?pkFr(x.rendu.le+"T12:00")+(x.rendu.km?" · "+Number(x.rendu.km).toLocaleString("fr-FR")+" km":""):null),
+        el("td",{style:{...td,textAlign:"right",whiteSpace:"nowrap"}},el("button",{type:"button",className:"btn btn-outline",style:btnS,onClick:()=>imprimerAttestation(x)},"📄 Attestation"),
+          !fini&&el("button",{type:"button",className:"btn btn-primary",style:{...btnS,marginLeft:6},onClick:()=>setRetour({id:x.id,le:auj,km:"",note:""})},"Retour")))))));
+    return el(React.Fragment,null,
+      el("div",{className:"kpi-grid",style:{gridTemplateColumns:"repeat(3,1fr)",marginBottom:14}},kpi("Véhicules du pool",pool.length,pool.length?"":"Choisis « Pool » sur la fiche d'un véhicule"),
+        kpi("En prêt",enCours.length,retard.length?retard.length+" en retard":"aucun retard",retard.length?"#B91C1C":"#B45309"),kpi("Disponibles",pool.filter(v=>!pretEnCours(v)).length,"prêts à partir","#15803D")),
+      el("div",{style:{fontWeight:800,fontSize:14,margin:"4px 0 8px"}},"En cours"),
+      enCours.length?table(enCours,false):el("div",{style:{...carte,padding:22,color:"var(--text3)",fontSize:13}},"Aucun véhicule en prêt."),
+      finis.length?el(React.Fragment,null,el("div",{style:{fontWeight:800,fontSize:14,margin:"18px 0 8px"}},"Historique"),table(finis.slice(0,50),true)):null);};
   const att=P.filter(p=>p.tit).length,ko=P.filter(p=>p.ko).length,libres=P.filter(p=>!p.tit&&!p.ko).length,bornes=P.filter(p=>p.type==="borne"),panne=bornes.filter(p=>p.panne);
   return el("div",null,
     el("div",{style:{display:"flex",alignItems:"center",gap:10,flexWrap:"wrap",marginBottom:14}},
-      seg([["places","Places"],["vehicules","Véhicules"]],tab,k=>{setTab(k);setEdit(null);setVEdit(null);}),
+      seg([["places","Places"],["vehicules","Véhicules"],["prets","Prêts de véhicules"]],tab,k=>{setTab(k);setEdit(null);setVEdit(null);}),
       el("div",{style:{marginLeft:"auto",display:"flex",gap:8}},tab==="places"?el(React.Fragment,null,
           el("button",{type:"button",className:"btn btn-outline",onClick:()=>{setOutils(true);setEdit(null);}},"Créer / importer des places"),
           el("button",{type:"button",className:"btn btn-primary",onClick:()=>ouvrir("new")},"+ Nouvelle place"))
+        :tab==="prets"?el("button",{type:"button",className:"btn btn-primary",onClick:()=>ouvrirPret()},"+ Nouveau prêt")
         :el("button",{type:"button",className:"btn btn-primary",onClick:()=>ouvrirV("new")},"+ Nouveau véhicule"))),
     tab==="places"?el(React.Fragment,null,
       !P.length&&blocReprise,
@@ -3788,8 +3874,8 @@ function VueParking({showToast,addLog,badges,session}){
         el("select",{className:"inp",value:niv,onChange:e=>setNiv(e.target.value),style:{width:"auto"}},el("option",{value:""},"Tous les niveaux"),nivs.map(n=>el("option",{key:n,value:n},"Niveau "+n))),
         el("div",{style:{marginLeft:"auto"}},seg([["plan","Plan"],["liste","Liste"]],vue,setVue))),
       vue==="plan"?plan():liste())
-    :vehicules(),
-    fichePlace,ficheV,blocOutils);
+    :tab==="prets"?pretsVue():vehicules(),
+    fichePlace,ficheV,blocOutils,fichePret,ficheRetour);
 }
 
 function VueHistoriqueColis({site}={}){
@@ -9754,7 +9840,7 @@ function VueParking({showToast,addLog,badges,session}){
   const[q,setQ]=React.useState("");const[niv,setNiv]=React.useState("");const[f,setF]=React.useState("all");
   const[edit,setEdit]=React.useState(null);const[form,setForm]=React.useState(null);
   const[vEdit,setVEdit]=React.useState(null);const[vForm,setVForm]=React.useState(null);
-  const[outils,setOutils]=React.useState(false);const[grand,setGrand]=React.useState(false);const[vue3d,setVue3d]=React.useState(true);const[zoom,setZoom]=React.useState(null);const[photos,setPhotos]=React.useState({});
+  const[outils,setOutils]=React.useState(false);const[grand,setGrand]=React.useState(false);const[vue3d,setVue3d]=React.useState(true);const[zoom,setZoom]=React.useState(null);const[photos,setPhotos]=React.useState({});const[pForm,setPForm]=React.useState(null);const[retour,setRetour]=React.useState(null);
   // Photo du modèle (Wikipédia, gratuit, sans clé) : seuls la marque et le modèle sont envoyés, jamais la plaque ni le nom
   const zp=data&&zoom?(data.places||[]).find(x=>x.id===zoom):null;const cleMod=zp&&zp.tit&&zp.marque&&zp.modele?pkMM(zp):"";
   React.useEffect(()=>{if(!cleMod||photos[cleMod]!==undefined)return;setPhotos(o=>({...o,[cleMod]:null}));
@@ -9851,18 +9937,19 @@ function VueParking({showToast,addLog,badges,session}){
 
   // ── Fiche d'un véhicule ──
   const ouvrirV=id=>{const v=id==="new"?{}:V.find(x=>x.id===id);if(!v)return;setVEdit(id);
-    setVForm({plaque:v.plaque||"",modele:v.modele||"",cond:v.cond||"",place:v.place||"",km:v.km||"",note:v.note||"",...Object.fromEntries(VH_ECH.map(([k])=>[k,v[k]||""]))});};
+    setVForm({cat:v.cat||"flotte",plaque:v.plaque||"",modele:v.modele||"",cond:v.cond||"",place:v.place||"",km:v.km||"",note:v.note||"",...Object.fromEntries(VH_ECH.map(([k])=>[k,v[k]||""]))});};
   const sauverV=()=>{const plaque=vForm.plaque.trim().toUpperCase();if(!plaque){showToast("⚠️ Indique la plaque","err");return;}
     const n=JSON.parse(JSON.stringify(data));const isNew=vEdit==="new";const v=isNew?{id:pkId()}:n.vehicules.find(x=>x.id===vEdit);if(!v)return;
     const cond=vForm.cond.trim();if((v.cond||"")!==cond)pkH(v,cond?"Attribué à "+cond+(v.cond?" (avant : "+v.cond+")":""):"Plus de conducteur (avant : "+v.cond+")");
     const km=String(vForm.km||"").trim();if(km&&String(v.km||"")!==km)pkH(v,"Kilométrage : "+Number(km).toLocaleString("fr-FR")+" km");
-    Object.assign(v,{plaque,modele:vForm.modele.trim(),cond,place:vForm.place.trim(),km,note:vForm.note.trim()});
+    Object.assign(v,{cat:vForm.cat,plaque,modele:vForm.modele.trim(),cond,place:vForm.place.trim(),km,note:vForm.note.trim()});
     VH_ECH.forEach(([k,l])=>{const d=vForm[k]||"";if((v[k]||"")!==d&&d)pkH(v,l+" : "+pkFr(d+"T12:00"));v[k]=d;});
     if(isNew){pkH(v,"Véhicule ajouté");n.vehicules.push(v);}
     enregistrer(n);setVEdit(null);log("Véhicule "+plaque+(cond?" → "+cond:""));showToast("✅ Véhicule enregistré");};
   const supprimerV=()=>{const v=V.find(x=>x.id===vEdit);if(!v||!confirm("Supprimer le véhicule "+v.plaque+" ?"))return;maj(n=>{n.vehicules=n.vehicules.filter(x=>x.id!==v.id);});setVEdit(null);log("Véhicule supprimé : "+v.plaque);};
   const ficheV=vEdit&&vForm&&(()=>{const isNew=vEdit==="new";const v=isNew?null:V.find(x=>x.id===vEdit);const set=(k,x)=>setVForm(o=>({...o,[k]:x}));
     return fenetre(isNew?"Nouveau véhicule":v.plaque,()=>setVEdit(null),el("div",{style:{display:"flex",flexDirection:"column",gap:12}},
+      champ("Type de véhicule",el("div",{style:{display:"flex",gap:6}},[["flotte","Flotte (attribué à un conducteur)"],["pool","Pool (prêté aux collaborateurs)"]].map(([k,l])=>el("button",{key:k,type:"button",className:"btn "+(vForm.cat===k?"btn-primary":"btn-outline"),style:{fontSize:12,padding:"6px 12px"},onClick:()=>set("cat",k)},l)))),
       deux(champ("Plaque *",inp(vForm.plaque,x=>set("plaque",x.toUpperCase()),"AB-123-CD")),champ("Modèle",inp(vForm.modele,x=>set("modele",x)))),
       deux(champ("Conducteur attribué",inp(vForm.cond,x=>set("cond",x),"",{list:"pk-noms"})),champ("Place de parking",inp(vForm.place,x=>set("place",x),"",{list:"pk-places"}))),
       el("datalist",{id:"pk-noms"},noms.map(x=>el("option",{key:x,value:x}))),el("datalist",{id:"pk-places"},P.map(p=>el("option",{key:p.id,value:lib(p)}))),
@@ -10023,24 +10110,109 @@ function VueParking({showToast,addLog,badges,session}){
       return el("div",{key:k,style:{fontSize:12,color:c,fontWeight:j<=30?600:400}},l+" : "+pkFr(v[k]+"T12:00")+(j<0?" (dépassée)":j<=30?" (dans "+j+" j)":""));}).filter(Boolean);
     const th={textAlign:"left",padding:"9px 14px",fontSize:10.5,fontWeight:700,textTransform:"uppercase",letterSpacing:".4px",color:"var(--text2)"};
     return el(React.Fragment,null,
-      el("div",{className:"kpi-grid",style:{gridTemplateColumns:"repeat(3,1fr)",marginBottom:14}},kpi("Véhicules",L.length,L.filter(v=>v.cond).length+" attribués"),
+      el("div",{className:"kpi-grid",style:{gridTemplateColumns:"repeat(3,1fr)",marginBottom:14}},kpi("Véhicules",L.length,L.filter(v=>v.cat!=="pool").length+" en flotte · "+L.filter(v=>v.cat==="pool").length+" en pool"),
         kpi("Échéances à 30 jours",A.filter(a=>a.j>=0).length,"révision, CT, assurance, location",A.some(a=>a.j>=0)?"#B45309":null),kpi("Dépassées",A.filter(a=>a.j<0).length,"à régulariser",A.some(a=>a.j<0)?"#B91C1C":null)),
       L.length?el("div",{style:{...carte,overflow:"auto"}},el("table",{style:{width:"100%",borderCollapse:"collapse",fontSize:13}},
-        el("thead",null,el("tr",{style:{background:"var(--surface2)"}},["Véhicule","Conducteur","Place","Kilométrage","Échéances"].map(h=>el("th",{key:h,style:th},h)))),
+        el("thead",null,el("tr",{style:{background:"var(--surface2)"}},["Véhicule","Conducteur / pool","Place","Kilométrage","Échéances"].map(h=>el("th",{key:h,style:th},h)))),
         el("tbody",null,L.map(v=>{const e=ech(v);return el("tr",{key:v.id,onClick:()=>ouvrirV(v.id),style:{borderTop:"1px solid var(--border)",cursor:"pointer",verticalAlign:"top"}},
           el("td",{style:{padding:"9px 14px"}},el("b",{style:{fontFamily:"ui-monospace,monospace"}},v.plaque),el("div",{style:{fontSize:11.5,color:"var(--text3)"}},v.modele||"")),
-          el("td",{style:{padding:"9px 14px"}},v.cond||"—"),el("td",{style:{padding:"9px 14px"}},v.place||""),
+          el("td",{style:{padding:"9px 14px"}},v.cat==="pool"?(()=>{const pr=pretEnCours(v);return el(React.Fragment,null,pill("Pool","#6d28d9","#ede9fe"),el("div",{style:{fontSize:12,marginTop:3,color:pr?"#b45309":"#15803d",fontWeight:600}},pr?"Prêté à "+pr.nom+" jusqu'au "+pkFr(pr.au+"T12:00"):"Disponible"));})():v.cond||"—"),el("td",{style:{padding:"9px 14px"}},v.place||""),
           el("td",{style:{padding:"9px 14px"}},v.km?Number(v.km).toLocaleString("fr-FR")+" km":""),
           el("td",{style:{padding:"9px 14px"}},e.length?e:el("span",{style:{color:"var(--text3)"}},"—")));}))))
       :el("div",{style:{...carte,padding:30,color:"var(--text3)",fontSize:13}},"Aucun véhicule. « Nouveau véhicule » pour commencer."));};
 
+  // ── Prêts de véhicules (pool) ──
+  const PR=data.prets||[];
+  const pretEnCours=v=>PR.find(x=>x.vid===v.id&&!x.rendu);
+  const ouvrirPret=vid=>{const auj=new Date().toISOString().slice(0,10);const h=new Date().toTimeString().slice(0,5);
+    setPForm({vid:vid||"",nom:"",matricule:"",adresse:"",du:auj,au:auj,heure:h,km:"",docs:{cg:true,assur:true,carbu:true,critair:true},sig:""});};
+  const choisirNom=nom=>{const b=(badges||[]).find(x=>(String(x.prenom||"").trim()+" "+String(x.nom||"").toUpperCase()).trim()===nom);
+    setPForm(f=>({...f,nom,matricule:b&&b.matricule?String(b.matricule):f.matricule}));};
+  const validerPret=()=>{const f=pForm;const v=V.find(x=>x.id===f.vid);
+    if(!v){showToast("⚠️ Choisis le véhicule","err");return;}if(!f.nom.trim()){showToast("⚠️ Indique le collaborateur","err");return;}
+    if(!f.adresse.trim()){showToast("⚠️ Indique l'adresse du collaborateur","err");return;}if(!f.du||!f.au||f.au<f.du){showToast("⚠️ Vérifie les dates du prêt","err");return;}
+    if(pretEnCours(v)){showToast("⚠️ "+v.plaque+" est déjà prêté","err");return;}if(!f.sig){showToast("⚠️ Il manque la signature du collaborateur","err");return;}
+    const pr={id:pkId(),vid:v.id,plaque:v.plaque,modele:pkMM(v)||v.modele||"",nom:f.nom.trim(),matricule:f.matricule.trim(),adresse:f.adresse.trim(),du:f.du,au:f.au,heure:f.heure,km:f.km,docs:f.docs,sig:f.sig,
+      cree:new Date().toISOString(),par:(session&&session.label)||""};
+    maj(n=>{n.prets=[...(n.prets||[]),pr];const w=n.vehicules.find(x=>x.id===v.id);if(w){pkH(w,"Prêté à "+pr.nom+" du "+pkFr(pr.du+"T12:00")+" au "+pkFr(pr.au+"T12:00"));if(f.km)w.km=f.km;}});
+    setPForm(null);log("Prêt véhicule "+v.plaque+" → "+pr.nom);showToast("✅ Prêt enregistré — attestation signée");};
+  const rendre=()=>{const pr=PR.find(x=>x.id===retour.id);if(!pr)return;
+    maj(n=>{const x=n.prets.find(y=>y.id===pr.id);x.rendu={le:retour.le,km:retour.km,note:retour.note.trim()};const w=n.vehicules.find(y=>y.id===pr.vid);if(w){pkH(w,"Rendu par "+pr.nom+(retour.km?" · "+Number(retour.km).toLocaleString("fr-FR")+" km":""));if(retour.km)w.km=retour.km;}});
+    setRetour(null);log("Retour véhicule "+pr.plaque+" ← "+pr.nom);showToast("✅ Retour enregistré");};
+  const DOCS=[["cg","La copie de carte grise du véhicule"],["assur","La carte d'assurance"],["carbu","La carte carburant"],["critair","La vignette Crit'Air"]];
+  const ENGAG=["A informer immédiatement la Société de tout retrait de mon permis de conduire, temporaire ou définitif, notamment en cas de transmission du dossier au Parquet (excès de vitesse notamment).",
+    "A gérer, en cas de panne du véhicule, la communication et le suivi du dossier auprès de l'assistance de notre assurance et du garage dans lequel le véhicule serait rapatrié jusqu'à la clôture du dossier.",
+    "A prendre en charge tous procès-verbaux qui seraient adressés à la Société, à la suite d'une infraction au Code de la Route : défaut de paiement de l'horodateur ; Forfait Post-Stationnement (FPS) : redevance due en cas d'absence ou d'insuffisance de paiement immédiat de la redevance du stationnement sur voirie ; stationnement interdit ; excès de vitesse.",
+    "A informer la Société dans les plus brefs délais de tout événement survenant à ce véhicule au maximum dans les 48 heures afin que celle-ci puisse prendre les dispositions nécessaires."];
+  const esc=t=>String(t==null?"":t).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+  const imprimerAttestation=pr=>{const w=window.open("","_blank");if(!w){showToast("⚠️ Autorise les fenêtres pour imprimer","err");return;}
+    const d=x=>x?pkFr(x+"T12:00"):"…/…/…";
+    w.document.write('<!doctype html><html lang="fr"><head><meta charset="utf-8"><title>Attestation prêt véhicule '+esc(pr.plaque)+' — '+esc(pr.nom)+'</title><style>'+
+      '@page{size:A4;margin:18mm 18mm}body{font:11pt/1.5 Calibri,Arial,sans-serif;color:#111;max-width:180mm;margin:0 auto}h1{text-align:center;font-size:15pt;margin:0 0 4px;letter-spacing:.5px}'+
+      '.soc{text-align:center;font-size:10pt;color:#444;margin-bottom:22px}.l{margin:6px 0}b.v{border-bottom:1px solid #999;padding:0 4px}ul{margin:4px 0 10px 18px;padding:0}li{margin:3px 0}'+
+      '.sig{display:flex;justify-content:space-between;align-items:flex-end;margin-top:26px}.sig img{height:90px;border-bottom:1px solid #999}.pied{margin-top:30px;font-size:9pt;color:#777}'+
+      '</style></head><body>'+
+      '<h1>ATTESTATION D\'ATTRIBUTION DE VÉHICULE DE PRÊT</h1><div class="soc">Alliance Automotive France et ses filiales</div>'+
+      '<div class="l">Matricule : <b class="v">'+esc(pr.matricule||"—")+'</b></div>'+
+      '<div class="l">Je soussigné(e), Mme/Mr : <b class="v">'+esc(pr.nom)+'</b></div>'+
+      '<div class="l">Demeurant : <b class="v">'+esc(pr.adresse)+'</b></div>'+
+      '<p>Atteste utiliser, en toute exclusivité, le véhicule de fonction immatriculé <b>'+esc(pr.plaque)+'</b>'+(pr.modele?' ('+esc(pr.modele)+')':'')+' qui m\'a été prêté dans le cadre de l\'exercice de mes fonctions et dans le cadre de la « Politique Véhicules » applicable au sein de la Société. Ce véhicule restera la propriété de la Société.</p>'+
+      '<p>J\'atteste également avoir reçu ce jour :</p><ul>'+DOCS.filter(([k])=>pr.docs&&pr.docs[k]).map(([,l])=>'<li>'+esc(l)+'</li>').join("")+'</ul>'+
+      (pr.km?'<p>Kilométrage au départ : <b>'+esc(Number(pr.km).toLocaleString("fr-FR"))+' km</b></p>':'')+
+      '<p>Je m\'engage :</p><ul>'+ENGAG.map(t=>'<li>'+esc(t)+'</li>').join("")+'</ul>'+
+      '<div class="sig"><div>Fait à Levallois-Perret<br>Du <b>'+d(pr.du)+'</b> au <b>'+d(pr.au)+'</b><br>À <b>'+esc(pr.heure||"…")+'</b></div><div style="text-align:center">Signature :<br><img src="'+pr.sig+'" alt="signature"></div></div>'+
+      (pr.rendu?'<p class="pied">Véhicule rendu le '+d(pr.rendu.le)+(pr.rendu.km?' · '+esc(Number(pr.rendu.km).toLocaleString("fr-FR"))+' km':'')+(pr.rendu.note?' · '+esc(pr.rendu.note):'')+'</p>':'')+
+      '<p class="pied">Signée électroniquement le '+esc(new Date(pr.cree).toLocaleString("fr-FR"))+(pr.par?' · enregistrée par '+esc(pr.par):'')+'</p>'+
+      '<script>setTimeout(function(){window.print()},400)<\/script></body></html>');w.document.close();};
+  const fichePret=pForm&&(()=>{const f=pForm;const set=(k,x)=>setPForm(o=>({...o,[k]:x}));const libres=V.filter(v=>v.cat==="pool"&&!pretEnCours(v));const v=V.find(x=>x.id===f.vid);
+    return fenetre("Prêt de véhicule",()=>setPForm(null),el("div",{style:{display:"flex",flexDirection:"column",gap:12}},
+      champ("Véhicule du pool *",el("select",{className:"inp",value:f.vid,onChange:e=>set("vid",e.target.value),style:{width:"100%"}},el("option",{value:""},libres.length?"— Choisir —":"Aucun véhicule du pool disponible"),
+        libres.map(x=>el("option",{key:x.id,value:x.id},x.plaque+(pkMM(x)?" · "+pkMM(x):""))))),
+      deux(champ("Collaborateur *",inp(f.nom,choisirNom,"Prénom NOM",{list:"pk-noms"})),champ("Matricule",inp(f.matricule,x=>set("matricule",x)))),
+      el("datalist",{id:"pk-noms"},noms.map(x=>el("option",{key:x,value:x}))),
+      champ("Demeurant (adresse) *",inp(f.adresse,x=>set("adresse",x),"N° rue, code postal, ville")),
+      el("div",{style:{display:"grid",gridTemplateColumns:"1fr 1fr 1fr 1fr",gap:10}},champ("Du",inp(f.du,x=>set("du",x),"",{type:"date"})),champ("Au",inp(f.au,x=>set("au",x),"",{type:"date"})),
+        champ("À (heure)",inp(f.heure,x=>set("heure",x),"",{type:"time"})),champ("Km au départ",inp(f.km||(v&&v.km)||"",x=>set("km",x.replace(/[^\d]/g,""))))),
+      champ("Remis ce jour",el("div",{style:{display:"grid",gridTemplateColumns:"1fr 1fr",gap:"4px 12px"}},DOCS.map(([k,l])=>el("label",{key:k,style:{display:"flex",gap:7,alignItems:"center",fontSize:13}},
+        el("input",{type:"checkbox",checked:!!f.docs[k],onChange:e=>set("docs",{...f.docs,[k]:e.target.checked})}),l)))),
+      el("details",{style:{fontSize:12.5,color:"var(--text2)",background:"var(--surface2)",borderRadius:8,padding:"8px 12px"}},el("summary",{style:{cursor:"pointer",fontWeight:700}},"Engagements du collaborateur (à lire avant de signer)"),
+        el("p",{style:{margin:"8px 0 4px"}},"J'atteste utiliser, en toute exclusivité, le véhicule"+(v?" immatriculé "+v.plaque:"")+" qui m'a été prêté dans le cadre de l'exercice de mes fonctions et de la « Politique Véhicules ». Ce véhicule restera la propriété de la Société. Je m'engage :"),
+        el("ul",{style:{margin:0,paddingLeft:18}},ENGAG.map((t,i)=>el("li",{key:i,style:{margin:"3px 0"}},t)))),
+      champ("✍️ Signature du collaborateur *",el(PadSignature,{onChange:sig=>set("sig",sig)})),
+      el("button",{type:"button",className:"btn btn-primary",onClick:validerPret},"Valider le prêt")));})();
+  const ficheRetour=retour&&(()=>{const pr=PR.find(x=>x.id===retour.id);if(!pr)return null;const set=(k,x)=>setRetour(o=>({...o,[k]:x}));
+    return fenetre("Retour de "+pr.plaque,()=>setRetour(null),el("div",{style:{display:"flex",flexDirection:"column",gap:12}},
+      el("div",{style:{fontSize:13,color:"var(--text2)"}},"Prêté à ",el("b",null,pr.nom)," du "+pkFr(pr.du+"T12:00")+" au "+pkFr(pr.au+"T12:00")+(pr.km?" · départ "+Number(pr.km).toLocaleString("fr-FR")+" km":"")),
+      deux(champ("Rendu le",inp(retour.le,x=>set("le",x),"",{type:"date"})),champ("Km au retour",inp(retour.km,x=>set("km",x.replace(/[^\d]/g,""))))),
+      champ("Remarque (état, carburant…)",inp(retour.note,x=>set("note",x))),
+      el("button",{type:"button",className:"btn btn-primary",onClick:rendre},"Enregistrer le retour")));})();
+  const pretsVue=()=>{const pool=V.filter(v=>v.cat==="pool");const enCours=PR.filter(x=>!x.rendu).sort((a,b)=>a.au<b.au?-1:1);const finis=PR.filter(x=>x.rendu).sort((a,b)=>a.cree<b.cree?1:-1);
+    const auj=new Date().toISOString().slice(0,10);const retard=enCours.filter(x=>x.au<auj);
+    const th={textAlign:"left",padding:"9px 14px",fontSize:10.5,fontWeight:700,textTransform:"uppercase",letterSpacing:".4px",color:"var(--text2)"};const td={padding:"9px 14px"};
+    const btnS={fontSize:12,padding:"5px 10px"};
+    const table=(L,fini)=>el("div",{style:{...carte,overflow:"auto"}},el("table",{style:{width:"100%",borderCollapse:"collapse",fontSize:13}},
+      el("thead",null,el("tr",{style:{background:"var(--surface2)"}},["Véhicule","Collaborateur","Période",fini?"Retour":"",""].map((h,i)=>el("th",{key:i,style:th},h)))),
+      el("tbody",null,L.map(x=>el("tr",{key:x.id,style:{borderTop:"1px solid var(--border)"}},
+        el("td",{style:td},el("b",{style:{fontFamily:"ui-monospace,monospace"}},x.plaque),el("div",{style:{fontSize:11.5,color:"var(--text3)"}},x.modele||"")),
+        el("td",{style:td},x.nom,x.matricule?el("div",{style:{fontSize:11.5,color:"var(--text3)"}},"Matricule "+x.matricule):null),
+        el("td",{style:td},pkFr(x.du+"T12:00")+" → "+pkFr(x.au+"T12:00"),!fini&&x.au<auj?el("div",null,pill("En retard","#b91c1c","#fee2e2")):null),
+        el("td",{style:td},fini?pkFr(x.rendu.le+"T12:00")+(x.rendu.km?" · "+Number(x.rendu.km).toLocaleString("fr-FR")+" km":""):null),
+        el("td",{style:{...td,textAlign:"right",whiteSpace:"nowrap"}},el("button",{type:"button",className:"btn btn-outline",style:btnS,onClick:()=>imprimerAttestation(x)},"📄 Attestation"),
+          !fini&&el("button",{type:"button",className:"btn btn-primary",style:{...btnS,marginLeft:6},onClick:()=>setRetour({id:x.id,le:auj,km:"",note:""})},"Retour")))))));
+    return el(React.Fragment,null,
+      el("div",{className:"kpi-grid",style:{gridTemplateColumns:"repeat(3,1fr)",marginBottom:14}},kpi("Véhicules du pool",pool.length,pool.length?"":"Choisis « Pool » sur la fiche d'un véhicule"),
+        kpi("En prêt",enCours.length,retard.length?retard.length+" en retard":"aucun retard",retard.length?"#B91C1C":"#B45309"),kpi("Disponibles",pool.filter(v=>!pretEnCours(v)).length,"prêts à partir","#15803D")),
+      el("div",{style:{fontWeight:800,fontSize:14,margin:"4px 0 8px"}},"En cours"),
+      enCours.length?table(enCours,false):el("div",{style:{...carte,padding:22,color:"var(--text3)",fontSize:13}},"Aucun véhicule en prêt."),
+      finis.length?el(React.Fragment,null,el("div",{style:{fontWeight:800,fontSize:14,margin:"18px 0 8px"}},"Historique"),table(finis.slice(0,50),true)):null);};
   const att=P.filter(p=>p.tit).length,ko=P.filter(p=>p.ko).length,libres=P.filter(p=>!p.tit&&!p.ko).length,bornes=P.filter(p=>p.type==="borne"),panne=bornes.filter(p=>p.panne);
   return el("div",null,
     el("div",{style:{display:"flex",alignItems:"center",gap:10,flexWrap:"wrap",marginBottom:14}},
-      seg([["places","Places"],["vehicules","Véhicules"]],tab,k=>{setTab(k);setEdit(null);setVEdit(null);}),
+      seg([["places","Places"],["vehicules","Véhicules"],["prets","Prêts de véhicules"]],tab,k=>{setTab(k);setEdit(null);setVEdit(null);}),
       el("div",{style:{marginLeft:"auto",display:"flex",gap:8}},tab==="places"?el(React.Fragment,null,
           el("button",{type:"button",className:"btn btn-outline",onClick:()=>{setOutils(true);setEdit(null);}},"Créer / importer des places"),
           el("button",{type:"button",className:"btn btn-primary",onClick:()=>ouvrir("new")},"+ Nouvelle place"))
+        :tab==="prets"?el("button",{type:"button",className:"btn btn-primary",onClick:()=>ouvrirPret()},"+ Nouveau prêt")
         :el("button",{type:"button",className:"btn btn-primary",onClick:()=>ouvrirV("new")},"+ Nouveau véhicule"))),
     tab==="places"?el(React.Fragment,null,
       !P.length&&blocReprise,
@@ -10052,8 +10224,8 @@ function VueParking({showToast,addLog,badges,session}){
         el("select",{className:"inp",value:niv,onChange:e=>setNiv(e.target.value),style:{width:"auto"}},el("option",{value:""},"Tous les niveaux"),nivs.map(n=>el("option",{key:n,value:n},"Niveau "+n))),
         el("div",{style:{marginLeft:"auto"}},seg([["plan","Plan"],["liste","Liste"]],vue,setVue))),
       vue==="plan"?plan():liste())
-    :vehicules(),
-    fichePlace,ficheV,blocOutils);
+    :tab==="prets"?pretsVue():vehicules(),
+    fichePlace,ficheV,blocOutils,fichePret,ficheRetour);
 }
 
 function VueHistoriqueColis({site}={}){
@@ -13245,7 +13417,7 @@ catch(e){document.getElementById("root").innerHTML='<div style="padding:40px;fon
   }
   // ── Nouvelle version en ligne : bandeau cliquable pour actualiser ──
   (function(){
-    var VERSION_PAGE='v119';var affiche=false,dernier=0;
+    var VERSION_PAGE='v120';var affiche=false,dernier=0;
     function montrer(){if(affiche)return;affiche=true;
       var b=document.createElement('button');b.type='button';b.id='maj-dispo';
       b.innerHTML='<span style="font-size:16px">🔄</span><span>Nouvelle version de l\'appli</span><b style="background:#fff;color:#1D4ED8;border-radius:999px;padding:4px 12px">Actualiser</b>';
