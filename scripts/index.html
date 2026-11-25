@@ -14,7 +14,77 @@ pre{margin:0;background:var(--code);color:var(--codetx);padding:16px;overflow:au
 .how{margin-top:16px;color:var(--t2);font-size:13.5px}
 </style></head><body><div class="w"><h1>Scripts sécurité — Gestion Collaborateurs</h1>
 <p class="intro">Supabase → SQL Editor : « Copier le script », coller, puis « Run ». Ordre conseillé : 0, puis le script voulu, puis 0 pour vérifier.</p>
-<div class="tabs"><button class="tab on" data-i="7">17 · Parking & véhicules</button><button class="tab" data-i="6">16 · Mails des badges de prêt</button><button class="tab" data-i="5">15 · Journal des connexions</button><button class="tab" data-i="4">14 · Accueil Hexagone</button><button class="tab" data-i="3">13 · Nouveau collaborateur sans mail</button><button class="tab" data-i="0">10 · Mentions légales et confidentialité</button><button class="tab" data-i="1">11 · Pièces jointes du mail de bienvenue</button><button class="tab" data-i="2">12 · Gras dans les mails</button></div><section class="sc on" id="s7"><div class="hd"><div><h2>17 · Parking & véhicules</h2><p>Crée le parking (places et véhicules) dans la base. Accès réservé à l'administrateur et aux comptes cochés « 🚗 Parking ». Ne touche à aucune autre donnée.</p><small>17-parking.sql · 39 lignes</small></div><button class="cp" data-i="7">Copier le script</button></div><pre id="c7">-- ════════════════════════════════════════════════════════════════════
+<div class="tabs"><button class="tab on" data-i="8">18 · Mail fleet (prêts de véhicules)</button><button class="tab" data-i="7">17 · Parking & véhicules</button><button class="tab" data-i="6">16 · Mails des badges de prêt</button><button class="tab" data-i="5">15 · Journal des connexions</button><button class="tab" data-i="4">14 · Accueil Hexagone</button><button class="tab" data-i="3">13 · Nouveau collaborateur sans mail</button><button class="tab" data-i="0">10 · Mentions légales et confidentialité</button><button class="tab" data-i="1">11 · Pièces jointes du mail de bienvenue</button><button class="tab" data-i="2">12 · Gras dans les mails</button></div><section class="sc on" id="s8"><div class="hd"><div><h2>18 · Mail fleet (prêts de véhicules)</h2><p>Permet d'envoyer le récapitulatif de l'attestation de prêt à la boîte mail fleet quand la case est cochée. Le mail ne part qu'à l'adresse fleet enregistrée. Ne touche à aucune donnée.</p><small>18-mail-fleet.sql · 70 lignes</small></div><button class="cp" data-i="8">Copier le script</button></div><pre id="c8">-- ════════════════════════════════════════════════════════════════════
+--  18 · Prêts de véhicules : mail à la boîte fleet
+--  Quand la case « Envoyer à la boîte mail fleet » est cochée sur un prêt,
+--  l'appli demande à la base d'envoyer le récapitulatif de l'attestation
+--  à l'adresse fleet enregistrée dans le parking.
+--  • le mail est construit ici, à partir du prêt enregistré (rien d'autre) ;
+--  • il ne part QU'À l'adresse fleet du parking (pas n'importe où) ;
+--  • réservé à l'administrateur et aux comptes « 🚗 Parking ».
+--  À lancer une fois dans Supabase → SQL Editor. Ne touche à aucune donnée.
+-- ════════════════════════════════════════════════════════════════════
+
+create or replace function public.lp24_mail_pret_vehicule(p_id text) returns text
+language plpgsql security definer set search_path = public, extensions as $f$
+declare
+  d jsonb; pr jsonb; dest text; sujet text; lignes text := ''; docs text := ''; r text[]; sig text; msg text;
+  cel1 constant text := 'padding:7px 16px 7px 12px;border:1px solid #e5e7eb;background:#f5f7fa;font-family:Calibri,Arial,sans-serif;font-size:10.5pt;color:#6b7280;white-space:nowrap';
+  cel2 constant text := 'padding:7px 16px 7px 12px;border:1px solid #e5e7eb;font-family:Calibri,Arial,sans-serif;font-size:11pt;color:#111827;font-weight:bold';
+  pst  constant text := 'margin:0 0 12px;font-family:Calibri,Arial,sans-serif;font-size:11pt;line-height:1.45;color:#1f2937';
+  fr text;
+begin
+  if not public.lp24_acces_parking() then raise exception 'Accès réservé au parking'; end if;
+  select data into d from public.lp24_parking where id = 1;
+  dest := nullif(trim(coalesce(d-&gt;&gt;'fleetEmail', '')), '');
+  if dest is null or dest !~ '^[^@\s,;]+@[^@\s,;]+\.[^@\s,;]+$' then raise exception 'Adresse fleet manquante ou invalide'; end if;
+  select x into pr from jsonb_array_elements(coalesce(d-&gt;'prets', '[]'::jsonb)) x where x-&gt;&gt;'id' = p_id;
+  if pr is null then raise exception 'Prêt introuvable'; end if;
+
+  foreach r slice 1 in array array[
+      ['Véhicule', coalesce(pr-&gt;&gt;'plaque', '') || coalesce(' — ' || nullif(pr-&gt;&gt;'modele', ''), '')],
+      ['Collaborateur', coalesce(pr-&gt;&gt;'nom', '')],
+      ['Matricule', coalesce(nullif(pr-&gt;&gt;'matricule', ''), '—')],
+      ['Demeurant', coalesce(pr-&gt;&gt;'adresse', '')],
+      ['Du', to_char((pr-&gt;&gt;'du')::date, 'DD/MM/YYYY')],
+      ['Au', to_char((pr-&gt;&gt;'au')::date, 'DD/MM/YYYY')],
+      ['À', coalesce(nullif(pr-&gt;&gt;'heure', ''), '—')],
+      ['Km au départ', coalesce(nullif(pr-&gt;&gt;'km', ''), '—')]] loop
+    lignes := lignes || '&lt;tr&gt;&lt;td style="' || cel1 || '"&gt;' || public.lp24_esc(r[1]) || '&lt;/td&gt;&lt;td style="' || cel2 || '"&gt;' || public.lp24_esc(r[2]) || '&lt;/td&gt;&lt;/tr&gt;';
+  end loop;
+  if (pr-&gt;'docs'-&gt;&gt;'cg') = 'true' then docs := docs || '&lt;li&gt;La copie de carte grise du véhicule&lt;/li&gt;'; end if;
+  if (pr-&gt;'docs'-&gt;&gt;'assur') = 'true' then docs := docs || '&lt;li&gt;La carte d''assurance&lt;/li&gt;'; end if;
+  if (pr-&gt;'docs'-&gt;&gt;'carbu') = 'true' then docs := docs || '&lt;li&gt;La carte carburant&lt;/li&gt;'; end if;
+  if (pr-&gt;'docs'-&gt;&gt;'critair') = 'true' then docs := docs || '&lt;li&gt;La vignette Crit''Air&lt;/li&gt;'; end if;
+  fr := to_char(((pr-&gt;&gt;'cree')::timestamptz) at time zone 'Europe/Paris', 'DD/MM/YYYY à HH24:MI');
+  sig := replace(public.lp24_esc(public.lp24_texte('autoSignature')), E'\n', '&lt;br&gt;');
+
+  sujet := 'Prêt véhicule — ' || coalesce(pr-&gt;&gt;'plaque', '') || ' — ' || coalesce(pr-&gt;&gt;'nom', '')
+        || ' — du ' || to_char((pr-&gt;&gt;'du')::date, 'DD/MM/YYYY') || ' au ' || to_char((pr-&gt;&gt;'au')::date, 'DD/MM/YYYY');
+  msg := '&lt;table role="presentation" cellpadding="0" cellspacing="0" border="0" style="border-collapse:collapse;max-width:640px"&gt;&lt;tr&gt;&lt;td style="font-family:Calibri,Arial,sans-serif;font-size:11pt;line-height:1.45;color:#1f2937"&gt;'
+    || '&lt;p style="' || pst || '"&gt;Bonjour,&lt;/p&gt;'
+    || '&lt;p style="' || pst || '"&gt;Un véhicule de prêt vient d''être remis. L''&lt;b&gt;attestation d''attribution de véhicule de prêt&lt;/b&gt; a été lue et signée électroniquement par le collaborateur le ' || fr || '.&lt;/p&gt;'
+    || '&lt;table role="presentation" cellpadding="0" cellspacing="0" border="0" style="border-collapse:collapse;margin:2px 0 16px"&gt;' || lignes || '&lt;/table&gt;'
+    || case when docs &lt;&gt; '' then '&lt;p style="' || pst || '"&gt;&lt;b&gt;Remis ce jour :&lt;/b&gt;&lt;/p&gt;&lt;ul style="margin:0 0 14px 18px;padding:0;font-family:Calibri,Arial,sans-serif;font-size:11pt"&gt;' || docs || '&lt;/ul&gt;' else '' end
+    || '&lt;p style="' || pst || '"&gt;&lt;b&gt;Le collaborateur s''est engagé :&lt;/b&gt;&lt;/p&gt;&lt;ul style="margin:0 0 14px 18px;padding:0;font-family:Calibri,Arial,sans-serif;font-size:10.5pt;color:#374151"&gt;'
+    || '&lt;li&gt;à informer immédiatement la Société de tout retrait de son permis de conduire, temporaire ou définitif ;&lt;/li&gt;'
+    || '&lt;li&gt;à gérer, en cas de panne, la communication et le suivi du dossier auprès de l''assistance et du garage jusqu''à la clôture du dossier ;&lt;/li&gt;'
+    || '&lt;li&gt;à prendre en charge tous procès-verbaux adressés à la Société (horodateur, FPS, stationnement interdit, excès de vitesse) ;&lt;/li&gt;'
+    || '&lt;li&gt;à informer la Société de tout événement survenant au véhicule dans les 48 heures.&lt;/li&gt;&lt;/ul&gt;'
+    || '&lt;p style="margin:0 0 16px;font-family:Calibri,Arial,sans-serif;font-size:9.5pt;color:#6b7280"&gt;L''attestation signée (avec la signature) est conservée dans Gestion Collaborateurs → Parking &amp;amp; véhicules → Prêts de véhicules' || coalesce(', enregistrée par ' || public.lp24_esc(nullif(pr-&gt;&gt;'par', '')), '') || '.&lt;/p&gt;'
+    || '&lt;p style="' || pst || '"&gt;Cordialement,&lt;br&gt;' || sig || '&lt;/p&gt;&lt;/td&gt;&lt;/tr&gt;&lt;/table&gt;';
+
+  perform public.lp24_envoyer(regexp_replace(dest, '\s*;\s*', ',', 'g'), '', sujet, msg, 'pret_vehicule');
+  insert into public.historique(action, detail, user_email, ts)
+  values ('Mail fleet', coalesce(pr-&gt;&gt;'plaque', '') || ' — ' || coalesce(pr-&gt;&gt;'nom', '') || ' → ' || dest, coalesce(public.lp24_email_appelant(), 'appli'), now());
+  return dest;
+end $f$;
+revoke all on function public.lp24_mail_pret_vehicule(text) from public, anon;
+grant execute on function public.lp24_mail_pret_vehicule(text) to authenticated;
+
+-- Vérification : doit afficher « Installé »
+select 'Installé' as resultat;
+</pre></section><section class="sc" id="s7"><div class="hd"><div><h2>17 · Parking & véhicules</h2><p>Crée le parking (places et véhicules) dans la base. Accès réservé à l'administrateur et aux comptes cochés « 🚗 Parking ». Ne touche à aucune autre donnée.</p><small>17-parking.sql · 39 lignes</small></div><button class="cp" data-i="7">Copier le script</button></div><pre id="c7">-- ════════════════════════════════════════════════════════════════════
 --  17 · Parking &amp; véhicules
 --  • crée la table du parking (places + véhicules) ;
 --  • accès réservé à l'administrateur et aux comptes cochés « 🚗 Parking »
