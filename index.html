@@ -3484,14 +3484,14 @@ const pkFr=d=>{try{return new Date(d).toLocaleDateString("fr-FR");}catch(e){retu
 function pkAlertesDe(data){const out=[];if(!data)return out;
   (data.vehicules||[]).forEach(v=>VH_ECH.forEach(([k,l])=>{const j=vhJours(v[k]);if(j!==null&&j<=30)out.push({v,k,l,j});}));return out;}
 
-function VueParking({showToast,addLog,badges,session}){
+function VueParking({showToast,addLog,badges,session,mode}){
   const el=React.createElement;
   const[data,setData]=React.useState(null);const[err,setErr]=React.useState("");
-  const[tab,setTab]=React.useState("places");const[vue,setVue]=React.useState("plan");
+  const tab=mode==="prets"?"prets":"places";const setTab=()=>{};const[vue,setVue]=React.useState("plan");
   const[q,setQ]=React.useState("");const[niv,setNiv]=React.useState("");const[f,setF]=React.useState("all");
   const[edit,setEdit]=React.useState(null);const[form,setForm]=React.useState(null);
   const[vEdit,setVEdit]=React.useState(null);const[vForm,setVForm]=React.useState(null);
-  const[outils,setOutils]=React.useState(false);const[grand,setGrand]=React.useState(false);const[vue3d,setVue3d]=React.useState(true);const[zoom,setZoom]=React.useState(null);const[photos,setPhotos]=React.useState({});const[pForm,setPForm]=React.useState(null);const[retour,setRetour]=React.useState(null);
+  const[outils,setOutils]=React.useState(false);const[grand,setGrand]=React.useState(false);const[vue3d,setVue3d]=React.useState(true);const[ensemble,setEnsemble]=React.useState(true);const[arrive,setArrive]=React.useState(false);const[zoom,setZoom]=React.useState(null);const[photos,setPhotos]=React.useState({});const[pForm,setPForm]=React.useState(null);const[retour,setRetour]=React.useState(null);
   // Photo du modèle (Wikipédia, gratuit, sans clé) : seuls la marque et le modèle sont envoyés, jamais la plaque ni le nom
   const zp=data&&zoom?(data.places||[]).find(x=>x.id===zoom):null;const cleMod=zp&&zp.tit&&zp.marque&&zp.modele?pkMM(zp):"";
   React.useEffect(()=>{if(!cleMod||photos[cleMod]!==undefined)return;setPhotos(o=>({...o,[cleMod]:null}));
@@ -3686,7 +3686,28 @@ function VueParking({showToast,addLog,badges,session}){
         el("span",{style:{background:"#1d4ed8",width:14}})):null,
       el("div",null,ligne("Titulaire",p.tit||"—"),ligne("Direction / service",p.dir),ligne("Remarque",p.note)),
       el("button",{type:"button",className:"btn btn-primary",style:{marginTop:"auto"},onClick:()=>ouvrir(p.id)},p.tit||p.ko?"Ouvrir la fiche":"Attribuer la place"));};
-  const plan=()=>{const ns=Object.keys(PK_PLAN);const nv=PK_PLAN[niv]?niv:ns[0];const PL=PK_PLAN[nv];
+  const vbDe=PL=>{const xs=[],ys=[];Object.values(PL.pts).forEach(([x,y,w,h])=>{const d=Math.max(w,h)/2+30;xs.push(x-d,x+d);ys.push(y-d,y+d);});
+    const v=[Math.max(PL.ox,Math.min(...xs)),Math.max(PL.oy,Math.min(...ys))];v.push(Math.min(PL.ox+PL.w,Math.max(...xs))-v[0],Math.min(PL.oy+PL.h,Math.max(...ys))-v[1]);return v;};
+  const ouvrirEtage=n=>{setNiv(n);setEnsemble(false);setArrive(true);setTimeout(()=>setArrive(false),950);};
+  const pile=()=>{const ns=Object.keys(PK_PLAN);
+    return el("div",{style:{...carte,padding:"14px 14px 0",overflow:"hidden"}},
+      el("div",{style:{display:"flex",alignItems:"center",gap:10,flexWrap:"wrap"}},el("div",{style:{fontWeight:800,fontSize:14}},"Les niveaux du parking"),
+        el("span",{style:{fontSize:12,color:"var(--text3)"}},"Clique sur un niveau pour l'ouvrir en 3D")),
+      el("div",{className:"pk-pile"},ns.map((n,i)=>{const PL=PK_PLAN[n];const v=vbDe(PL);const pl=P.filter(p=>String(p.niv||"")===n);const by={};pl.forEach(p=>by[pkKey(p.num)]=p);
+        const lib=pl.filter(p=>!p.tit&&!p.ko).length,att=pl.filter(p=>p.tit).length,bor=pl.filter(p=>p.type==="borne").length;
+        return el("div",{key:n,className:"pk-etage",style:{zIndex:ns.length-i,aspectRatio:String(v[2]/v[3])},onClick:()=>ouvrirEtage(n),title:"Ouvrir le niveau "+n+" en 3D"},
+          el("div",{className:"pk-dalle"},el("svg",{viewBox:v.join(" "),preserveAspectRatio:"xMidYMid meet",style:{display:"block",width:"100%",height:"100%"}},
+            el("defs",null,el("clipPath",{id:"pk-cl"+i},el("rect",{x:v[0],y:v[1],width:v[2],height:v[3]}))),
+            el("rect",{x:v[0],y:v[1],width:v[2],height:v[3],fill:"#aeb6bf"}),
+            el("image",{href:PL.img,x:PL.ox,y:PL.oy,width:PL.w,height:PL.h,opacity:.14,clipPath:"url(#pk-cl"+i+")",style:{mixBlendMode:"multiply"}}),
+            Object.entries(PL.pts).map(([k,[x,y,w,h,r]])=>{const p=by[k];if(!p)return null;const cc=p.ko?"#dc2626":p.tit?(PK_COUL[p.couleur]||"#2c5f85"):"#bbf7d0";
+              return el("g",{key:k,transform:"translate("+x+" "+y+") rotate("+r+")"},el("rect",{x:-w/2,y:-h/2,width:w,height:h,rx:4,fill:p.tit?"#d7dce2":p.ko?"#fee2e2":"#dcfce7",stroke:"#fff",strokeWidth:3}),
+                p.tit&&!p.ko?el("rect",{x:-w*.38,y:-h*.34,width:w*.76,height:h*.68,rx:Math.min(w,h)*.25,fill:cc}):null);}))),
+          el("div",{className:"pk-etiq"},el("b",null,"Niveau "+n),el("span",null,pl.length+" places · "+att+" attribuées · "+lib+" libres"+(bor?" · "+bor+" bornes":""))));})));};
+  const plan=()=>{const ns=Object.keys(PK_PLAN);
+    if(ensemble&&!qn)return pile();
+    const nvHit=qn?(ns.find(n=>P.some(p=>String(p.niv||"")===n&&[p.num,p.tit,p.plaque,p.dir,p.marque,p.modele].join(" ").toLowerCase().replace(/[\s-]/g,"").includes(qn)))):null;
+    const nv=PK_PLAN[niv]&&!(nvHit&&nvHit!==niv&&ensemble)?niv:(nvHit||ns[0]);const PL=PK_PLAN[nv];
     const pl=P.filter(p=>String(p.niv||"")===nv);const byKey={};pl.forEach(p=>byKey[pkKey(p.num)]=p);
     const hit=p=>qn&&p&&[p.num,p.tit,p.plaque,p.dir,p.marque,p.modele,(jum(p)||{}).num].join(" ").toLowerCase().replace(/[\s-]/g,"").includes(qn);
     const anyHit=qn&&pl.some(hit);const col=p=>p.ko?["#b91c1c",.5]:p.tit?["#2c5f85",.42]:["#16a34a",.38];
@@ -3696,7 +3717,8 @@ function VueParking({showToast,addLog,badges,session}){
     const leg=(c,t,rond)=>el("span",{style:{display:"inline-flex",alignItems:"center",gap:5}},el("i",{style:{display:"inline-block",width:12,height:12,borderRadius:rond?"50%":3,background:rond?c:c+"66",border:rond?"none":"2px solid "+c}}),t);
     return el("div",{style:{...carte,padding:12}},
       el("div",{style:{display:"flex",alignItems:"center",gap:8,flexWrap:"wrap",marginBottom:10}},
-        ns.map(n=>el("button",{key:n,type:"button",className:"btn "+(n===nv?"btn-primary":"btn-outline"),style:{fontSize:12,padding:"6px 12px"},onClick:()=>setNiv(n)},"Niveau "+n)),
+        el("button",{type:"button",className:"btn btn-outline",style:{fontSize:12,padding:"6px 12px",fontWeight:700},onClick:()=>{setEnsemble(true);setQ("");setZoom(null);}},"← Tous les niveaux"),
+        ns.map(n=>el("button",{key:n,type:"button",className:"btn "+(n===nv?"btn-primary":"btn-outline"),style:{fontSize:12,padding:"6px 12px"},onClick:()=>ouvrirEtage(n)},"Niveau "+n)),
         el("button",{type:"button",className:"btn btn-outline",style:{fontSize:12,padding:"6px 12px"},onClick:()=>setGrand(!grand)},grand?"Réduire":"Agrandir"),el("button",{type:"button",className:"btn btn-outline",style:{fontSize:12,padding:"6px 12px"},onClick:()=>setVue3d(!vue3d)},vue3d?"Plan d'origine":"Vue 3D"),
         el("span",{style:{display:"flex",gap:12,flexWrap:"wrap",marginLeft:"auto",fontSize:12,color:"var(--text2)"}},leg("#2c5f85",vue3d?"Attribuée (voiture)":"Attribuée"),leg("#16a34a","Libre"),leg("#b91c1c","Hors service"),leg("#15803d","Borne",true))),
       el("div",{style:{display:"flex",gap:14,alignItems:"stretch",flexWrap:"wrap"}},el("div",{style:{flex:"1 1 520px",minWidth:0}},
@@ -3711,7 +3733,7 @@ function VueParking({showToast,addLog,badges,session}){
         // Vue 3D : sol en béton, emplacements tracés, voitures en relief sur les places attribuées
         const CAR={att:["#2c5f85","#1e4461","#9cc3e0"],ko:["#b91c1c","#7f1d1d","#fecaca"]};
         return el("div",{style:{overflow:"hidden",borderRadius:12,background:"linear-gradient(180deg,#cfd5dc,#e8ebef)",padding:"18px 10px 6px",perspective:"1500px"}},
-          el("svg",{viewBox:vb.join(" "),preserveAspectRatio:"xMidYMid meet",style:{display:"block",width:"100%",height:grand?"min(82vh,820px)":"540px",transform:"rotateX(24deg) scale(1.06)",transformOrigin:"50% 60%"}},
+          el("svg",{viewBox:vb.join(" "),preserveAspectRatio:"xMidYMid meet",className:arrive?"pk-arrive":"",style:{display:"block",width:"100%",height:grand?"min(82vh,820px)":"540px",transform:"rotateX(24deg) scale(1.06)",transformOrigin:"50% 60%"}},
             el("defs",null,
               el("filter",{id:"pk-ombre",x:"-30%",y:"-30%",width:"160%",height:"160%"},el("feDropShadow",{dx:6,dy:9,stdDeviation:5,floodColor:"#0f172a",floodOpacity:.45})),
               el("pattern",{id:"pk-hach",width:14,height:14,patternUnits:"userSpaceOnUse",patternTransform:"rotate(45)"},el("rect",{width:14,height:14,fill:"#fee2e2"}),el("rect",{width:5,height:14,fill:"#fca5a5"})),
@@ -3877,8 +3899,16 @@ function VueParking({showToast,addLog,badges,session}){
             el("td",{style:{...td,textAlign:"right"}},el("button",{type:"button",className:"btn btn-outline",style:{fontSize:12,padding:"5px 10px"},onClick:()=>imprimerAttestation(x)},"📄 Attestation")))))))):null);};
   const att=P.filter(p=>p.tit).length,ko=P.filter(p=>p.ko).length,libres=P.filter(p=>!p.tit&&!p.ko).length,bornes=P.filter(p=>p.type==="borne"),panne=bornes.filter(p=>p.panne);
   return el("div",null,
+    el("style",null,".pk-pile{display:flex;flex-direction:column;align-items:center;perspective:2000px;padding:0 0 0}"
+      +".pk-etage{position:relative;width:min(470px,70%);margin-top:-24%;cursor:pointer;transform-style:preserve-3d}.pk-etage:first-child{margin-top:-8%}"
+      +".pk-dalle{position:absolute;inset:0;border-radius:22px;overflow:hidden;transform:rotateX(58deg) rotateZ(-30deg);transition:transform .45s cubic-bezier(.2,.8,.2,1),box-shadow .45s,filter .45s;box-shadow:0 26px 40px rgba(15,23,42,.28),0 0 0 6px #e5e7eb;filter:saturate(.9)}"
+      +".pk-etage:hover .pk-dalle{transform:translateY(-34px) rotateX(58deg) rotateZ(-30deg);box-shadow:0 50px 60px rgba(15,23,42,.35),0 0 0 6px #3b82f6;filter:none}"
+      +".pk-etiq{position:absolute;right:-6%;top:44%;display:flex;flex-direction:column;gap:2px;background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:8px 12px;box-shadow:0 6px 16px rgba(15,23,42,.12);font-size:12px;color:var(--text2);white-space:nowrap;transition:transform .45s}"
+      +".pk-etiq b{font-size:14px;color:var(--text)}.pk-etage:hover .pk-etiq{transform:translateY(-30px);border-color:#3b82f6}"
+      +"@keyframes pkArrive{0%{transform:rotateX(58deg) rotateZ(-30deg) scale(.55);opacity:.35}60%{opacity:1}100%{transform:rotateX(24deg) scale(1.06)}}.pk-arrive{animation:pkArrive .9s cubic-bezier(.2,.8,.2,1) both}"
+      +"@media (max-width:700px){.pk-etiq{right:2%;top:auto;bottom:6%}}"),
     el("div",{style:{display:"flex",alignItems:"center",gap:10,flexWrap:"wrap",marginBottom:14}},
-      seg([["places","Places"],["prets","Prêts de véhicules"]],tab,k=>{setTab(k);setEdit(null);setVEdit(null);}),
+
       el("div",{style:{marginLeft:"auto",display:"flex",gap:8}},tab==="places"?el(React.Fragment,null,
           el("button",{type:"button",className:"btn btn-outline",onClick:()=>{setOutils(true);setEdit(null);}},"Créer / importer des places"),
           el("button",{type:"button",className:"btn btn-primary",onClick:()=>ouvrir("new")},"+ Nouvelle place"))
@@ -5412,6 +5442,7 @@ const ICONES_NAV={
   historique_colis:'<path d="M4 8l8-4 8 4v8l-8 4-8-4z"/><path d="M4 8l8 4 8-4M12 12v8"/>',
   calendrier:'<rect x="3.5" y="5" width="17" height="15.5" rx="2"/><path d="M3.5 9.5h17M8 3v4M16 3v4"/>',
   coherence:'<path d="M9 11l3 3 8-8"/><path d="M20 12v7a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h9"/>',
+  prets_vehicules:'<circle cx="8" cy="15" r="4"/><path d="M10.8 12.2 19 4M16 7l2 2M14 9l2 2"/>',
   parking:'<path d="M5 17h14M6 17l1.5-5.5A2 2 0 0 1 9.4 10h5.2a2 2 0 0 1 1.9 1.5L18 17"/><rect x="4" y="15" width="16" height="5" rx="1.5"/><circle cx="8" cy="17.5" r=".8"/><circle cx="16" cy="17.5" r=".8"/>',
   notifications:'<path d="M6 16V11a6 6 0 0 1 12 0v5l1.5 2h-15z"/><path d="M10 20a2 2 0 0 0 4 0"/>',
   aide:'<circle cx="12" cy="12" r="9"/><path d="M9.5 9.5a2.5 2.5 0 1 1 3.5 2.3c-.6.3-1 .8-1 1.5V14"/><circle cx="12" cy="17.2" r=".6" fill="currentColor"/>',
@@ -5436,8 +5467,8 @@ function Courbe({vals,col,w=104,h=34}){if(!vals||vals.length<2)return null;const
   const pts=vals.map((v,i)=>[i*w/(vals.length-1),h-2-(v-mn)/((mx-mn)||1)*(h-6)]);const d="M"+pts.map(p=>p[0].toFixed(1)+","+p[1].toFixed(1)).join(" L");
   return React.createElement("svg",{className:"courbe",width:w,height:h,viewBox:"0 0 "+w+" "+h},React.createElement("path",{d:d+" L"+w+","+h+" L0,"+h+" Z",fill:col,opacity:.12}),React.createElement("path",{d,fill:"none",stroke:col,strokeWidth:2,strokeLinecap:"round",strokeLinejoin:"round"}));}
 // ── Menu caché (☰) ──
-const MENU_SECTIONS=[["",["accueil","calendrier"]],["Personnes",["arrivees","collaborateurs","field_support"]],["Accueil physique",["gestion_accueil","gestion_accueil_hex","historique_pret","historique_colis"]],["",["casiers","parking"]],["Outils",["impression","rapport","coherence"]]];
-const MENU_ICONES={"Personnes":"collaborateurs","Accueil physique":"gestion_accueil","Outils":"impression"};
+const MENU_SECTIONS=[["",["accueil","calendrier"]],["Personnes",["arrivees","collaborateurs","field_support"]],["Accueil physique",["gestion_accueil","gestion_accueil_hex","historique_pret","historique_colis"]],["",["casiers"]],["Fleet",["parking","prets_vehicules"]],["Outils",["impression","rapport","coherence"]]];
+const MENU_ICONES={"Personnes":"collaborateurs","Accueil physique":"gestion_accueil","Fleet":"parking","Outils":"impression"};
 function personneConnectee(session){
   const ROLES={admin:"Administrateur",user:"Utilisateur",it:"Service IT",badge:"Gestion des badges"};
   const role=ROLES[session&&session.role]||"Connecté";
@@ -6756,13 +6787,15 @@ useEffect(()=>{
     {id:"historique_colis",label:"Historique des colis",icon:"📦"},
     {id:"calendrier",label:"Calendrier",icon:"📅"},
     {id:"coherence",label:"Cohérence",icon:"🧩"},
-    {id:"parking",label:"Parking & véhicules",icon:"🚗"},
+    {id:"parking",label:"Parking",icon:"🚗"},
+    {id:"prets_vehicules",label:"Prêts de véhicules",icon:"🔑"},
   ];
   const archivesCount=badges.filter(b=>b.statut==="Archivé").length;
   const histoCount=histo.length;
   const fssOpenCount=fssData.filter(f=>!f.cloture&&f.statut!=="Terminée"&&!fssPlusTard(f)).length;
   const nbCoh=useMemo(()=>compterIncoherences(badges,fssData,settings&&settings.coh_ignores),[badges,fssData,settings&&settings.coh_ignores]);
   const canAccess=useCallback(viewId=>{
+    if(viewId==="prets_vehicules")return canAccess("parking");
     if(session&&session.role==="fleet")return viewId==="parking"||viewId==="aide";
     if(viewId==="aide"||viewId==="calendrier")return true;
     if(viewId==="parking")return !!(session&&!session.espace&&(session.role==="admin"||session.parking));
@@ -6822,7 +6855,8 @@ useEffect(()=>{
       case "historique_pret": return React.createElement(VueHistoriquePret,{site:window._siteSession});
       case "historique_colis": return React.createElement(VueHistoriqueColis,{site:window._siteSession});
       case "calendrier": return React.createElement(VueCalendrier,{fssData,badges,canAccess,setView});
-      case "parking": return React.createElement(VueParking,{showToast,addLog,badges,session});
+      case "parking": return React.createElement(VueParking,{key:"places",mode:"places",showToast,addLog,badges,session});
+      case "prets_vehicules": return React.createElement(VueParking,{key:"prets",mode:"prets",showToast,addLog,badges,session});
       case "coherence": return React.createElement(VueArriveesDeparts,{badges,setBadges,fssData,settings,setSettings:session&&session.role==="admin"?setSettings:null,canAccess,setView,showToast,addLog,coherence:true});
       case "arrivees": return React.createElement(VueArriveesDeparts,{badges,setBadges,fssData,settings,setSettings:session&&session.role==="admin"?setSettings:null,canAccess,setView,showToast,addLog});
       case "gestion_accueil_hex": return React.createElement(VueGestionAccueil,{key:"hex",onglet:"gestion_accueil",setView,canAccess,showToast,addLog,badges,site:"Hexagone"});
@@ -9855,14 +9889,14 @@ const pkFr=d=>{try{return new Date(d).toLocaleDateString("fr-FR");}catch(e){retu
 function pkAlertesDe(data){const out=[];if(!data)return out;
   (data.vehicules||[]).forEach(v=>VH_ECH.forEach(([k,l])=>{const j=vhJours(v[k]);if(j!==null&&j<=30)out.push({v,k,l,j});}));return out;}
 
-function VueParking({showToast,addLog,badges,session}){
+function VueParking({showToast,addLog,badges,session,mode}){
   const el=React.createElement;
   const[data,setData]=React.useState(null);const[err,setErr]=React.useState("");
-  const[tab,setTab]=React.useState("places");const[vue,setVue]=React.useState("plan");
+  const tab=mode==="prets"?"prets":"places";const setTab=()=>{};const[vue,setVue]=React.useState("plan");
   const[q,setQ]=React.useState("");const[niv,setNiv]=React.useState("");const[f,setF]=React.useState("all");
   const[edit,setEdit]=React.useState(null);const[form,setForm]=React.useState(null);
   const[vEdit,setVEdit]=React.useState(null);const[vForm,setVForm]=React.useState(null);
-  const[outils,setOutils]=React.useState(false);const[grand,setGrand]=React.useState(false);const[vue3d,setVue3d]=React.useState(true);const[zoom,setZoom]=React.useState(null);const[photos,setPhotos]=React.useState({});const[pForm,setPForm]=React.useState(null);const[retour,setRetour]=React.useState(null);
+  const[outils,setOutils]=React.useState(false);const[grand,setGrand]=React.useState(false);const[vue3d,setVue3d]=React.useState(true);const[ensemble,setEnsemble]=React.useState(true);const[arrive,setArrive]=React.useState(false);const[zoom,setZoom]=React.useState(null);const[photos,setPhotos]=React.useState({});const[pForm,setPForm]=React.useState(null);const[retour,setRetour]=React.useState(null);
   // Photo du modèle (Wikipédia, gratuit, sans clé) : seuls la marque et le modèle sont envoyés, jamais la plaque ni le nom
   const zp=data&&zoom?(data.places||[]).find(x=>x.id===zoom):null;const cleMod=zp&&zp.tit&&zp.marque&&zp.modele?pkMM(zp):"";
   React.useEffect(()=>{if(!cleMod||photos[cleMod]!==undefined)return;setPhotos(o=>({...o,[cleMod]:null}));
@@ -10057,7 +10091,28 @@ function VueParking({showToast,addLog,badges,session}){
         el("span",{style:{background:"#1d4ed8",width:14}})):null,
       el("div",null,ligne("Titulaire",p.tit||"—"),ligne("Direction / service",p.dir),ligne("Remarque",p.note)),
       el("button",{type:"button",className:"btn btn-primary",style:{marginTop:"auto"},onClick:()=>ouvrir(p.id)},p.tit||p.ko?"Ouvrir la fiche":"Attribuer la place"));};
-  const plan=()=>{const ns=Object.keys(PK_PLAN);const nv=PK_PLAN[niv]?niv:ns[0];const PL=PK_PLAN[nv];
+  const vbDe=PL=>{const xs=[],ys=[];Object.values(PL.pts).forEach(([x,y,w,h])=>{const d=Math.max(w,h)/2+30;xs.push(x-d,x+d);ys.push(y-d,y+d);});
+    const v=[Math.max(PL.ox,Math.min(...xs)),Math.max(PL.oy,Math.min(...ys))];v.push(Math.min(PL.ox+PL.w,Math.max(...xs))-v[0],Math.min(PL.oy+PL.h,Math.max(...ys))-v[1]);return v;};
+  const ouvrirEtage=n=>{setNiv(n);setEnsemble(false);setArrive(true);setTimeout(()=>setArrive(false),950);};
+  const pile=()=>{const ns=Object.keys(PK_PLAN);
+    return el("div",{style:{...carte,padding:"14px 14px 0",overflow:"hidden"}},
+      el("div",{style:{display:"flex",alignItems:"center",gap:10,flexWrap:"wrap"}},el("div",{style:{fontWeight:800,fontSize:14}},"Les niveaux du parking"),
+        el("span",{style:{fontSize:12,color:"var(--text3)"}},"Clique sur un niveau pour l'ouvrir en 3D")),
+      el("div",{className:"pk-pile"},ns.map((n,i)=>{const PL=PK_PLAN[n];const v=vbDe(PL);const pl=P.filter(p=>String(p.niv||"")===n);const by={};pl.forEach(p=>by[pkKey(p.num)]=p);
+        const lib=pl.filter(p=>!p.tit&&!p.ko).length,att=pl.filter(p=>p.tit).length,bor=pl.filter(p=>p.type==="borne").length;
+        return el("div",{key:n,className:"pk-etage",style:{zIndex:ns.length-i,aspectRatio:String(v[2]/v[3])},onClick:()=>ouvrirEtage(n),title:"Ouvrir le niveau "+n+" en 3D"},
+          el("div",{className:"pk-dalle"},el("svg",{viewBox:v.join(" "),preserveAspectRatio:"xMidYMid meet",style:{display:"block",width:"100%",height:"100%"}},
+            el("defs",null,el("clipPath",{id:"pk-cl"+i},el("rect",{x:v[0],y:v[1],width:v[2],height:v[3]}))),
+            el("rect",{x:v[0],y:v[1],width:v[2],height:v[3],fill:"#aeb6bf"}),
+            el("image",{href:PL.img,x:PL.ox,y:PL.oy,width:PL.w,height:PL.h,opacity:.14,clipPath:"url(#pk-cl"+i+")",style:{mixBlendMode:"multiply"}}),
+            Object.entries(PL.pts).map(([k,[x,y,w,h,r]])=>{const p=by[k];if(!p)return null;const cc=p.ko?"#dc2626":p.tit?(PK_COUL[p.couleur]||"#2c5f85"):"#bbf7d0";
+              return el("g",{key:k,transform:"translate("+x+" "+y+") rotate("+r+")"},el("rect",{x:-w/2,y:-h/2,width:w,height:h,rx:4,fill:p.tit?"#d7dce2":p.ko?"#fee2e2":"#dcfce7",stroke:"#fff",strokeWidth:3}),
+                p.tit&&!p.ko?el("rect",{x:-w*.38,y:-h*.34,width:w*.76,height:h*.68,rx:Math.min(w,h)*.25,fill:cc}):null);}))),
+          el("div",{className:"pk-etiq"},el("b",null,"Niveau "+n),el("span",null,pl.length+" places · "+att+" attribuées · "+lib+" libres"+(bor?" · "+bor+" bornes":""))));})));};
+  const plan=()=>{const ns=Object.keys(PK_PLAN);
+    if(ensemble&&!qn)return pile();
+    const nvHit=qn?(ns.find(n=>P.some(p=>String(p.niv||"")===n&&[p.num,p.tit,p.plaque,p.dir,p.marque,p.modele].join(" ").toLowerCase().replace(/[\s-]/g,"").includes(qn)))):null;
+    const nv=PK_PLAN[niv]&&!(nvHit&&nvHit!==niv&&ensemble)?niv:(nvHit||ns[0]);const PL=PK_PLAN[nv];
     const pl=P.filter(p=>String(p.niv||"")===nv);const byKey={};pl.forEach(p=>byKey[pkKey(p.num)]=p);
     const hit=p=>qn&&p&&[p.num,p.tit,p.plaque,p.dir,p.marque,p.modele,(jum(p)||{}).num].join(" ").toLowerCase().replace(/[\s-]/g,"").includes(qn);
     const anyHit=qn&&pl.some(hit);const col=p=>p.ko?["#b91c1c",.5]:p.tit?["#2c5f85",.42]:["#16a34a",.38];
@@ -10067,7 +10122,8 @@ function VueParking({showToast,addLog,badges,session}){
     const leg=(c,t,rond)=>el("span",{style:{display:"inline-flex",alignItems:"center",gap:5}},el("i",{style:{display:"inline-block",width:12,height:12,borderRadius:rond?"50%":3,background:rond?c:c+"66",border:rond?"none":"2px solid "+c}}),t);
     return el("div",{style:{...carte,padding:12}},
       el("div",{style:{display:"flex",alignItems:"center",gap:8,flexWrap:"wrap",marginBottom:10}},
-        ns.map(n=>el("button",{key:n,type:"button",className:"btn "+(n===nv?"btn-primary":"btn-outline"),style:{fontSize:12,padding:"6px 12px"},onClick:()=>setNiv(n)},"Niveau "+n)),
+        el("button",{type:"button",className:"btn btn-outline",style:{fontSize:12,padding:"6px 12px",fontWeight:700},onClick:()=>{setEnsemble(true);setQ("");setZoom(null);}},"← Tous les niveaux"),
+        ns.map(n=>el("button",{key:n,type:"button",className:"btn "+(n===nv?"btn-primary":"btn-outline"),style:{fontSize:12,padding:"6px 12px"},onClick:()=>ouvrirEtage(n)},"Niveau "+n)),
         el("button",{type:"button",className:"btn btn-outline",style:{fontSize:12,padding:"6px 12px"},onClick:()=>setGrand(!grand)},grand?"Réduire":"Agrandir"),el("button",{type:"button",className:"btn btn-outline",style:{fontSize:12,padding:"6px 12px"},onClick:()=>setVue3d(!vue3d)},vue3d?"Plan d'origine":"Vue 3D"),
         el("span",{style:{display:"flex",gap:12,flexWrap:"wrap",marginLeft:"auto",fontSize:12,color:"var(--text2)"}},leg("#2c5f85",vue3d?"Attribuée (voiture)":"Attribuée"),leg("#16a34a","Libre"),leg("#b91c1c","Hors service"),leg("#15803d","Borne",true))),
       el("div",{style:{display:"flex",gap:14,alignItems:"stretch",flexWrap:"wrap"}},el("div",{style:{flex:"1 1 520px",minWidth:0}},
@@ -10082,7 +10138,7 @@ function VueParking({showToast,addLog,badges,session}){
         // Vue 3D : sol en béton, emplacements tracés, voitures en relief sur les places attribuées
         const CAR={att:["#2c5f85","#1e4461","#9cc3e0"],ko:["#b91c1c","#7f1d1d","#fecaca"]};
         return el("div",{style:{overflow:"hidden",borderRadius:12,background:"linear-gradient(180deg,#cfd5dc,#e8ebef)",padding:"18px 10px 6px",perspective:"1500px"}},
-          el("svg",{viewBox:vb.join(" "),preserveAspectRatio:"xMidYMid meet",style:{display:"block",width:"100%",height:grand?"min(82vh,820px)":"540px",transform:"rotateX(24deg) scale(1.06)",transformOrigin:"50% 60%"}},
+          el("svg",{viewBox:vb.join(" "),preserveAspectRatio:"xMidYMid meet",className:arrive?"pk-arrive":"",style:{display:"block",width:"100%",height:grand?"min(82vh,820px)":"540px",transform:"rotateX(24deg) scale(1.06)",transformOrigin:"50% 60%"}},
             el("defs",null,
               el("filter",{id:"pk-ombre",x:"-30%",y:"-30%",width:"160%",height:"160%"},el("feDropShadow",{dx:6,dy:9,stdDeviation:5,floodColor:"#0f172a",floodOpacity:.45})),
               el("pattern",{id:"pk-hach",width:14,height:14,patternUnits:"userSpaceOnUse",patternTransform:"rotate(45)"},el("rect",{width:14,height:14,fill:"#fee2e2"}),el("rect",{width:5,height:14,fill:"#fca5a5"})),
@@ -10248,8 +10304,16 @@ function VueParking({showToast,addLog,badges,session}){
             el("td",{style:{...td,textAlign:"right"}},el("button",{type:"button",className:"btn btn-outline",style:{fontSize:12,padding:"5px 10px"},onClick:()=>imprimerAttestation(x)},"📄 Attestation")))))))):null);};
   const att=P.filter(p=>p.tit).length,ko=P.filter(p=>p.ko).length,libres=P.filter(p=>!p.tit&&!p.ko).length,bornes=P.filter(p=>p.type==="borne"),panne=bornes.filter(p=>p.panne);
   return el("div",null,
+    el("style",null,".pk-pile{display:flex;flex-direction:column;align-items:center;perspective:2000px;padding:0 0 0}"
+      +".pk-etage{position:relative;width:min(470px,70%);margin-top:-24%;cursor:pointer;transform-style:preserve-3d}.pk-etage:first-child{margin-top:-8%}"
+      +".pk-dalle{position:absolute;inset:0;border-radius:22px;overflow:hidden;transform:rotateX(58deg) rotateZ(-30deg);transition:transform .45s cubic-bezier(.2,.8,.2,1),box-shadow .45s,filter .45s;box-shadow:0 26px 40px rgba(15,23,42,.28),0 0 0 6px #e5e7eb;filter:saturate(.9)}"
+      +".pk-etage:hover .pk-dalle{transform:translateY(-34px) rotateX(58deg) rotateZ(-30deg);box-shadow:0 50px 60px rgba(15,23,42,.35),0 0 0 6px #3b82f6;filter:none}"
+      +".pk-etiq{position:absolute;right:-6%;top:44%;display:flex;flex-direction:column;gap:2px;background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:8px 12px;box-shadow:0 6px 16px rgba(15,23,42,.12);font-size:12px;color:var(--text2);white-space:nowrap;transition:transform .45s}"
+      +".pk-etiq b{font-size:14px;color:var(--text)}.pk-etage:hover .pk-etiq{transform:translateY(-30px);border-color:#3b82f6}"
+      +"@keyframes pkArrive{0%{transform:rotateX(58deg) rotateZ(-30deg) scale(.55);opacity:.35}60%{opacity:1}100%{transform:rotateX(24deg) scale(1.06)}}.pk-arrive{animation:pkArrive .9s cubic-bezier(.2,.8,.2,1) both}"
+      +"@media (max-width:700px){.pk-etiq{right:2%;top:auto;bottom:6%}}"),
     el("div",{style:{display:"flex",alignItems:"center",gap:10,flexWrap:"wrap",marginBottom:14}},
-      seg([["places","Places"],["prets","Prêts de véhicules"]],tab,k=>{setTab(k);setEdit(null);setVEdit(null);}),
+
       el("div",{style:{marginLeft:"auto",display:"flex",gap:8}},tab==="places"?el(React.Fragment,null,
           el("button",{type:"button",className:"btn btn-outline",onClick:()=>{setOutils(true);setEdit(null);}},"Créer / importer des places"),
           el("button",{type:"button",className:"btn btn-primary",onClick:()=>ouvrir("new")},"+ Nouvelle place"))
@@ -11824,6 +11888,7 @@ const ICONES_NAV={
   historique_colis:'<path d="M4 8l8-4 8 4v8l-8 4-8-4z"/><path d="M4 8l8 4 8-4M12 12v8"/>',
   calendrier:'<rect x="3.5" y="5" width="17" height="15.5" rx="2"/><path d="M3.5 9.5h17M8 3v4M16 3v4"/>',
   coherence:'<path d="M9 11l3 3 8-8"/><path d="M20 12v7a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h9"/>',
+  prets_vehicules:'<circle cx="8" cy="15" r="4"/><path d="M10.8 12.2 19 4M16 7l2 2M14 9l2 2"/>',
   parking:'<path d="M5 17h14M6 17l1.5-5.5A2 2 0 0 1 9.4 10h5.2a2 2 0 0 1 1.9 1.5L18 17"/><rect x="4" y="15" width="16" height="5" rx="1.5"/><circle cx="8" cy="17.5" r=".8"/><circle cx="16" cy="17.5" r=".8"/>',
   notifications:'<path d="M6 16V11a6 6 0 0 1 12 0v5l1.5 2h-15z"/><path d="M10 20a2 2 0 0 0 4 0"/>',
   aide:'<circle cx="12" cy="12" r="9"/><path d="M9.5 9.5a2.5 2.5 0 1 1 3.5 2.3c-.6.3-1 .8-1 1.5V14"/><circle cx="12" cy="17.2" r=".6" fill="currentColor"/>',
@@ -11848,8 +11913,8 @@ function Courbe({vals,col,w=104,h=34}){if(!vals||vals.length<2)return null;const
   const pts=vals.map((v,i)=>[i*w/(vals.length-1),h-2-(v-mn)/((mx-mn)||1)*(h-6)]);const d="M"+pts.map(p=>p[0].toFixed(1)+","+p[1].toFixed(1)).join(" L");
   return React.createElement("svg",{className:"courbe",width:w,height:h,viewBox:"0 0 "+w+" "+h},React.createElement("path",{d:d+" L"+w+","+h+" L0,"+h+" Z",fill:col,opacity:.12}),React.createElement("path",{d,fill:"none",stroke:col,strokeWidth:2,strokeLinecap:"round",strokeLinejoin:"round"}));}
 // ── Menu caché (☰) ──
-const MENU_SECTIONS=[["",["accueil","calendrier"]],["Personnes",["arrivees","collaborateurs","field_support"]],["Accueil physique",["gestion_accueil","gestion_accueil_hex","historique_pret","historique_colis"]],["",["casiers","parking"]],["Outils",["impression","rapport","coherence"]]];
-const MENU_ICONES={"Personnes":"collaborateurs","Accueil physique":"gestion_accueil","Outils":"impression"};
+const MENU_SECTIONS=[["",["accueil","calendrier"]],["Personnes",["arrivees","collaborateurs","field_support"]],["Accueil physique",["gestion_accueil","gestion_accueil_hex","historique_pret","historique_colis"]],["",["casiers"]],["Fleet",["parking","prets_vehicules"]],["Outils",["impression","rapport","coherence"]]];
+const MENU_ICONES={"Personnes":"collaborateurs","Accueil physique":"gestion_accueil","Fleet":"parking","Outils":"impression"};
 function MenuLateral({visibleNav,navActif,setView,onClose,session,notifs,ouvrirReglages,peutReglages,logout,comptes,mvt}){
   const cpt=id=>(comptes&&comptes[id])||0;
   const el=React.createElement;
@@ -13210,13 +13275,15 @@ useEffect(()=>{
     {id:"historique_colis",label:"Historique des colis",icon:"📦"},
     {id:"calendrier",label:"Calendrier",icon:"📅"},
     {id:"coherence",label:"Cohérence",icon:"🧩"},
-    {id:"parking",label:"Parking & véhicules",icon:"🚗"},
+    {id:"parking",label:"Parking",icon:"🚗"},
+    {id:"prets_vehicules",label:"Prêts de véhicules",icon:"🔑"},
   ];
   const archivesCount=badges.filter(b=>b.statut==="Archivé").length;
   const histoCount=histo.length;
   const fssOpenCount=fssData.filter(f=>!f.cloture&&f.statut!=="Terminée"&&!fssPlusTard(f)).length;
   const nbCoh=useMemo(()=>compterIncoherences(badges,fssData,settings&&settings.coh_ignores),[badges,fssData,settings&&settings.coh_ignores]);
   const canAccess=useCallback(viewId=>{
+    if(viewId==="prets_vehicules")return canAccess("parking");
     if(session&&session.role==="fleet")return viewId==="parking"||viewId==="aide";
     if(viewId==="aide"||viewId==="calendrier")return true;
     if(viewId==="parking")return !!(session&&!session.espace&&(session.role==="admin"||session.parking));
@@ -13277,7 +13344,8 @@ useEffect(()=>{
       case "historique_pret": return React.createElement(VueHistoriquePret,{site:window._siteSession});
       case "historique_colis": return React.createElement(VueHistoriqueColis,{site:window._siteSession});
       case "calendrier": return React.createElement(VueCalendrier,{fssData,badges,canAccess,setView});
-      case "parking": return React.createElement(VueParking,{showToast,addLog,badges,session});
+      case "parking": return React.createElement(VueParking,{key:"places",mode:"places",showToast,addLog,badges,session});
+      case "prets_vehicules": return React.createElement(VueParking,{key:"prets",mode:"prets",showToast,addLog,badges,session});
       case "coherence": return React.createElement(VueArriveesDeparts,{badges,setBadges,fssData,settings,setSettings:session&&session.role==="admin"?setSettings:null,canAccess,setView,showToast,addLog,coherence:true});
       case "arrivees": return React.createElement(VueArriveesDeparts,{badges,setBadges,fssData,settings,setSettings:session&&session.role==="admin"?setSettings:null,canAccess,setView,showToast,addLog});
       case "gestion_accueil_hex": return React.createElement(VueGestionAccueil,{key:"hex",onglet:"gestion_accueil",setView,canAccess,showToast,addLog,badges,site:"Hexagone"});
@@ -13459,7 +13527,7 @@ catch(e){document.getElementById("root").innerHTML='<div style="padding:40px;fon
   }
   // ── Nouvelle version en ligne : bandeau cliquable pour actualiser ──
   (function(){
-    var VERSION_PAGE='v122';var affiche=false,dernier=0;
+    var VERSION_PAGE='v123';var affiche=false,dernier=0;
     function montrer(){if(affiche)return;affiche=true;
       var b=document.createElement('button');b.type='button';b.id='maj-dispo';
       b.innerHTML='<span style="font-size:16px">🔄</span><span>Nouvelle version de l\'appli</span><b style="background:#fff;color:#1D4ED8;border-radius:999px;padding:4px 12px">Actualiser</b>';
