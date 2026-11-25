@@ -1200,7 +1200,8 @@ function TestMailsBox({showToast,settings}){
 }
 const DEFAULT_PERMS={accueil:PERM_WRITE,collaborateurs:PERM_WRITE,casiers:PERM_WRITE,rapport:PERM_WRITE,impression:PERM_WRITE,historique:PERM_WRITE,archives:PERM_WRITE,field_support:PERM_WRITE};
 const BADGE_PERMS={...DEFAULT_PERMS,collaborateurs:PERM_NONE,casiers:PERM_NONE,rapport:PERM_NONE,impression:PERM_NONE,archives:PERM_NONE,field_support:PERM_NONE};
-const ROLE_LABELS={admin:"Administrateur",it:"Field Support",badge:"Accueil — Badges de prêt",user:"Personnalisé"};
+const ROLE_LABELS={admin:"Administrateur",it:"Field Support",badge:"Accueil — Badges de prêt",fleet:"Fleet — Parking & véhicules",user:"Personnalisé"};
+const FLEET_PERMS={accueil:PERM_NONE,collaborateurs:PERM_NONE,casiers:PERM_NONE,rapport:PERM_NONE,impression:PERM_NONE,historique:PERM_NONE,archives:PERM_NONE,field_support:PERM_NONE,colis:PERM_NONE};
 // Construit la session (rôle + droits) d'un compte connecté à partir de la liste des comptes de l'appli.
 function sessionFromSettings(user,st){
   const users=(st&&st.users)||[];const em=String(user.email||"").toLowerCase();
@@ -1210,8 +1211,8 @@ function sessionFromSettings(user,st){
     return null;
   }
   const role=entry.role||"user";
-  const perms=role==="admin"?DEFAULT_PERMS:role==="it"?IT_PERMS:role==="badge"?BADGE_PERMS:(entry.perms||DEFAULT_PERMS);
-  return{role,email:user.email,label:entry.label||user.email,perms,site:entry.site||"Levallois",parking:role==="admin"||entry.parking===true};
+  const perms=role==="admin"?DEFAULT_PERMS:role==="it"?IT_PERMS:role==="badge"?BADGE_PERMS:role==="fleet"?FLEET_PERMS:(entry.perms||DEFAULT_PERMS);
+  return{role,email:user.email,label:entry.label||user.email,perms,site:entry.site||"Levallois",parking:role==="admin"||role==="fleet"};
 }
 const IT_PERMS={accueil:PERM_READ,collaborateurs:PERM_NONE,casiers:PERM_NONE,rapport:PERM_READ,impression:PERM_NONE,historique:PERM_NONE,archives:PERM_NONE,field_support:PERM_WRITE,colis:PERM_NONE};
 const norm=s=>String(s||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toUpperCase().trim();
@@ -3516,7 +3517,7 @@ function VueParking({showToast,addLog,badges,session}){
 
   if(err)return el("div",{style:{background:"var(--surface)",border:"1px solid var(--border)",borderRadius:"var(--radius-lg)",padding:28,fontSize:13.5,color:"var(--text2)",maxWidth:620}},
     err==="script"?el(React.Fragment,null,el("b",null,"Parking pas encore activé."),el("div",{style:{marginTop:6}},"Lance le script 17 (page des scripts) dans Supabase → SQL Editor, puis actualise la page.")):
-    el(React.Fragment,null,el("b",null,"Accès refusé."),el("div",{style:{marginTop:6}},"Ton compte n'a pas l'accès « Parking & véhicules ». Demande à l'administrateur de cocher 🚗 Parking sur ton compte (Réglages → Comptes).")));
+    el(React.Fragment,null,el("b",null,"Accès refusé."),el("div",{style:{marginTop:6}},"Ton compte n'a pas l'accès « Parking & véhicules ». Demande à l'administrateur de mettre ton compte en « Fleet » (Réglages → Comptes).")));
   if(!data)return el("div",{style:{padding:40,color:"var(--text3)",fontSize:13}},"Chargement…");
 
   const P=data.places,V=data.vehicules;
@@ -5681,12 +5682,11 @@ function SettingsModal({settings,setSettings,showToast,setShowSettings,racineRef
               React.createElement("div",{style:{flex:1}},
                 React.createElement("div",{style:{fontWeight:700,fontSize:13,color:"var(--text)"}},u.label||u.email),
                 React.createElement("div",{style:{fontSize:11,color:"var(--text3)"}},u.email),
-                React.createElement("select",{value:u.role||"user",onChange:e=>{const r=e.target.value;setSettings(s=>({...s,users:(s.users||[]).map((x,j)=>j===i?{...x,role:r}:x)}));},style:{marginTop:4,padding:"3px 6px",borderRadius:5,border:"1px solid var(--border2)",fontSize:11,background:"var(--surface)",color:"var(--text)"}},
+                React.createElement("select",{value:u.role||"user",onChange:e=>{const r=e.target.value;setSettings(s=>({...s,users:(s.users||[]).map((x,j)=>j===i?{...x,role:r,parking:r==="fleet"}:x)}));},style:{marginTop:4,padding:"3px 6px",borderRadius:5,border:"1px solid var(--border2)",fontSize:11,background:"var(--surface)",color:"var(--text)"}},
                   Object.entries(ROLE_LABELS).map(([k,l])=>React.createElement("option",{key:k,value:k},l))),
                 React.createElement("select",{value:u.site||"Levallois",title:"Site de l'accueil",onChange:e=>{const v=e.target.value;setSettings(s=>({...s,users:(s.users||[]).map((x,j)=>j===i?{...x,site:v}:x)}));},style:{marginTop:4,marginLeft:6,padding:"3px 6px",borderRadius:5,border:"1px solid var(--border2)",fontSize:11,background:"var(--surface)",color:"var(--text)"}},
                   ["Levallois","Hexagone"].map(v=>React.createElement("option",{key:v,value:v},"Site : "+v))),
-                (u.role||"user")!=="admin"&&React.createElement("label",{title:"Accès à Parking & véhicules",style:{display:"inline-flex",alignItems:"center",gap:4,marginLeft:8,fontSize:11,color:"var(--text2)",cursor:"pointer",verticalAlign:"middle"}},
-                  React.createElement("input",{type:"checkbox",checked:u.parking===true,onChange:e=>{const v=e.target.checked;setSettings(s=>({...s,users:(s.users||[]).map((x,j)=>j===i?{...x,parking:v}:x)}));}}),"🚗 Parking"),
+
                 (u.role||"user")==="user"&&u.perms&&Object.entries(u.perms).filter(([,v])=>v===PERM_NONE).length>0&&React.createElement("div",{style:{fontSize:10,color:"var(--red)",marginTop:2}},"🔒 Bloqué : "+Object.entries(u.perms).filter(([,v])=>v===PERM_NONE).map(([k])=>k).join(", "))
               ),
               React.createElement("button",{onClick:()=>setSettings(s=>({...s,users:(s.users||[]).filter((_,j)=>j!==i)})),className:"btn btn-danger",style:{fontSize:11,padding:"4px 8px"}},"🗑️ Retirer")
@@ -6297,6 +6297,7 @@ function App(){
     setAuthError("");setSettings(prev=>({...prev,...st}));setSession(sess);setUnlocked(true);
     try{sb.rpc("lp24_noter_connexion",{p_appareil:appareilCourt(),p_espace:sess.site||null}).then(()=>{},()=>{});}catch(e){}
     if(sess.role==="badge")setView("badges_pret");
+    if(sess.role==="fleet")setView("parking");
     if(sess.bootstrap)setTimeout(()=>showToast("⚠️ Aucun administrateur défini : ajoute ton compte en Administrateur dans Réglages → Comptes","err"),800);
   };
   const logout=async()=>{try{await sb.auth.signOut();}catch(e){}try{sessionStorage.removeItem("lp-espace");}catch(e){}setEspaceSt("");setUnlocked(false);setSession(null);setBadges([]);setCasiers([]);};
@@ -6762,6 +6763,7 @@ useEffect(()=>{
   const fssOpenCount=fssData.filter(f=>!f.cloture&&f.statut!=="Terminée"&&!fssPlusTard(f)).length;
   const nbCoh=useMemo(()=>compterIncoherences(badges,fssData,settings&&settings.coh_ignores),[badges,fssData,settings&&settings.coh_ignores]);
   const canAccess=useCallback(viewId=>{
+    if(session&&session.role==="fleet")return viewId==="parking"||viewId==="aide";
     if(viewId==="aide"||viewId==="calendrier")return true;
     if(viewId==="parking")return !!(session&&!session.espace&&(session.role==="admin"||session.parking));
     if(viewId==="arrivees")return canAccess("collaborateurs")||canAccess("field_support");
@@ -6878,7 +6880,7 @@ useEffect(()=>{
     loading&&React.createElement("div",{style:{position:"fixed",inset:0,background:"rgba(30,40,60,.45)",zIndex:9998,display:"flex",alignItems:"center",justifyContent:"center"}},React.createElement("div",{style:{background:"var(--surface)",border:"1px solid var(--border)",borderRadius:14,padding:"24px 36px",fontSize:15,fontWeight:700,color:"var(--text)"}},"⏳ Chargement en cours...")),
     toast&&React.createElement("div",{className:"toast-anim",style:{position:"fixed",top:20,left:"50%",transform:"translateX(-50%)",zIndex:9999,background:toast.type==="err"?"#7F1D1D":"#14532D",border:"1px solid "+(toast.type==="err"?"rgba(220,38,38,.3)":"rgba(22,163,74,.3)"),color:"#fff",padding:"12px 24px",borderRadius:12,fontSize:13,fontWeight:700,boxShadow:"0 4px 24px rgba(0,0,0,.12)",whiteSpace:"nowrap",pointerEvents:"none"}},toast.msg),
     showSettings&&!isIT&&React.createElement(SettingsModal,{settings,setSettings,showToast,setShowSettings,racineRef,hrRef,hcmRef,importJsonRef,exportExcel,exportJSON,importJSON,badges,setBadges,casiers,wdCache,histo,addLog,canHistorique:canAccess("historique"),canArchives:canAccess("archives"),canHistoriquePret:canAccess("historique_pret"),initialTab:settingsInitialTab}),
-    (menuOuvert||(mlLarge&&unlocked))&&React.createElement(MenuLateral,{visibleNav,navActif,setView,onClose:()=>setMenuOuvert(false),session,notifs:canAccess("notifications")?notifs.length:null,ouvrirReglages:()=>setShowSettings(true),peutReglages:!isIT&&!isBadgeOnly,logout,comptes:{coherence:canAccess("coherence")?nbCoh:0},
+    (menuOuvert||(mlLarge&&unlocked))&&React.createElement(MenuLateral,{visibleNav,navActif,setView,onClose:()=>setMenuOuvert(false),session,notifs:canAccess("notifications")?notifs.length:null,ouvrirReglages:()=>setShowSettings(true),peutReglages:!isIT&&!isBadgeOnly&&!(session&&session.role==="fleet"),logout,comptes:{coherence:canAccess("coherence")?nbCoh:0},
       mvt:!isIT&&canAccess("collaborateurs")&&React.createElement(VueAccueil,{badges,casiers:casiersEff,setBadges,setCasiers,showToast,wdCache,addLog,setView,settings,setSettings,notifExtra,fssData,setFssData,isIT,histo,openHistorique:()=>{},openDonnees:()=>{},pendingOpen:null,setPendingOpen:()=>{},seulMouvements:true})}),
     React.createElement("nav",{className:"desktop-nav no-print",style:{background:"var(--surface)",borderBottom:"1px solid var(--border)",padding:"0 12px",display:"flex",alignItems:"center",gap:2,height:48,position:"sticky",top:0,zIndex:500,boxShadow:"0 1px 0 var(--border)",overflow:"hidden"}},
       React.createElement("div",{style:{display:"flex",alignItems:"center",flexShrink:0}},
@@ -6912,7 +6914,7 @@ function AddUserForm({settings,setSettings,showToast}){
     if(!nu.email.trim()){showToast("⚠️ E-mail requis","err");return;}
     if((settings.users||[]).some(u=>String(u.email||"").toLowerCase()===nu.email.trim().toLowerCase())){showToast("⚠️ Ce compte existe déjà","err");return;}
     const perms={};allViews.forEach(v=>{perms[v]=blocked.has(v)?PERM_NONE:PERM_WRITE;});
-    setSettings(s=>({...s,users:[...(s.users||[]),{email:nu.email.trim(),label:nu.label,role:nu.role,...(nu.role==="user"?{perms}:{}),...(nu.site&&nu.site!=="Levallois"?{site:nu.site}:{})}]}));
+    setSettings(s=>({...s,users:[...(s.users||[]),{email:nu.email.trim(),label:nu.label,role:nu.role,...(nu.role==="fleet"?{parking:true}:{}),...(nu.role==="user"?{perms}:{}),...(nu.site&&nu.site!=="Levallois"?{site:nu.site}:{})}]}));
     setNu({email:"",label:"",role:"it"});setBlocked(new Set());
     showToast("✅ Compte ajouté");
   };
@@ -7478,7 +7480,8 @@ function TestMailsBox({showToast,settings}){
 }
 const DEFAULT_PERMS={accueil:PERM_WRITE,collaborateurs:PERM_WRITE,casiers:PERM_WRITE,rapport:PERM_WRITE,impression:PERM_WRITE,historique:PERM_WRITE,archives:PERM_WRITE,field_support:PERM_WRITE};
 const BADGE_PERMS={...DEFAULT_PERMS,collaborateurs:PERM_NONE,casiers:PERM_NONE,rapport:PERM_NONE,impression:PERM_NONE,archives:PERM_NONE,field_support:PERM_NONE};
-const ROLE_LABELS={admin:"Administrateur",it:"Field Support",badge:"Accueil — Badges de prêt",user:"Personnalisé"};
+const ROLE_LABELS={admin:"Administrateur",it:"Field Support",badge:"Accueil — Badges de prêt",fleet:"Fleet — Parking & véhicules",user:"Personnalisé"};
+const FLEET_PERMS={accueil:PERM_NONE,collaborateurs:PERM_NONE,casiers:PERM_NONE,rapport:PERM_NONE,impression:PERM_NONE,historique:PERM_NONE,archives:PERM_NONE,field_support:PERM_NONE,colis:PERM_NONE};
 // Construit la session (rôle + droits) d'un compte connecté à partir de la liste des comptes de l'appli.
 function sessionFromSettings(user,st){
   const users=(st&&st.users)||[];const em=String(user.email||"").toLowerCase();
@@ -7488,8 +7491,8 @@ function sessionFromSettings(user,st){
     return null;
   }
   const role=entry.role||"user";
-  const perms=role==="admin"?DEFAULT_PERMS:role==="it"?IT_PERMS:role==="badge"?BADGE_PERMS:(entry.perms||DEFAULT_PERMS);
-  return{role,email:user.email,label:entry.label||user.email,perms,site:entry.site||"Levallois",parking:role==="admin"||entry.parking===true};
+  const perms=role==="admin"?DEFAULT_PERMS:role==="it"?IT_PERMS:role==="badge"?BADGE_PERMS:role==="fleet"?FLEET_PERMS:(entry.perms||DEFAULT_PERMS);
+  return{role,email:user.email,label:entry.label||user.email,perms,site:entry.site||"Levallois",parking:role==="admin"||role==="fleet"};
 }
 const IT_PERMS={accueil:PERM_READ,collaborateurs:PERM_NONE,casiers:PERM_NONE,rapport:PERM_READ,impression:PERM_NONE,historique:PERM_NONE,archives:PERM_NONE,field_support:PERM_WRITE,colis:PERM_NONE};
 const norm=s=>String(s||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toUpperCase().trim();
@@ -9885,7 +9888,7 @@ function VueParking({showToast,addLog,badges,session}){
 
   if(err)return el("div",{style:{background:"var(--surface)",border:"1px solid var(--border)",borderRadius:"var(--radius-lg)",padding:28,fontSize:13.5,color:"var(--text2)",maxWidth:620}},
     err==="script"?el(React.Fragment,null,el("b",null,"Parking pas encore activé."),el("div",{style:{marginTop:6}},"Lance le script 17 (page des scripts) dans Supabase → SQL Editor, puis actualise la page.")):
-    el(React.Fragment,null,el("b",null,"Accès refusé."),el("div",{style:{marginTop:6}},"Ton compte n'a pas l'accès « Parking & véhicules ». Demande à l'administrateur de cocher 🚗 Parking sur ton compte (Réglages → Comptes).")));
+    el(React.Fragment,null,el("b",null,"Accès refusé."),el("div",{style:{marginTop:6}},"Ton compte n'a pas l'accès « Parking & véhicules ». Demande à l'administrateur de mettre ton compte en « Fleet » (Réglages → Comptes).")));
   if(!data)return el("div",{style:{padding:40,color:"var(--text3)",fontSize:13}},"Chargement…");
 
   const P=data.places,V=data.vehicules;
@@ -12125,12 +12128,11 @@ function SettingsModal({settings,setSettings,showToast,setShowSettings,racineRef
               React.createElement("div",{style:{flex:1}},
                 React.createElement("div",{style:{fontWeight:700,fontSize:13,color:"var(--text)"}},u.label||u.email),
                 React.createElement("div",{style:{fontSize:11,color:"var(--text3)"}},u.email),
-                React.createElement("select",{value:u.role||"user",onChange:e=>{const r=e.target.value;setSettings(s=>({...s,users:(s.users||[]).map((x,j)=>j===i?{...x,role:r}:x)}));},style:{marginTop:4,padding:"3px 6px",borderRadius:5,border:"1px solid var(--border2)",fontSize:11,background:"var(--surface)",color:"var(--text)"}},
+                React.createElement("select",{value:u.role||"user",onChange:e=>{const r=e.target.value;setSettings(s=>({...s,users:(s.users||[]).map((x,j)=>j===i?{...x,role:r,parking:r==="fleet"}:x)}));},style:{marginTop:4,padding:"3px 6px",borderRadius:5,border:"1px solid var(--border2)",fontSize:11,background:"var(--surface)",color:"var(--text)"}},
                   Object.entries(ROLE_LABELS).map(([k,l])=>React.createElement("option",{key:k,value:k},l))),
                 React.createElement("select",{value:u.site||"Levallois",title:"Site de l'accueil",onChange:e=>{const v=e.target.value;setSettings(s=>({...s,users:(s.users||[]).map((x,j)=>j===i?{...x,site:v}:x)}));},style:{marginTop:4,marginLeft:6,padding:"3px 6px",borderRadius:5,border:"1px solid var(--border2)",fontSize:11,background:"var(--surface)",color:"var(--text)"}},
                   ["Levallois","Hexagone"].map(v=>React.createElement("option",{key:v,value:v},"Site : "+v))),
-                (u.role||"user")!=="admin"&&React.createElement("label",{title:"Accès à Parking & véhicules",style:{display:"inline-flex",alignItems:"center",gap:4,marginLeft:8,fontSize:11,color:"var(--text2)",cursor:"pointer",verticalAlign:"middle"}},
-                  React.createElement("input",{type:"checkbox",checked:u.parking===true,onChange:e=>{const v=e.target.checked;setSettings(s=>({...s,users:(s.users||[]).map((x,j)=>j===i?{...x,parking:v}:x)}));}}),"🚗 Parking"),
+
                 (u.role||"user")==="user"&&u.perms&&Object.entries(u.perms).filter(([,v])=>v===PERM_NONE).length>0&&React.createElement("div",{style:{fontSize:10,color:"var(--red)",marginTop:2}},"🔒 Bloqué : "+Object.entries(u.perms).filter(([,v])=>v===PERM_NONE).map(([k])=>k).join(", "))
               ),
               React.createElement("button",{onClick:()=>setSettings(s=>({...s,users:(s.users||[]).filter((_,j)=>j!==i)})),className:"btn btn-danger",style:{fontSize:11,padding:"4px 8px"}},"🗑️ Retirer")
@@ -12749,6 +12751,7 @@ function App(){
     setAuthError("");setSettings(prev=>({...prev,...st}));setSession(sess);setUnlocked(true);
     try{sb.rpc("lp24_noter_connexion",{p_appareil:appareilCourt(),p_espace:sess.site||null}).then(()=>{},()=>{});}catch(e){}
     if(sess.role==="badge")setView("badges_pret");
+    if(sess.role==="fleet")setView("parking");
     if(sess.bootstrap)setTimeout(()=>showToast("⚠️ Aucun administrateur défini : ajoute ton compte en Administrateur dans Réglages → Comptes","err"),800);
   };
   const logout=async()=>{try{await sb.auth.signOut();}catch(e){}try{sessionStorage.removeItem("lp-espace");}catch(e){}setEspaceSt("");setUnlocked(false);setSession(null);setBadges([]);setCasiers([]);};
@@ -13214,6 +13217,7 @@ useEffect(()=>{
   const fssOpenCount=fssData.filter(f=>!f.cloture&&f.statut!=="Terminée"&&!fssPlusTard(f)).length;
   const nbCoh=useMemo(()=>compterIncoherences(badges,fssData,settings&&settings.coh_ignores),[badges,fssData,settings&&settings.coh_ignores]);
   const canAccess=useCallback(viewId=>{
+    if(session&&session.role==="fleet")return viewId==="parking"||viewId==="aide";
     if(viewId==="aide"||viewId==="calendrier")return true;
     if(viewId==="parking")return !!(session&&!session.espace&&(session.role==="admin"||session.parking));
     if(viewId==="arrivees")return canAccess("collaborateurs")||canAccess("field_support");
@@ -13330,7 +13334,7 @@ useEffect(()=>{
     loading&&React.createElement("div",{style:{position:"fixed",inset:0,background:"rgba(30,40,60,.45)",zIndex:9998,display:"flex",alignItems:"center",justifyContent:"center"}},React.createElement("div",{style:{background:"var(--surface)",border:"1px solid var(--border)",borderRadius:14,padding:"24px 36px",fontSize:15,fontWeight:700,color:"var(--text)"}},"⏳ Chargement en cours...")),
     toast&&React.createElement("div",{className:"toast-anim",style:{position:"fixed",top:20,left:"50%",transform:"translateX(-50%)",zIndex:9999,background:toast.type==="err"?"#7F1D1D":"#14532D",border:"1px solid "+(toast.type==="err"?"rgba(220,38,38,.3)":"rgba(22,163,74,.3)"),color:"#fff",padding:"12px 24px",borderRadius:12,fontSize:13,fontWeight:700,boxShadow:"0 4px 24px rgba(0,0,0,.12)",whiteSpace:"nowrap",pointerEvents:"none"}},toast.msg),
     showSettings&&!isIT&&React.createElement(SettingsModal,{settings,setSettings,showToast,setShowSettings,racineRef,hrRef,hcmRef,importJsonRef,exportExcel,exportJSON,importJSON,badges,setBadges,casiers,wdCache,histo,addLog,canHistorique:canAccess("historique"),canArchives:canAccess("archives"),canHistoriquePret:canAccess("historique_pret"),initialTab:settingsInitialTab}),
-    menuOuvert&&React.createElement(MenuLateral,{visibleNav,navActif,setView,onClose:()=>setMenuOuvert(false),session,notifs:canAccess("notifications")?notifs.length:null,ouvrirReglages:()=>setShowSettings(true),peutReglages:!isIT,logout}),
+    menuOuvert&&React.createElement(MenuLateral,{visibleNav,navActif,setView,onClose:()=>setMenuOuvert(false),session,notifs:canAccess("notifications")?notifs.length:null,ouvrirReglages:()=>setShowSettings(true),peutReglages:!isIT&&!(session&&session.role==="fleet"),logout}),
     React.createElement("nav",{className:"desktop-nav no-print",style:{background:"var(--surface)",borderBottom:"1px solid var(--border)",padding:"0 12px",display:"flex",alignItems:"center",gap:2,height:48,position:"sticky",top:0,zIndex:500,boxShadow:"0 1px 0 var(--border)",overflow:"hidden"}},
       React.createElement("div",{style:{display:"flex",alignItems:"center",flexShrink:0}},
         React.createElement("button",{type:"button",className:"burger",title:"Menu",onClick:()=>setMenuOuvert(true)},React.createElement("svg",{width:20,height:20,viewBox:"0 0 24 24",fill:"none",stroke:"currentColor",strokeWidth:2,strokeLinecap:"round"},React.createElement("path",{d:"M4 7h16M4 12h16M4 17h16"}))),
@@ -13377,7 +13381,7 @@ function AddUserForm({settings,setSettings,showToast}){
     if(!nu.email.trim()){showToast("⚠️ E-mail requis","err");return;}
     if((settings.users||[]).some(u=>String(u.email||"").toLowerCase()===nu.email.trim().toLowerCase())){showToast("⚠️ Ce compte existe déjà","err");return;}
     const perms={};allViews.forEach(v=>{perms[v]=blocked.has(v)?PERM_NONE:PERM_WRITE;});
-    setSettings(s=>({...s,users:[...(s.users||[]),{email:nu.email.trim(),label:nu.label,role:nu.role,...(nu.role==="user"?{perms}:{}),...(nu.site&&nu.site!=="Levallois"?{site:nu.site}:{})}]}));
+    setSettings(s=>({...s,users:[...(s.users||[]),{email:nu.email.trim(),label:nu.label,role:nu.role,...(nu.role==="fleet"?{parking:true}:{}),...(nu.role==="user"?{perms}:{}),...(nu.site&&nu.site!=="Levallois"?{site:nu.site}:{})}]}));
     setNu({email:"",label:"",role:"it"});setBlocked(new Set());
     showToast("✅ Compte ajouté");
   };
@@ -13455,7 +13459,7 @@ catch(e){document.getElementById("root").innerHTML='<div style="padding:40px;fon
   }
   // ── Nouvelle version en ligne : bandeau cliquable pour actualiser ──
   (function(){
-    var VERSION_PAGE='v121';var affiche=false,dernier=0;
+    var VERSION_PAGE='v122';var affiche=false,dernier=0;
     function montrer(){if(affiche)return;affiche=true;
       var b=document.createElement('button');b.type='button';b.id='maj-dispo';
       b.innerHTML='<span style="font-size:16px">🔄</span><span>Nouvelle version de l\'appli</span><b style="background:#fff;color:#1D4ED8;border-radius:999px;padding:4px 12px">Actualiser</b>';
