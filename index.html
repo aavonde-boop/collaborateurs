@@ -3748,7 +3748,7 @@ function VueParking({showToast,addLog,badges,session,mode}){
     if(ensemble&&!qn)return pile();
     const nvHit=qn?(ns.find(n=>P.some(p=>String(p.niv||"")===n&&[p.num,p.tit,p.plaque,p.dir,p.marque,p.modele].join(" ").toLowerCase().replace(/[\s-]/g,"").includes(qn)))):null;
     const nv=PK_PLAN[niv]&&!(nvHit&&nvHit!==niv&&ensemble)?niv:(nvHit||ns[0]);const PL=PK_PLAN[nv];const vue3d=vue3d0||!PL.img;
-    const pl=P.filter(p=>String(p.niv||"")===nv);const byKey={};PT.filter(p=>String(p.niv||"")===nv).forEach(p=>{const k=pkKey(p.num);if(!byKey[k]||pkNous(p))byKey[k]=p;});
+    const pl=P.filter(p=>String(p.niv||"")===nv);const ptDe=q=>q&&String(q.niv||"")===nv?PL.pts[Object.keys(PL.pts).find(k=>pkKey(k)===pkKey(q.num))]:null;const byKey={};PT.filter(p=>String(p.niv||"")===nv).forEach(p=>{const k=pkKey(p.num);if(!byKey[k]||pkNous(p))byKey[k]=p;});
     const hit=p=>qn&&p&&[p.num,p.tit,p.plaque,p.dir,p.marque,p.modele,(jum(p)||{}).num].join(" ").toLowerCase().replace(/[\s-]/g,"").includes(qn);
     const anyHit=qn&&pl.some(hit);const col=p=>p.ko?["#b91c1c",.5]:p.tit?["#2c5f85",.42]:["#16a34a",.38];
     const vb=nv==="-1"?vbDe(PL):[PK_CONTOUR_VB[0],PK_CONTOUR_VB[1],PK_CONTOUR_VB[2],PK_CONTOUR_VB[3]+50];
@@ -3798,10 +3798,16 @@ function VueParking({showToast,addLog,badges,session,mode}){
               return el("g",{key:k,onClick:()=>ouvrir(p.id),onMouseEnter:()=>setZoom(p.id),className:"pk-pl",style:{cursor:"pointer"},transform:"translate("+x+" "+y+") rotate("+r+")",opacity:anyHit&&!H?.28:1},el("title",null,tip(p)),
                 el("rect",{x:-w/2,y:-h/2,width:w,height:h,fill:p.ko?"url(#pk-hach)":"#fef3c7",fillOpacity:p.ko?1:.35,stroke:H?"#2563eb":"#d97706",strokeWidth:H?3.4:2,strokeDasharray:H?null:"5 4"}),
                 false&&(()=>{const hz=w>h,L=Math.max(w,h),S=Math.min(w,h);return el("g",{transform:hz?"rotate(90)":null},el("rect",{x:-S/2+2,y:L/2-7,width:S-4,height:5,fill:"#f59e0b"}),el("rect",{x:-S/2+2,y:-L/2+2,width:S-4,height:5,fill:"#f59e0b"}));})(),
-                voiture&&pkVoitureSvg(w,h,PK_COUL[p.couleur]||"#2c5f85"),
+                voiture&&!(jum(p)&&ptDe(jum(p)))&&pkVoitureSvg(w,h,PK_COUL[p.couleur]||"#2c5f85"),
                 el("g",{transform:"rotate("+(-r)+")"},el("text",{textAnchor:"middle",dominantBaseline:"central",fontSize:Math.min(16,Math.min(w,h)*.42),fontWeight:800,fontFamily:"Inter,system-ui,sans-serif",
                   fill:voiture?"#fff":"#92400e",stroke:voiture?"#111827":"none",strokeWidth:voiture?2.4:0,paintOrder:"stroke",opacity:.95},p.num)),
                 eclair(p,w,h,r));}),
+            // places jumelées : une seule voiture, au milieu des deux places
+            pl.filter(p=>p.tit&&!p.ko&&pkNous(p)&&jum(p)&&ordre(p,jum(p))<0).map(p=>{const a=ptDe(p),b=ptDe(jum(p));if(!a||!b)return null;
+              const [x1,y1,w,h,r]=a,[x2,y2]=b;const mx=(x1+x2)/2,my=(y1+y2)/2;const rad=-r*Math.PI/180;const dx=(x2-x1)*Math.cos(rad)-(y2-y1)*Math.sin(rad),dy=(x2-x1)*Math.sin(rad)+(y2-y1)*Math.cos(rad);
+              const W=Math.abs(dx)>Math.abs(dy)?w+Math.abs(dx):w,H=Math.abs(dx)>Math.abs(dy)?h:h+Math.abs(dy);const lg=Math.max(W,H),ct=Math.min(W,H);
+              const cw=W>=H?Math.min(lg,Math.max(w,h)*1.15):ct*.95,ch=W>=H?ct*.95:Math.min(lg,Math.max(w,h)*1.15);
+              return el("g",{key:"j"+p.id,transform:"translate("+mx+" "+my+") rotate("+r+")",onClick:()=>ouvrir(p.id),onMouseEnter:()=>setZoom(p.id),style:{cursor:"pointer"}},pkVoitureSvg(w,h,PK_COUL[p.couleur]||"#2c5f85"));}),
             false&&el("g",{className:"pk-blanc",pointerEvents:"none"},
               nv==="-1"?el("rect",{x:vb[0],y:vb[1],width:vb[2],height:vb[3],rx:10,fill:"#fbfbfa"}):el("polygon",{points:PK_CONTOUR.map(q=>q.join(",")).join(" "),fill:"#fbfbfa",stroke:"#334155",strokeWidth:4}),
               Object.entries(PL.pts).map(([k,[x,y,w,h,r]])=>{const p=byKey[pkKey(k)];const att=pkNous(p);return el("rect",{key:k,x:-w/2,y:-h/2,width:w,height:h,transform:"translate("+x+" "+y+") rotate("+r+")",fill:att?"#fef3c7":"none",stroke:att?"#d97706":"#cbd5e1",strokeWidth:att?2.4:1.2});})))));})()),
@@ -10226,7 +10232,7 @@ function VueParking({showToast,addLog,badges,session,mode}){
     if(ensemble&&!qn)return pile();
     const nvHit=qn?(ns.find(n=>P.some(p=>String(p.niv||"")===n&&[p.num,p.tit,p.plaque,p.dir,p.marque,p.modele].join(" ").toLowerCase().replace(/[\s-]/g,"").includes(qn)))):null;
     const nv=PK_PLAN[niv]&&!(nvHit&&nvHit!==niv&&ensemble)?niv:(nvHit||ns[0]);const PL=PK_PLAN[nv];const vue3d=vue3d0||!PL.img;
-    const pl=P.filter(p=>String(p.niv||"")===nv);const byKey={};PT.filter(p=>String(p.niv||"")===nv).forEach(p=>{const k=pkKey(p.num);if(!byKey[k]||pkNous(p))byKey[k]=p;});
+    const pl=P.filter(p=>String(p.niv||"")===nv);const ptDe=q=>q&&String(q.niv||"")===nv?PL.pts[Object.keys(PL.pts).find(k=>pkKey(k)===pkKey(q.num))]:null;const byKey={};PT.filter(p=>String(p.niv||"")===nv).forEach(p=>{const k=pkKey(p.num);if(!byKey[k]||pkNous(p))byKey[k]=p;});
     const hit=p=>qn&&p&&[p.num,p.tit,p.plaque,p.dir,p.marque,p.modele,(jum(p)||{}).num].join(" ").toLowerCase().replace(/[\s-]/g,"").includes(qn);
     const anyHit=qn&&pl.some(hit);const col=p=>p.ko?["#b91c1c",.5]:p.tit?["#2c5f85",.42]:["#16a34a",.38];
     const vb=nv==="-1"?vbDe(PL):[PK_CONTOUR_VB[0],PK_CONTOUR_VB[1],PK_CONTOUR_VB[2],PK_CONTOUR_VB[3]+50];
@@ -10276,10 +10282,16 @@ function VueParking({showToast,addLog,badges,session,mode}){
               return el("g",{key:k,onClick:()=>ouvrir(p.id),onMouseEnter:()=>setZoom(p.id),className:"pk-pl",style:{cursor:"pointer"},transform:"translate("+x+" "+y+") rotate("+r+")",opacity:anyHit&&!H?.28:1},el("title",null,tip(p)),
                 el("rect",{x:-w/2,y:-h/2,width:w,height:h,fill:p.ko?"url(#pk-hach)":"#fef3c7",fillOpacity:p.ko?1:.35,stroke:H?"#2563eb":"#d97706",strokeWidth:H?3.4:2,strokeDasharray:H?null:"5 4"}),
                 false&&(()=>{const hz=w>h,L=Math.max(w,h),S=Math.min(w,h);return el("g",{transform:hz?"rotate(90)":null},el("rect",{x:-S/2+2,y:L/2-7,width:S-4,height:5,fill:"#f59e0b"}),el("rect",{x:-S/2+2,y:-L/2+2,width:S-4,height:5,fill:"#f59e0b"}));})(),
-                voiture&&pkVoitureSvg(w,h,PK_COUL[p.couleur]||"#2c5f85"),
+                voiture&&!(jum(p)&&ptDe(jum(p)))&&pkVoitureSvg(w,h,PK_COUL[p.couleur]||"#2c5f85"),
                 el("g",{transform:"rotate("+(-r)+")"},el("text",{textAnchor:"middle",dominantBaseline:"central",fontSize:Math.min(16,Math.min(w,h)*.42),fontWeight:800,fontFamily:"Inter,system-ui,sans-serif",
                   fill:voiture?"#fff":"#92400e",stroke:voiture?"#111827":"none",strokeWidth:voiture?2.4:0,paintOrder:"stroke",opacity:.95},p.num)),
                 eclair(p,w,h,r));}),
+            // places jumelées : une seule voiture, au milieu des deux places
+            pl.filter(p=>p.tit&&!p.ko&&pkNous(p)&&jum(p)&&ordre(p,jum(p))<0).map(p=>{const a=ptDe(p),b=ptDe(jum(p));if(!a||!b)return null;
+              const [x1,y1,w,h,r]=a,[x2,y2]=b;const mx=(x1+x2)/2,my=(y1+y2)/2;const rad=-r*Math.PI/180;const dx=(x2-x1)*Math.cos(rad)-(y2-y1)*Math.sin(rad),dy=(x2-x1)*Math.sin(rad)+(y2-y1)*Math.cos(rad);
+              const W=Math.abs(dx)>Math.abs(dy)?w+Math.abs(dx):w,H=Math.abs(dx)>Math.abs(dy)?h:h+Math.abs(dy);const lg=Math.max(W,H),ct=Math.min(W,H);
+              const cw=W>=H?Math.min(lg,Math.max(w,h)*1.15):ct*.95,ch=W>=H?ct*.95:Math.min(lg,Math.max(w,h)*1.15);
+              return el("g",{key:"j"+p.id,transform:"translate("+mx+" "+my+") rotate("+r+")",onClick:()=>ouvrir(p.id),onMouseEnter:()=>setZoom(p.id),style:{cursor:"pointer"}},pkVoitureSvg(w,h,PK_COUL[p.couleur]||"#2c5f85"));}),
             false&&el("g",{className:"pk-blanc",pointerEvents:"none"},
               nv==="-1"?el("rect",{x:vb[0],y:vb[1],width:vb[2],height:vb[3],rx:10,fill:"#fbfbfa"}):el("polygon",{points:PK_CONTOUR.map(q=>q.join(",")).join(" "),fill:"#fbfbfa",stroke:"#334155",strokeWidth:4}),
               Object.entries(PL.pts).map(([k,[x,y,w,h,r]])=>{const p=byKey[pkKey(k)];const att=pkNous(p);return el("rect",{key:k,x:-w/2,y:-h/2,width:w,height:h,transform:"translate("+x+" "+y+") rotate("+r+")",fill:att?"#fef3c7":"none",stroke:att?"#d97706":"#cbd5e1",strokeWidth:att?2.4:1.2});})))));})()),
@@ -13673,7 +13685,7 @@ catch(e){document.getElementById("root").innerHTML='<div style="padding:40px;fon
   }
   // ── Nouvelle version en ligne : bandeau cliquable pour actualiser ──
   (function(){
-    var VERSION_PAGE='v128';var affiche=false,dernier=0;
+    var VERSION_PAGE='v129';var affiche=false,dernier=0;
     function montrer(){if(affiche)return;affiche=true;
       var b=document.createElement('button');b.type='button';b.id='maj-dispo';
       b.innerHTML='<span style="font-size:16px">🔄</span><span>Nouvelle version de l\'appli</span><b style="background:#fff;color:#1D4ED8;border-radius:999px;padding:4px 12px">Actualiser</b>';
