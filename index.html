@@ -3505,7 +3505,15 @@ function VueParking({showToast,addLog,badges,session,mode}){
   const[q,setQ]=React.useState("");const[niv,setNiv]=React.useState("");const[f,setF]=React.useState("all");
   const[edit,setEdit]=React.useState(null);const[form,setForm]=React.useState(null);
   const[vEdit,setVEdit]=React.useState(null);const[vForm,setVForm]=React.useState(null);
-  const[outils,setOutils]=React.useState(false);const[grand,setGrand]=React.useState(false);const[vue3d0,setVue3d]=React.useState(true);const[ensemble,setEnsemble]=React.useState(true);const[survol,setSurvol]=React.useState(null);const[envol,setEnvol]=React.useState(null);const[arrive,setArrive]=React.useState(false);const[zoom,setZoom]=React.useState(null);const[photos,setPhotos]=React.useState({});const[pForm,setPForm]=React.useState(null);const[retour,setRetour]=React.useState(null);
+  const[outils,setOutils]=React.useState(false);const[grand,setGrand]=React.useState(false);const[vue3d0,setVue3d]=React.useState(true);const[ensemble,setEnsemble]=React.useState(true);const[survol,setSurvol]=React.useState(null);const[envol,setEnvol]=React.useState(null);const[zv,setZv]=React.useState(null);const scRef=React.useRef(null);const dragRef=React.useRef(null);
+  React.useEffect(()=>{const elx=scRef.current;if(!elx)return;
+    const onW=e=>{e.preventDefault();const sv=elx.querySelector("svg");if(!sv)return;const r=sv.getBoundingClientRect();
+      const base=elx.dataset.vb.split(",").map(Number),cur=elx.dataset.vz.split(",").map(Number),n=elx.dataset.n;
+      const f=e.deltaY<0?1/1.18:1.18;let w=cur[2]*f,h=cur[3]*f;if(w>base[2]){w=base[2];h=base[3];}if(w<base[2]/8){w=base[2]/8;h=base[3]/8;}
+      const fx=Math.min(1,Math.max(0,(e.clientX-r.left)/r.width)),fy=Math.min(1,Math.max(0,(e.clientY-r.top)/r.height));
+      const x=cur[0]+fx*(cur[2]-w),y=cur[1]+fy*(cur[3]-h);
+      if(w>=base[2]-0.5)setZv(null);else setZv({n,v:[x,y,w,h]});};
+    elx.addEventListener("wheel",onW,{passive:false});return()=>elx.removeEventListener("wheel",onW);});const[arrive,setArrive]=React.useState(false);const[zoom,setZoom]=React.useState(null);const[photos,setPhotos]=React.useState({});const[pForm,setPForm]=React.useState(null);const[retour,setRetour]=React.useState(null);
   // Photo du modèle (Wikipédia, gratuit, sans clé) : seuls la marque et le modèle sont envoyés, jamais la plaque ni le nom
   const zp=data&&zoom?(data.places||[]).find(x=>x.id===zoom):null;const cleMod=zp&&zp.tit&&zp.marque&&zp.modele?pkMM(zp):"";
   React.useEffect(()=>{if(!cleMod||photos[cleMod]!==undefined)return;setPhotos(o=>({...o,[cleMod]:null}));
@@ -3703,9 +3711,9 @@ function VueParking({showToast,addLog,badges,session,mode}){
   const vbDe=PL=>{const xs=[],ys=[];Object.values(PL.pts).forEach(([x,y,w,h])=>{const d=Math.max(w,h)/2+30;xs.push(x-d,x+d);ys.push(y-d,y+d);});
     if(!PL.img){const v=[Math.min(...xs),Math.min(...ys)];v.push(Math.max(...xs)-v[0],Math.max(...ys)-v[1]);return v;}
     const v=[Math.max(PL.ox,Math.min(...xs)),Math.max(PL.oy,Math.min(...ys))];v.push(Math.min(PL.ox+PL.w,Math.max(...xs))-v[0],Math.min(PL.oy+PL.h,Math.max(...ys))-v[1]);return v;};
-  const ouvrirEtage=n=>{setNiv(n);setEnsemble(false);setArrive(true);setTimeout(()=>setArrive(false),1100);};
-  const lancer=n=>{if(envol)return;setEnvol(n);setTimeout(()=>{setEnvol(null);ouvrirEtage(n);},820);};
-  const pile=()=>{const ns=Object.keys(PK_PLAN);const V=PK_CONTOUR_VB,W=620,H=Math.round(W*V[3]/V[2]),GAP=135;const sc=W/V[2];
+  const ouvrirEtage=n=>{setNiv(n);setZv(null);setEnsemble(false);setArrive(true);setTimeout(()=>setArrive(false),1500);};
+  const lancer=n=>{if(envol)return;setEnvol(n);setZv(null);setTimeout(()=>{setEnvol(null);ouvrirEtage(n);},480);};
+  const pile=()=>{const ns=Object.keys(PK_PLAN);const V=PK_CONTOUR_VB,W=820,H=Math.round(W*V[3]/V[2]),GAP=175;const sc=W/V[2];
     const pts=PK_CONTOUR.map(p=>p.join(",")).join(" ");
     const piliers=PK_PILIERS.map(([x,y])=>[(x-V[0])*sc,(y-V[1])*sc]);
     const etiqs=ns.map((n,i)=>{const pl=P.filter(p=>String(p.niv||"")===n);const lib=pl.filter(p=>!p.tit&&!p.ko).length,att=pl.filter(p=>p.tit).length,bor=pl.filter(p=>p.type==="borne").length;
@@ -3722,7 +3730,7 @@ function VueParking({showToast,addLog,badges,session,mode}){
       el("div",{className:"pk-imm"},
         el("div",{className:"pk-labs"},etiqs),
         el("div",{className:"pk-vue"},
-        el("div",{className:"pk-bat"+(envol?" envol":""),style:{width:W,height:H,marginLeft:-W/2,marginTop:-H/2+60}},
+        el("div",{className:"pk-bat"+(envol?" envol":""),style:{width:W,height:H,marginLeft:-W/2-40,marginTop:-H/2+110}},
           ns.map((n,i)=>{const PL=PK_PLAN[n];const pl=P.filter(p=>String(p.niv||"")===n);const by={};pl.forEach(p=>by[pkKey(p.num)]=p);
             const z=(ns.length-1-i)*GAP;const sel=envol===n,autre=envol&&!sel,sur=survol===n&&!envol;
             return el("div",{key:n,className:"pk-niv"+(sel?" sel":"")+(autre?" autre":"")+(sur?" sur":""),style:{"--z":z+"px"},onClick:()=>lancer(n),onMouseEnter:()=>setSurvol(n),onMouseLeave:()=>setSurvol(null)},
@@ -3764,9 +3772,18 @@ function VueParking({showToast,addLog,badges,session,mode}){
               return el("g",{key:k,onClick:()=>ouvrir(p.id),onMouseEnter:()=>setZoom(p.id),style:{cursor:"pointer"},transform:"translate("+x+" "+y+") rotate("+r+")",opacity:anyHit&&!H?.25:1},el("title",null,tip(p)),
                 el("rect",{x:-w/2,y:-h/2,width:w,height:h,rx:5,fill:c,fillOpacity:o,stroke:H?"#f59e0b":c,strokeWidth:H?7:2}),eclair(p,w,h,r));})));
         // Vue 3D « maquette » : dalle épaisse, asphalte, marquages blancs, voitures vues du dessus
-        return el("div",{className:"pk-scene"},
+        const vz=zv&&zv.n===nv?zv.v:vb;
+        return el("div",{className:"pk-scene",ref:scRef,"data-n":nv,"data-vb":vb.join(","),"data-vz":vz.join(","),
+            onMouseDown:e=>{dragRef.current={x:e.clientX,y:e.clientY,v:vz,m:0};},
+            onMouseMove:e=>{const d=dragRef.current;if(!d||!zv)return;const r=scRef.current.querySelector("svg").getBoundingClientRect();const dx=(e.clientX-d.x)*d.v[2]/r.width,dy=(e.clientY-d.y)*d.v[3]/r.height;
+              if(Math.abs(e.clientX-d.x)+Math.abs(e.clientY-d.y)>4)d.m=1;if(d.m)setZv({n:nv,v:[d.v[0]-dx,d.v[1]-dy,d.v[2],d.v[3]]});},
+            onMouseUp:()=>{setTimeout(()=>{dragRef.current=null;},0);},onMouseLeave:()=>{dragRef.current=null;},
+            onClickCapture:e=>{if(dragRef.current&&dragRef.current.m){e.stopPropagation();e.preventDefault();}},
+            style:{cursor:zv?"grab":"default"}},
+          zv&&zv.n===nv&&el("button",{type:"button",className:"pk-zreset",onClick:e=>{e.stopPropagation();setZv(null);}},"⟲ Vue entière"),
+          el("div",{className:"pk-zhint"},"Molette : zoom · glisser : déplacer"),
           el("div",{className:"pk-bloc"+(arrive?" pk-arrive":"")},
-          el("svg",{viewBox:vb.join(" "),preserveAspectRatio:"xMidYMid meet",style:{display:"block",width:"100%",height:grand?"min(82vh,820px)":"560px"}},
+          el("svg",{viewBox:vz.join(" "),preserveAspectRatio:"xMidYMid meet",style:{display:"block",width:"100%",height:grand?"min(82vh,820px)":"560px"}},
             el("defs",null,
               el("filter",{id:"pk-ombre",x:"-40%",y:"-40%",width:"180%",height:"180%"},el("feDropShadow",{dx:3,dy:5,stdDeviation:2.6,floodColor:"#000",floodOpacity:.55})),
               el("pattern",{id:"pk-hach",width:9,height:9,patternUnits:"userSpaceOnUse",patternTransform:"rotate(45)"},el("rect",{width:9,height:9,fill:"#2b2d31"}),el("rect",{width:2.4,height:9,fill:"#e7e5e4",opacity:.7})),
@@ -3784,7 +3801,10 @@ function VueParking({showToast,addLog,badges,session,mode}){
                 voiture&&pkVoitureSvg(w,h,PK_COUL[p.couleur]||"#2c5f85"),
                 el("g",{transform:"rotate("+(-r)+")"},el("text",{textAnchor:"middle",dominantBaseline:"central",fontSize:Math.min(16,Math.min(w,h)*.42),fontWeight:800,fontFamily:"Inter,system-ui,sans-serif",
                   fill:voiture?"#fff":"#d6d3d1",stroke:voiture?"#111827":"none",strokeWidth:voiture?2.4:0,paintOrder:"stroke",opacity:voiture?.95:.9},p.num)),
-                eclair(p,w,h,r));}))));})()),
+                eclair(p,w,h,r));}),
+            arrive&&el("g",{className:"pk-blanc",pointerEvents:"none"},
+              nv==="-1"?el("rect",{x:vb[0],y:vb[1],width:vb[2],height:vb[3],rx:10,fill:"#fbfbfa"}):el("polygon",{points:PK_CONTOUR.map(q=>q.join(",")).join(" "),fill:"#fbfbfa",stroke:"#334155",strokeWidth:4}),
+              Object.entries(PL.pts).map(([k,[x,y,w,h,r]])=>{const p=byKey[pkKey(k)];const att=p&&p.tit&&!p.ko;return el("rect",{key:k,x:-w/2,y:-h/2,width:w,height:h,transform:"translate("+x+" "+y+") rotate("+r+")",fill:att?"#fef3c7":"none",stroke:att?"#d97706":"#94a3b8",strokeWidth:att?2.4:1.4});})))));})()),
       grosPlan(pl.find(p=>p.id===zoom)||(qn?pl.find(hit):null))),
       el("div",{style:{fontSize:12,color:"var(--text3)",marginTop:8}},"Survole une place pour la voir en gros plan, clique pour ouvrir sa fiche. La recherche (nom, plaque, numéro) met la place en évidence."+(sans.length?" · Places de ce niveau absentes du plan : "+sans.map(p=>p.num).join(", "):"")));};
 
@@ -3931,7 +3951,7 @@ function VueParking({showToast,addLog,badges,session,mode}){
             el("td",{style:{...td,textAlign:"right"}},el("button",{type:"button",className:"btn btn-outline",style:{fontSize:12,padding:"5px 10px"},onClick:()=>imprimerAttestation(x)},"📄 Attestation")))))))):null);};
   const att=P.filter(p=>p.tit).length,ko=P.filter(p=>p.ko).length,libres=P.filter(p=>!p.tit&&!p.ko).length,bornes=P.filter(p=>p.type==="borne"),panne=bornes.filter(p=>p.panne);
   return el("div",null,
-    el("style",null,".pk-imm{position:relative;display:flex;align-items:stretch;min-height:720px}"
+    el("style",null,".pk-imm{position:relative;display:flex;align-items:stretch;min-height:min(900px,calc(100vh - 150px))}"
       +".pk-labs{position:relative;z-index:5;display:flex;flex-direction:column;justify-content:center;gap:10px;padding:10px 0 10px 4px;width:270px;flex-shrink:0}"
       +".pk-lab{display:flex;align-items:center;gap:12px;text-align:left;border:1px solid var(--border);background:var(--surface);border-radius:12px;padding:12px 14px;cursor:pointer;transition:all .25s;font:inherit;color:var(--text)}"
       +".pk-lab:hover,.pk-lab.on{border-color:#2563eb;box-shadow:0 8px 20px rgba(37,99,235,.15);transform:translateX(4px)}"
@@ -3939,11 +3959,11 @@ function VueParking({showToast,addLog,badges,session,mode}){
       +".pk-lab-n{width:40px;height:40px;border-radius:10px;background:#0f172a;color:#fff;display:flex;align-items:center;justify-content:center;font-weight:800;font-size:15px;flex-shrink:0}"
       +".pk-lab-go{margin-left:auto;font-size:22px;color:var(--text3)}"
       +".pk-vue{position:relative;flex:1;min-width:0;perspective:2400px;perspective-origin:50% 30%;overflow:hidden}"
-      +".pk-bat{position:absolute;left:50%;top:50%;transform-style:preserve-3d;transform:rotateX(60deg) rotateZ(-34deg) scale(.7);transition:transform .8s cubic-bezier(.65,0,.25,1)}"
-      +".pk-bat.envol{transform:rotateX(32deg) rotateZ(-4deg) scale(1.05)}"
+      +".pk-bat{position:absolute;left:50%;top:50%;transform-style:preserve-3d;transform:rotateX(58deg) rotateZ(-34deg) scale(.72);transition:transform .8s cubic-bezier(.65,0,.25,1)}"
+      +".pk-bat.envol{transform:rotateX(58deg) rotateZ(-34deg) scale(.75)}"
       +".pk-niv{position:absolute;inset:0;transform-style:preserve-3d;transform:translateZ(var(--z));transition:transform .8s cubic-bezier(.65,0,.25,1),opacity .55s;cursor:pointer}"
       +".pk-niv.sur{transform:translateZ(calc(var(--z) + 40px))}.pk-niv.sur .pk-face polygon:first-child{stroke:#2563eb}"
-      +".pk-niv.sel{transform:translateZ(150px)}.pk-niv.autre{opacity:0;transform:translateZ(calc(var(--z) - 260px))}"
+      +".pk-niv{transition:transform .48s cubic-bezier(.4,0,.2,1),opacity .4s}.pk-niv.sel{transform:translateZ(calc(var(--z) + 90px))}.pk-niv.autre{opacity:0;transform:translateZ(calc(var(--z) - 120px))}"
       +".pk-ep,.pk-face{position:absolute;inset:0;width:100%;height:100%;overflow:visible}"
       +".pk-face{filter:drop-shadow(0 0 1px rgba(15,23,42,.2))}"
       +".pk-pil{position:absolute;width:7px;margin-left:-3px;background:linear-gradient(90deg,#94a3b8,#f1f5f9 50%,#94a3b8);border:1px solid #64748b;transform-origin:top center;transform:rotateX(-90deg);pointer-events:none}"
@@ -3954,7 +3974,11 @@ function VueParking({showToast,addLog,badges,session,mode}){
       +".pk-pl:hover rect:first-child{fill-opacity:.12;stroke:#fff;stroke-width:2.4}"
       +".pk-etiq{position:absolute;right:-6%;top:44%;display:flex;flex-direction:column;gap:2px;background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:8px 12px;box-shadow:0 6px 16px rgba(15,23,42,.12);font-size:12px;color:var(--text2);white-space:nowrap;transition:transform .45s}"
       +".pk-etiq b{font-size:14px;color:var(--text)}.pk-etage:hover .pk-etiq{transform:translateY(-30px);border-color:#3b82f6}"
-      +"@keyframes pkArrive{0%{transform:rotateX(32deg) rotateZ(-4deg) scale(.9);filter:brightness(1.9) saturate(.2);opacity:.6}100%{transform:rotateX(30deg) rotateZ(-3deg) scale(1.08);filter:none;opacity:1}}.pk-arrive{animation:pkArrive .7s cubic-bezier(.2,.8,.2,1) both}"
+      +"@keyframes pkArrive{0%{transform:rotateX(58deg) rotateZ(-34deg) scale(.62) translateZ(60px)}100%{transform:rotateX(30deg) rotateZ(-3deg) scale(1.08)}}.pk-arrive{animation:pkArrive 1.05s cubic-bezier(.45,0,.15,1) both}"
+      +"@keyframes pkBlanc{0%,35%{opacity:1}100%{opacity:0}}.pk-blanc{animation:pkBlanc 1.3s ease-in-out both}"
+      +"@keyframes pkFond{0%{background-color:#ffffff}100%{background-color:transparent}}.pk-scene{position:relative}"
+      +".pk-zreset{position:absolute;z-index:3;top:12px;right:12px;border:none;border-radius:999px;background:rgba(15,23,42,.8);color:#fff;font:600 12px Inter,system-ui,sans-serif;padding:7px 12px;cursor:pointer}"
+      +".pk-zhint{position:absolute;z-index:3;bottom:10px;left:14px;font:500 11.5px Inter,system-ui,sans-serif;color:rgba(255,255,255,.85);background:rgba(15,23,42,.45);padding:4px 10px;border-radius:999px;pointer-events:none}"
       +"@media (max-width:700px){.pk-etiq{right:2%;top:auto;bottom:6%}}"),
     el("div",{style:{display:"flex",alignItems:"center",gap:10,flexWrap:"wrap",marginBottom:14}},
 
@@ -9959,7 +9983,15 @@ function VueParking({showToast,addLog,badges,session,mode}){
   const[q,setQ]=React.useState("");const[niv,setNiv]=React.useState("");const[f,setF]=React.useState("all");
   const[edit,setEdit]=React.useState(null);const[form,setForm]=React.useState(null);
   const[vEdit,setVEdit]=React.useState(null);const[vForm,setVForm]=React.useState(null);
-  const[outils,setOutils]=React.useState(false);const[grand,setGrand]=React.useState(false);const[vue3d0,setVue3d]=React.useState(true);const[ensemble,setEnsemble]=React.useState(true);const[survol,setSurvol]=React.useState(null);const[envol,setEnvol]=React.useState(null);const[arrive,setArrive]=React.useState(false);const[zoom,setZoom]=React.useState(null);const[photos,setPhotos]=React.useState({});const[pForm,setPForm]=React.useState(null);const[retour,setRetour]=React.useState(null);
+  const[outils,setOutils]=React.useState(false);const[grand,setGrand]=React.useState(false);const[vue3d0,setVue3d]=React.useState(true);const[ensemble,setEnsemble]=React.useState(true);const[survol,setSurvol]=React.useState(null);const[envol,setEnvol]=React.useState(null);const[zv,setZv]=React.useState(null);const scRef=React.useRef(null);const dragRef=React.useRef(null);
+  React.useEffect(()=>{const elx=scRef.current;if(!elx)return;
+    const onW=e=>{e.preventDefault();const sv=elx.querySelector("svg");if(!sv)return;const r=sv.getBoundingClientRect();
+      const base=elx.dataset.vb.split(",").map(Number),cur=elx.dataset.vz.split(",").map(Number),n=elx.dataset.n;
+      const f=e.deltaY<0?1/1.18:1.18;let w=cur[2]*f,h=cur[3]*f;if(w>base[2]){w=base[2];h=base[3];}if(w<base[2]/8){w=base[2]/8;h=base[3]/8;}
+      const fx=Math.min(1,Math.max(0,(e.clientX-r.left)/r.width)),fy=Math.min(1,Math.max(0,(e.clientY-r.top)/r.height));
+      const x=cur[0]+fx*(cur[2]-w),y=cur[1]+fy*(cur[3]-h);
+      if(w>=base[2]-0.5)setZv(null);else setZv({n,v:[x,y,w,h]});};
+    elx.addEventListener("wheel",onW,{passive:false});return()=>elx.removeEventListener("wheel",onW);});const[arrive,setArrive]=React.useState(false);const[zoom,setZoom]=React.useState(null);const[photos,setPhotos]=React.useState({});const[pForm,setPForm]=React.useState(null);const[retour,setRetour]=React.useState(null);
   // Photo du modèle (Wikipédia, gratuit, sans clé) : seuls la marque et le modèle sont envoyés, jamais la plaque ni le nom
   const zp=data&&zoom?(data.places||[]).find(x=>x.id===zoom):null;const cleMod=zp&&zp.tit&&zp.marque&&zp.modele?pkMM(zp):"";
   React.useEffect(()=>{if(!cleMod||photos[cleMod]!==undefined)return;setPhotos(o=>({...o,[cleMod]:null}));
@@ -10157,9 +10189,9 @@ function VueParking({showToast,addLog,badges,session,mode}){
   const vbDe=PL=>{const xs=[],ys=[];Object.values(PL.pts).forEach(([x,y,w,h])=>{const d=Math.max(w,h)/2+30;xs.push(x-d,x+d);ys.push(y-d,y+d);});
     if(!PL.img){const v=[Math.min(...xs),Math.min(...ys)];v.push(Math.max(...xs)-v[0],Math.max(...ys)-v[1]);return v;}
     const v=[Math.max(PL.ox,Math.min(...xs)),Math.max(PL.oy,Math.min(...ys))];v.push(Math.min(PL.ox+PL.w,Math.max(...xs))-v[0],Math.min(PL.oy+PL.h,Math.max(...ys))-v[1]);return v;};
-  const ouvrirEtage=n=>{setNiv(n);setEnsemble(false);setArrive(true);setTimeout(()=>setArrive(false),1100);};
-  const lancer=n=>{if(envol)return;setEnvol(n);setTimeout(()=>{setEnvol(null);ouvrirEtage(n);},820);};
-  const pile=()=>{const ns=Object.keys(PK_PLAN);const V=PK_CONTOUR_VB,W=620,H=Math.round(W*V[3]/V[2]),GAP=135;const sc=W/V[2];
+  const ouvrirEtage=n=>{setNiv(n);setZv(null);setEnsemble(false);setArrive(true);setTimeout(()=>setArrive(false),1500);};
+  const lancer=n=>{if(envol)return;setEnvol(n);setZv(null);setTimeout(()=>{setEnvol(null);ouvrirEtage(n);},480);};
+  const pile=()=>{const ns=Object.keys(PK_PLAN);const V=PK_CONTOUR_VB,W=820,H=Math.round(W*V[3]/V[2]),GAP=175;const sc=W/V[2];
     const pts=PK_CONTOUR.map(p=>p.join(",")).join(" ");
     const piliers=PK_PILIERS.map(([x,y])=>[(x-V[0])*sc,(y-V[1])*sc]);
     const etiqs=ns.map((n,i)=>{const pl=P.filter(p=>String(p.niv||"")===n);const lib=pl.filter(p=>!p.tit&&!p.ko).length,att=pl.filter(p=>p.tit).length,bor=pl.filter(p=>p.type==="borne").length;
@@ -10176,7 +10208,7 @@ function VueParking({showToast,addLog,badges,session,mode}){
       el("div",{className:"pk-imm"},
         el("div",{className:"pk-labs"},etiqs),
         el("div",{className:"pk-vue"},
-        el("div",{className:"pk-bat"+(envol?" envol":""),style:{width:W,height:H,marginLeft:-W/2,marginTop:-H/2+60}},
+        el("div",{className:"pk-bat"+(envol?" envol":""),style:{width:W,height:H,marginLeft:-W/2-40,marginTop:-H/2+110}},
           ns.map((n,i)=>{const PL=PK_PLAN[n];const pl=P.filter(p=>String(p.niv||"")===n);const by={};pl.forEach(p=>by[pkKey(p.num)]=p);
             const z=(ns.length-1-i)*GAP;const sel=envol===n,autre=envol&&!sel,sur=survol===n&&!envol;
             return el("div",{key:n,className:"pk-niv"+(sel?" sel":"")+(autre?" autre":"")+(sur?" sur":""),style:{"--z":z+"px"},onClick:()=>lancer(n),onMouseEnter:()=>setSurvol(n),onMouseLeave:()=>setSurvol(null)},
@@ -10218,9 +10250,18 @@ function VueParking({showToast,addLog,badges,session,mode}){
               return el("g",{key:k,onClick:()=>ouvrir(p.id),onMouseEnter:()=>setZoom(p.id),style:{cursor:"pointer"},transform:"translate("+x+" "+y+") rotate("+r+")",opacity:anyHit&&!H?.25:1},el("title",null,tip(p)),
                 el("rect",{x:-w/2,y:-h/2,width:w,height:h,rx:5,fill:c,fillOpacity:o,stroke:H?"#f59e0b":c,strokeWidth:H?7:2}),eclair(p,w,h,r));})));
         // Vue 3D « maquette » : dalle épaisse, asphalte, marquages blancs, voitures vues du dessus
-        return el("div",{className:"pk-scene"},
+        const vz=zv&&zv.n===nv?zv.v:vb;
+        return el("div",{className:"pk-scene",ref:scRef,"data-n":nv,"data-vb":vb.join(","),"data-vz":vz.join(","),
+            onMouseDown:e=>{dragRef.current={x:e.clientX,y:e.clientY,v:vz,m:0};},
+            onMouseMove:e=>{const d=dragRef.current;if(!d||!zv)return;const r=scRef.current.querySelector("svg").getBoundingClientRect();const dx=(e.clientX-d.x)*d.v[2]/r.width,dy=(e.clientY-d.y)*d.v[3]/r.height;
+              if(Math.abs(e.clientX-d.x)+Math.abs(e.clientY-d.y)>4)d.m=1;if(d.m)setZv({n:nv,v:[d.v[0]-dx,d.v[1]-dy,d.v[2],d.v[3]]});},
+            onMouseUp:()=>{setTimeout(()=>{dragRef.current=null;},0);},onMouseLeave:()=>{dragRef.current=null;},
+            onClickCapture:e=>{if(dragRef.current&&dragRef.current.m){e.stopPropagation();e.preventDefault();}},
+            style:{cursor:zv?"grab":"default"}},
+          zv&&zv.n===nv&&el("button",{type:"button",className:"pk-zreset",onClick:e=>{e.stopPropagation();setZv(null);}},"⟲ Vue entière"),
+          el("div",{className:"pk-zhint"},"Molette : zoom · glisser : déplacer"),
           el("div",{className:"pk-bloc"+(arrive?" pk-arrive":"")},
-          el("svg",{viewBox:vb.join(" "),preserveAspectRatio:"xMidYMid meet",style:{display:"block",width:"100%",height:grand?"min(82vh,820px)":"560px"}},
+          el("svg",{viewBox:vz.join(" "),preserveAspectRatio:"xMidYMid meet",style:{display:"block",width:"100%",height:grand?"min(82vh,820px)":"560px"}},
             el("defs",null,
               el("filter",{id:"pk-ombre",x:"-40%",y:"-40%",width:"180%",height:"180%"},el("feDropShadow",{dx:3,dy:5,stdDeviation:2.6,floodColor:"#000",floodOpacity:.55})),
               el("pattern",{id:"pk-hach",width:9,height:9,patternUnits:"userSpaceOnUse",patternTransform:"rotate(45)"},el("rect",{width:9,height:9,fill:"#2b2d31"}),el("rect",{width:2.4,height:9,fill:"#e7e5e4",opacity:.7})),
@@ -10238,7 +10279,10 @@ function VueParking({showToast,addLog,badges,session,mode}){
                 voiture&&pkVoitureSvg(w,h,PK_COUL[p.couleur]||"#2c5f85"),
                 el("g",{transform:"rotate("+(-r)+")"},el("text",{textAnchor:"middle",dominantBaseline:"central",fontSize:Math.min(16,Math.min(w,h)*.42),fontWeight:800,fontFamily:"Inter,system-ui,sans-serif",
                   fill:voiture?"#fff":"#d6d3d1",stroke:voiture?"#111827":"none",strokeWidth:voiture?2.4:0,paintOrder:"stroke",opacity:voiture?.95:.9},p.num)),
-                eclair(p,w,h,r));}))));})()),
+                eclair(p,w,h,r));}),
+            arrive&&el("g",{className:"pk-blanc",pointerEvents:"none"},
+              nv==="-1"?el("rect",{x:vb[0],y:vb[1],width:vb[2],height:vb[3],rx:10,fill:"#fbfbfa"}):el("polygon",{points:PK_CONTOUR.map(q=>q.join(",")).join(" "),fill:"#fbfbfa",stroke:"#334155",strokeWidth:4}),
+              Object.entries(PL.pts).map(([k,[x,y,w,h,r]])=>{const p=byKey[pkKey(k)];const att=p&&p.tit&&!p.ko;return el("rect",{key:k,x:-w/2,y:-h/2,width:w,height:h,transform:"translate("+x+" "+y+") rotate("+r+")",fill:att?"#fef3c7":"none",stroke:att?"#d97706":"#94a3b8",strokeWidth:att?2.4:1.4});})))));})()),
       grosPlan(pl.find(p=>p.id===zoom)||(qn?pl.find(hit):null))),
       el("div",{style:{fontSize:12,color:"var(--text3)",marginTop:8}},"Survole une place pour la voir en gros plan, clique pour ouvrir sa fiche. La recherche (nom, plaque, numéro) met la place en évidence."+(sans.length?" · Places de ce niveau absentes du plan : "+sans.map(p=>p.num).join(", "):"")));};
 
@@ -10385,7 +10429,7 @@ function VueParking({showToast,addLog,badges,session,mode}){
             el("td",{style:{...td,textAlign:"right"}},el("button",{type:"button",className:"btn btn-outline",style:{fontSize:12,padding:"5px 10px"},onClick:()=>imprimerAttestation(x)},"📄 Attestation")))))))):null);};
   const att=P.filter(p=>p.tit).length,ko=P.filter(p=>p.ko).length,libres=P.filter(p=>!p.tit&&!p.ko).length,bornes=P.filter(p=>p.type==="borne"),panne=bornes.filter(p=>p.panne);
   return el("div",null,
-    el("style",null,".pk-imm{position:relative;display:flex;align-items:stretch;min-height:720px}"
+    el("style",null,".pk-imm{position:relative;display:flex;align-items:stretch;min-height:min(900px,calc(100vh - 150px))}"
       +".pk-labs{position:relative;z-index:5;display:flex;flex-direction:column;justify-content:center;gap:10px;padding:10px 0 10px 4px;width:270px;flex-shrink:0}"
       +".pk-lab{display:flex;align-items:center;gap:12px;text-align:left;border:1px solid var(--border);background:var(--surface);border-radius:12px;padding:12px 14px;cursor:pointer;transition:all .25s;font:inherit;color:var(--text)}"
       +".pk-lab:hover,.pk-lab.on{border-color:#2563eb;box-shadow:0 8px 20px rgba(37,99,235,.15);transform:translateX(4px)}"
@@ -10393,11 +10437,11 @@ function VueParking({showToast,addLog,badges,session,mode}){
       +".pk-lab-n{width:40px;height:40px;border-radius:10px;background:#0f172a;color:#fff;display:flex;align-items:center;justify-content:center;font-weight:800;font-size:15px;flex-shrink:0}"
       +".pk-lab-go{margin-left:auto;font-size:22px;color:var(--text3)}"
       +".pk-vue{position:relative;flex:1;min-width:0;perspective:2400px;perspective-origin:50% 30%;overflow:hidden}"
-      +".pk-bat{position:absolute;left:50%;top:50%;transform-style:preserve-3d;transform:rotateX(60deg) rotateZ(-34deg) scale(.7);transition:transform .8s cubic-bezier(.65,0,.25,1)}"
-      +".pk-bat.envol{transform:rotateX(32deg) rotateZ(-4deg) scale(1.05)}"
+      +".pk-bat{position:absolute;left:50%;top:50%;transform-style:preserve-3d;transform:rotateX(58deg) rotateZ(-34deg) scale(.72);transition:transform .8s cubic-bezier(.65,0,.25,1)}"
+      +".pk-bat.envol{transform:rotateX(58deg) rotateZ(-34deg) scale(.75)}"
       +".pk-niv{position:absolute;inset:0;transform-style:preserve-3d;transform:translateZ(var(--z));transition:transform .8s cubic-bezier(.65,0,.25,1),opacity .55s;cursor:pointer}"
       +".pk-niv.sur{transform:translateZ(calc(var(--z) + 40px))}.pk-niv.sur .pk-face polygon:first-child{stroke:#2563eb}"
-      +".pk-niv.sel{transform:translateZ(150px)}.pk-niv.autre{opacity:0;transform:translateZ(calc(var(--z) - 260px))}"
+      +".pk-niv{transition:transform .48s cubic-bezier(.4,0,.2,1),opacity .4s}.pk-niv.sel{transform:translateZ(calc(var(--z) + 90px))}.pk-niv.autre{opacity:0;transform:translateZ(calc(var(--z) - 120px))}"
       +".pk-ep,.pk-face{position:absolute;inset:0;width:100%;height:100%;overflow:visible}"
       +".pk-face{filter:drop-shadow(0 0 1px rgba(15,23,42,.2))}"
       +".pk-pil{position:absolute;width:7px;margin-left:-3px;background:linear-gradient(90deg,#94a3b8,#f1f5f9 50%,#94a3b8);border:1px solid #64748b;transform-origin:top center;transform:rotateX(-90deg);pointer-events:none}"
@@ -10408,7 +10452,11 @@ function VueParking({showToast,addLog,badges,session,mode}){
       +".pk-pl:hover rect:first-child{fill-opacity:.12;stroke:#fff;stroke-width:2.4}"
       +".pk-etiq{position:absolute;right:-6%;top:44%;display:flex;flex-direction:column;gap:2px;background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:8px 12px;box-shadow:0 6px 16px rgba(15,23,42,.12);font-size:12px;color:var(--text2);white-space:nowrap;transition:transform .45s}"
       +".pk-etiq b{font-size:14px;color:var(--text)}.pk-etage:hover .pk-etiq{transform:translateY(-30px);border-color:#3b82f6}"
-      +"@keyframes pkArrive{0%{transform:rotateX(32deg) rotateZ(-4deg) scale(.9);filter:brightness(1.9) saturate(.2);opacity:.6}100%{transform:rotateX(30deg) rotateZ(-3deg) scale(1.08);filter:none;opacity:1}}.pk-arrive{animation:pkArrive .7s cubic-bezier(.2,.8,.2,1) both}"
+      +"@keyframes pkArrive{0%{transform:rotateX(58deg) rotateZ(-34deg) scale(.62) translateZ(60px)}100%{transform:rotateX(30deg) rotateZ(-3deg) scale(1.08)}}.pk-arrive{animation:pkArrive 1.05s cubic-bezier(.45,0,.15,1) both}"
+      +"@keyframes pkBlanc{0%,35%{opacity:1}100%{opacity:0}}.pk-blanc{animation:pkBlanc 1.3s ease-in-out both}"
+      +"@keyframes pkFond{0%{background-color:#ffffff}100%{background-color:transparent}}.pk-scene{position:relative}"
+      +".pk-zreset{position:absolute;z-index:3;top:12px;right:12px;border:none;border-radius:999px;background:rgba(15,23,42,.8);color:#fff;font:600 12px Inter,system-ui,sans-serif;padding:7px 12px;cursor:pointer}"
+      +".pk-zhint{position:absolute;z-index:3;bottom:10px;left:14px;font:500 11.5px Inter,system-ui,sans-serif;color:rgba(255,255,255,.85);background:rgba(15,23,42,.45);padding:4px 10px;border-radius:999px;pointer-events:none}"
       +"@media (max-width:700px){.pk-etiq{right:2%;top:auto;bottom:6%}}"),
     el("div",{style:{display:"flex",alignItems:"center",gap:10,flexWrap:"wrap",marginBottom:14}},
 
@@ -13625,7 +13673,7 @@ catch(e){document.getElementById("root").innerHTML='<div style="padding:40px;fon
   }
   // ── Nouvelle version en ligne : bandeau cliquable pour actualiser ──
   (function(){
-    var VERSION_PAGE='v125';var affiche=false,dernier=0;
+    var VERSION_PAGE='v126';var affiche=false,dernier=0;
     function montrer(){if(affiche)return;affiche=true;
       var b=document.createElement('button');b.type='button';b.id='maj-dispo';
       b.innerHTML='<span style="font-size:16px">🔄</span><span>Nouvelle version de l\'appli</span><b style="background:#fff;color:#1D4ED8;border-radius:999px;padding:4px 12px">Actualiser</b>';
