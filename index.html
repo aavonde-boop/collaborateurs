@@ -3488,6 +3488,7 @@ const pkRampes=(n,mode)=>{const el=React.createElement;const trait=mode==="trait
   return el("g",{className:"pk-rampe"},el("path",{d,fill:fond,stroke:bord,strokeWidth:2.5}),
     el("path",{d:"M"+P_(mid,a0)+" A"+mid+" "+mid+" 0 0 1 "+P_(mid,a1),fill:"none",stroke:bord,strokeWidth:1.6,strokeDasharray:"10 8",opacity:.8}),fle,
     txt(cx-ro-38,cy,"RAMPE",-90));};
+const pkNous=p=>!!p&&(p.alliance!==undefined?!!p.alliance:!(p.hist||[]).some(h=>/\(plan\)/.test(h.txt||"")));
 const pkKey=n=>String(n||"").toLowerCase().replace(/\s+/g,"").replace(/^0+(?=\d)/,"");
 const pkNat=(a,b)=>String(a||"").localeCompare(String(b||""),"fr",{numeric:true});
 const pkId=()=>Date.now().toString(36)+Math.random().toString(36).slice(2,6);
@@ -3542,7 +3543,7 @@ function VueParking({showToast,addLog,badges,session,mode}){
     el(React.Fragment,null,el("b",null,"Accès refusé."),el("div",{style:{marginTop:6}},"Ton compte n'a pas l'accès « Parking & véhicules ». Demande à l'administrateur de mettre ton compte en « Fleet » (Réglages → Comptes).")));
   if(!data)return el("div",{style:{padding:40,color:"var(--text3)",fontSize:13}},"Chargement…");
 
-  const P=data.places,V=data.vehicules;
+  const PT=data.places,P=PT.filter(pkNous),V=data.vehicules;
   const jum=p=>p&&p.lie?P.find(x=>x.id===p.lie):null;
   const lib=p=>(p.niv?p.niv+" · ":"")+"n° "+p.num+(jum(p)?" + "+jum(p).num:"");
   const nivs=[...new Set(P.map(p=>p.niv||""))].filter(Boolean).sort(pkNat);
@@ -3567,12 +3568,12 @@ function VueParking({showToast,addLog,badges,session,mode}){
 
   // ── Fiche d'une place ──
   const ouvrir=id=>{const p=id==="new"?{niv:niv||"",num:"",type:"std"}:P.find(x=>x.id===id);if(!p)return;setEdit(id);setOutils(false);
-    setForm({niv:p.niv||"",num:p.num||"",type:p.type||"std",panne:!!p.panne,lie:(jum(p)||{}).num||"",ko:!!p.ko,tit:p.tit||"",plaque:p.plaque||"",dir:p.dir||"",note:p.note||"",marque:p.marque||"",modele:p.modele||"",couleur:p.couleur||""});};
+    setForm({niv:p.niv||"",num:p.num||"",type:p.type||"std",panne:!!p.panne,lie:(jum(p)||{}).num||"",ko:!!p.ko,tit:p.tit||"",plaque:p.plaque||"",dir:p.dir||"",note:p.note||"",marque:p.marque||"",modele:p.modele||"",couleur:p.couleur||"",alliance:id==="new"?true:pkNous(p)});};
   const sauverPlace=()=>{const num=form.num.trim();if(!num){showToast("⚠️ Indique le numéro de la place","err");return;}
     const n=JSON.parse(JSON.stringify(data));const L=n.places;const isNew=edit==="new";const p=isNew?{id:pkId()}:L.find(x=>x.id===edit);if(!p)return;
     const nv=form.niv.trim();if(L.some(x=>x!==p&&String(x.num)===num&&String(x.niv||"")===nv)){showToast("⚠️ La place "+(nv?nv+" · ":"")+"n° "+num+" existe déjà","err");return;}
     const tit=form.tit.trim();if((p.tit||"")!==tit)pkH(p,tit?"Attribuée à "+tit+(p.tit?" (avant : "+p.tit+")":""):"Libérée (avant : "+p.tit+")");
-    Object.assign(p,{niv:nv,num,tit,plaque:form.plaque.trim().toUpperCase(),dir:form.dir.trim(),note:form.note.trim(),type:form.type,marque:form.marque.trim(),modele:form.modele.trim(),couleur:form.couleur});
+    Object.assign(p,{niv:nv,num,tit,plaque:form.plaque.trim().toUpperCase(),dir:form.dir.trim(),note:form.note.trim(),type:form.type,marque:form.marque.trim(),modele:form.modele.trim(),couleur:form.couleur,alliance:!!form.alliance});
     if(!!p.ko!==form.ko)pkH(p,form.ko?"Mise hors service":"Remise en service");p.ko=form.ko;
     const ancien=p.lie?L.find(x=>x.id===p.lie):null;const lieNum=form.lie.trim();
     if(lieNum){const j=L.find(x=>x!==p&&String(x.niv||"")===nv&&String(x.num).toLowerCase()===lieNum.toLowerCase());
@@ -3592,6 +3593,7 @@ function VueParking({showToast,addLog,badges,session,mode}){
   const fichePlace=edit&&form&&(()=>{const isNew=edit==="new";const p=isNew?null:P.find(x=>x.id===edit);const set=(k,v)=>setForm(x=>({...x,[k]:v}));
     return fenetre(isNew?"Nouvelle place":"Place "+lib(p),()=>setEdit(null),el("div",{style:{display:"flex",flexDirection:"column",gap:12}},
       deux(champ("Niveau",inp(form.niv,v=>set("niv",v),"-1")),champ("Numéro *",inp(form.num,v=>set("num",v),"045"))),
+      el("label",{style:{display:"flex",alignItems:"center",gap:8,fontSize:13,fontWeight:600}},el("input",{type:"checkbox",checked:form.alliance,onChange:e=>set("alliance",e.target.checked)}),"Place réservée Alliance (décocher si elle n'est pas à nous)"),
       champ("Type",el("div",{style:{display:"flex",gap:6,flexWrap:"wrap",alignItems:"center"}},Object.entries(PK_TYPES).map(([k,[l]])=>el("button",{key:k,type:"button",className:"btn "+(form.type===k?"btn-primary":"btn-outline"),style:{fontSize:12,padding:"6px 12px"},onClick:()=>set("type",k)},l)),
         form.type==="borne"&&el("label",{style:{display:"flex",alignItems:"center",gap:6,fontSize:13,marginLeft:8}},el("input",{type:"checkbox",checked:form.panne,onChange:e=>set("panne",e.target.checked)}),"Borne en panne"))),
       deux(champ("Jumelée avec la place n° (gros véhicule)",inp(form.lie,v=>set("lie",v),"Ex : 14")),champ("État",el("label",{style:{display:"flex",alignItems:"center",gap:8,height:38,fontSize:13}},el("input",{type:"checkbox",checked:form.ko,onChange:e=>set("ko",e.target.checked)}),"Place hors service"))),
@@ -3722,11 +3724,7 @@ function VueParking({showToast,addLog,badges,session,mode}){
     return el("div",{style:{...carte,padding:"14px 14px 0",overflow:"hidden"}},
       el("div",{style:{display:"flex",alignItems:"center",gap:10,flexWrap:"wrap"}},el("div",{style:{fontWeight:800,fontSize:14}},"Les niveaux du parking"),
         el("span",{style:{fontSize:12,color:"var(--text3)"}},"Clique sur un niveau pour l'ouvrir"),
-        (()=>{const manq=[];ns.forEach(n=>{const have=new Set(P.filter(p=>String(p.niv||"")===n).map(p=>pkKey(p.num)));Object.keys(PK_PLAN[n].pts).forEach(k=>{if(!have.has(pkKey(k)))manq.push([n,k]);});});
-          if(!manq.length)return null;
-          return el("button",{type:"button",className:"btn btn-primary",style:{marginLeft:"auto",fontSize:12.5},onClick:()=>{if(!confirm("Ajouter "+manq.length+" places du plan (libres) à la liste ?"))return;
-            maj(d=>{manq.forEach(([n,k])=>{const p={id:pkId(),niv:n,num:k,type:"std",tit:""};pkH(p,"Place créée (plan)");d.places.push(p);});});showToast("✅ "+manq.length+" places ajoutées");log("Places du plan ajoutées : "+manq.length);}},
-            "+ Ajouter les "+manq.length+" places du plan");})()),
+        el("span",{style:{marginLeft:"auto",display:"flex",gap:12,fontSize:12,color:"var(--text2)",alignItems:"center"}},el("span",null,el("i",{style:{display:"inline-block",width:12,height:12,borderRadius:3,background:"#fef3c7",border:"2px dashed #d97706",verticalAlign:"-2px",marginRight:5}}),"Nos places"),el("span",null,el("i",{style:{display:"inline-block",width:12,height:12,borderRadius:3,border:"1.5px solid #cbd5e1",verticalAlign:"-2px",marginRight:5}}),"Autres sociétés"))),
       el("div",{className:"pk-imm"},
         el("div",{className:"pk-labs"},etiqs),
         el("div",{className:"pk-vue"},
@@ -3741,16 +3739,16 @@ function VueParking({showToast,addLog,badges,session,mode}){
                 n==="-1"&&el("g",{clipPath:"url(#pk-ct"+i+")"},el("rect",{x:PK_BUREAUX[0],y:PK_BUREAUX[1],width:PK_BUREAUX[2],height:PK_BUREAUX[3],fill:"#eef2f7",stroke:"#cbd5e1",strokeWidth:2,strokeDasharray:"10 8"}),
                   el("text",{x:1150,y:420,textAnchor:"middle",fontSize:46,fontWeight:700,fill:"#94a3b8",fontFamily:"Inter,system-ui,sans-serif"},"Bureaux · restaurant")),
                 pkRampes(n,"trait"),
-                Object.entries(PL.pts).map(([k,[x,y,w,h,r]])=>{const p=by[pkKey(k)];const att=p&&p.tit&&!p.ko;const ko=p&&p.ko;
+                Object.entries(PL.pts).map(([k,[x,y,w,h,r]])=>{const p=by[pkKey(k)];const nous=pkNous(p);const att=nous&&p.tit&&!p.ko;const ko=nous&&p.ko;
                   return el("g",{key:k,transform:"translate("+x+" "+y+") rotate("+r+")"},
-                    el("rect",{x:-w/2,y:-h/2,width:w,height:h,fill:ko?"#fee2e2":att?"#fef3c7":"none",stroke:att?"#d97706":"#94a3b8",strokeWidth:att?2.4:1.4}),
+                    el("rect",{x:-w/2,y:-h/2,width:w,height:h,fill:ko?"#fee2e2":nous?"#fef3c7":"none",stroke:nous?"#d97706":"#cbd5e1",strokeWidth:nous?2.2:1.2,strokeDasharray:nous?"6 5":null}),
                     att?el("rect",{x:-Math.min(w,h)*.32,y:-Math.max(w,h)*.37,width:Math.min(w,h)*.64,height:Math.max(w,h)*.74,rx:Math.min(w,h)*.26,fill:"#fff",stroke:"#1f2937",strokeWidth:2,transform:w>h?"rotate(90)":null}):null);})),
               i<ns.length-1&&piliers.map(([x,y],j)=>el(React.Fragment,{key:j},el("i",{className:"pk-pil",style:{left:x,top:y,height:GAP}}),el("i",{className:"pk-pil b",style:{left:x,top:y,height:GAP}}))));})))));};
   const plan=()=>{const ns=Object.keys(PK_PLAN);
     if(ensemble&&!qn)return pile();
     const nvHit=qn?(ns.find(n=>P.some(p=>String(p.niv||"")===n&&[p.num,p.tit,p.plaque,p.dir,p.marque,p.modele].join(" ").toLowerCase().replace(/[\s-]/g,"").includes(qn)))):null;
     const nv=PK_PLAN[niv]&&!(nvHit&&nvHit!==niv&&ensemble)?niv:(nvHit||ns[0]);const PL=PK_PLAN[nv];const vue3d=vue3d0||!PL.img;
-    const pl=P.filter(p=>String(p.niv||"")===nv);const byKey={};pl.forEach(p=>byKey[pkKey(p.num)]=p);
+    const pl=P.filter(p=>String(p.niv||"")===nv);const byKey={};PT.filter(p=>String(p.niv||"")===nv).forEach(p=>byKey[pkKey(p.num)]=p);
     const hit=p=>qn&&p&&[p.num,p.tit,p.plaque,p.dir,p.marque,p.modele,(jum(p)||{}).num].join(" ").toLowerCase().replace(/[\s-]/g,"").includes(qn);
     const anyHit=qn&&pl.some(hit);const col=p=>p.ko?["#b91c1c",.5]:p.tit?["#2c5f85",.42]:["#16a34a",.38];
     const vb=nv==="-1"?vbDe(PL):[PK_CONTOUR_VB[0],PK_CONTOUR_VB[1],PK_CONTOUR_VB[2],PK_CONTOUR_VB[3]+50];
@@ -3761,7 +3759,7 @@ function VueParking({showToast,addLog,badges,session,mode}){
         el("button",{type:"button",className:"btn btn-outline",style:{fontSize:12,padding:"6px 12px",fontWeight:700},onClick:()=>{setEnsemble(true);setQ("");setZoom(null);}},"← Tous les niveaux"),
         ns.map(n=>el("button",{key:n,type:"button",className:"btn "+(n===nv?"btn-primary":"btn-outline"),style:{fontSize:12,padding:"6px 12px"},onClick:()=>ouvrirEtage(n)},"Niveau "+n)),
         el("button",{type:"button",className:"btn btn-outline",style:{fontSize:12,padding:"6px 12px"},onClick:()=>setGrand(!grand)},grand?"Réduire":"Agrandir"),PL.img&&el("button",{type:"button",className:"btn btn-outline",style:{fontSize:12,padding:"6px 12px"},onClick:()=>setVue3d(!vue3d)},vue3d?"Plan d'origine":"Vue 3D"),
-        el("span",{style:{display:"flex",gap:12,flexWrap:"wrap",marginLeft:"auto",fontSize:12,color:"var(--text2)"}},leg("#facc15","Attribuée (marquage jaune)"),leg("#16a34a","Libre"),leg("#b91c1c","Hors service"),leg("#15803d","Borne",true))),
+        el("span",{style:{display:"flex",gap:12,flexWrap:"wrap",marginLeft:"auto",fontSize:12,color:"var(--text2)"}},leg("#facc15","Nos places (voiture = occupée)"),leg("#9ca3af","Autres sociétés"),leg("#b91c1c","Hors service"),leg("#15803d","Borne",true))),
       el("div",{style:{display:"flex",gap:14,alignItems:"stretch",flexWrap:"wrap"}},el("div",{style:{flex:"1 1 520px",minWidth:0}},
       (()=>{const tip=p=>nv+" · n° "+p.num+(jum(p)?" + "+jum(p).num:"")+" · "+(p.ko?"hors service":p.tit?p.tit+(pkVoit(p)?" · "+pkVoit(p):"")+(p.plaque?" · "+p.plaque:""):"libre")+(p.type==="borne"?" · borne"+(p.panne?" en panne":""):"");
         const eclair=(p,w,h,r)=>p.type==="borne"&&el("g",{transform:"rotate("+(-r)+") translate("+(w/2-14)+" "+(-h/2+14)+")"},el("circle",{r:12,fill:p.panne?"#b91c1c":"#15803d",stroke:"#fff",strokeWidth:2}),el("path",{d:"M1.5 -7 L-4 1 L0 1 L-1.5 7 L4 -1 L0 -1 Z",fill:"#fff"}));
@@ -3786,25 +3784,27 @@ function VueParking({showToast,addLog,badges,session,mode}){
           el("svg",{viewBox:vz.join(" "),preserveAspectRatio:"xMidYMid meet",style:{display:"block",width:"100%",height:grand?"min(82vh,820px)":"560px"}},
             el("defs",null,
               el("filter",{id:"pk-ombre",x:"-40%",y:"-40%",width:"180%",height:"180%"},el("feDropShadow",{dx:3,dy:5,stdDeviation:2.6,floodColor:"#000",floodOpacity:.55})),
-              el("pattern",{id:"pk-hach",width:9,height:9,patternUnits:"userSpaceOnUse",patternTransform:"rotate(45)"},el("rect",{width:9,height:9,fill:"#2b2d31"}),el("rect",{width:2.4,height:9,fill:"#e7e5e4",opacity:.7})),
+              el("pattern",{id:"pk-hach",width:9,height:9,patternUnits:"userSpaceOnUse",patternTransform:"rotate(45)"},el("rect",{width:9,height:9,fill:"#fee2e2"}),el("rect",{width:2.4,height:9,fill:"#f87171",opacity:.8})),
               el("linearGradient",{id:"pk-asph",x1:0,y1:0,x2:1,y2:1},el("stop",{offset:0,stopColor:"#34373c"}),el("stop",{offset:1,stopColor:"#26282c"}))),
-            nv==="-1"?el(React.Fragment,null,[44,36,28,20,12].map(d=>el("rect",{key:d,x:vb[0],y:vb[1]+d,width:vb[2],height:vb[3],rx:10,fill:d>30?"#1f2124":"#3a3c40"})),
-                el("rect",{x:vb[0],y:vb[1],width:vb[2],height:vb[3],rx:10,fill:"#e4e4e2"}),el("rect",{x:vb[0]+16,y:vb[1]+16,width:vb[2]-32,height:vb[3]-32,rx:6,fill:"url(#pk-asph)"}))
-            :el(React.Fragment,null,[44,36,28,20,12].map(d=>el("polygon",{key:d,points:PK_CONTOUR.map(([x,y])=>x+","+(y+d)).join(" "),fill:d>30?"#1f2124":"#3a3c40"})),
-                el("polygon",{points:PK_CONTOUR.map(q=>q.join(",")).join(" "),fill:"#e4e4e2",stroke:"#cfcfcc",strokeWidth:3}),
-                el("polygon",{points:PK_CONTOUR.map(q=>q.join(",")).join(" "),fill:"url(#pk-asph)",transform:"translate("+(PK_CONTOUR_VB[0]+PK_CONTOUR_VB[2]/2)+" "+(PK_CONTOUR_VB[1]+PK_CONTOUR_VB[3]/2)+") scale(.975) translate("+(-(PK_CONTOUR_VB[0]+PK_CONTOUR_VB[2]/2))+" "+(-(PK_CONTOUR_VB[1]+PK_CONTOUR_VB[3]/2))+")"})),
-            pkRampes(nv,"maquette"),
-            Object.entries(PL.pts).map(([k,[x,y,w,h,r]])=>{const p=byKey[pkKey(k)];if(!p)return null;const H=hit(p);const voiture=p.tit&&!p.ko;
+            nv==="-1"?el(React.Fragment,null,[44,36,28,20,12].map(d=>el("rect",{key:d,x:vb[0],y:vb[1]+d,width:vb[2],height:vb[3],rx:10,fill:d>30?"#94a3b8":"#cbd5e1"})),
+                el("rect",{x:vb[0],y:vb[1],width:vb[2],height:vb[3],rx:10,fill:"#fbfbfa",stroke:"#334155",strokeWidth:4}))
+            :el(React.Fragment,null,[44,36,28,20,12].map(d=>el("polygon",{key:d,points:PK_CONTOUR.map(([x,y])=>x+","+(y+d)).join(" "),fill:d>30?"#94a3b8":"#cbd5e1",stroke:"#64748b",strokeWidth:d>30?2:0})),
+                el("polygon",{points:PK_CONTOUR.map(q=>q.join(",")).join(" "),fill:"#fbfbfa",stroke:"#334155",strokeWidth:4,strokeLinejoin:"round"})),
+            pkRampes(nv,"trait"),
+            Object.entries(PL.pts).map(([k,[x,y,w,h,r]])=>{const p0=byKey[pkKey(k)];
+              if(!pkNous(p0))return el("g",{key:k,transform:"translate("+x+" "+y+") rotate("+r+")",pointerEvents:"none",opacity:.8},el("rect",{x:-w/2,y:-h/2,width:w,height:h,fill:"none",stroke:"#94a3b8",strokeWidth:1.2}),
+                el("g",{transform:"rotate("+(-r)+")"},el("text",{textAnchor:"middle",dominantBaseline:"central",fontSize:Math.min(13,Math.min(w,h)*.36),fontWeight:600,fontFamily:"Inter,system-ui,sans-serif",fill:"#94a3b8"},k)));
+              const p=p0;const H=hit(p);const voiture=p.tit&&!p.ko;
               return el("g",{key:k,onClick:()=>ouvrir(p.id),onMouseEnter:()=>setZoom(p.id),className:"pk-pl",style:{cursor:"pointer"},transform:"translate("+x+" "+y+") rotate("+r+")",opacity:anyHit&&!H?.28:1},el("title",null,tip(p)),
-                el("rect",{x:-w/2,y:-h/2,width:w,height:h,fill:p.ko?"url(#pk-hach)":voiture?"#facc15":"#ffffff",fillOpacity:p.ko?1:voiture?.16:.015,stroke:H?"#fb923c":voiture?"#facc15":"#f5f5f4",strokeWidth:H?4:voiture?2.6:1.4}),
-                voiture&&(()=>{const hz=w>h,L=Math.max(w,h),S=Math.min(w,h);return el("g",{transform:hz?"rotate(90)":null},el("rect",{x:-S/2+2,y:L/2-7,width:S-4,height:5,fill:"#facc15"}),el("rect",{x:-S/2+2,y:-L/2+2,width:S-4,height:5,fill:"#facc15"}));})(),
+                el("rect",{x:-w/2,y:-h/2,width:w,height:h,fill:p.ko?"url(#pk-hach)":"#fef3c7",fillOpacity:p.ko?1:.35,stroke:H?"#2563eb":"#d97706",strokeWidth:H?3.4:2,strokeDasharray:H?null:"5 4"}),
+                false&&(()=>{const hz=w>h,L=Math.max(w,h),S=Math.min(w,h);return el("g",{transform:hz?"rotate(90)":null},el("rect",{x:-S/2+2,y:L/2-7,width:S-4,height:5,fill:"#f59e0b"}),el("rect",{x:-S/2+2,y:-L/2+2,width:S-4,height:5,fill:"#f59e0b"}));})(),
                 voiture&&pkVoitureSvg(w,h,PK_COUL[p.couleur]||"#2c5f85"),
                 el("g",{transform:"rotate("+(-r)+")"},el("text",{textAnchor:"middle",dominantBaseline:"central",fontSize:Math.min(16,Math.min(w,h)*.42),fontWeight:800,fontFamily:"Inter,system-ui,sans-serif",
-                  fill:voiture?"#fff":"#d6d3d1",stroke:voiture?"#111827":"none",strokeWidth:voiture?2.4:0,paintOrder:"stroke",opacity:voiture?.95:.9},p.num)),
+                  fill:voiture?"#fff":"#92400e",stroke:voiture?"#111827":"none",strokeWidth:voiture?2.4:0,paintOrder:"stroke",opacity:.95},p.num)),
                 eclair(p,w,h,r));}),
-            arrive&&el("g",{className:"pk-blanc",pointerEvents:"none"},
+            false&&el("g",{className:"pk-blanc",pointerEvents:"none"},
               nv==="-1"?el("rect",{x:vb[0],y:vb[1],width:vb[2],height:vb[3],rx:10,fill:"#fbfbfa"}):el("polygon",{points:PK_CONTOUR.map(q=>q.join(",")).join(" "),fill:"#fbfbfa",stroke:"#334155",strokeWidth:4}),
-              Object.entries(PL.pts).map(([k,[x,y,w,h,r]])=>{const p=byKey[pkKey(k)];const att=p&&p.tit&&!p.ko;return el("rect",{key:k,x:-w/2,y:-h/2,width:w,height:h,transform:"translate("+x+" "+y+") rotate("+r+")",fill:att?"#fef3c7":"none",stroke:att?"#d97706":"#94a3b8",strokeWidth:att?2.4:1.4});})))));})()),
+              Object.entries(PL.pts).map(([k,[x,y,w,h,r]])=>{const p=byKey[pkKey(k)];const att=pkNous(p);return el("rect",{key:k,x:-w/2,y:-h/2,width:w,height:h,transform:"translate("+x+" "+y+") rotate("+r+")",fill:att?"#fef3c7":"none",stroke:att?"#d97706":"#cbd5e1",strokeWidth:att?2.4:1.2});})))));})()),
       grosPlan(pl.find(p=>p.id===zoom)||(qn?pl.find(hit):null))),
       el("div",{style:{fontSize:12,color:"var(--text3)",marginTop:8}},"Survole une place pour la voir en gros plan, clique pour ouvrir sa fiche. La recherche (nom, plaque, numéro) met la place en évidence."+(sans.length?" · Places de ce niveau absentes du plan : "+sans.map(p=>p.num).join(", "):"")));};
 
@@ -3969,16 +3969,16 @@ function VueParking({showToast,addLog,badges,session,mode}){
       +".pk-pil{position:absolute;width:7px;margin-left:-3px;background:linear-gradient(90deg,#94a3b8,#f1f5f9 50%,#94a3b8);border:1px solid #64748b;transform-origin:top center;transform:rotateX(-90deg);pointer-events:none}"
       +".pk-pil.b{transform:rotateZ(90deg) rotateX(-90deg)}.pk-niv.autre .pk-pil,.pk-niv.sel .pk-pil{opacity:0}"
       +"@media (max-width:900px){.pk-imm{flex-direction:column}.pk-labs{width:auto;flex-direction:row;flex-wrap:wrap}.pk-vue{height:520px}}"
-      +".pk-scene{border-radius:12px;background:radial-gradient(ellipse at 50% 35%,#b9bcbf,#8f9397);padding:18px 8px 44px;perspective:1700px;overflow:hidden}"
-      +".pk-bloc{transform:rotateX(30deg) rotateZ(-3deg) scale(1.08);transform-origin:50% 55%;transform-style:preserve-3d;border-radius:10px;box-shadow:0 3px 0 #d4d4d2,0 26px 0 #3b3d41,0 30px 0 #2a2c2f,0 60px 60px rgba(0,0,0,.35)}"
-      +".pk-pl:hover rect:first-child{fill-opacity:.12;stroke:#fff;stroke-width:2.4}"
+      +".pk-scene{border-radius:12px;background:radial-gradient(ellipse at 50% 35%,#ffffff,#eef1f5);padding:18px 8px 44px;perspective:1700px;overflow:hidden}"
+      +".pk-bloc{transform:rotateX(30deg) rotateZ(-3deg) scale(1.08);transform-origin:50% 55%;transform-style:preserve-3d;filter:drop-shadow(0 30px 30px rgba(15,23,42,.18))}"
+      +".pk-pl:hover rect:first-child{stroke:#2563eb;stroke-width:3.4;stroke-dasharray:none}"
       +".pk-etiq{position:absolute;right:-6%;top:44%;display:flex;flex-direction:column;gap:2px;background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:8px 12px;box-shadow:0 6px 16px rgba(15,23,42,.12);font-size:12px;color:var(--text2);white-space:nowrap;transition:transform .45s}"
       +".pk-etiq b{font-size:14px;color:var(--text)}.pk-etage:hover .pk-etiq{transform:translateY(-30px);border-color:#3b82f6}"
       +"@keyframes pkArrive{0%{transform:rotateX(58deg) rotateZ(-34deg) scale(.62) translateZ(60px)}100%{transform:rotateX(30deg) rotateZ(-3deg) scale(1.08)}}.pk-arrive{animation:pkArrive 1.05s cubic-bezier(.45,0,.15,1) both}"
       +"@keyframes pkBlanc{0%,35%{opacity:1}100%{opacity:0}}.pk-blanc{animation:pkBlanc 1.3s ease-in-out both}"
       +"@keyframes pkFond{0%{background-color:#ffffff}100%{background-color:transparent}}.pk-scene{position:relative}"
       +".pk-zreset{position:absolute;z-index:3;top:12px;right:12px;border:none;border-radius:999px;background:rgba(15,23,42,.8);color:#fff;font:600 12px Inter,system-ui,sans-serif;padding:7px 12px;cursor:pointer}"
-      +".pk-zhint{position:absolute;z-index:3;bottom:10px;left:14px;font:500 11.5px Inter,system-ui,sans-serif;color:rgba(255,255,255,.85);background:rgba(15,23,42,.45);padding:4px 10px;border-radius:999px;pointer-events:none}"
+      +".pk-zhint{position:absolute;z-index:3;bottom:10px;left:14px;font:500 11.5px Inter,system-ui,sans-serif;color:#475569;background:rgba(255,255,255,.85);border:1px solid #e2e8f0;padding:4px 10px;border-radius:999px;pointer-events:none}"
       +"@media (max-width:700px){.pk-etiq{right:2%;top:auto;bottom:6%}}"),
     el("div",{style:{display:"flex",alignItems:"center",gap:10,flexWrap:"wrap",marginBottom:14}},
 
@@ -9966,6 +9966,7 @@ const pkRampes=(n,mode)=>{const el=React.createElement;const trait=mode==="trait
   return el("g",{className:"pk-rampe"},el("path",{d,fill:fond,stroke:bord,strokeWidth:2.5}),
     el("path",{d:"M"+P_(mid,a0)+" A"+mid+" "+mid+" 0 0 1 "+P_(mid,a1),fill:"none",stroke:bord,strokeWidth:1.6,strokeDasharray:"10 8",opacity:.8}),fle,
     txt(cx-ro-38,cy,"RAMPE",-90));};
+const pkNous=p=>!!p&&(p.alliance!==undefined?!!p.alliance:!(p.hist||[]).some(h=>/\(plan\)/.test(h.txt||"")));
 const pkKey=n=>String(n||"").toLowerCase().replace(/\s+/g,"").replace(/^0+(?=\d)/,"");
 const pkNat=(a,b)=>String(a||"").localeCompare(String(b||""),"fr",{numeric:true});
 const pkId=()=>Date.now().toString(36)+Math.random().toString(36).slice(2,6);
@@ -10020,7 +10021,7 @@ function VueParking({showToast,addLog,badges,session,mode}){
     el(React.Fragment,null,el("b",null,"Accès refusé."),el("div",{style:{marginTop:6}},"Ton compte n'a pas l'accès « Parking & véhicules ». Demande à l'administrateur de mettre ton compte en « Fleet » (Réglages → Comptes).")));
   if(!data)return el("div",{style:{padding:40,color:"var(--text3)",fontSize:13}},"Chargement…");
 
-  const P=data.places,V=data.vehicules;
+  const PT=data.places,P=PT.filter(pkNous),V=data.vehicules;
   const jum=p=>p&&p.lie?P.find(x=>x.id===p.lie):null;
   const lib=p=>(p.niv?p.niv+" · ":"")+"n° "+p.num+(jum(p)?" + "+jum(p).num:"");
   const nivs=[...new Set(P.map(p=>p.niv||""))].filter(Boolean).sort(pkNat);
@@ -10045,12 +10046,12 @@ function VueParking({showToast,addLog,badges,session,mode}){
 
   // ── Fiche d'une place ──
   const ouvrir=id=>{const p=id==="new"?{niv:niv||"",num:"",type:"std"}:P.find(x=>x.id===id);if(!p)return;setEdit(id);setOutils(false);
-    setForm({niv:p.niv||"",num:p.num||"",type:p.type||"std",panne:!!p.panne,lie:(jum(p)||{}).num||"",ko:!!p.ko,tit:p.tit||"",plaque:p.plaque||"",dir:p.dir||"",note:p.note||"",marque:p.marque||"",modele:p.modele||"",couleur:p.couleur||""});};
+    setForm({niv:p.niv||"",num:p.num||"",type:p.type||"std",panne:!!p.panne,lie:(jum(p)||{}).num||"",ko:!!p.ko,tit:p.tit||"",plaque:p.plaque||"",dir:p.dir||"",note:p.note||"",marque:p.marque||"",modele:p.modele||"",couleur:p.couleur||"",alliance:id==="new"?true:pkNous(p)});};
   const sauverPlace=()=>{const num=form.num.trim();if(!num){showToast("⚠️ Indique le numéro de la place","err");return;}
     const n=JSON.parse(JSON.stringify(data));const L=n.places;const isNew=edit==="new";const p=isNew?{id:pkId()}:L.find(x=>x.id===edit);if(!p)return;
     const nv=form.niv.trim();if(L.some(x=>x!==p&&String(x.num)===num&&String(x.niv||"")===nv)){showToast("⚠️ La place "+(nv?nv+" · ":"")+"n° "+num+" existe déjà","err");return;}
     const tit=form.tit.trim();if((p.tit||"")!==tit)pkH(p,tit?"Attribuée à "+tit+(p.tit?" (avant : "+p.tit+")":""):"Libérée (avant : "+p.tit+")");
-    Object.assign(p,{niv:nv,num,tit,plaque:form.plaque.trim().toUpperCase(),dir:form.dir.trim(),note:form.note.trim(),type:form.type,marque:form.marque.trim(),modele:form.modele.trim(),couleur:form.couleur});
+    Object.assign(p,{niv:nv,num,tit,plaque:form.plaque.trim().toUpperCase(),dir:form.dir.trim(),note:form.note.trim(),type:form.type,marque:form.marque.trim(),modele:form.modele.trim(),couleur:form.couleur,alliance:!!form.alliance});
     if(!!p.ko!==form.ko)pkH(p,form.ko?"Mise hors service":"Remise en service");p.ko=form.ko;
     const ancien=p.lie?L.find(x=>x.id===p.lie):null;const lieNum=form.lie.trim();
     if(lieNum){const j=L.find(x=>x!==p&&String(x.niv||"")===nv&&String(x.num).toLowerCase()===lieNum.toLowerCase());
@@ -10070,6 +10071,7 @@ function VueParking({showToast,addLog,badges,session,mode}){
   const fichePlace=edit&&form&&(()=>{const isNew=edit==="new";const p=isNew?null:P.find(x=>x.id===edit);const set=(k,v)=>setForm(x=>({...x,[k]:v}));
     return fenetre(isNew?"Nouvelle place":"Place "+lib(p),()=>setEdit(null),el("div",{style:{display:"flex",flexDirection:"column",gap:12}},
       deux(champ("Niveau",inp(form.niv,v=>set("niv",v),"-1")),champ("Numéro *",inp(form.num,v=>set("num",v),"045"))),
+      el("label",{style:{display:"flex",alignItems:"center",gap:8,fontSize:13,fontWeight:600}},el("input",{type:"checkbox",checked:form.alliance,onChange:e=>set("alliance",e.target.checked)}),"Place réservée Alliance (décocher si elle n'est pas à nous)"),
       champ("Type",el("div",{style:{display:"flex",gap:6,flexWrap:"wrap",alignItems:"center"}},Object.entries(PK_TYPES).map(([k,[l]])=>el("button",{key:k,type:"button",className:"btn "+(form.type===k?"btn-primary":"btn-outline"),style:{fontSize:12,padding:"6px 12px"},onClick:()=>set("type",k)},l)),
         form.type==="borne"&&el("label",{style:{display:"flex",alignItems:"center",gap:6,fontSize:13,marginLeft:8}},el("input",{type:"checkbox",checked:form.panne,onChange:e=>set("panne",e.target.checked)}),"Borne en panne"))),
       deux(champ("Jumelée avec la place n° (gros véhicule)",inp(form.lie,v=>set("lie",v),"Ex : 14")),champ("État",el("label",{style:{display:"flex",alignItems:"center",gap:8,height:38,fontSize:13}},el("input",{type:"checkbox",checked:form.ko,onChange:e=>set("ko",e.target.checked)}),"Place hors service"))),
@@ -10200,11 +10202,7 @@ function VueParking({showToast,addLog,badges,session,mode}){
     return el("div",{style:{...carte,padding:"14px 14px 0",overflow:"hidden"}},
       el("div",{style:{display:"flex",alignItems:"center",gap:10,flexWrap:"wrap"}},el("div",{style:{fontWeight:800,fontSize:14}},"Les niveaux du parking"),
         el("span",{style:{fontSize:12,color:"var(--text3)"}},"Clique sur un niveau pour l'ouvrir"),
-        (()=>{const manq=[];ns.forEach(n=>{const have=new Set(P.filter(p=>String(p.niv||"")===n).map(p=>pkKey(p.num)));Object.keys(PK_PLAN[n].pts).forEach(k=>{if(!have.has(pkKey(k)))manq.push([n,k]);});});
-          if(!manq.length)return null;
-          return el("button",{type:"button",className:"btn btn-primary",style:{marginLeft:"auto",fontSize:12.5},onClick:()=>{if(!confirm("Ajouter "+manq.length+" places du plan (libres) à la liste ?"))return;
-            maj(d=>{manq.forEach(([n,k])=>{const p={id:pkId(),niv:n,num:k,type:"std",tit:""};pkH(p,"Place créée (plan)");d.places.push(p);});});showToast("✅ "+manq.length+" places ajoutées");log("Places du plan ajoutées : "+manq.length);}},
-            "+ Ajouter les "+manq.length+" places du plan");})()),
+        el("span",{style:{marginLeft:"auto",display:"flex",gap:12,fontSize:12,color:"var(--text2)",alignItems:"center"}},el("span",null,el("i",{style:{display:"inline-block",width:12,height:12,borderRadius:3,background:"#fef3c7",border:"2px dashed #d97706",verticalAlign:"-2px",marginRight:5}}),"Nos places"),el("span",null,el("i",{style:{display:"inline-block",width:12,height:12,borderRadius:3,border:"1.5px solid #cbd5e1",verticalAlign:"-2px",marginRight:5}}),"Autres sociétés"))),
       el("div",{className:"pk-imm"},
         el("div",{className:"pk-labs"},etiqs),
         el("div",{className:"pk-vue"},
@@ -10219,16 +10217,16 @@ function VueParking({showToast,addLog,badges,session,mode}){
                 n==="-1"&&el("g",{clipPath:"url(#pk-ct"+i+")"},el("rect",{x:PK_BUREAUX[0],y:PK_BUREAUX[1],width:PK_BUREAUX[2],height:PK_BUREAUX[3],fill:"#eef2f7",stroke:"#cbd5e1",strokeWidth:2,strokeDasharray:"10 8"}),
                   el("text",{x:1150,y:420,textAnchor:"middle",fontSize:46,fontWeight:700,fill:"#94a3b8",fontFamily:"Inter,system-ui,sans-serif"},"Bureaux · restaurant")),
                 pkRampes(n,"trait"),
-                Object.entries(PL.pts).map(([k,[x,y,w,h,r]])=>{const p=by[pkKey(k)];const att=p&&p.tit&&!p.ko;const ko=p&&p.ko;
+                Object.entries(PL.pts).map(([k,[x,y,w,h,r]])=>{const p=by[pkKey(k)];const nous=pkNous(p);const att=nous&&p.tit&&!p.ko;const ko=nous&&p.ko;
                   return el("g",{key:k,transform:"translate("+x+" "+y+") rotate("+r+")"},
-                    el("rect",{x:-w/2,y:-h/2,width:w,height:h,fill:ko?"#fee2e2":att?"#fef3c7":"none",stroke:att?"#d97706":"#94a3b8",strokeWidth:att?2.4:1.4}),
+                    el("rect",{x:-w/2,y:-h/2,width:w,height:h,fill:ko?"#fee2e2":nous?"#fef3c7":"none",stroke:nous?"#d97706":"#cbd5e1",strokeWidth:nous?2.2:1.2,strokeDasharray:nous?"6 5":null}),
                     att?el("rect",{x:-Math.min(w,h)*.32,y:-Math.max(w,h)*.37,width:Math.min(w,h)*.64,height:Math.max(w,h)*.74,rx:Math.min(w,h)*.26,fill:"#fff",stroke:"#1f2937",strokeWidth:2,transform:w>h?"rotate(90)":null}):null);})),
               i<ns.length-1&&piliers.map(([x,y],j)=>el(React.Fragment,{key:j},el("i",{className:"pk-pil",style:{left:x,top:y,height:GAP}}),el("i",{className:"pk-pil b",style:{left:x,top:y,height:GAP}}))));})))));};
   const plan=()=>{const ns=Object.keys(PK_PLAN);
     if(ensemble&&!qn)return pile();
     const nvHit=qn?(ns.find(n=>P.some(p=>String(p.niv||"")===n&&[p.num,p.tit,p.plaque,p.dir,p.marque,p.modele].join(" ").toLowerCase().replace(/[\s-]/g,"").includes(qn)))):null;
     const nv=PK_PLAN[niv]&&!(nvHit&&nvHit!==niv&&ensemble)?niv:(nvHit||ns[0]);const PL=PK_PLAN[nv];const vue3d=vue3d0||!PL.img;
-    const pl=P.filter(p=>String(p.niv||"")===nv);const byKey={};pl.forEach(p=>byKey[pkKey(p.num)]=p);
+    const pl=P.filter(p=>String(p.niv||"")===nv);const byKey={};PT.filter(p=>String(p.niv||"")===nv).forEach(p=>byKey[pkKey(p.num)]=p);
     const hit=p=>qn&&p&&[p.num,p.tit,p.plaque,p.dir,p.marque,p.modele,(jum(p)||{}).num].join(" ").toLowerCase().replace(/[\s-]/g,"").includes(qn);
     const anyHit=qn&&pl.some(hit);const col=p=>p.ko?["#b91c1c",.5]:p.tit?["#2c5f85",.42]:["#16a34a",.38];
     const vb=nv==="-1"?vbDe(PL):[PK_CONTOUR_VB[0],PK_CONTOUR_VB[1],PK_CONTOUR_VB[2],PK_CONTOUR_VB[3]+50];
@@ -10239,7 +10237,7 @@ function VueParking({showToast,addLog,badges,session,mode}){
         el("button",{type:"button",className:"btn btn-outline",style:{fontSize:12,padding:"6px 12px",fontWeight:700},onClick:()=>{setEnsemble(true);setQ("");setZoom(null);}},"← Tous les niveaux"),
         ns.map(n=>el("button",{key:n,type:"button",className:"btn "+(n===nv?"btn-primary":"btn-outline"),style:{fontSize:12,padding:"6px 12px"},onClick:()=>ouvrirEtage(n)},"Niveau "+n)),
         el("button",{type:"button",className:"btn btn-outline",style:{fontSize:12,padding:"6px 12px"},onClick:()=>setGrand(!grand)},grand?"Réduire":"Agrandir"),PL.img&&el("button",{type:"button",className:"btn btn-outline",style:{fontSize:12,padding:"6px 12px"},onClick:()=>setVue3d(!vue3d)},vue3d?"Plan d'origine":"Vue 3D"),
-        el("span",{style:{display:"flex",gap:12,flexWrap:"wrap",marginLeft:"auto",fontSize:12,color:"var(--text2)"}},leg("#facc15","Attribuée (marquage jaune)"),leg("#16a34a","Libre"),leg("#b91c1c","Hors service"),leg("#15803d","Borne",true))),
+        el("span",{style:{display:"flex",gap:12,flexWrap:"wrap",marginLeft:"auto",fontSize:12,color:"var(--text2)"}},leg("#facc15","Nos places (voiture = occupée)"),leg("#9ca3af","Autres sociétés"),leg("#b91c1c","Hors service"),leg("#15803d","Borne",true))),
       el("div",{style:{display:"flex",gap:14,alignItems:"stretch",flexWrap:"wrap"}},el("div",{style:{flex:"1 1 520px",minWidth:0}},
       (()=>{const tip=p=>nv+" · n° "+p.num+(jum(p)?" + "+jum(p).num:"")+" · "+(p.ko?"hors service":p.tit?p.tit+(pkVoit(p)?" · "+pkVoit(p):"")+(p.plaque?" · "+p.plaque:""):"libre")+(p.type==="borne"?" · borne"+(p.panne?" en panne":""):"");
         const eclair=(p,w,h,r)=>p.type==="borne"&&el("g",{transform:"rotate("+(-r)+") translate("+(w/2-14)+" "+(-h/2+14)+")"},el("circle",{r:12,fill:p.panne?"#b91c1c":"#15803d",stroke:"#fff",strokeWidth:2}),el("path",{d:"M1.5 -7 L-4 1 L0 1 L-1.5 7 L4 -1 L0 -1 Z",fill:"#fff"}));
@@ -10264,25 +10262,27 @@ function VueParking({showToast,addLog,badges,session,mode}){
           el("svg",{viewBox:vz.join(" "),preserveAspectRatio:"xMidYMid meet",style:{display:"block",width:"100%",height:grand?"min(82vh,820px)":"560px"}},
             el("defs",null,
               el("filter",{id:"pk-ombre",x:"-40%",y:"-40%",width:"180%",height:"180%"},el("feDropShadow",{dx:3,dy:5,stdDeviation:2.6,floodColor:"#000",floodOpacity:.55})),
-              el("pattern",{id:"pk-hach",width:9,height:9,patternUnits:"userSpaceOnUse",patternTransform:"rotate(45)"},el("rect",{width:9,height:9,fill:"#2b2d31"}),el("rect",{width:2.4,height:9,fill:"#e7e5e4",opacity:.7})),
+              el("pattern",{id:"pk-hach",width:9,height:9,patternUnits:"userSpaceOnUse",patternTransform:"rotate(45)"},el("rect",{width:9,height:9,fill:"#fee2e2"}),el("rect",{width:2.4,height:9,fill:"#f87171",opacity:.8})),
               el("linearGradient",{id:"pk-asph",x1:0,y1:0,x2:1,y2:1},el("stop",{offset:0,stopColor:"#34373c"}),el("stop",{offset:1,stopColor:"#26282c"}))),
-            nv==="-1"?el(React.Fragment,null,[44,36,28,20,12].map(d=>el("rect",{key:d,x:vb[0],y:vb[1]+d,width:vb[2],height:vb[3],rx:10,fill:d>30?"#1f2124":"#3a3c40"})),
-                el("rect",{x:vb[0],y:vb[1],width:vb[2],height:vb[3],rx:10,fill:"#e4e4e2"}),el("rect",{x:vb[0]+16,y:vb[1]+16,width:vb[2]-32,height:vb[3]-32,rx:6,fill:"url(#pk-asph)"}))
-            :el(React.Fragment,null,[44,36,28,20,12].map(d=>el("polygon",{key:d,points:PK_CONTOUR.map(([x,y])=>x+","+(y+d)).join(" "),fill:d>30?"#1f2124":"#3a3c40"})),
-                el("polygon",{points:PK_CONTOUR.map(q=>q.join(",")).join(" "),fill:"#e4e4e2",stroke:"#cfcfcc",strokeWidth:3}),
-                el("polygon",{points:PK_CONTOUR.map(q=>q.join(",")).join(" "),fill:"url(#pk-asph)",transform:"translate("+(PK_CONTOUR_VB[0]+PK_CONTOUR_VB[2]/2)+" "+(PK_CONTOUR_VB[1]+PK_CONTOUR_VB[3]/2)+") scale(.975) translate("+(-(PK_CONTOUR_VB[0]+PK_CONTOUR_VB[2]/2))+" "+(-(PK_CONTOUR_VB[1]+PK_CONTOUR_VB[3]/2))+")"})),
-            pkRampes(nv,"maquette"),
-            Object.entries(PL.pts).map(([k,[x,y,w,h,r]])=>{const p=byKey[pkKey(k)];if(!p)return null;const H=hit(p);const voiture=p.tit&&!p.ko;
+            nv==="-1"?el(React.Fragment,null,[44,36,28,20,12].map(d=>el("rect",{key:d,x:vb[0],y:vb[1]+d,width:vb[2],height:vb[3],rx:10,fill:d>30?"#94a3b8":"#cbd5e1"})),
+                el("rect",{x:vb[0],y:vb[1],width:vb[2],height:vb[3],rx:10,fill:"#fbfbfa",stroke:"#334155",strokeWidth:4}))
+            :el(React.Fragment,null,[44,36,28,20,12].map(d=>el("polygon",{key:d,points:PK_CONTOUR.map(([x,y])=>x+","+(y+d)).join(" "),fill:d>30?"#94a3b8":"#cbd5e1",stroke:"#64748b",strokeWidth:d>30?2:0})),
+                el("polygon",{points:PK_CONTOUR.map(q=>q.join(",")).join(" "),fill:"#fbfbfa",stroke:"#334155",strokeWidth:4,strokeLinejoin:"round"})),
+            pkRampes(nv,"trait"),
+            Object.entries(PL.pts).map(([k,[x,y,w,h,r]])=>{const p0=byKey[pkKey(k)];
+              if(!pkNous(p0))return el("g",{key:k,transform:"translate("+x+" "+y+") rotate("+r+")",pointerEvents:"none",opacity:.8},el("rect",{x:-w/2,y:-h/2,width:w,height:h,fill:"none",stroke:"#94a3b8",strokeWidth:1.2}),
+                el("g",{transform:"rotate("+(-r)+")"},el("text",{textAnchor:"middle",dominantBaseline:"central",fontSize:Math.min(13,Math.min(w,h)*.36),fontWeight:600,fontFamily:"Inter,system-ui,sans-serif",fill:"#94a3b8"},k)));
+              const p=p0;const H=hit(p);const voiture=p.tit&&!p.ko;
               return el("g",{key:k,onClick:()=>ouvrir(p.id),onMouseEnter:()=>setZoom(p.id),className:"pk-pl",style:{cursor:"pointer"},transform:"translate("+x+" "+y+") rotate("+r+")",opacity:anyHit&&!H?.28:1},el("title",null,tip(p)),
-                el("rect",{x:-w/2,y:-h/2,width:w,height:h,fill:p.ko?"url(#pk-hach)":voiture?"#facc15":"#ffffff",fillOpacity:p.ko?1:voiture?.16:.015,stroke:H?"#fb923c":voiture?"#facc15":"#f5f5f4",strokeWidth:H?4:voiture?2.6:1.4}),
-                voiture&&(()=>{const hz=w>h,L=Math.max(w,h),S=Math.min(w,h);return el("g",{transform:hz?"rotate(90)":null},el("rect",{x:-S/2+2,y:L/2-7,width:S-4,height:5,fill:"#facc15"}),el("rect",{x:-S/2+2,y:-L/2+2,width:S-4,height:5,fill:"#facc15"}));})(),
+                el("rect",{x:-w/2,y:-h/2,width:w,height:h,fill:p.ko?"url(#pk-hach)":"#fef3c7",fillOpacity:p.ko?1:.35,stroke:H?"#2563eb":"#d97706",strokeWidth:H?3.4:2,strokeDasharray:H?null:"5 4"}),
+                false&&(()=>{const hz=w>h,L=Math.max(w,h),S=Math.min(w,h);return el("g",{transform:hz?"rotate(90)":null},el("rect",{x:-S/2+2,y:L/2-7,width:S-4,height:5,fill:"#f59e0b"}),el("rect",{x:-S/2+2,y:-L/2+2,width:S-4,height:5,fill:"#f59e0b"}));})(),
                 voiture&&pkVoitureSvg(w,h,PK_COUL[p.couleur]||"#2c5f85"),
                 el("g",{transform:"rotate("+(-r)+")"},el("text",{textAnchor:"middle",dominantBaseline:"central",fontSize:Math.min(16,Math.min(w,h)*.42),fontWeight:800,fontFamily:"Inter,system-ui,sans-serif",
-                  fill:voiture?"#fff":"#d6d3d1",stroke:voiture?"#111827":"none",strokeWidth:voiture?2.4:0,paintOrder:"stroke",opacity:voiture?.95:.9},p.num)),
+                  fill:voiture?"#fff":"#92400e",stroke:voiture?"#111827":"none",strokeWidth:voiture?2.4:0,paintOrder:"stroke",opacity:.95},p.num)),
                 eclair(p,w,h,r));}),
-            arrive&&el("g",{className:"pk-blanc",pointerEvents:"none"},
+            false&&el("g",{className:"pk-blanc",pointerEvents:"none"},
               nv==="-1"?el("rect",{x:vb[0],y:vb[1],width:vb[2],height:vb[3],rx:10,fill:"#fbfbfa"}):el("polygon",{points:PK_CONTOUR.map(q=>q.join(",")).join(" "),fill:"#fbfbfa",stroke:"#334155",strokeWidth:4}),
-              Object.entries(PL.pts).map(([k,[x,y,w,h,r]])=>{const p=byKey[pkKey(k)];const att=p&&p.tit&&!p.ko;return el("rect",{key:k,x:-w/2,y:-h/2,width:w,height:h,transform:"translate("+x+" "+y+") rotate("+r+")",fill:att?"#fef3c7":"none",stroke:att?"#d97706":"#94a3b8",strokeWidth:att?2.4:1.4});})))));})()),
+              Object.entries(PL.pts).map(([k,[x,y,w,h,r]])=>{const p=byKey[pkKey(k)];const att=pkNous(p);return el("rect",{key:k,x:-w/2,y:-h/2,width:w,height:h,transform:"translate("+x+" "+y+") rotate("+r+")",fill:att?"#fef3c7":"none",stroke:att?"#d97706":"#cbd5e1",strokeWidth:att?2.4:1.2});})))));})()),
       grosPlan(pl.find(p=>p.id===zoom)||(qn?pl.find(hit):null))),
       el("div",{style:{fontSize:12,color:"var(--text3)",marginTop:8}},"Survole une place pour la voir en gros plan, clique pour ouvrir sa fiche. La recherche (nom, plaque, numéro) met la place en évidence."+(sans.length?" · Places de ce niveau absentes du plan : "+sans.map(p=>p.num).join(", "):"")));};
 
@@ -10447,16 +10447,16 @@ function VueParking({showToast,addLog,badges,session,mode}){
       +".pk-pil{position:absolute;width:7px;margin-left:-3px;background:linear-gradient(90deg,#94a3b8,#f1f5f9 50%,#94a3b8);border:1px solid #64748b;transform-origin:top center;transform:rotateX(-90deg);pointer-events:none}"
       +".pk-pil.b{transform:rotateZ(90deg) rotateX(-90deg)}.pk-niv.autre .pk-pil,.pk-niv.sel .pk-pil{opacity:0}"
       +"@media (max-width:900px){.pk-imm{flex-direction:column}.pk-labs{width:auto;flex-direction:row;flex-wrap:wrap}.pk-vue{height:520px}}"
-      +".pk-scene{border-radius:12px;background:radial-gradient(ellipse at 50% 35%,#b9bcbf,#8f9397);padding:18px 8px 44px;perspective:1700px;overflow:hidden}"
-      +".pk-bloc{transform:rotateX(30deg) rotateZ(-3deg) scale(1.08);transform-origin:50% 55%;transform-style:preserve-3d;border-radius:10px;box-shadow:0 3px 0 #d4d4d2,0 26px 0 #3b3d41,0 30px 0 #2a2c2f,0 60px 60px rgba(0,0,0,.35)}"
-      +".pk-pl:hover rect:first-child{fill-opacity:.12;stroke:#fff;stroke-width:2.4}"
+      +".pk-scene{border-radius:12px;background:radial-gradient(ellipse at 50% 35%,#ffffff,#eef1f5);padding:18px 8px 44px;perspective:1700px;overflow:hidden}"
+      +".pk-bloc{transform:rotateX(30deg) rotateZ(-3deg) scale(1.08);transform-origin:50% 55%;transform-style:preserve-3d;filter:drop-shadow(0 30px 30px rgba(15,23,42,.18))}"
+      +".pk-pl:hover rect:first-child{stroke:#2563eb;stroke-width:3.4;stroke-dasharray:none}"
       +".pk-etiq{position:absolute;right:-6%;top:44%;display:flex;flex-direction:column;gap:2px;background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:8px 12px;box-shadow:0 6px 16px rgba(15,23,42,.12);font-size:12px;color:var(--text2);white-space:nowrap;transition:transform .45s}"
       +".pk-etiq b{font-size:14px;color:var(--text)}.pk-etage:hover .pk-etiq{transform:translateY(-30px);border-color:#3b82f6}"
       +"@keyframes pkArrive{0%{transform:rotateX(58deg) rotateZ(-34deg) scale(.62) translateZ(60px)}100%{transform:rotateX(30deg) rotateZ(-3deg) scale(1.08)}}.pk-arrive{animation:pkArrive 1.05s cubic-bezier(.45,0,.15,1) both}"
       +"@keyframes pkBlanc{0%,35%{opacity:1}100%{opacity:0}}.pk-blanc{animation:pkBlanc 1.3s ease-in-out both}"
       +"@keyframes pkFond{0%{background-color:#ffffff}100%{background-color:transparent}}.pk-scene{position:relative}"
       +".pk-zreset{position:absolute;z-index:3;top:12px;right:12px;border:none;border-radius:999px;background:rgba(15,23,42,.8);color:#fff;font:600 12px Inter,system-ui,sans-serif;padding:7px 12px;cursor:pointer}"
-      +".pk-zhint{position:absolute;z-index:3;bottom:10px;left:14px;font:500 11.5px Inter,system-ui,sans-serif;color:rgba(255,255,255,.85);background:rgba(15,23,42,.45);padding:4px 10px;border-radius:999px;pointer-events:none}"
+      +".pk-zhint{position:absolute;z-index:3;bottom:10px;left:14px;font:500 11.5px Inter,system-ui,sans-serif;color:#475569;background:rgba(255,255,255,.85);border:1px solid #e2e8f0;padding:4px 10px;border-radius:999px;pointer-events:none}"
       +"@media (max-width:700px){.pk-etiq{right:2%;top:auto;bottom:6%}}"),
     el("div",{style:{display:"flex",alignItems:"center",gap:10,flexWrap:"wrap",marginBottom:14}},
 
@@ -13673,7 +13673,7 @@ catch(e){document.getElementById("root").innerHTML='<div style="padding:40px;fon
   }
   // ── Nouvelle version en ligne : bandeau cliquable pour actualiser ──
   (function(){
-    var VERSION_PAGE='v126';var affiche=false,dernier=0;
+    var VERSION_PAGE='v127';var affiche=false,dernier=0;
     function montrer(){if(affiche)return;affiche=true;
       var b=document.createElement('button');b.type='button';b.id='maj-dispo';
       b.innerHTML='<span style="font-size:16px">🔄</span><span>Nouvelle version de l\'appli</span><b style="background:#fff;color:#1D4ED8;border-radius:999px;padding:4px 12px">Actualiser</b>';
